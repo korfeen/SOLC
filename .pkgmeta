@@ -1,0 +1,12 @@
+# Packaging for releases (BigWigs packager, run by .github/workflows/release.yml).
+# The zip contains the KillTracker2.0 folder with only what the game needs.
+package-as: KillTracker2.0
+
+ignore:
+  - tools
+  - references
+  - .vscode
+  - .github
+  - .gitignore
+  - .gitattributes
+  - README.md

@@ -1,0 +1,31 @@
+# Builds a release when a version tag is pushed (e.g. v0.36.0): checks the tag matches the TOC's
+# "## Version", then the BigWigs packager zips the addon (see .pkgmeta) and attaches it to a GitHub
+# release, with a release.json that WowUp reads to find it.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag matches the TOC version
+        run: |
+          toc_version=$(grep -Po '^## Version: \K.*' KillTracker2.0.toc | tr -d '\r')
+          if [ "v$toc_version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match the TOC version $toc_version - bump '## Version' first."
+            exit 1
+          fi
+
+      - uses: BigWigsMods/packager@v2
+        env:
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

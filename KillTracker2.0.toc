@@ -1,0 +1,29 @@
+## Interface: 16001
+## Title: KillTracker 2.0
+## Notes: Counts the NPCs you kill by faction, subtype and rank, with records and achievements. Type /kt to open.
+## Author: faluk
+## Version: 0.36.0
+## SavedVariablesPerCharacter: KillTrackerDB
+## SavedVariables: KillTrackerFriends, KillTrackerConfig
+
+Data.lua
+Overrides.lua
+Config.lua
+Core.lua
+Toast.lua
+Records.lua
+Achievements.lua
+PvP.lua
+Points.lua
+Collection.lua
+MintArt.lua
+Minting.lua
+MintReel.lua
+Sync.lua
+Feed.lua
+Guild.lua
+BountyBoard.lua
+Combined.lua
+UI.lua
+GuildPages.lua
+Minimap.lua
