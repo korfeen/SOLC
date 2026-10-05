@@ -12,8 +12,14 @@ ns.Collectibles = {
 }
 
 ns.RARITY_COLORS = {
-    common = "ffffffff", uncommon = "ff1eff00", rare = "ff0070dd", epic = "ffa335ee", legendary = "ffff8000",
+    uncommon = "ff1eff00", rare = "ff0070dd", epic = "ffa335ee", legendary = "ffff8000",
 }
+
+-- A rarity's color as r, g, b (0-1).
+function ns.RarityRGB(rarity)
+    local hex = ns.RARITY_COLORS[rarity] or "ffffffff"
+    return tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255
+end
 
 -- Returns true if bought, or false and why not.
 function ns.BuyCollectible(item)

@@ -1,6 +1,7 @@
 -- The minting show: one spinning reel per layer, like opening a case. The result is already decided
 -- and saved by ns.Mint (Minting.lua); each reel just scrolls a strip of random options past a marker,
--- slows down and lands on the rolled one, while the picture builds up layer by layer above it.
+-- slows down and lands on the rolled one, while the picture builds up layer by layer above it. It takes
+-- over the main window's page area (UI.lua), opening the window if needed.
 
 local _, ns = ...
 
@@ -12,7 +13,9 @@ local STRIP_LENGTH = 40          -- tiles per reel
 local WINNER_INDEX = 34          -- the rolled option sits here
 local SPIN_TIME = 1.9            -- seconds per reel
 local PAUSE_TIME = 0.45          -- after a reel lands
-local REEL_WIDTH = 256
+local REEL_WIDTH = 600
+local PICTURE = 300
+local FIRST_INDEX = math.ceil(REEL_WIDTH / 2 / STEP) + 1  -- the strip starts with tiles across the whole reel
 
 local SOUND_TICK = SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or 856
 local SOUND_LAND = SOUNDKIT and SOUNDKIT.IG_QUEST_LOG_OPEN or 875
@@ -28,7 +31,7 @@ local function LayerByKey(key)
 end
 
 local function Weight(option)
-    return option.weight or ({ common = 60, uncommon = 25, rare = 10, epic = 4, legendary = 1 })[option.rarity]
+    return option.weight or ns.MINT_WEIGHTS[option.rarity]
 end
 
 local function RandomOption(layer)
@@ -42,31 +45,26 @@ local function RandomOption(layer)
     return layer.options[1]
 end
 
-local function RarityRGB(rarity)
-    local hex = ns.RARITY_COLORS[rarity] or "ffffffff"
-    return tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255
-end
+local RarityRGB = ns.RarityRGB
 
 -- Frame -----------------------------------------------------------------------
 
+-- Placed over the main window's page area when a show starts (the window is made later than this file).
 local panel = CreateFrame("Frame", "SOLCMintReel", UIParent, "BackdropTemplate")
-panel:SetSize(300, 470)
-panel:SetPoint("CENTER")
-panel:SetFrameStrata("DIALOG")
 panel:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true, tileSize = 32, edgeSize = 32,
-    insets = { left = 11, right = 12, top = 12, bottom = 11 },
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 32, edgeSize = 12,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 },
 })
 panel:EnableMouse(true)
 panel:Hide()
 
 panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-panel.title:SetPoint("TOP", 0, -18)
+panel.title:SetPoint("TOP", 0, -16)
 panel.canvas = CreateFrame("Frame", nil, panel)
-panel.canvas:SetSize(256, 256)
-panel.canvas:SetPoint("TOP", 0, -44)
+panel.canvas:SetSize(PICTURE, PICTURE)
+panel.canvas:SetPoint("TOP", 0, -42)
 
 panel.status = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 panel.status:SetPoint("TOP", panel.canvas, "BOTTOM", 0, -8)
@@ -158,7 +156,7 @@ local function StartStep()
     end
     show.layer, show.winner = layer, winner
     show.phase, show.elapsed = "spin", 0
-    show.from = OffsetFor(3, 0)
+    show.from = OffsetFor(FIRST_INDEX, 0)
     show.to = OffsetFor(WINNER_INDEX, (math.random() - 0.5) * 0.7)  -- land a bit off-centre, like the real thing
     show.lastTile = nil
     strip:ClearAllPoints()
@@ -231,6 +229,21 @@ function ns.PlayMintReel(mint)
         if not listed[layer.key] then order[#order + 1] = layer.key end
     end
     show = { mint = mint, step = 1, revealed = {}, order = order }
+    -- Over the main window's pages, covering them (the sidebar stays usable).
+    local pageArea = ns.UI and ns.UI.pageArea
+    if pageArea then
+        if not pageArea:IsVisible() then ns.ToggleUI() end
+        panel:SetParent(pageArea)
+        panel:ClearAllPoints()
+        panel:SetAllPoints(pageArea)
+        panel:SetFrameStrata(pageArea:GetFrameStrata())
+        panel:SetFrameLevel(pageArea:GetFrameLevel() + 50)
+    else
+        panel:ClearAllPoints()
+        panel:SetSize(REEL_WIDTH + 40, PICTURE + 220)
+        panel:SetPoint("CENTER")
+        panel:SetFrameStrata("DIALOG")
+    end
     ns.RenderMint(panel.canvas, show.revealed)
     panel.title:SetText("Minting...")
     panel.hint:SetText("Click to skip")

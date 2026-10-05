@@ -2,7 +2,7 @@
 ## Title: Sleepy Ogre Leisure Club
 ## Notes: The Sleepy Ogre Leisure Club guild addon: kills, tribes and leaders, achievements, guild bounties, an activity feed and collectible pictures. Type /solc to open.
 ## Author: faluk
-## Version: 0.36.1
+## Version: 0.37.0
 ## SavedVariablesPerCharacter: KillTrackerDB
 ## SavedVariables: KillTrackerFriends, KillTrackerConfig
 
@@ -14,6 +14,8 @@ Toast.lua
 Records.lua
 Achievements.lua
 PvP.lua
+Gear.lua
+Professions.lua
 Points.lua
 Collection.lua
 MintArt.lua

@@ -16,7 +16,8 @@
 -- Wire format: H|6|syncID|seq|wantReply|configVersion|addonVersion   G|6|syncID|haveSeq   N|6
 --              U|transferID|part|parts|chunk   C|transferID|part|parts|chunk (chunk of "6#version#settings#bounties")
 -- Update payload: 6 # name # syncID # baseSeq # seq # total # kills # records # group kills # pictures # bounty
---                 # summary # events   (sections added later go at the end; receivers ignore unknown ones)
+--                 # summary # events # gear # professions # showcase   (sections added later go at the end;
+--                 receivers ignore unknown ones)
 -- (items "~", fields "^"; npcID, count and time in base 36):
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
 --   record     = subtype^weight^mob^zone^time
@@ -25,6 +26,12 @@
 --   bounty     = week^bounty id^kills            (this week's guild bounty kills, see Guild.lua; at most one)
 --   summary    = earned points^PvP kills         (always sent, for the Members and Leaderboard pages)
 --   event      = time^kind^a^b                   (guild activity feed, see Feed.lua)
+--   gear       = race^sex^class^level^guid^slot:itemID[:enchant:suffix];...   (character and equipment, see
+--                Gear.lua; only when changed, empty otherwise; enchant and suffix in decimal)
+--   professions = P^line:rank:max:icon:name;...^line=recipeID,recipeID...^line=...   (see Professions.lua;
+--                only when changed, empty otherwise; the "P" tells "no professions" from "unchanged")
+--   showcase   = S^number,number,number              (pictures on their Overview, see Minting.lua; only when
+--                changed, empty otherwise; the "S" tells "none" from "unchanged")
 
 local addonName, ns = ...
 
@@ -35,7 +42,7 @@ ns.ADDON_VERSION = ADDON_VERSION
 local PROTOCOL = "6"
 local SECTIONS = 13  -- sections in an update payload; more are allowed (from newer versions)
 local CHUNK_SIZE = 230        -- addon messages are limited to 255 characters including the header
-local MAX_PARTS = 400         -- ignore absurdly large transfers
+local MAX_PARTS = 1500        -- ignore absurdly large transfers (a big player's full update can pass 400)
 local SEND_INTERVAL = 0.3     -- seconds between messages; throttled sends are retried
 local LIVE_INTERVAL = 10      -- seconds between live update broadcasts (only if something changed)
 local HELLO_INTERVAL = 300    -- seconds between hello broadcasts, to catch anything missed
@@ -127,6 +134,36 @@ end
 
 -- Serializing ----------------------------------------------------------------
 
+-- The professions section: levels and known recipes, if they changed after baseSeq (see Professions.lua).
+local function SerializeProfessions(db, baseSeq)
+    local p = db.professions
+    if not p or (p.seq or 0) <= baseSeq then return "" end
+    local levels = {}
+    for _, prof in ipairs(p.list) do
+        levels[#levels + 1] = table.concat({ Base36(prof.line), Base36(prof.rank), Base36(prof.max),
+            Base36(tonumber(prof.icon) or 0), (Clean(prof.name):gsub("[:;=,]", "")) }, ":")
+    end
+    local parts = { "P", table.concat(levels, ";") }
+    for line, recipes in pairs(p.recipes) do
+        -- Only professions whose recipes changed (a skill-up alone doesn't resend them); receivers keep the rest.
+        if (p.recipeSeq and p.recipeSeq[line] or p.seq) > baseSeq then
+            local ids = {}
+            for i, id in ipairs(recipes) do ids[i] = Base36(id) end
+            parts[#parts + 1] = Base36(line) .. "=" .. table.concat(ids, ",")
+        end
+    end
+    return table.concat(parts, FIELD)
+end
+
+-- The showcase section: the pictures on your Overview, if they changed after baseSeq (see Minting.lua).
+local function SerializeShowcase(db, baseSeq)
+    local showcase = db.showcase
+    if not showcase or (showcase.seq or 0) <= baseSeq then return "" end
+    local numbers = {}
+    for i, number in ipairs(showcase.numbers) do numbers[i] = Base36(number) end
+    return "S" .. FIELD .. table.concat(numbers, ",")
+end
+
 -- Everything in db changed after baseSeq (0 = everything).
 local function Serialize(db, baseSeq)
     local kills, records = {}, {}
@@ -167,6 +204,17 @@ local function Serialize(db, baseSeq)
         bounty = table.concat({ Base36(db.bounty.week), Clean(db.bounty.target), Base36(db.bounty.kills) }, FIELD)
     end
     local summary = table.concat({ Base36(ns.GetPoints and ns.GetPoints().earned or 0), Base36(db.pvp and db.pvp.total or 0) }, FIELD)
+    local gear = ""
+    if db.gear and (db.gear.seq or 0) > baseSeq then
+        local g, items = db.gear, {}
+        for slot, itemID in pairs(g.items) do
+            local extra = g.extras and g.extras[slot]
+            items[#items + 1] = Base36(slot) .. ":" .. Base36(itemID)
+                .. (extra and (":%d:%d"):format(extra.enchant, extra.suffix) or "")  -- decimal: suffixes can be negative
+        end
+        gear = table.concat({ Base36(g.race or 0), Base36(g.sex or 0), Clean(g.class), Base36(g.level or 0), Clean(g.guid),
+            table.concat(items, ";") }, FIELD)
+    end
     local events = {}
     for _, e in ipairs(db.events or {}) do
         if (e.seq or 0) > baseSeq then
@@ -175,7 +223,8 @@ local function Serialize(db, baseSeq)
     end
     return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
         table.concat(kills, ITEM), table.concat(records, ITEM), table.concat(group, ITEM), table.concat(pictures, ITEM),
-        bounty, summary, table.concat(events, ITEM) }, SECTION)
+        bounty, summary, table.concat(events, ITEM), gear, SerializeProfessions(db, baseSeq),
+        SerializeShowcase(db, baseSeq) }, SECTION)
 end
 
 -- Returns the update as a table, or nil if the payload is malformed or from another protocol.
@@ -234,6 +283,49 @@ local function Deserialize(payload)
         local t, kind = FromBase36(e[1]), Optional(e[2])
         if t and kind then update.events[#update.events + 1] = { t = t, k = kind, a = Optional(e[3]), b = Optional(e[4]) } end
     end
+    f = Split(s[14] or "", FIELD)  -- from 0.37.0 on
+    if f[6] then
+        local gear = { race = FromBase36(f[1]), sex = FromBase36(f[2]), class = Optional(f[3]), level = FromBase36(f[4]),
+            guid = Optional(f[5]), items = {}, extras = {} }
+        for item in f[6]:gmatch("[^;]+") do
+            local p = Split(item, ":")
+            local slot, itemID = FromBase36(p[1]), FromBase36(p[2])
+            if slot and itemID then
+                gear.items[slot] = itemID
+                local enchant, suffix = tonumber(p[3]), tonumber(p[4])
+                if enchant and suffix then gear.extras[slot] = { enchant = enchant, suffix = suffix } end
+            end
+        end
+        update.gear = gear
+    end
+    f = Split(s[15] or "", FIELD)  -- from 0.37.0 on
+    if f[1] == "P" then
+        local professions = { list = {}, recipes = {} }
+        for entry in (f[2] or ""):gmatch("[^;]+") do
+            local p = Split(entry, ":")
+            local line = FromBase36(p[1])
+            if line then
+                professions.list[#professions.list + 1] = { line = line, rank = FromBase36(p[2]) or 0,
+                    max = FromBase36(p[3]) or 0, icon = FromBase36(p[4]), name = Optional(p[5]) or "?" }
+            end
+        end
+        for i = 3, #f do
+            local line, ids = f[i]:match("^(%w+)=(.*)$")
+            line = FromBase36(line)
+            if line then
+                local recipes = {}
+                for id in ids:gmatch("[^,]+") do recipes[#recipes + 1] = FromBase36(id) end
+                professions.recipes[line] = recipes
+            end
+        end
+        update.professions = professions
+    end
+    f = Split(s[16] or "", FIELD)  -- from 0.37.0 on
+    if f[1] == "S" then
+        local numbers = {}
+        for number in (f[2] or ""):gmatch("[^,]+") do numbers[#numbers + 1] = FromBase36(number) end
+        update.showcase = { numbers = numbers }
+    end
     return update
 end
 
@@ -266,6 +358,17 @@ local function Apply(sender, update)
     if update.bounty then friend.bounty = update.bounty end  -- { week, target, kills }
     friend.earned, friend.pvpTotal = update.earned or friend.earned, update.pvp or friend.pvpTotal
     if #update.events > 0 then ns.MergeEvents(friend, update.events) end
+    if update.gear then friend.gear = update.gear end  -- see Gear.lua
+    if update.professions then  -- see Professions.lua; recipes come only for professions whose recipes changed
+        local old = friend.professions
+        for _, prof in ipairs(update.professions.list) do
+            if not update.professions.recipes[prof.line] and old and old.recipes then
+                update.professions.recipes[prof.line] = old.recipes[prof.line]
+            end
+        end
+        friend.professions = update.professions
+    end
+    if update.showcase then friend.showcase = update.showcase end  -- see Minting.lua
     friend.name, friend.syncID, friend.total = update.name, update.syncID, update.total
     friend.version = ns.SeenVersion(sender) or friend.version
     friend.seq = math.max(friend.seq or 0, update.seq)
@@ -328,9 +431,12 @@ local function SendGet(target, syncID, haveSeq)
     Send(target, ("G|%s|%s|%s"):format(PROTOCOL, syncID or "-", Base36(haveSeq or 0)))
 end
 
--- Sends a payload in numbered chunks as kind ("U" or "C") messages.
+-- Sends a payload in numbered chunks as kind ("U" or "C") messages. Transfer IDs count up (from a random
+-- start), so two transfers in flight never share one; random IDs could, and their chunks would mix.
+local lastTransfer = math.random(0, 9999)
 local function SendChunked(kind, target, payload)
-    local id = tostring(math.random(1000, 9999))
+    lastTransfer = (lastTransfer + 1) % 10000
+    local id = tostring(lastTransfer)
     local parts = math.max(1, math.ceil(#payload / CHUNK_SIZE))
     for part = 1, parts do
         local chunk = payload:sub((part - 1) * CHUNK_SIZE + 1, part * CHUNK_SIZE)
@@ -545,14 +651,43 @@ local function Cleanup()
     end
 end
 
+-- Your other characters on this account never sync with this one (they're never online together), so on
+-- logout this character is stored in the account-wide KillTrackerFriends like a synced guildmate: they see
+-- it everywhere guildmates show. The copy is dropped again when this character logs in (RecognizeMe, by
+-- its syncID), so a character never sees itself twice.
+local myRealm  -- remembered while playing (the game may no longer tell during logout); nil without realms
+local function RememberRealm()
+    local realm = GetNormalizedRealmName and GetNormalizedRealmName()
+    if realm and realm ~= "" and not issecret(realm) then myRealm = realm end
+end
+
+-- Returns what happened, kept in KillTrackerDB.otherCharacters for finding problems.
+local function SaveForOtherCharacters()
+    local db = KillTrackerDB
+    RememberRealm()
+    if not db or not db.syncID then return "skipped: no data" end
+    -- The name others see us by: learned from our own messages, else the name (with the realm if there is
+    -- one; this beta's megaservers have none, and senders come without it).
+    local key = mySender or (myRealm and (ns.MyName() .. "-" .. myRealm) or ns.MyName())
+    local update = Deserialize(Serialize(db, 0))
+    if not update then return "skipped: couldn't read own data" end
+    KillTrackerFriends[key] = nil  -- a full copy, not an update
+    Apply(key, update)
+    if not KillTrackerFriends[key] then return "skipped: copy not stored" end
+    KillTrackerFriends[key].version = ADDON_VERSION
+    return "saved as " .. key
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("PLAYER_LOGOUT")
 frame:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
         OnAddonMessage(...)
     elseif event == "PLAYER_LOGIN" then
+        RememberRealm()
         lastBroadcastSeq = KillTrackerDB.seq
         for fullName, friend in pairs(KillTrackerFriends) do
             if friend.syncID == KillTrackerDB.syncID then RecognizeMe(fullName, friend.syncID) end
@@ -564,9 +699,15 @@ frame:SetScript("OnEvent", function(_, event, ...)
         C_Timer.NewTicker(HELLO_INTERVAL, function() if CanSend() then SendHello(nil, false) end end)
         C_Timer.After(10, function() SendHello(nil, true) end)  -- guild info is ready a bit after login
     elseif event == "PLAYER_ENTERING_WORLD" then
+        RememberRealm()
         local inInstance = IsInInstance()
         if wasInInstance and not inInstance then SendHello(nil, true) end
         wasInInstance = inInstance
+    elseif event == "PLAYER_LOGOUT" then
+        -- Errors at logout never reach the screen; keep any in this character's data to find later.
+        local ok, result = pcall(SaveForOtherCharacters)
+        KillTrackerDB.otherCharactersError = nil  -- replaced by otherCharacters
+        KillTrackerDB.otherCharacters = ("%s %s"):format(date("%Y-%m-%d %H:%M"), ok and tostring(result) or ("error: " .. tostring(result)))
     end
 end)
 C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)

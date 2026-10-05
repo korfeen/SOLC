@@ -67,7 +67,7 @@ If a guildmate already runs a newer version, SOLC tells you in game when you log
 2. Commit, then tag and push:
    ```
    git commit -am "Release 0.37.0"
-   git tag v0.37.0
+   git tag -a v0.37.0 -m "Release 0.37.0"
    git push --follow-tags
    ```
 3. GitHub builds the zip and publishes the release (see `.github/workflows/release.yml`); WowUp picks it up.

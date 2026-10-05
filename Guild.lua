@@ -201,10 +201,14 @@ end
 function ns.TribeBountyID(faction) return "tribe_" .. Squash(faction) end
 function ns.RaceBountyID(race) return race and ("pvp_" .. Squash(race)) or "pvp" end
 
--- Final bosses (DungeonEncounter ids from the Classic game data), one per dungeon wing, plus raid end
--- bosses. Some appear twice: the game has two versions of the encounter.
+-- Final bosses (DungeonEncounter ids from the Classic game data, checked against the Forever build
+-- 1.60.1.70205 on wago.tools), one per dungeon wing, plus raid end bosses. Some appear twice: the game
+-- has two versions of the encounter.
 local FINAL_BOSSES = {
     [2735] = true,                                 -- Ragefire Chasm: Bazzalan
+    [3496] = true,                                 -- The Hall of Thanes: Durgen Dirgehammer (Forever)
+    [3354] = true,                                 -- Ruins of Lordaeron: Rath'mael (Forever; not last in the game's order)
+    [3482] = true,                                 -- Excavation Site: Wetlands: Relic Guardian (Forever)
     [2747] = true,                                 -- Deadmines: Edwin VanCleef
     [592] = true,                                  -- Wailing Caverns: Mutanus the Devourer
     [2755] = true,                                 -- Shadowfang Keep: Archmage Arugal
@@ -442,6 +446,13 @@ end)
 -- Dungeon bosses -----------------------------------------------------------------------
 
 local function OnEncounterEnd(encounterID, encounterName, _, _, success)
+    if ns.debugKills then
+        local function Show(v) return issecret(v) and "hidden" or tostring(v) end
+        ns.Print(("|cffff8000debug:|r boss fight ended: encounter %s, %s, success %s, final %s, guildmates %d (need %d)"):format(
+            Show(encounterID), Show(encounterName), Show(success),
+            issecret(encounterID) and "?" or tostring(FINAL_BOSSES[encounterID] == true),
+            ns.GuildmatesInGroup(), ns.Config("dungeonGuildmates")))
+    end
     if issecret(encounterID) or issecret(success) or success ~= 1 then return end
     local guildmates = ns.GuildmatesInGroup()
     if guildmates < ns.Config("dungeonGuildmates") then return end
@@ -454,6 +465,7 @@ local function OnEncounterEnd(encounterID, encounterName, _, _, success)
     local points = ns.Config(final and "dungeonFinalBoss" or "dungeonBoss")
     local p = Points()
     p.dungeons = p.dungeons + points
+    ns.Touch(p)  -- guildmates get the new points with the next live update
     local name = (encounterName and not issecret(encounterName)) and encounterName or "Boss"
     ns.ShowToast(final and "achievement" or "record", final and "Guild clear!" or "Guild boss down!", name,
         ("+%d points (%d guildmates)"):format(points, guildmates))

@@ -23,7 +23,7 @@ const DENSITY = Number(process.argv[2]) || 512;
 const SOURCE = process.env.KILLTRACKER_ART || path.join(os.homedir(), "killtracker-art");
 const TARGET = path.join(__dirname, "..", "Media", "Collectible");
 const LUA_FILE = path.join(__dirname, "..", "MintArt.lua");
-const RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
+const RARITIES = ["uncommon", "rare", "epic", "legendary"];  // no common: uncommon is the everyday tier
 const SKIN_LAYER = "skin";  // per-skin options are drawn once per option of this layer
 
 if (require.main === module && (DENSITY & (DENSITY - 1))) throw new Error("Density must be a power of two, e.g. 256 or 512");

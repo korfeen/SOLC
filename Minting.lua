@@ -12,11 +12,13 @@ local _, ns = ...
 -- The price of a mint is a guild setting (Config.lua); each picture remembers what it cost.
 function ns.MintCost() return ns.Config("mintCost") end
 
-local RARITY_WEIGHTS = { common = 60, uncommon = 25, rare = 10, epic = 4, legendary = 1 }
-local RARITY_SCORE = { common = 0, uncommon = 1, rare = 2, epic = 3, legendary = 4 }
-local RARITY_ORDER = { "common", "uncommon", "rare", "epic", "legendary" }
+-- Four rarities; there is no common (uncommon is the everyday tier).
+local RARITY_WEIGHTS = { uncommon = 25, rare = 10, epic = 4, legendary = 1 }
+ns.MINT_WEIGHTS = RARITY_WEIGHTS
+local RARITY_SCORE = { uncommon = 1, rare = 2, epic = 3, legendary = 4 }
+local RARITY_ORDER = { "uncommon", "rare", "epic", "legendary" }
 -- A picture's overall rarity: the share of all rolls that score at least as high (see ns.MintRarity).
-local PICTURE_TIERS = { { "legendary", 0.015 }, { "epic", 0.05 }, { "rare", 0.17 }, { "uncommon", 0.55 } }
+local PICTURE_TIERS = { { "legendary", 0.015 }, { "epic", 0.05 }, { "rare", 0.17 } }  -- the rest: uncommon
 
 -- Layers from back to front; options { id (never change once released), name, rarity, texture, rect,
 -- perSkin } from MintArt.lua. rect = { x, y, width, height } as fractions of the picture places a
@@ -121,7 +123,7 @@ local function ScoreOdds()
 end
 
 -- Overall rarity from the traits' rarities added up, graded by how few rolls score that high:
--- legendary = top 1.5% of pictures, epic = top 5%, rare = top 17%, uncommon = top 55%, else common.
+-- legendary = top 1.5% of pictures, epic = top 5%, rare = top 17%, else uncommon.
 function ns.MintRarity(traits)
     local score = 0
     for _, layer in ipairs(ns.MintLayers) do
@@ -225,6 +227,11 @@ function ns.RerollMint(mint)
     return mint
 end
 
+-- Options drawn in front of every layer instead of in their own layer's place: face accessories that a hat
+-- would otherwise cover (the eye mask sits where hats go). Here, not in MintArt.lua, which is generated.
+local IN_FRONT = { eye_mask_pushed_up = true, monocle = true }
+local FRONT_SUBLEVEL = 7  -- the top of the ARTWORK draw layer
+
 -- Draws a picture into canvas (a frame), creating one texture per layer on first use.
 function ns.RenderMint(canvas, traits)
     canvas.layers = canvas.layers or {}
@@ -237,6 +244,7 @@ function ns.RenderMint(canvas, traits)
         end
         local option = FindOption(layer, traits[layer.key])
         local texture = option and option.texture and ns.MintTexture(option, traits)
+        tex:SetDrawLayer("ARTWORK", option and IN_FRONT[option.id] and FRONT_SUBLEVEL or i - 1)
         tex:ClearAllPoints()
         tex:SetVertexColor(1, 1, 1)
         if not option or (not texture and not option.color) then
@@ -332,4 +340,59 @@ StaticPopupDialogs["SOLC_MINT"] = {
 
 function ns.ConfirmMint()
     StaticPopup_Show("SOLC_MINT", ns.MintCost())
+end
+
+-- Showcase: up to SHOWCASE_SIZE of your pictures on your Overview, synced to guildmates (Sync.lua):
+-- KillTrackerDB.showcase = { numbers = { picture number, ... }, seq }.
+
+ns.SHOWCASE_SIZE = 3
+
+local function Showcase()
+    local db = KillTrackerDB
+    db.showcase = db.showcase or { numbers = {} }
+    return db.showcase
+end
+
+function ns.IsShowcased(number)
+    for _, n in ipairs(Showcase().numbers) do
+        if n == number then return true end
+    end
+    return false
+end
+
+-- Adds your picture to the showcase, or takes it off. Returns false and a reason if the showcase is full.
+function ns.ToggleShowcase(mint)
+    local showcase = Showcase()
+    if ns.IsShowcased(mint.number) then
+        for i, n in ipairs(showcase.numbers) do
+            if n == mint.number then table.remove(showcase.numbers, i) break end
+        end
+    elseif #showcase.numbers >= ns.SHOWCASE_SIZE then
+        return false, ("Your showcase is full (%d pictures). Take one off first."):format(ns.SHOWCASE_SIZE)
+    else
+        showcase.numbers[#showcase.numbers + 1] = mint.number
+    end
+    ns.Touch(showcase)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    return true
+end
+
+-- Someone's showcased pictures, in order: yours (key nil) or a synced guildmate's. Pictures that no
+-- longer exist are skipped.
+function ns.GetShowcase(key)
+    local source = key and KillTrackerFriends[key] or KillTrackerDB
+    local numbers = source and source.showcase and source.showcase.numbers or {}
+    local pictures = {}
+    for _, number in ipairs(numbers) do
+        local mint
+        if key then
+            mint = source.mints and source.mints[number]
+        else
+            for _, m in ipairs(source.mints or {}) do
+                if m.number == number then mint = m end
+            end
+        end
+        if mint then pictures[#pictures + 1] = mint end
+    end
+    return pictures
 end

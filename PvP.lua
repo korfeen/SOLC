@@ -83,6 +83,7 @@ end
 local function RecordPvPKill(victim)
     local pvp = KillTrackerDB.pvp
     pvp.total = pvp.total + 1
+    ns.Touch(pvp)  -- guildmates get the new total (and points) with the next live update
     sessionKills = sessionKills + 1
     if ns.OnBountyEvent then ns.OnBountyEvent("pvp", victim) end
 

@@ -100,16 +100,32 @@ function ns.CanEditConfig()
     return rankIndex ~= nil and not issecret(rankIndex) and rankIndex < OFFICER_RANKS
 end
 
--- True if sender ("Name" or "Name-Realm") is a guild master or officer, by your own guild roster.
-function ns.IsGuildOfficer(sender)
-    local short = sender:match("^[^-]+")
+-- Guild members' ranks by full and short name, rebuilt when the roster changes (the Members page asks for
+-- every member on every refresh, and walking the roster each time adds up).
+local ranks
+local rosterWatcher = CreateFrame("Frame")
+rosterWatcher:RegisterEvent("GUILD_ROSTER_UPDATE")
+rosterWatcher:SetScript("OnEvent", function() ranks = nil end)
+local function Ranks()
+    if ranks then return ranks end
+    ranks = {}
     for i = 1, GetNumGuildMembers and GetNumGuildMembers() or 0 do
         local fullName, _, rankIndex = GetGuildRosterInfo(i)
-        if fullName and not issecret(fullName) and (fullName == sender or fullName:match("^[^-]+") == short) then
-            return rankIndex ~= nil and rankIndex < OFFICER_RANKS
+        if fullName and not issecret(fullName) and rankIndex and not issecret(rankIndex) then
+            ranks[fullName] = rankIndex
+            local short = fullName:match("^[^-]+")
+            if ranks[short] == nil then ranks[short] = rankIndex end
         end
     end
-    return false
+    return ranks
+end
+
+-- True if sender ("Name" or "Name-Realm") is a guild master or officer, by your own guild roster.
+function ns.IsGuildOfficer(sender)
+    local r = Ranks()
+    local rankIndex = r[sender]
+    if rankIndex == nil then rankIndex = r[sender:match("^[^-]+")] end
+    return rankIndex ~= nil and rankIndex < OFFICER_RANKS
 end
 
 -- Settings as text for the wire: "key=value,key=value" (only values that differ from the defaults) and

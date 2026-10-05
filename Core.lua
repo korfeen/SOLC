@@ -148,6 +148,23 @@ local function Categorize(npcID, entry)
     return c
 end
 
+-- Categorize is called for every mob each time kills are counted (after every kill, on every refresh),
+-- so results are kept per npcID, along with the entry fields they depend on: a mob not in Data.lua is
+-- categorized from its name, type and so on. Callers only read the result, so it can be shared.
+local uncached = Categorize
+local cache = {}
+Categorize = function(npcID, entry)
+    local hit = cache[npcID]
+    if hit and hit.name == entry.name and hit.type == entry.type and hit.rank == entry.rank
+        and hit.family == entry.family and hit.subtype == entry.subtype then
+        return hit.c
+    end
+    local c = uncached(npcID, entry)
+    cache[npcID] = { name = entry.name, type = entry.type, rank = entry.rank, family = entry.family,
+        subtype = entry.subtype, c = c }
+    return c
+end
+
 -- "Gnoll - Riverpaw | Gnoll", with "?" after guessed parts.
 local function CategoryLabel(c)
     return ("%s%s | %s%s"):format(c.faction, c.factionGuess and "?" or "", c.subtype, c.subtypeGuess and "?" or "")
@@ -291,7 +308,7 @@ local function RecordKill(npcID, unit, guid)
     end
 
     local c = Categorize(npcID, entry)
-    if db.announce then
+    if db.announce or ns.debugKills then
         Print(("Killed %s [%s] (%d)"):format(entry.name, CategoryLabel(c), entry.count))
     end
     for _, handler in ipairs(ns.KillHandlers) do
@@ -315,25 +332,52 @@ local function GroupIsFighting(unit)
     return false
 end
 
+-- /solc debug: says in chat why a mob isn't counted (each reason at most every 5 seconds). Not saved.
+local lastDebug = {}
+local function Debug(reason, key)
+    if not ns.debugKills then return end
+    local now = GetTime()
+    key = key or reason
+    if lastDebug[key] and now - lastDebug[key] < 5 then return end
+    lastDebug[key] = now
+    Print("|cffff8000debug:|r " .. reason)
+end
+
 local function CheckUnit(unit)
     if not UnitExists(unit) then return end
 
-    local guid = Readable(UnitGUID(unit))
+    -- Inside instances the mob ID, name and type are secret, so trash there can't be told apart or
+    -- categorized and isn't counted; bosses count through ENCOUNTER_END (Guild.lua) instead.
+    local rawGUID = UnitGUID(unit)
+    if issecret(rawGUID) then
+        if not IsInInstance() then Debug(unit .. ": mob ID is hidden (UnitGUID secret)") end
+        return
+    end
+    local guid = rawGUID
     if not guid or counted[guid] then return end
 
     local npcID = NpcIDFromGUID(guid)
     if not npcID then return end
-    if Readable(UnitCanAttack("player", unit)) ~= true then return end
+    local canAttack = UnitCanAttack("player", unit)
+    if issecret(canAttack) then return Debug(unit .. ": UnitCanAttack is secret") end
+    if canAttack ~= true then return end
 
     local dead = Readable(UnitIsDead(unit))
-    if dead == nil then return end
+    if dead == nil then return Debug(unit .. ": UnitIsDead is secret") end
 
     if not dead then
         -- Untapped mobs aren't tap denied either, so also require that we're actually fighting it.
-        if not engaged[guid] and Readable(UnitIsTapDenied(unit)) == false and GroupIsFighting(unit) then
-            engaged[guid] = true
+        if not engaged[guid] then
+            local tapDenied = UnitIsTapDenied(unit)
+            if issecret(tapDenied) then
+                Debug(unit .. ": UnitIsTapDenied is secret")
+            elseif tapDenied == false and GroupIsFighting(unit) then
+                engaged[guid] = true
+            end
         end
-    elseif engaged[guid] then
+    elseif not engaged[guid] then
+        Debug(("%s died but was never seen in a fight (npc %d)"):format(Readable(UnitName(unit)) or "A mob", npcID))
+    else
         engaged[guid] = nil
         counted[guid] = true
         -- Someone else may have tapped it after we engaged: then the corpse is theirs.
@@ -414,6 +458,7 @@ local function ShowHelp()
     Print("/solc unknown - mobs with a guessed or unknown faction, with Wowhead links")
     Print("/solc announce - toggle per-kill chat messages")
     Print("/solc minimap - show/hide the minimap button")
+    Print("/solc debug - announce kills and say why a mob wasn't counted")
     Print("/solc reset - clear all data for this character")
 end
 
@@ -443,6 +488,9 @@ SlashCmdList.SOLC = function(input)
     elseif msg == "announce" then
         db.announce = not db.announce
         Print("Kill announcements " .. (db.announce and "on." or "off."))
+    elseif msg == "debug" then
+        ns.debugKills = not ns.debugKills
+        Print("Kill debugging " .. (ns.debugKills and "on: kills are announced, and mobs that aren't counted say why." or "off."))
     elseif msg == "minimap" then
         db.minimap.hide = not db.minimap.hide
         ns.UpdateMinimapButton()

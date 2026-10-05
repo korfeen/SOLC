@@ -8,15 +8,18 @@
 
 local _, ns = ...
 
-local WIDTH, HEIGHT = 700, 500
+local WIDTH, HEIGHT = 950, 625
 local SIDEBAR_WIDTH = 150
+local VIEWING_WIDTH = 170  -- the name between the "whose stats" arrows: fixed, so the arrows don't move
+local ARROW_SIZE = 26     -- the arrows (spellbook page textures, drawn for 32px; smaller clips their edges)
 local PAGE_WIDTH, PAGE_HEIGHT = WIDTH - SIDEBAR_WIDTH - 44, HEIGHT - 68
 local ROW_HEIGHT = 18
 local LIST_WIDTH = PAGE_WIDTH - 40
 local NORMAL_RANK = "Normal"
 local SECTIONS = { { key = "me", label = "Me" }, { key = "guild", label = "Guild" }, { key = "settings" } }
 
-ns.UI = { PAGE_WIDTH = PAGE_WIDTH, PAGE_HEIGHT = PAGE_HEIGHT, ROW_HEIGHT = ROW_HEIGHT }
+ns.UI = { PAGE_WIDTH = PAGE_WIDTH, PAGE_HEIGHT = PAGE_HEIGHT, ROW_HEIGHT = ROW_HEIGHT, VIEWING_WIDTH = VIEWING_WIDTH,
+    ARROW_SIZE = ARROW_SIZE }
 
 -- Kill views: levels are the categories (fields of ns.Categorize's result) a view drills through, one
 -- click each, before listing the mobs themselves.
@@ -303,6 +306,7 @@ pageArea:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 8, 0)
 pageArea:SetPoint("BOTTOMRIGHT", -14, 14)
 pageArea:SetBackdrop(INSET_BACKDROP)
 pageArea:SetBackdropColor(0, 0, 0, 0.35)
+ns.UI.pageArea = pageArea  -- for things that take over the whole page, like the minting show (MintReel.lua)
 
 -- Pages -------------------------------------------------------------------------------
 
@@ -392,10 +396,12 @@ function ns.UI.CreateScroll(parent, top)
     return scroll
 end
 
--- A list row: highlight, a bar behind it, a label on the left and a count on the right.
-function ns.UI.CreateRow(content, i)
+-- A list row: highlight, a bar behind it, a label on the left and a count on the right. width: default
+-- the full list width.
+function ns.UI.CreateRow(content, i, width)
+    width = width or LIST_WIDTH
     local row = CreateFrame("Button", nil, content)
-    row:SetSize(LIST_WIDTH, ROW_HEIGHT)
+    row:SetSize(width, ROW_HEIGHT)
     row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_HEIGHT)
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
     row.bar = row:CreateTexture(nil, "BACKGROUND")
@@ -410,7 +416,7 @@ function ns.UI.CreateRow(content, i)
     row.label:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
     row.label:SetJustifyH("LEFT")
     row.label:SetWordWrap(false)
-    row.SetBar = function(self, fraction) self.bar:SetWidth(math.max(1, LIST_WIDTH * math.min(1, fraction))) end
+    row.SetBar = function(self, fraction) self.bar:SetWidth(math.max(1, width * math.min(1, fraction))) end
     return row
 end
 
@@ -461,10 +467,12 @@ list:Hide()
 
 local listTitle, totals = ns.UI.CreateHeader(list)
 
--- Viewing: you, the combined stats, or a synced guildmate - the arrows step through them.
+-- Viewing: you, the combined stats, or a synced guildmate - the arrows step through them. Pages
+-- without combined stats (Overview) step through you and guildmates only.
 local viewingLabel = list:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-local function StepViewing(delta)
-    local keys = { false, COMBINED }  -- false = you
+local function StepViewing(delta, withCombined)
+    local keys = { false }  -- false = you
+    if withCombined then keys[2] = COMBINED end
     for _, friend in ipairs(ns.GetFriends()) do keys[#keys + 1] = friend.key end
     local index = 1
     for i, key in ipairs(keys) do
@@ -474,27 +482,30 @@ local function StepViewing(delta)
     state.path = {}
     Refresh()
 end
-local function CreateArrow(direction, texture)
-    local arrow = CreateFrame("Button", nil, list)
-    arrow:SetSize(20, 20)
+local function CreateArrow(parent, direction, texture, withCombined)
+    local arrow = CreateFrame("Button", nil, parent)
+    arrow:SetSize(ARROW_SIZE, ARROW_SIZE)
     arrow:SetNormalTexture(texture .. "-Up")
     arrow:SetPushedTexture(texture .. "-Down")
     arrow:SetDisabledTexture(texture .. "-Disabled")
     arrow:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-    arrow:SetScript("OnClick", function() StepViewing(direction) end)
+    arrow:SetScript("OnClick", function() StepViewing(direction, withCombined) end)
     arrow:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Whose stats")
-        GameTooltip:AddLine("Step through yours, everyone's combined, and each synced guildmate's.", 1, 1, 1, true)
+        GameTooltip:AddLine(withCombined and "Step through yours, everyone's combined, and each synced guildmate's."
+            or "Step through yours and each synced guildmate's.", 1, 1, 1, true)
         GameTooltip:Show()
     end)
     arrow:SetScript("OnLeave", GameTooltip_Hide)
     return arrow
 end
-local nextArrow = CreateArrow(1, "Interface\\Buttons\\UI-SpellbookIcon-NextPage")
-nextArrow:SetPoint("TOPRIGHT", -10, -10)
+local nextArrow = CreateArrow(list, 1, "Interface\\Buttons\\UI-SpellbookIcon-NextPage", true)
+nextArrow:SetPoint("TOPRIGHT", -10, -7)
 viewingLabel:SetPoint("RIGHT", nextArrow, "LEFT", -2, 0)
-local prevArrow = CreateArrow(-1, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage")
+viewingLabel:SetWidth(VIEWING_WIDTH)
+viewingLabel:SetWordWrap(false)
+local prevArrow = CreateArrow(list, -1, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage", true)
 prevArrow:SetPoint("RIGHT", viewingLabel, "LEFT", -2, 0)
 
 -- Kills: how to group them.
@@ -666,6 +677,34 @@ local function WhoIsViewed()
     return ns.MyName()
 end
 
+-- Whose page a page without combined stats shows: nil for you, or a key in KillTrackerFriends.
+function ns.GetViewing()
+    if state.viewing == COMBINED or (state.viewing and not KillTrackerFriends[state.viewing]) then return nil end
+    return state.viewing
+end
+
+-- Arrows and a name at the top right of a page, stepping through you and each synced guildmate.
+-- Call switcher:Update() when the page refreshes.
+function ns.UI.CreateViewSwitcher(parent)
+    local nextButton = CreateArrow(parent, 1, "Interface\\Buttons\\UI-SpellbookIcon-NextPage")
+    nextButton:SetPoint("TOPRIGHT", -10, -7)
+    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("RIGHT", nextButton, "LEFT", -2, 0)
+    label:SetWidth(VIEWING_WIDTH)
+    label:SetWordWrap(false)
+    local prevButton = CreateArrow(parent, -1, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage")
+    prevButton:SetPoint("RIGHT", label, "LEFT", -2, 0)
+    local switcher = {}
+    function switcher:Update()
+        local hasFriends = next(KillTrackerFriends) ~= nil
+        prevButton:SetShown(hasFriends)
+        nextButton:SetShown(hasFriends)
+        local key = ns.GetViewing()
+        label:SetText(not hasFriends and "" or key and ("|cff66ccff%s|r"):format(Ambiguate(key, "short")) or ns.MyName())
+    end
+    return switcher
+end
+
 local function RefreshList()
     local hasFriends = next(KillTrackerFriends) ~= nil
     if state.viewing == COMBINED then
@@ -812,7 +851,7 @@ end
 -- Picture viewer, next to the window --------------------------------------------
 
 local viewer = CreateFrame("Frame", "SOLCMintViewer", frame, "BackdropTemplate")
-viewer:SetSize(290, 400)
+viewer:SetSize(290, 440)
 viewer:SetPoint("TOPLEFT", frame, "TOPRIGHT", -6, 0)
 viewer:SetBackdrop(DIALOG_BACKDROP)
 viewer:EnableMouse(true)
@@ -831,9 +870,24 @@ viewer.traits:SetPoint("TOPRIGHT", viewer.canvas, "BOTTOMRIGHT", 0, -8)
 viewer.traits:SetJustifyH("LEFT")
 local viewerClose = CreateFrame("Button", nil, viewer, "UIPanelCloseButton")
 viewerClose:SetPoint("TOPRIGHT", -6, -6)
+-- Your own pictures: put on / take off your Overview's showcase (Minting.lua).
+viewer.showcase = CreateFrame("Button", nil, viewer, "UIPanelButtonTemplate")
+viewer.showcase:SetSize(180, 22)
+viewer.showcase:SetPoint("BOTTOM", 0, 16)
+local function UpdateShowcaseButton()
+    viewer.showcase:SetText(ns.IsShowcased(viewer.mint.number) and "Take off your Overview" or "Show on your Overview")
+end
+viewer.showcase:SetScript("OnClick", function()
+    local ok, reason = ns.ToggleShowcase(viewer.mint)
+    if not ok then ns.Print(reason) end
+    UpdateShowcaseButton()
+end)
 
 -- Shows a picture next to the window. owner: whose it is, if not yours.
 function ns.ShowMint(mint, owner)
+    viewer.mint = mint
+    viewer.showcase:SetShown(owner == nil)
+    if owner == nil then UpdateShowcaseButton() end
     local rarity = ns.MintRarity(mint.traits)
     viewer.title:SetText(owner and ("%s's #%d"):format(owner, mint.number) or ("Picture #%d"):format(mint.number))
     viewer.rarity:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
@@ -887,8 +941,16 @@ function ns.ToggleUI()
     frame:Show()
 end
 
+-- Kills and guildmates' updates can come several per second (AoE pulls, a busy guild), and a refresh
+-- rebuilds the whole page, so changes within a moment share one refresh.
+local refreshPending
 function ns.OnKillsChanged()
-    if frame:IsShown() then Refresh() end
+    if not frame:IsShown() or refreshPending then return end
+    refreshPending = true
+    C_Timer.After(0.25, function()
+        refreshPending = nil
+        if frame:IsShown() then Refresh() end
+    end)
 end
 ns.OnFriendsChanged = ns.OnKillsChanged
 
