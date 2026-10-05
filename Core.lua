@@ -42,6 +42,12 @@ local function Print(msg)
     print("|cff9acd32SOLC:|r " .. msg)
 end
 
+-- Your name as guildmates see it. With last names (as on this beta) UnitName gives only the first name;
+-- the full one is learned from our own guild messages (see RecognizeMe in Sync.lua).
+function ns.MyName()
+    return KillTrackerDB and KillTrackerDB.myName or UnitName("player")
+end
+
 local function NotifyChanged()
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end

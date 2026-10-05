@@ -43,7 +43,7 @@ function ns.BuildCombined()
         end
     end
 
-    Add(UnitName("player"), KillTrackerDB, MyGroupKills())
+    Add(ns.MyName(), KillTrackerDB, MyGroupKills())
     for _, friend in ipairs(ns.GetFriends()) do
         Add(friend.name, friend.stats, friend.stats.group or {})
     end

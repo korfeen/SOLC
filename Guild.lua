@@ -353,7 +353,7 @@ function ns.GetBountyProgress()
     local mine = MyBounty(current)
     local goal = current.goal or ns.BountyGoal(current.bounty)
     local progress = { current = current, goal = goal, needed = ShareNeeded(goal), total = mine.kills, mine = mine.kills,
-        rewarded = mine.rewarded, contributors = { { name = UnitName("player"), kills = mine.kills } } }
+        rewarded = mine.rewarded, contributors = { { name = ns.MyName(), kills = mine.kills } } }
     for _, friend in ipairs(ns.GetFriends()) do
         local theirs = friend.stats.bounty
         if theirs and theirs.week == current.week and theirs.target == current.bounty.id and theirs.kills > 0 then

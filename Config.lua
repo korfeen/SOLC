@@ -162,7 +162,7 @@ end
 -- Stamps a change made here and sends it to the guild.
 function ns.ConfigSaved(current)
     current.version = math.max((GetServerTime and GetServerTime() or time()), current.version + 1)
-    current.by = UnitName("player")
+    current.by = ns.MyName()
     Changed()
     if ns.BroadcastConfig then ns.BroadcastConfig() end
     return true

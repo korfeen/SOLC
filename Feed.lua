@@ -79,7 +79,7 @@ function ns.GetFeed()
             if text then feed[#feed + 1] = { time = e.t, text = text, who = who } end
         end
     end
-    Add(UnitName("player"), KillTrackerDB)
+    Add(ns.MyName(), KillTrackerDB)
     for _, friend in ipairs(ns.GetFriends()) do Add(friend.name, friend.stats) end
     table.sort(feed, function(x, y) return x.time > y.time end)
     while #feed > MAX_FEED do table.remove(feed) end

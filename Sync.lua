@@ -98,10 +98,27 @@ local function DisplayName(fullName)
     return Ambiguate and Ambiguate(fullName, "short") or fullName
 end
 
--- Our own guild broadcasts come back to us; senders are "Name" or "Name-Realm".
+-- Our own guild broadcasts come back to us; senders are "Name" or "Name-Realm". With last names (as on
+-- this beta) UnitName gives "Lance" but we send as "Lance Hedman", so the name we really send as is
+-- learned from the first message carrying our own syncID (see RecognizeMe).
+local mySender
+
 local function IsMe(sender)
+    if sender == mySender then return true end
     local name, realm = sender:match("^([^-]+)-?(.*)$")
     return name == UnitName("player") and (realm == "" or realm == GetNormalizedRealmName())
+end
+
+-- True if syncID is ours: sender is us. Remembers that, keeps our full name (ns.MyName) and drops any
+-- copy of ourselves stored as a friend.
+local function RecognizeMe(sender, syncID)
+    if syncID ~= KillTrackerDB.syncID then return false end
+    mySender = sender
+    local changed = KillTrackerDB.myName ~= DisplayName(sender) or KillTrackerFriends[sender] ~= nil
+    KillTrackerDB.myName = DisplayName(sender)
+    KillTrackerFriends[sender] = nil
+    if changed and ns.OnFriendsChanged then ns.OnFriendsChanged() end
+    return true
 end
 
 local function CanSend()
@@ -156,7 +173,7 @@ local function Serialize(db, baseSeq)
             events[#events + 1] = table.concat({ Base36(e.t), Clean(e.k), Clean(e.a), Clean(e.b) }, FIELD)
         end
     end
-    return table.concat({ PROTOCOL, Clean(UnitName("player")), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
+    return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
         table.concat(kills, ITEM), table.concat(records, ITEM), table.concat(group, ITEM), table.concat(pictures, ITEM),
         bounty, summary, table.concat(events, ITEM) }, SECTION)
 end
@@ -360,6 +377,7 @@ local function OnUpdateComplete(sender, payload)
     awaiting[sender] = nil
     local short = DisplayName(sender):lower()
     local update = Deserialize(payload)
+    if update and RecognizeMe(sender, update.syncID) then return end
     if not update then
         if pendingManual[short] then
             pendingManual[short] = nil
@@ -412,7 +430,7 @@ end
 function handlers.H(sender, channel, protocol, syncID, seq, wantReply, configVersion, addonVersion)
     NoteVersion(sender, addonVersion)  -- also from players on another protocol: they're the ones to tell
     seq = FromBase36(seq)
-    if protocol ~= PROTOCOL or not seq then return end
+    if protocol ~= PROTOCOL or not seq or RecognizeMe(sender, syncID) then return end
     if (FromBase36(configVersion) or 0) < ns.ConfigVersion() and channel == "GUILD" then
         SendConfig(sender)  -- they have older guild settings (only officers' addons send)
     end
@@ -536,6 +554,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         OnAddonMessage(...)
     elseif event == "PLAYER_LOGIN" then
         lastBroadcastSeq = KillTrackerDB.seq
+        for fullName, friend in pairs(KillTrackerFriends) do
+            if friend.syncID == KillTrackerDB.syncID then RecognizeMe(fullName, friend.syncID) end
+        end
         C_Timer.NewTicker(LIVE_INTERVAL, function()
             BroadcastChanges()
             Cleanup()

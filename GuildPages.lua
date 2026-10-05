@@ -21,7 +21,7 @@ local function Members()
     end
     local db = KillTrackerDB
     local list = { {
-        name = UnitName("player"), kills = db.total, points = ns.GetPoints().earned, pvp = db.pvp and db.pvp.total or 0,
+        name = ns.MyName(), kills = db.total, points = ns.GetPoints().earned, pvp = db.pvp and db.pvp.total or 0,
         pictures = #(db.mints or {}), bounty = BountyKills(db.bounty), updated = time(), me = true,
         officer = IsInGuild() and ns.CanEditConfig(), stats = db, version = ns.ADDON_VERSION,
     } }
@@ -193,7 +193,7 @@ ns.RegisterPage({
     refresh = function(page)
         local db = KillTrackerDB
         local p = ns.GetPoints()
-        page.line:SetText(("%s - %d kills this session"):format(UnitName("player"), ns.GetSessionKills()))
+        page.line:SetText(("%s - %d kills this session"):format(ns.MyName(), ns.GetSessionKills()))
         page.cards[1].value:SetText(p.balance)
         page.cards[2].value:SetText(db.total)
         page.cards[3].value:SetText(ns.GetAchievementTotals(db))
@@ -215,7 +215,7 @@ ns.RegisterPage({
 
         local mine = {}
         for _, item in ipairs(ns.GetFeed()) do
-            if item.who == UnitName("player") then mine[#mine + 1] = item end
+            if item.who == ns.MyName() then mine[#mine + 1] = item end
         end
         page.recent:Set(mine, function(row, item)
             row.label:SetText(item.text)
@@ -402,7 +402,7 @@ ns.RegisterPage({
     refresh = function(page)
         ns.UpdateDuplicates()
         local pictures = {}
-        for _, mint in ipairs(KillTrackerDB.mints or {}) do pictures[#pictures + 1] = { mint = mint, owner = UnitName("player"), me = true } end
+        for _, mint in ipairs(KillTrackerDB.mints or {}) do pictures[#pictures + 1] = { mint = mint, owner = ns.MyName(), me = true } end
         for _, friend in ipairs(ns.GetFriends()) do
             for _, mint in pairs(friend.stats.mints or {}) do pictures[#pictures + 1] = { mint = mint, owner = friend.name } end
         end

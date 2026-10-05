@@ -663,7 +663,7 @@ end
 local function WhoIsViewed()
     if state.viewing == COMBINED then return "|cffffd100Combined|r" end
     if state.viewing then return ("|cff66ccff%s|r"):format(Ambiguate(state.viewing, "short")) end
-    return UnitName("player")
+    return ns.MyName()
 end
 
 local function RefreshList()
@@ -852,7 +852,7 @@ end
 function Refresh()
     BuildSidebar()
     local guild = IsInGuild() and GetGuildInfo("player")
-    subtitle:SetText(guild and ("|cff40ff40<%s>|r  %s"):format(guild, UnitName("player")) or UnitName("player"))
+    subtitle:SetText(guild and ("|cff40ff40<%s>|r  %s"):format(guild, ns.MyName()) or ns.MyName())
     local current = pages[state.page] or pages.overview
     state.page = current.key
     for key, page in pairs(pages) do

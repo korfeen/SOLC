@@ -198,7 +198,7 @@ end
 -- Marks your pictures that a friend minted first (earlier time; on a tie, the alphabetically first
 -- name) as duplicates: mint.duplicateOf = their name. They get a free reroll.
 function ns.UpdateDuplicates()
-    local me = UnitName("player")
+    local me = ns.MyName()
     for _, mint in ipairs(KillTrackerDB.mints) do
         mint.duplicateOf = nil
         local key = TraitKey(mint.traits)
