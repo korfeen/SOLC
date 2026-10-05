@@ -206,7 +206,7 @@ end
 -- Panel -------------------------------------------------------------------------------
 
 local ROW_HEIGHT, PANEL_WIDTH = 22, 300
-local panel = CreateFrame("Frame", "KillTrackerSettings", UIParent, "BackdropTemplate")
+local panel = CreateFrame("Frame", "SOLCSettings", UIParent, "BackdropTemplate")
 panel:SetSize(PANEL_WIDTH, 460)
 panel:SetPoint("CENTER", 180, 0)
 panel:SetFrameStrata("DIALOG")
@@ -223,11 +223,11 @@ panel:RegisterForDrag("LeftButton")
 panel:SetScript("OnDragStart", panel.StartMoving)
 panel:SetScript("OnDragStop", panel.StopMovingOrSizing)
 panel:Hide()
-tinsert(UISpecialFrames, "KillTrackerSettings")
+tinsert(UISpecialFrames, "SOLCSettings")
 
 local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOP", 0, -18)
-title:SetText("KillTracker Settings")
+title:SetText("SOLC Settings")
 local info = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 info:SetPoint("TOP", title, "BOTTOM", 0, -4)
 info:SetWidth(PANEL_WIDTH - 40)
@@ -348,7 +348,7 @@ function ns.EmbedConfig(parent, width)
     info:SetJustifyH("LEFT")
     content:SetWidth(width - 60)
     for i, name in ipairs(UISpecialFrames) do
-        if name == "KillTrackerSettings" then table.remove(UISpecialFrames, i) break end
+        if name == "SOLCSettings" then table.remove(UISpecialFrames, i) break end
     end
     return panel
 end

@@ -16,7 +16,7 @@ local HEADINGS = { Murloc = "Creature kinds (the automatic rotation)", defias = 
 -- in custom mode, to choose one of its tribes.
 local state = { weeksAhead = 1, mode = "catalogue", subtype = nil }
 
-local board = CreateFrame("Frame", "KillTrackerBountyBoard", UIParent, "BackdropTemplate")
+local board = CreateFrame("Frame", "SOLCBountyBoard", UIParent, "BackdropTemplate")
 board:SetSize(WIDTH, HEIGHT)
 board:SetPoint("CENTER", -180, 0)
 board:SetFrameStrata("DIALOG")
@@ -33,7 +33,7 @@ board:RegisterForDrag("LeftButton")
 board:SetScript("OnDragStart", board.StartMoving)
 board:SetScript("OnDragStop", board.StopMovingOrSizing)
 board:Hide()
-tinsert(UISpecialFrames, "KillTrackerBountyBoard")
+tinsert(UISpecialFrames, "SOLCBountyBoard")
 
 local title = board:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOP", 0, -18)
@@ -88,7 +88,7 @@ scroll:SetScrollChild(content)
 
 local function EditBoxOf(popup) return popup and (popup.editBox or (popup.GetEditBox and popup:GetEditBox())) end
 
-StaticPopupDialogs["KILLTRACKER_BOUNTY"] = {
+StaticPopupDialogs["SOLC_BOUNTY"] = {
     text = "%s",
     button1 = ACCEPT or "Accept",
     button2 = CANCEL or "Cancel",
@@ -113,7 +113,7 @@ StaticPopupDialogs["KILLTRACKER_BOUNTY"] = {
     hideOnEscape = true,
 }
 
-StaticPopupDialogs["KILLTRACKER_BOUNTY_AUTO"] = {
+StaticPopupDialogs["SOLC_BOUNTY_AUTO"] = {
     text = "%s",
     button1 = YES or "Yes",
     button2 = NO or "No",
@@ -134,7 +134,7 @@ local function Pick(id)
     local restart = state.weeksAhead == 0 and "\n\nEveryone's progress on the current bounty starts over." or ""
     if id == AUTOMATIC then
         if not ns.GetScheduledBounty(current.week) then return end
-        StaticPopup_Show("KILLTRACKER_BOUNTY_AUTO", ("Go back to the automatic rotation for %s bounty?%s"):format(which, restart),
+        StaticPopup_Show("SOLC_BOUNTY_AUTO", ("Go back to the automatic rotation for %s bounty?%s"):format(which, restart),
             nil, { week = current.week, weekName = weekName })
         return
     end
@@ -143,7 +143,7 @@ local function Pick(id)
     local scheduledID, scheduledGoal = ns.GetScheduledBounty(current.week)
     local usualGoal = ns.BountyGoal(bounty)
     if scheduledID == id then restart = "" end  -- same bounty, new goal: progress stays
-    StaticPopup_Show("KILLTRACKER_BOUNTY", ("Make %s %s bounty?%s\n\nGuild goal:"):format(bounty.name, which, restart), nil,
+    StaticPopup_Show("SOLC_BOUNTY", ("Make %s %s bounty?%s\n\nGuild goal:"):format(bounty.name, which, restart), nil,
         { week = current.week, id = id, name = bounty.name, weekName = weekName, usualGoal = usualGoal,
           goal = scheduledID == id and scheduledGoal or usualGoal })
 end
@@ -322,7 +322,7 @@ function ns.EmbedBountyBoard(parent, width)
     info:SetWidth(width - 40)
     footer:SetWidth(width - 40)
     for i, name in ipairs(UISpecialFrames) do
-        if name == "KillTrackerBountyBoard" then table.remove(UISpecialFrames, i) break end
+        if name == "SOLCBountyBoard" then table.remove(UISpecialFrames, i) break end
     end
     return board
 end

@@ -1,8 +1,8 @@
--- Minimap button: left-click toggles the KillTracker window, drag to move it around the minimap.
+-- Minimap button: left-click toggles the Sleepy Ogre Leisure Club window, drag to move it around the minimap.
 
 local _, ns = ...
 
-local button = CreateFrame("Button", "KillTrackerMinimapButton", Minimap)
+local button = CreateFrame("Button", "SOLCMinimapButton", Minimap)
 button:SetSize(31, 31)
 button:SetFrameStrata("MEDIUM")
 button:SetFrameLevel(8)
@@ -54,7 +54,7 @@ button:SetScript("OnClick", function() ns.ToggleUI() end)
 
 button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("KillTracker")
+    GameTooltip:AddLine("Sleepy Ogre Leisure Club")
     GameTooltip:AddDoubleLine("Total kills", KillTrackerDB.total, nil, nil, nil, 1, 1, 1)
     GameTooltip:AddDoubleLine("This session", ns.GetSessionKills(), nil, nil, nil, 1, 1, 1)
     GameTooltip:AddLine(" ")

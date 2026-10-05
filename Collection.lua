@@ -5,7 +5,7 @@
 local _, ns = ...
 
 -- { id, name, rarity, cost, texture, description }. id must never change once released; texture is a
--- file in this addon's folder, e.g. "Interface\\AddOns\\KillTracker2.0\\Media\\Collection\\hogger".
+-- file in this addon's folder, e.g. "Interface\\AddOns\\SOLC\\Media\\Collection\\hogger".
 ns.Collectibles = {
     -- { id = "example", name = "Example", rarity = "rare", cost = 100,
     --   texture = "Interface\\Icons\\INV_Misc_QuestionMark", description = "What this is." },
@@ -37,7 +37,7 @@ function ns.ClaimCollectible(item)
     if owned then owned.claim = true end
 end
 
-StaticPopupDialogs["KILLTRACKER_BUY"] = {
+StaticPopupDialogs["SOLC_BUY"] = {
     text = "Buy %s for %d points?",
     button1 = YES or "Yes",
     button2 = NO or "No",
@@ -51,5 +51,5 @@ StaticPopupDialogs["KILLTRACKER_BUY"] = {
 }
 
 function ns.ConfirmBuy(item)
-    StaticPopup_Show("KILLTRACKER_BUY", item.name, item.cost, item)
+    StaticPopup_Show("SOLC_BUY", item.name, item.cost, item)
 end

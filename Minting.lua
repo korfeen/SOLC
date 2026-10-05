@@ -289,7 +289,7 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", RemoveOutdatedMints)
 
-StaticPopupDialogs["KILLTRACKER_REROLL"] = {
+StaticPopupDialogs["SOLC_REROLL"] = {
     text = "%s minted this picture first. Reroll it for free?",
     button1 = YES or "Yes",
     button2 = NO or "No",
@@ -308,10 +308,10 @@ StaticPopupDialogs["KILLTRACKER_REROLL"] = {
 }
 
 function ns.ConfirmReroll(mint)
-    StaticPopup_Show("KILLTRACKER_REROLL", mint.duplicateOf, nil, mint)
+    StaticPopup_Show("SOLC_REROLL", mint.duplicateOf, nil, mint)
 end
 
-StaticPopupDialogs["KILLTRACKER_MINT"] = {
+StaticPopupDialogs["SOLC_MINT"] = {
     text = "Mint a new picture for %d points?",
     button1 = YES or "Yes",
     button2 = NO or "No",
@@ -331,5 +331,5 @@ StaticPopupDialogs["KILLTRACKER_MINT"] = {
 }
 
 function ns.ConfirmMint()
-    StaticPopup_Show("KILLTRACKER_MINT", ns.MintCost())
+    StaticPopup_Show("SOLC_MINT", ns.MintCost())
 end

@@ -28,7 +28,7 @@
 
 local addonName, ns = ...
 
-local PREFIX = "KillTracker2"
+local PREFIX = "SOLC"
 local GetMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
 local ADDON_VERSION = GetMetadata and GetMetadata(addonName, "Version") or "0"
 ns.ADDON_VERSION = ADDON_VERSION
@@ -363,7 +363,7 @@ local function OnUpdateComplete(sender, payload)
     if not update then
         if pendingManual[short] then
             pendingManual[short] = nil
-            ns.Print(("%s has a different KillTracker version; you both need the same one to sync."):format(DisplayName(sender)))
+            ns.Print(("%s has a different SOLC version; you both need the same one to sync."):format(DisplayName(sender)))
         end
         return
     end
@@ -393,7 +393,7 @@ local function IsNewer(a, b)
 end
 ns.IsNewerVersion = IsNewer
 
--- Remembers each player's KillTracker version (shown on the Members page) and tells you, once per newer
+-- Remembers each player's SOLC version (shown on the Members page) and tells you, once per newer
 -- version, when a guildmate runs a newer one than yours.
 local warnedVersion
 local seenVersions = {}  -- [sender] = version from their hello, until their stats arrive
@@ -404,7 +404,7 @@ local function NoteVersion(sender, version)
     if KillTrackerFriends[sender] then KillTrackerFriends[sender].version = version end
     if IsNewer(version, ADDON_VERSION) and (not warnedVersion or IsNewer(version, warnedVersion)) then
         warnedVersion = version
-        ns.Print(("%s has KillTracker |cff33ff33%s|r - you have %s. Update it to keep everything in sync with your guild."):format(
+        ns.Print(("%s has SOLC |cff33ff33%s|r - you have %s. Update it to keep everything in sync with your guild."):format(
             DisplayName(sender), version, ADDON_VERSION))
     end
 end
@@ -522,7 +522,7 @@ local function Cleanup()
     for short, pending in pairs(pendingManual) do
         if now - pending.started > REPLY_TIMEOUT then
             pendingManual[short] = nil
-            ns.Print(("No answer from %s. Are they online with the same KillTracker version?"):format(pending.name))
+            ns.Print(("No answer from %s. Are they online with the same SOLC version?"):format(pending.name))
         end
     end
 end

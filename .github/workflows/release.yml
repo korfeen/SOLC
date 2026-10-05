@@ -20,7 +20,7 @@ jobs:
 
       - name: Check the tag matches the TOC version
         run: |
-          toc_version=$(grep -Po '^## Version: \K.*' KillTracker2.0.toc | tr -d '\r')
+          toc_version=$(grep -Po '^## Version: \K.*' SOLC.toc | tr -d '\r')
           if [ "v$toc_version" != "$GITHUB_REF_NAME" ]; then
             echo "Tag $GITHUB_REF_NAME doesn't match the TOC version $toc_version - bump '## Version' first."
             exit 1

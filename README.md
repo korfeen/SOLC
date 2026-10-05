@@ -1,25 +1,25 @@
-# KillTracker 2.0
+# Sleepy Ogre Leisure Club (SOLC)
 
-A guild addon for the WoW Classic beta: tracks what you kill by creature, tribe and rank, with achievements,
-tribe leaders, PvP, points, weekly guild bounties, a guild activity feed and collectible pictures.
-Type `/kt` in game to open it.
+The guild addon of the Sleepy Ogre Leisure Club, for the WoW Classic beta: tracks what you kill by creature,
+tribe and rank, with achievements, tribe leaders, PvP, points, weekly guild bounties, a guild activity feed
+and collectible pictures. Type `/solc` (or `/kt`) in game to open it.
 
 ## Installing (and staying up to date)
 
 1. Install [WowUp](https://wowup.io) if you don't have it.
 2. In WowUp, open **Get Addons**, click **Install from URL**, and paste this repository's link.
-3. That's it: WowUp updates KillTracker whenever a new version is released.
+3. That's it: WowUp updates SOLC whenever a new version is released.
 
 If WowUp doesn't find your Classic beta installation, add the WoW folder under WowUp's **Options > WoW installations**.
 
 Without WowUp: download the zip from the latest release on the **Releases** page and unzip it into
-`World of Warcraft\_classic_beta_\Interface\AddOns`.
+`World of Warcraft\_classic_beta_\Interface\AddOns` (you get a `SOLC` folder).
 
-KillTracker tells you in chat when a guildmate has a newer version than you.
+SOLC tells you in chat when a guildmate has a newer version than you.
 
 ## Releasing a new version (maintainers)
 
-1. Change `## Version:` in `KillTracker2.0.toc`, e.g. to `0.37.0`.
+1. Change `## Version:` in `SOLC.toc`, e.g. to `0.37.0`.
 2. Commit, then tag and push:
    ```
    git commit -am "Release 0.37.0"

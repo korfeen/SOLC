@@ -12,7 +12,7 @@ local STYLES = {
     info        = { big = false, title = { 1, 1, 1 },     border = { 0.6, 0.6, 0.6 } },
 }
 
-local toast = CreateFrame("Frame", "KillTrackerToast", UIParent, "BackdropTemplate")
+local toast = CreateFrame("Frame", "SOLCToast", UIParent, "BackdropTemplate")
 toast:SetSize(320, 76)
 toast:SetPoint("TOP", 0, -140)
 toast:SetFrameStrata("HIGH")

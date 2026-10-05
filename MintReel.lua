@@ -49,7 +49,7 @@ end
 
 -- Frame -----------------------------------------------------------------------
 
-local panel = CreateFrame("Frame", "KillTrackerMintReel", UIParent, "BackdropTemplate")
+local panel = CreateFrame("Frame", "SOLCMintReel", UIParent, "BackdropTemplate")
 panel:SetSize(300, 470)
 panel:SetPoint("CENTER")
 panel:SetFrameStrata("DIALOG")

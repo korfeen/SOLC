@@ -238,14 +238,14 @@ ns.RegisterPage({
         page.empty = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
         page.empty:SetPoint("TOP", 0, -200)
         page.empty:SetWidth(WIDTH - 60)
-        page.empty:SetText("No guild activity yet. Leader kills, rares, achievements, pictures, bounties and guild dungeon clears from everyone using KillTracker show up here.")
+        page.empty:SetText("No guild activity yet. Leader kills, rares, achievements, pictures, bounties and guild dungeon clears from everyone using SOLC show up here.")
         return page
     end,
     refresh = function(page)
         local guild = IsInGuild() and GetGuildInfo("player")
         page.title:SetText(guild or "Guild")
         local members = Members()
-        page.line:SetText(guild and ("%d member%s using KillTracker"):format(#members, #members == 1 and "" or "s")
+        page.line:SetText(guild and ("%d member%s using SOLC"):format(#members, #members == 1 and "" or "s")
             or "You're not in a guild. Guild pages show what you and anyone you /kt sync with do.")
         page.bounty:Update(true)
         local feed = ns.GetFeed()
@@ -293,7 +293,7 @@ ns.RegisterPage({
     end,
     refresh = function(page)
         local members = Members()
-        page.line:SetText(("%d using KillTracker. Click someone to see their kills."):format(#members))
+        page.line:SetText(("%d using SOLC. Click someone to see their kills."):format(#members))
         page.list:Set(members, function(row, m)
             row.label:SetText((m.officer and OFFICER .. " " or "") .. (m.me and ("|cffffd100%s|r (you)"):format(m.name) or m.name))
             row.count:SetText(("%d    |cffffd100%s|r    |cff999999%s|r"):format(m.kills, m.points or "?", m.me and "now" or ns.TimeAgo(m.updated)))
@@ -304,13 +304,13 @@ ns.RegisterPage({
             GameTooltip:AddLine(m.name)
             if m.officer then GameTooltip:AddLine("Guild master or officer", 1, 0.82, 0) end
             UI.AddValue("Kills", m.kills)
-            UI.AddValue("Points earned", m.points or "? (older KillTracker)")
+            UI.AddValue("Points earned", m.points or "? (older SOLC)")
             UI.AddValue("PvP kills", m.pvp or "?")
             UI.AddValue("Pictures", m.pictures)
             UI.AddValue("This week's bounty", m.bounty)
             if m.version then
                 local outdated = not m.me and ns.IsNewerVersion(ns.ADDON_VERSION, m.version)
-                UI.AddValue("KillTracker", outdated and ("|cffff6060%s (outdated)|r"):format(m.version) or m.version)
+                UI.AddValue("SOLC version", outdated and ("|cffff6060%s (outdated)|r"):format(m.version) or m.version)
             end
             if not m.me and m.updated then UI.AddValue("Last update", date("%Y-%m-%d %H:%M", m.updated)) end
             GameTooltip:AddLine("Click to see their kills", 0.6, 0.6, 0.6)

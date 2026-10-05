@@ -1,4 +1,4 @@
--- KillTracker 2.0
+-- Sleepy Ogre Leisure Club (SOLC)
 -- Combat log events are unavailable to addons in 12.0.0, so kills are inferred:
 -- a hostile NPC on target/nameplates that we saw being fought by us or our group (threat), that dies
 -- without being tapped by someone else, counts as a kill.
@@ -39,7 +39,7 @@ local function Readable(v)
 end
 
 local function Print(msg)
-    print("|cffff5555KillTracker:|r " .. msg)
+    print("|cff9acd32SOLC:|r " .. msg)
 end
 
 local function NotifyChanged()
@@ -398,22 +398,22 @@ local function ShowUnknown()
 end
 
 local function ShowHelp()
-    Print("/kt - open/close the KillTracker window")
-    Print("/kt sync <name> - swap kill stats with a player outside your guild (guildmates sync automatically)")
-    Print("/kt forget <name> - remove a player's synced stats")
-    Print("/kt sharing - turn sharing your kill stats on/off")
-    Print("/kt bounty - this week's guild bounty and how far the guild is")
-    Print("/kt bounties - the Bounty Board: pick this or next week's bounty (officers)")
-    Print("/kt config - point values and guild settings (officers can change them)")
-    Print("/kt unknown - mobs with a guessed or unknown faction, with Wowhead links")
-    Print("/kt announce - toggle per-kill chat messages")
-    Print("/kt minimap - show/hide the minimap button")
-    Print("/kt reset - clear all data for this character")
+    Print("/solc (or /kt) - open/close the Sleepy Ogre Leisure Club window")
+    Print("/solc sync <name> - swap kill stats with a player outside your guild (guildmates sync automatically)")
+    Print("/solc forget <name> - remove a player's synced stats")
+    Print("/solc sharing - turn sharing your kill stats on/off")
+    Print("/solc bounty - this week's guild bounty and how far the guild is")
+    Print("/solc bounties - the Bounty Board: pick this or next week's bounty (officers)")
+    Print("/solc config - point values and guild settings (officers can change them)")
+    Print("/solc unknown - mobs with a guessed or unknown faction, with Wowhead links")
+    Print("/solc announce - toggle per-kill chat messages")
+    Print("/solc minimap - show/hide the minimap button")
+    Print("/solc reset - clear all data for this character")
 end
 
-SLASH_KILLTRACKER1 = "/kt"
-SLASH_KILLTRACKER2 = "/killtracker"
-SlashCmdList.KILLTRACKER = function(input)
+SLASH_SOLC1 = "/solc"
+SLASH_SOLC2 = "/kt"
+SlashCmdList.SOLC = function(input)
     local msg, arg = strtrim(input or ""):match("^(%S*)%s*(.-)$")
     msg = msg:lower()
     local db = KillTrackerDB

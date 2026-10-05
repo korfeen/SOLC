@@ -4,7 +4,7 @@
 
 local _, ns = ...
 
-local MEDIA = "Interface\\AddOns\\KillTracker2.0\\Media\\Collectible\\"
+local MEDIA = "Interface\\AddOns\\SOLC\\Media\\Collectible\\"
 
 ns.MintArt = {
     accessory = {

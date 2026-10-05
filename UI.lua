@@ -1,4 +1,4 @@
--- KillTracker window: a sidebar of pages on the left, the chosen page on the right.
+-- The Sleepy Ogre Leisure Club window: a sidebar of pages on the left, the chosen page on the right.
 --   Me      Overview, Kills, PvP, Achievements, Collection
 --   Guild   Home, Members, Leaderboard, Bounties, Gallery (GuildPages.lua)
 --   Settings
@@ -264,7 +264,7 @@ local INSET_BACKDROP = {
 }
 ns.UI.DIALOG_BACKDROP, ns.UI.INSET_BACKDROP = DIALOG_BACKDROP, INSET_BACKDROP
 
-local frame = CreateFrame("Frame", "KillTrackerFrame", UIParent, "BackdropTemplate")
+local frame = CreateFrame("Frame", "SOLCFrame", UIParent, "BackdropTemplate")
 frame:SetSize(WIDTH, HEIGHT)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
@@ -280,11 +280,11 @@ frame:SetScript("OnDragStop", function(self)
     KillTrackerDB.ui = { point = point, relativePoint = relativePoint, x = x, y = y }
 end)
 frame:Hide()
-tinsert(UISpecialFrames, "KillTrackerFrame")  -- close with Escape
+tinsert(UISpecialFrames, "SOLCFrame")  -- close with Escape
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 22, -18)
-title:SetText("KillTracker")
+title:SetText("Sleepy Ogre Leisure Club")
 local subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 subtitle:SetPoint("LEFT", title, "RIGHT", 10, -1)
 
@@ -811,7 +811,7 @@ end
 
 -- Picture viewer, next to the window --------------------------------------------
 
-local viewer = CreateFrame("Frame", "KillTrackerMintViewer", frame, "BackdropTemplate")
+local viewer = CreateFrame("Frame", "SOLCMintViewer", frame, "BackdropTemplate")
 viewer:SetSize(290, 400)
 viewer:SetPoint("TOPLEFT", frame, "TOPRIGHT", -6, 0)
 viewer:SetBackdrop(DIALOG_BACKDROP)
