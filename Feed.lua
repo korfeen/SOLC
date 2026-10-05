@@ -5,6 +5,7 @@
 --   R  killed a rare for the first time        a = npcID
 --   A  earned an achievement                   a = achievement id ("subtype:Gnoll:100")
 --   M  minted a picture                        a = picture number
+--   W  won a picture in a puzzle race          a = picture number, b = who it was won from
 --   B  did their share of a completed bounty   a = bounty id
 --   D  killed a boss in a guild group          a = boss name, b = 1 for a final boss
 
@@ -62,6 +63,15 @@ local function Describe(e, who, source)
         local rarity = mint and ns.MintRarity(mint.traits)
         return ("%s minted %spicture #%s"):format(who,
             rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a))
+    elseif e.k == "W" then
+        local mint = source.mints and source.mints[tonumber(e.a)]
+        if source == KillTrackerDB then
+            for _, m in ipairs(KillTrackerDB.mints or {}) do if m.number == tonumber(e.a) then mint = m end end
+        end
+        local rarity = mint and ns.MintRarity(mint.traits)
+        return ("%s won %spicture #%s%s"):format(who,
+            rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a),
+            e.b and (" from %s"):format(e.b) or "")
     elseif e.k == "B" then
         local bounty = ns.ResolveBounty and ns.ResolveBounty(e.a)
         return ("%s helped complete the bounty |cffffd100%s|r"):format(who, bounty and bounty.name or tostring(e.a))

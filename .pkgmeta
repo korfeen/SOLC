@@ -1,6 +1,10 @@
 # Packaging for releases (BigWigs packager, run by .github/workflows/release.yml).
-# The zip contains the SOLC folder with only what the game needs.
+# The zip contains the SOLC folder with only what the game needs, and the SOLC_Puzzle sister addon moved
+# out next to it (in the repo it lives in a subfolder, which WoW wouldn't load).
 package-as: SOLC
+
+move-folders:
+  SOLC/SOLC_Puzzle: SOLC_Puzzle
 
 ignore:
   - tools

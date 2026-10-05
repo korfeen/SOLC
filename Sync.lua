@@ -16,8 +16,8 @@
 -- Wire format: H|6|syncID|seq|wantReply|configVersion|addonVersion   G|6|syncID|haveSeq   N|6
 --              U|transferID|part|parts|chunk   C|transferID|part|parts|chunk (chunk of "6#version#settings#bounties")
 -- Update payload: 6 # name # syncID # baseSeq # seq # total # kills # records # group kills # pictures # bounty
---                 # summary # events # gear # professions # showcase   (sections added later go at the end;
---                 receivers ignore unknown ones)
+--                 # summary # events # gear # professions # showcase # removed pictures   (sections added
+--                 later go at the end; receivers ignore unknown ones)
 -- (items "~", fields "^"; npcID, count and time in base 36):
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
 --   record     = subtype^weight^mob^zone^time
@@ -32,6 +32,7 @@
 --                only when changed, empty otherwise; the "P" tells "no professions" from "unchanged")
 --   showcase   = S^number,number,number              (pictures on their Overview, see Minting.lua; only when
 --                changed, empty otherwise; the "S" tells "none" from "unchanged")
+--   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
 
 local addonName, ns = ...
 
@@ -164,6 +165,15 @@ local function SerializeShowcase(db, baseSeq)
     return "S" .. FIELD .. table.concat(numbers, ",")
 end
 
+-- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
+local function SerializeRemoved(db, baseSeq)
+    local numbers = {}
+    for number, seq in pairs(db.removedMints or {}) do
+        if seq > baseSeq then numbers[#numbers + 1] = Base36(number) end
+    end
+    return table.concat(numbers, ",")
+end
+
 -- Everything in db changed after baseSeq (0 = everything).
 local function Serialize(db, baseSeq)
     local kills, records = {}, {}
@@ -224,7 +234,7 @@ local function Serialize(db, baseSeq)
     return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
         table.concat(kills, ITEM), table.concat(records, ITEM), table.concat(group, ITEM), table.concat(pictures, ITEM),
         bounty, summary, table.concat(events, ITEM), gear, SerializeProfessions(db, baseSeq),
-        SerializeShowcase(db, baseSeq) }, SECTION)
+        SerializeShowcase(db, baseSeq), SerializeRemoved(db, baseSeq) }, SECTION)
 end
 
 -- Returns the update as a table, or nil if the payload is malformed or from another protocol.
@@ -326,6 +336,8 @@ local function Deserialize(payload)
         for number in (f[2] or ""):gmatch("[^,]+") do numbers[#numbers + 1] = FromBase36(number) end
         update.showcase = { numbers = numbers }
     end
+    update.removed = {}  -- from 0.38.0 on
+    for number in (s[17] or ""):gmatch("[^,]+") do update.removed[#update.removed + 1] = FromBase36(number) end
     return update
 end
 
@@ -348,6 +360,8 @@ local function Apply(sender, update)
         friend.records[key] = record
     end
     friend.mints = friend.mints or {}  -- [number] = { number, time, traits }: their minted pictures
+    -- Removals first: numbers are never reused, but if one were, the new picture should stay.
+    for _, number in ipairs(update.removed) do friend.mints[number] = nil end
     for _, mint in ipairs(update.mints) do
         friend.mints[mint.number] = mint
     end

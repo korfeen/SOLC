@@ -33,6 +33,7 @@
         "RAID_CLASS_COLORS",
         "LOCALIZED_CLASS_NAMES_MALE",
         "ShoppingTooltip1",
-        "ShoppingTooltip2"
+        "ShoppingTooltip2",
+        "DECLINE"
     ]
 }

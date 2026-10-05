@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: SOLC Puzzle
+## Notes: Puzzle races for Sleepy Ogre Leisure Club pictures: practice, duels and mint battles. Opens from the Puzzle page in the SOLC window.
+## Author: faluk
+## Version: @project-version@
+## Dependencies: SOLC
+## SavedVariables: SOLCPuzzleDB
+
+Board.lua
+Duel.lua
+DuelPanel.lua
+Page.lua

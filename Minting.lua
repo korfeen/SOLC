@@ -190,11 +190,62 @@ function ns.Mint()
     local traits = RollFree(TakenPictures())
     if not traits then return nil, "Every possible picture is already taken." end
     db.points.spent = db.points.spent + cost
-    local mint = { number = #db.mints + 1, traits = traits, time = time(), cost = cost }
+    local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost }
     db.mints[#db.mints + 1] = mint
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("M", mint.number) end
     return mint
+end
+
+-- The number for your next picture: above every number used so far, including pictures given away
+-- (KillTrackerDB.removedMints), so a number never means two different pictures.
+function ns.NextMintNumber()
+    local db = KillTrackerDB
+    local highest = 0
+    for _, mint in ipairs(db.mints) do highest = math.max(highest, mint.number) end
+    for number in pairs(db.removedMints or {}) do highest = math.max(highest, number) end
+    return highest + 1
+end
+
+-- Gives away your picture (won in a puzzle race, see SOLC Puzzle): removes it from your pictures and your
+-- showcase, and records the removal so guildmates drop it too (Sync.lua). Returns its traits, or nil.
+function ns.RemoveMint(number)
+    local db = KillTrackerDB
+    for i, mint in ipairs(db.mints) do
+        if mint.number == number then
+            table.remove(db.mints, i)
+            local showcase = db.showcase
+            if showcase then
+                for j, n in ipairs(showcase.numbers) do
+                    if n == number then table.remove(showcase.numbers, j) ns.Touch(showcase) break end
+                end
+            end
+            db.removedMints = db.removedMints or {}  -- [number] = change number of the removal
+            db.seq = db.seq + 1
+            db.removedMints[number] = db.seq
+            if ns.OnKillsChanged then ns.OnKillsChanged() end
+            return mint.traits
+        end
+    end
+end
+
+-- Adds a picture you won (from another player or an officer's mint battle) under your next number.
+-- mintedAt: when it was first minted (kept, so it isn't taken for a later duplicate); now if new.
+function ns.AddWonMint(traits, from, mintedAt)
+    local db = KillTrackerDB
+    local copy = {}
+    for key, id in pairs(traits) do copy[key] = id end
+    local mint = { number = ns.NextMintNumber(), traits = copy, time = mintedAt or time(), cost = 0, wonFrom = from }
+    db.mints[#db.mints + 1] = mint
+    ns.Touch(mint)  -- syncs it to guildmates
+    if ns.AddEvent then ns.AddEvent("W", mint.number, from) end
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    return mint
+end
+
+-- Rolls a picture nobody in the guild owns yet, without saving it (for an officer's mint battle).
+function ns.RollFreePicture()
+    return RollFree(TakenPictures())
 end
 
 -- Marks your pictures that a friend minted first (earlier time; on a tie, the alphabetically first
