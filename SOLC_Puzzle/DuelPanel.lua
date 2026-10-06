@@ -6,8 +6,8 @@
 local _, ns = ...
 local Duel = ns.Duel
 
-local MODES = { { key = "swap", label = "Swap pieces" }, { key = "sliding", label = "Sliding" } }
-local MODE_NAMES = { swap = "Swap pieces", sliding = "Sliding" }
+local MODES = { { key = "swap", label = "Swap pieces" }, { key = "sliding", label = "Sliding" }, { key = "paint", label = "Paint" } }
+local MODE_NAMES = { swap = "Swap pieces", sliding = "Sliding", paint = "Paint" }
 local BUBBLE_TIME = 4  -- seconds a reaction stays up
 
 local function PictureLabel(owner, picture)
@@ -129,12 +129,14 @@ function ns.BuildDuelPanel(page)
     setup:SetAllPoints()
     UI.CreateSection(setup, "Opponent", 0)
     local opponentText = setup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    opponentText:SetPoint("TOPLEFT", 38, -24)
-    opponentText:SetWidth(170)
     local opponentIndex, stakeIndex = 1, 1
     local mode, size = "swap", ns.DEFAULT_SIZE
     local prevOpponent = Button(setup, "<", 32, 0, 20, function() opponentIndex = opponentIndex - 1 page:UpdateDuel() end)
-    local nextOpponent = Button(setup, ">", 32, 214, 20, function() opponentIndex = opponentIndex + 1 page:UpdateDuel() end)
+    local nextOpponent = Button(setup, ">", 32, 0, 20, function() opponentIndex = opponentIndex + 1 page:UpdateDuel() end)
+    nextOpponent:ClearAllPoints()
+    nextOpponent:SetPoint("TOPRIGHT", setup, "TOPRIGHT", 0, -20)
+    opponentText:SetPoint("LEFT", prevOpponent, "RIGHT", 4, 0)
+    opponentText:SetPoint("RIGHT", nextOpponent, "LEFT", -4, 0)
     UI.CreateSection(setup, "Mode", 56)
     local modeButtons, sizeButtons = {}, {}
     for i, m in ipairs(MODES) do
@@ -144,6 +146,26 @@ function ns.BuildDuelPanel(page)
     for i, s in ipairs(ns.SIZES) do
         sizeButtons[s] = Button(setup, ("%dx%d"):format(s, s), 78, (i - 1) * 84, 130, function() size = s page:UpdateDuel() end)
     end
+    local paintSize = ns.PAINT_SIZES[1]
+    local paintSizeButtons = {}  -- instead of the puzzle sizes when Paint is picked
+    for _, s in ipairs(ns.PAINT_SIZES) do
+        paintSizeButtons[s] = Button(setup, ("%dx%d"):format(s, s), 78, 0, 130, function() paintSize = s page:UpdateDuel() end)
+    end
+    -- Rows fill the column's width (ns.SpreadRow).
+    local modeRow, sizeRow, paintSizeRow = {}, {}, {}
+    for i, m in ipairs(MODES) do modeRow[i] = modeButtons[m.key] end
+    for i, s in ipairs(ns.SIZES) do sizeRow[i] = sizeButtons[s] end
+    for i, s in ipairs(ns.PAINT_SIZES) do paintSizeRow[i] = paintSizeButtons[s] end
+    ns.SpreadRow(setup, modeRow, 76)
+    ns.SpreadRow(setup, sizeRow, 130)
+    ns.SpreadRow(setup, paintSizeRow, 130)
+    local paintTime = ns.DEFAULT_PAINT_TIME
+    local timeButtons, timeRow = {}, {}
+    for i, seconds in ipairs(ns.PAINT_TIMES) do
+        timeButtons[seconds] = Button(setup, ("%ds"):format(seconds), 50, 0, 162, function() paintTime = seconds page:UpdateDuel() end)
+        timeRow[i] = timeButtons[seconds]
+    end
+    ns.SpreadRow(setup, timeRow, 162)
 
     -- At the table: your offer, Ready, reactions, leave.
     local atTable = CreateFrame("Frame", nil, panel)
@@ -161,6 +183,7 @@ function ns.BuildDuelPanel(page)
     end
     local prevOffer = Button(atTable, "< Previous", 120, 0, 44, function() StepOffer(-1) end)
     local nextOffer = Button(atTable, "Next >", 120, 126, 44, function() StepOffer(1) end)
+    ns.SpreadRow(atTable, { prevOffer, nextOffer }, 44)
     local ready = CreateFrame("Button", nil, atTable, "UIPanelButtonTemplate")
     ready:SetSize(246, 30)
     ready:SetPoint("TOPLEFT", 0, -80)
@@ -168,17 +191,40 @@ function ns.BuildDuelPanel(page)
         local d = Duel.Get()
         if d then Duel.SetReady(not d.myReady) end
     end)
+    ns.SpreadRow(atTable, { ready }, 80)
     UI.CreateSection(atTable, "React", 124)
+    local reactionRows = { {}, {} }
     for i, r in ipairs(ns.REACTIONS) do
         local column, row = (i - 1) % 3, math.floor((i - 1) / 3)
-        Button(atTable, r.text, 78, column * 84, 144 + row * 28, function() Duel.React(r.key) end)
+        local list = reactionRows[row + 1]
+        list[#list + 1] = Button(atTable, r.text, 78, column * 84, 144 + row * 28, function() Duel.React(r.key) end)
     end
+    ns.SpreadRow(atTable, reactionRows[1], 144)
+    ns.SpreadRow(atTable, reactionRows[2], 172)
     local leave = Button(atTable, "Leave table", 246, 0, 214, function() Duel.Cancel() end)
+    ns.SpreadRow(atTable, { leave }, 214)
 
     -- The main button for the other phases (Challenge / Withdraw / Accept / Give up / OK), and Decline.
     local action = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    action:SetSize(246, 30)
+    action:SetHeight(30)
+    action.fullWidth = true
     local decline = Button(panel, "Decline", 246, 0, 0, function() Duel.Cancel() end)
+    decline.fullWidth = true
+    local saveDuel = Button(panel, "Save my painting", 246, 0, 0, function()
+        local d = Duel.Get()
+        if not d or not d.painting or d.painting.saved then return end
+        -- Which picture it copied: theirs or yours (the puzzle is one of the two offers).
+        local info = d.painting.info
+        local theirs = d.theirs and SOLC.TraitsToText(d.theirs.traits) == SOLC.TraitsToText(d.puzzle)
+        info.owner = theirs and d.opponent or SOLC.MyName()
+        info.number = theirs and d.theirs.number or d.mine.number
+        local count = ns.SavePainting(page.canvas, d.painting.size, d.painting.palette, info)
+        d.painting.saved = true
+        SOLC.Refresh()  -- the Collection page lists saved paintings
+        SOLC.Print(("Painting saved (%d in My paintings)."):format(count))
+        page:UpdateDuel()
+    end)
+    saveDuel.fullWidth = true
 
     -- Status and the race clocks.
     local status = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -200,21 +246,29 @@ function ns.BuildDuelPanel(page)
     countdown:SetPoint("CENTER")
     countdown:SetTextHeight(72)
 
+    -- Moves a region to y in the column; text keeps the column's width (so it wraps instead of running on).
     local function Place(region, y)
         region:ClearAllPoints()
         region:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -y)
+        if region.SetWordWrap or region.fullWidth then region:SetPoint("RIGHT", panel, "RIGHT") end
     end
 
     function page:SetTab(key)
         local d = Duel.Get()
         if key == "practice" and d and (d.phase == "countdown" or d.phase == "racing") then return end
         if key == "duel" and self.board:IsPlaying() then self:StopPractice() end
+        if key == "duel" then
+            self:StopPainting()
+            self:ClosePaintings()
+        end
         self.tab = key
         practicePanel:SetShown(key == "practice")
         panel:SetShown(key == "duel")
         for k, tab in pairs(tabs) do
             if k == key then tab:LockHighlight() else tab:UnlockHighlight() end
         end
+        self.line:SetText(key == "practice" and "Practice: solve any picture in the guild against the clock."
+            or "Duel: challenge a guildmate. You both put up a picture; the faster solver takes the other's.")
         if key == "practice" then
             duelTable:Hide()
             self.board:Show()
@@ -236,8 +290,12 @@ function ns.BuildDuelPanel(page)
         setup:SetShown(not d)
         atTable:SetShown(atTheTable)
         duelTable:SetShown(atTheTable)
-        self.board:SetShown(not atTheTable)
+        local painting = d and d.mode == "paint" and (phase == "racing" or phase == "waiting" or phase == "done")
+        self.board:SetShown(not atTheTable and not painting)
+        self.canvas:SetShown(painting and true or false)
+        panel:SetShown(not (painting and phase == "racing"))  -- the paint tools take the column while painting
         decline:Hide()
+        saveDuel:Hide()
         action:Show()
         action:Enable()
         status:Show()
@@ -258,23 +316,34 @@ function ns.BuildDuelPanel(page)
                 if key == mode then button:LockHighlight() else button:UnlockHighlight() end
             end
             for s, button in pairs(sizeButtons) do
+                button:SetShown(mode ~= "paint")
                 if s == size then button:LockHighlight() else button:UnlockHighlight() end
             end
-            Place(action, 166)
+            for s, button in pairs(paintSizeButtons) do
+                button:SetShown(mode == "paint")
+                if s == paintSize then button:LockHighlight() else button:UnlockHighlight() end
+            end
+            for seconds, button in pairs(timeButtons) do
+                button:SetShown(mode == "paint")
+                if seconds == paintTime then button:LockHighlight() else button:UnlockHighlight() end
+            end
+            Place(action, 200)
             action:SetText("Challenge")
             action:SetEnabled(opponent ~= nil)
             action:SetScript("OnClick", function()
-                local ok, why = Duel.Challenge(opponent, mode, size)
+                local ok, why = Duel.Challenge(opponent, mode, mode == "paint" and paintSize or size,
+                    mode == "paint" and paintTime or nil)
                 if not ok then SOLC.Print(why) end
             end)
-            Place(status, 206)
+            Place(status, 240)
             status:SetFontObject("GameFontHighlightSmall")
             status:SetText("You'll both put up a picture at the duel table and press Ready. The puzzle is one of the "
                 .. "two pictures; the faster solver takes the other's.")
             return
         end
 
-        local settings = ("%s, %dx%d"):format(MODE_NAMES[d.mode], d.size, d.size)
+        local settings = ("%s, %dx%d%s"):format(MODE_NAMES[d.mode], d.size, d.size,
+            d.mode == "paint" and (", %ds"):format(d.seconds or ns.DEFAULT_PAINT_TIME) or "")
         if phase == "inviting" then
             Place(action, 0)
             action:SetText("Withdraw challenge")
@@ -320,7 +389,7 @@ function ns.BuildDuelPanel(page)
             action:SetScript("OnClick", function() Duel.GiveUp() end)
             Place(status, 40)
             status:SetFontObject("GameFontHighlightSmall")
-            status:SetText(("Racing %s: your %s vs their %s\n%s"):format(d.opponent,
+            status:SetText(((d.mode == "paint" and "Painting against %s" or "Racing %s") .. ": your %s vs their %s\n%s"):format(d.opponent,
                 SOLC.RarityText(SOLC.PictureRarity(d.mine.traits)), SOLC.RarityText(SOLC.PictureRarity(d.theirs.traits)), settings))
             Place(clock, 80)
         elseif phase == "done" then
@@ -328,9 +397,20 @@ function ns.BuildDuelPanel(page)
             Place(action, 0)
             action:SetText("OK")
             action:SetScript("OnClick", function() Duel.Clear() end)
-            Place(status, 40)
-            local times = ("You %s  -  %s %s"):format(r.myTime and ns.FormatTime(r.myTime) or "-", d.opponent,
-                r.theirTime and ns.FormatTime(r.theirTime) or "-")
+            local statusY = 40
+            if d.mode == "paint" and d.painting then
+                Place(saveDuel, 36)
+                saveDuel:Show()
+                saveDuel:SetEnabled(not d.painting.saved)
+                saveDuel:SetText(d.painting.saved and "Saved" or "Save my painting")
+                statusY = 70
+            end
+            Place(status, statusY)
+            local times = d.mode == "paint"
+                and ("You %s  -  %s %s"):format(r.myScore and ("%.1f%%"):format(r.myScore) or "-", d.opponent,
+                    r.theirScore and ("%.1f%%"):format(r.theirScore) or "-")
+                or ("You %s  -  %s %s"):format(r.myTime and ns.FormatTime(r.myTime) or "-", d.opponent,
+                    r.theirTime and ns.FormatTime(r.theirTime) or "-")
             if r.won then
                 status:SetText(("|cff40ff40You won!|r %s\n%s"):format(r.prize and "You get their picture:"
                     or "Waiting for their picture...", times))
@@ -341,7 +421,7 @@ function ns.BuildDuelPanel(page)
             end
             resultThumb.ready:SetText("")
             resultThumb:ClearAllPoints()
-            resultThumb:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -90)
+            resultThumb:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(statusY + 50))
             resultThumb:Show()
         end
     end
@@ -360,11 +440,16 @@ function ns.BuildDuelPanel(page)
             countdown:SetText(tostring(math.max(1, math.ceil(d.countdownEnds - GetTime()))))
         elseif d.phase == "racing" or d.phase == "waiting" then
             countdown:SetText("")
-            clock:SetText(ns.FormatTime(d.myTime or Duel.Elapsed() or 0))
-            if d.theirTime then
+            if d.mode == "paint" then
+                clock:SetText(d.myScore and ("%.1f%%"):format(d.myScore) or "")
+                opponentLine:SetText(d.theirScore and ("%s scored %.1f%%"):format(d.opponent, d.theirScore)
+                    or ("%s is still painting..."):format(d.opponent))
+            elseif d.theirTime then
+                clock:SetText(ns.FormatTime(d.myTime or Duel.Elapsed() or 0))
                 opponentLine:SetText(("%s finished in %s%s"):format(d.opponent, ns.FormatTime(d.theirTime),
                     d.phase == "racing" and " - beat it!" or ""))
             else
+                clock:SetText(ns.FormatTime(d.myTime or Duel.Elapsed() or 0))
                 opponentLine:SetText(("%s is still solving..."):format(d.opponent))
             end
         end
@@ -381,15 +466,32 @@ function ns.BuildDuelPanel(page)
     Duel.OnChange = function(d)
         if d and d.phase == "countdown" then
             if page.tab ~= "duel" then page:SetTab("duel") end
+            page.canvas:Hide()
             page.board:Show()
-            page.board:ShowWhole(d.puzzle, d.size)
+            page.board:ShowWhole(d.puzzle, d.mode == "paint" and ns.DEFAULT_SIZE or d.size)
         elseif d and d.phase == "done" then
             page.board:Stop()
+            page.paintTools:End()
+        elseif not d then
+            page.paintTools:End()
+            page.canvas:Hide()
         end
         page:UpdateDuel()
     end
     Duel.OnRaceStart = function(d)
-        page.board:Start(d.puzzle, d.mode, d.seed, d.size)
+        if d.mode ~= "paint" then return page.board:Start(d.puzzle, d.mode, d.seed, d.size) end
+        local target = ns.PaintTarget(d.puzzle, d.size)
+        local palette = ns.PaintPalette(target)
+        page.board:Hide()
+        page.canvas:Show()
+        page.canvas:Start(d.size, palette)
+        page.paintTools:Begin(d.puzzle, palette, d.seconds or ns.DEFAULT_PAINT_TIME, function(cells)
+            page.paintTools:End()
+            local score = ns.PaintScore(cells, target, palette)
+            d.painting = { size = d.size, palette = palette, info = { traits = d.puzzle, seconds = d.seconds,
+                score = score, opponent = d.opponent } }
+            Duel.Painted(score)
+        end)
     end
     Duel.OnReaction = function()
         pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_CHAT_EMOTE_BUTTON or 1115)
@@ -399,7 +501,7 @@ end
 
 -- A challenge arriving: a popup, also when the window is closed. "Open" shows the Duel tab to answer it.
 StaticPopupDialogs["SOLC_PUZZLE_CHALLENGE"] = {
-    text = "%s challenges you to a puzzle race!\n%s",
+    text = "%s challenges you to a duel!\n%s",
     button1 = "Open",
     button2 = DECLINE or "Decline",
     OnAccept = function()

@@ -48,6 +48,7 @@ function SOLC.RarityText(rarity)                                            -- "
     return ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", SOLC.RarityName(rarity))
 end
 function SOLC.PictureTraits(traits) return ns.MintTraits(traits) end       -- { { layer, option, rarity } }
+function SOLC.PictureLayers(traits) return ns.MintDrawOrder(traits) end    -- { { key, id, perSkin } }, back to front
 
 -- Traits as short text for addon messages and back: option IDs in layer order, "spa_steam_room;mud_brown;...".
 -- Under 255 characters with room to spare.
@@ -88,3 +89,10 @@ end
 -- refresh(frame) }. Register while loading, before the window is first opened.
 function SOLC.RegisterPage(page) ns.RegisterPage(page) end
 function SOLC.OpenPage(key) ns.OpenPage(key) end
+
+-- Extra rows in your Collection page: provider() returns { { label, right (text on the right),
+-- onClick(), onEnter(row) (show a tooltip) } }, asked for each time the page is drawn.
+function SOLC.AddCollectionRows(provider) table.insert(ns.CollectionProviders, provider) end
+
+-- Redraws the SOLC window (after something a sister addon shows there changed).
+function SOLC.Refresh() if ns.OnKillsChanged then ns.OnKillsChanged() end end

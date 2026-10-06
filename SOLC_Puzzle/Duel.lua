@@ -1,7 +1,7 @@
 -- Duels: two guildmates sit down at a duel table like a trade window, each puts up one of their pictures (and
 -- can react to the other's offer), both press Ready, then they race on the same scramble of one of the two.
 -- The winner takes the loser's picture. Messages are whispers on our own prefix:
---   C|id|mode|size                          challenge
+--   C|id|mode|size|seconds                  challenge (seconds: the paint time, for paint duels)
 --   A|id                                     accept: both go to the table
 --   D|id|reason                              decline, or leave the table ("busy" if already in a duel)
 --   O|id|number|minted|traits  or  O|id|-   my offer (or none); any change clears both Ready marks
@@ -10,6 +10,7 @@
 --   S|id|seed|challenger's number|opponent's number   start (challenger, once both are ready)
 --   GO|id                                    the opponent agrees the offers match: both count down 3 seconds
 --   F|id|seconds|moves                       solved in that time (each player's own clock, from their start)
+--   P|id|score                               paint duels: my painting's score (0-100) when my time ran out
 --   L|id                                     ran out of time, or gave up: lost
 --   G|id|minted|traits                       the loser gave their picture away; the winner adds it
 -- Fair timing without synced clocks: each player is timed from the end of their own countdown. Whoever
@@ -81,7 +82,8 @@ end
 local function Finish(won, reason)
     if duel.phase == "done" then return end
     duel.phase = "done"
-    duel.result = { won = won, reason = reason, myTime = duel.myTime, theirTime = duel.theirTime }
+    duel.result = { won = won, reason = reason, myTime = duel.myTime, theirTime = duel.theirTime,
+        myScore = duel.myScore, theirScore = duel.theirScore }
     if not won then
         -- Hand our picture over: give it away first, then tell the winner, so it can't end up with both.
         local traits = SOLC.GivePicture(duel.mine.number)
@@ -93,8 +95,16 @@ local function Finish(won, reason)
     Changed()
 end
 
--- Both results known: decide.
+-- Both results known: decide. Paint duels: the higher score; puzzles: the faster time, then fewer moves.
 local function Decide()
+    if duel.mode == "paint" then
+        local mine, theirs = duel.myScore, duel.theirScore
+        if mine and theirs then
+            if math.abs(mine - theirs) >= 0.05 then return Finish(mine > theirs, "score") end
+            return Finish(duel.role == "challenger", "tie")
+        end
+        return
+    end
     local mine, theirs = duel.myTime, duel.theirTime
     if mine and theirs then
         if mine ~= theirs then return Finish(mine < theirs, "time") end
@@ -143,11 +153,11 @@ end
 -- Your actions ----------------------------------------------------------------------------------------------
 
 -- Challenges a player to a duel with these settings. Returns false and why if not.
-function Duel.Challenge(target, mode, size)
+function Duel.Challenge(target, mode, size, seconds)
     if duel and duel.phase ~= "done" then return false, "You're already in a duel." end
-    duel = { id = NewID(), role = "challenger", opponent = target, mode = mode, size = size, phase = "inviting",
+    duel = { id = NewID(), role = "challenger", opponent = target, mode = mode, size = size, seconds = seconds, phase = "inviting",
         invitedAt = GetTime(), reactions = {} }
-    Send(target, "C", duel.id, mode, size)
+    Send(target, "C", duel.id, mode, size, seconds or 0)
     Changed()
     local id = duel.id
     C_Timer.After(INVITE_TIMEOUT, function()
@@ -222,10 +232,26 @@ function Duel.Solved(moves)
     Decide()
 end
 
--- Checked every frame by the page while racing: out of time, or past the opponent's finished time.
+-- Called by the paint tools when your time is up (or you press Done): your painting's score, 0-100.
+function Duel.Painted(score)
+    if not duel or duel.phase ~= "racing" then return end
+    duel.myScore = score
+    duel.phase = "waiting"
+    Send(duel.opponent, "P", duel.id, ("%.2f"):format(score))
+    Changed()
+    Decide()
+end
+
+-- Checked every frame by the page while racing: out of time, or past the opponent's finished time. (Paint
+-- duels end when the paint time is up; the tools submit then.)
 function Duel.Tick()
     if not duel then return end
     local elapsed = Duel.Elapsed()
+    if duel.mode == "paint" then
+        local limit = (duel.seconds or 90) + 30
+        if duel.phase == "waiting" and elapsed and elapsed >= limit then Finish(true, "no answer") end
+        return
+    end
     if duel.phase == "racing" and elapsed then
         if elapsed >= MAX_TIME or (duel.theirTime and elapsed > duel.theirTime) then
             Send(duel.opponent, "L", duel.id)
@@ -244,14 +270,17 @@ local function Mine(sender, id)
     return duel and duel.id == id and sender == duel.opponent
 end
 
-function handlers.C(sender, id, mode, size)
+function handlers.C(sender, id, mode, size, seconds)
     if duel and duel.phase ~= "done" then
         Send(sender, "D", id, "busy")
         return
     end
     size = tonumber(size)
-    if (mode ~= "swap" and mode ~= "sliding") or not size then return end
-    duel = { id = id, role = "opponent", opponent = sender, mode = mode, size = size, phase = "invited",
+    local valid = (mode == "swap" or mode == "sliding") and size and size >= 3 and size <= 5
+        or mode == "paint" and (size == 16 or size == 24)
+    if not valid then return end
+    seconds = math.max(10, math.min(600, tonumber(seconds) or ns.DEFAULT_PAINT_TIME))
+    duel = { id = id, role = "opponent", opponent = sender, mode = mode, size = size, seconds = seconds, phase = "invited",
         invitedAt = GetTime(), reactions = {} }
     if Duel.OnInvited then Duel.OnInvited(duel) end
     Changed()
@@ -325,6 +354,13 @@ function handlers.F(sender, id, seconds, moves)
     Changed()
     Decide()
     Duel.Tick()  -- already past their time?
+end
+
+function handlers.P(sender, id, score)
+    if not Mine(sender, id) or duel.phase == "done" or duel.mode ~= "paint" then return end
+    duel.theirScore = tonumber(score) or 0
+    Changed()
+    Decide()
 end
 
 function handlers.L(sender, id)

@@ -135,6 +135,9 @@ local function CollectMobs()
 end
 
 -- Rows for the current list: { label, count, mob, category, achievement, player or leader (one of them) }.
+-- Functions returning extra Collection rows { label, right, onClick(), onEnter(row) } (SOLC.AddCollectionRows).
+ns.CollectionProviders = {}
+
 local function BuildRows()
     local rows = {}
     if state.view == "collection" then
@@ -154,6 +157,14 @@ local function BuildRows()
         table.sort(mints, function(a, b) return a.number > b.number end)  -- newest first
         for _, mint in ipairs(mints) do
             rows[#rows + 1] = { label = ("Picture #%d"):format(mint.number), count = 0, mint = mint }
+        end
+        -- Rows from sister addons (SOLC.AddCollectionRows), e.g. saved paintings. Only your own collection.
+        if not state.viewing then
+            for _, provider in ipairs(ns.CollectionProviders) do
+                for _, extra in ipairs(provider() or {}) do
+                    rows[#rows + 1] = { label = extra.label, count = 0, extra = extra }
+                end
+            end
         end
         local owned = Source().collection or {}
         for _, item in ipairs(ns.Collectibles) do
@@ -587,6 +598,8 @@ local function GetRow(i)
             ns.ConfirmBuy(self.data.item)
         elseif self.data.mintAction then
             ns.ConfirmMint()
+        elseif self.data.extra then
+            if self.data.extra.onClick then self.data.extra.onClick() end
         elseif self.data.mint then
             if self.data.mint.duplicateOf and not state.viewing then
                 ns.ConfirmReroll(self.data.mint)
@@ -625,6 +638,8 @@ local function GetRow(i)
                 GameTooltip:AddLine("Click to view", 0.6, 0.6, 0.6)
             end
             GameTooltip:Show()
+        elseif self.data.extra then
+            if self.data.extra.onEnter then self.data.extra.onEnter(self) end
         elseif self.data.mintAction then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine("Mint a picture")
@@ -785,6 +800,9 @@ local function RefreshList()
                 .. (d.mint.duplicateOf and "  |cffff6060Duplicate|r" or ""))
             row.count:SetText(d.mint.duplicateOf and "|cffffd100Reroll free|r"
                 or ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
+            barFraction = 0
+        elseif d.extra then
+            row.count:SetText(d.extra.right or "")
             barFraction = 0
         elseif d.pointsPart then
             row.label:SetText(d.label)

@@ -283,6 +283,21 @@ end
 local IN_FRONT = { eye_mask_pushed_up = true, monocle = true }
 local FRONT_SUBLEVEL = 7  -- the top of the ARTWORK draw layer
 
+-- A picture's layers in drawing order, back to front: { { layer key, option id } }, with IN_FRONT options
+-- last, as RenderMint stacks them (the paint game builds its colours the same way).
+function ns.MintDrawOrder(traits)
+    local order, front = {}, {}
+    for _, layer in ipairs(ns.MintLayers) do
+        local option = FindOption(layer, traits[layer.key])
+        if option then
+            local list = IN_FRONT[option.id] and front or order
+            list[#list + 1] = { key = layer.key, id = option.id, perSkin = option.perSkin }
+        end
+    end
+    for _, entry in ipairs(front) do order[#order + 1] = entry end
+    return order
+end
+
 -- Draws a picture into canvas (a frame), creating one texture per layer on first use.
 function ns.RenderMint(canvas, traits)
     canvas.layers = canvas.layers or {}

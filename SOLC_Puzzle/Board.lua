@@ -275,3 +275,28 @@ function ns.CreateBoard(parent, pixels)
     function board:IsPlaying() return playing end
     return board
 end
+
+-- Lays out rows of buttons across the full width of parent, evenly with gap pixels between them, and again
+-- whenever parent's width changes. ns.SpreadRow(parent, { button, ... }, y) for a row at y below the top.
+local function LayoutRows(parent)
+    local width = parent:GetWidth()
+    if not width or width <= 0 then return end
+    for _, row in ipairs(parent.spreadRows) do
+        local n = #row.buttons
+        local w = (width - row.gap * (n - 1)) / n
+        for i, button in ipairs(row.buttons) do
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", parent, "TOPLEFT", (i - 1) * (w + row.gap), -row.y)
+            button:SetWidth(w)
+        end
+    end
+end
+
+function ns.SpreadRow(parent, buttons, y, gap)
+    if not parent.spreadRows then
+        parent.spreadRows = {}
+        parent:HookScript("OnSizeChanged", LayoutRows)
+    end
+    parent.spreadRows[#parent.spreadRows + 1] = { buttons = buttons, y = y, gap = gap or 6 }
+    LayoutRows(parent)
+end

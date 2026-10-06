@@ -9,4 +9,7 @@
 Board.lua
 Duel.lua
 DuelPanel.lua
+PaintData.lua
+Paint.lua
+PaintPanel.lua
 Page.lua
