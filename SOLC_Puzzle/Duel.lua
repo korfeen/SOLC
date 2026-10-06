@@ -13,6 +13,9 @@
 --   P|id|score                               paint duels: my painting's score (0-100) when my time ran out
 --   L|id                                     ran out of time, or gave up: lost
 --   G|id|minted|traits                       the loser gave their picture away; the winner adds it
+--   M|id|part|parts|chunk                    puzzle duels, after the race: my moves (ns.EncodeMoves), for replays
+--   V|id|moves                               puzzle duels, during the race: my moves of the last second, so the
+--                                            other side can watch my board live (one message a second at most)
 -- Fair timing without synced clocks: each player is timed from the end of their own countdown. Whoever
 -- solves faster wins (fewer moves, then the challenger, on a tie). After the other's time arrives you can
 -- still win if you finish within it; once your clock passes it, you've lost.
@@ -44,8 +47,37 @@ local Duel = {}
 ns.Duel = Duel
 local duel  -- the current duel, or nil (see Duel.Get)
 
+-- After you decline someone (or let their challenge run out), their next challenges are declined quietly for
+-- a while; challenging them yourself lifts it.
+local DECLINE_COOLDOWN = 60  -- seconds; for anyone more persistent, turn duels off
+local declinedAt = {}  -- [name] = when we last declined them
+
+-- Sending: queued, so a message the game throttles is retried instead of silently lost (a lost prize message
+-- would leave the winner without the picture the loser already gave away). Throttled sends wait SEND_RETRY.
+local SEND_RETRY = 0.5
+local outbox, sending = {}, false
+local function Pump()
+    local item = outbox[1]
+    if not item then
+        sending = false
+        return
+    end
+    local ok, result = pcall(C_ChatInfo.SendAddonMessage, PREFIX, item.message, "WHISPER", item.target)
+    local results = Enum and Enum.SendAddonMessageResult
+    if ok and results and result == results.AddonMessageThrottle then
+        C_Timer.After(SEND_RETRY, Pump)  -- try the same message again
+        return
+    end
+    table.remove(outbox, 1)
+    if #outbox > 0 then C_Timer.After(0.1, Pump) else sending = false end
+end
+
 local function Send(target, ...)
-    C_ChatInfo.SendAddonMessage(PREFIX, table.concat({ ... }, "|"), "WHISPER", target)
+    outbox[#outbox + 1] = { target = target, message = table.concat({ ... }, "|") }
+    if not sending then
+        sending = true
+        Pump()
+    end
 end
 
 local function Changed()
@@ -155,6 +187,7 @@ end
 -- Challenges a player to a duel with these settings. Returns false and why if not.
 function Duel.Challenge(target, mode, size, seconds)
     if duel and duel.phase ~= "done" then return false, "You're already in a duel." end
+    declinedAt[target] = nil  -- challenging them yourself lifts the cooldown from declining them
     duel = { id = NewID(), role = "challenger", opponent = target, mode = mode, size = size, seconds = seconds, phase = "inviting",
         invitedAt = GetTime(), reactions = {} }
     Send(target, "C", duel.id, mode, size, seconds or 0)
@@ -183,6 +216,7 @@ function Duel.Cancel()
     if not duel then return end
     local p = duel.phase
     if p == "invited" or p == "inviting" or p == "table" or p == "starting" then
+        if p == "invited" then declinedAt[duel.opponent] = GetTime() end
         Send(duel.opponent, "D", duel.id, p == "table" and "left" or "declined")
         duel = nil
         Changed()
@@ -190,17 +224,39 @@ function Duel.Cancel()
 end
 
 -- Puts one of your pictures (from SOLC.GetPictures) on the table, or nil to take it off. Clears both Ready marks.
+-- Clicking through pictures sends only the last one: the offer goes out OFFER_DELAY after the last change
+-- (or straight away when you press Ready, see FlushOffer).
+local OFFER_DELAY = 0.4
+local offerPending, offerChangedAt = false, 0
+
+local function FlushOffer()
+    if not offerPending or not duel then return end
+    offerPending = false
+    Send(duel.opponent, "O", duel.id, OfferFields(duel.mine))
+end
+
 function Duel.Offer(picture)
     if not duel or duel.phase ~= "table" then return end
     duel.mine = picture and { number = picture.number, minted = picture.time, traits = picture.traits } or nil
     duel.myReady, duel.theirReady = false, false
-    Send(duel.opponent, "O", duel.id, OfferFields(duel.mine))
+    offerChangedAt = GetTime()
+    if not offerPending then
+        offerPending = true
+        local function Later()
+            if not offerPending then return end
+            local wait = offerChangedAt + OFFER_DELAY - GetTime()
+            if wait > 0 then return C_Timer.After(wait, Later) end
+            FlushOffer()
+        end
+        C_Timer.After(OFFER_DELAY, Later)
+    end
     Changed()
 end
 
 -- Ready (or not) to race with the offers as they are.
 function Duel.SetReady(ready)
     if not duel or duel.phase ~= "table" or (ready and not duel.mine) then return end
+    FlushOffer()  -- the other side must have our current offer before our Ready
     duel.myReady = ready
     Send(duel.opponent, "R", duel.id, ready and 1 or 0)
     Changed()
@@ -213,6 +269,24 @@ function Duel.React(key)
     duel.reactions.mine = { key = key, at = GetTime() }
     Send(duel.opponent, "E", duel.id, key)
     Changed()
+end
+
+-- During a puzzle race: your latest moves (ns.EncodeMoves text) for the other's live view of your board. The
+-- page calls this once a second with whatever is new, so it stays within the game's message budget.
+function Duel.SendLive(text)
+    if not duel or (duel.phase ~= "racing" and duel.phase ~= "waiting") or text == "" then return end
+    Send(duel.opponent, "V", duel.id, text)
+end
+
+-- After a puzzle race: sends your moves (ns.EncodeMoves text) so both can watch the duel back side by side.
+local MOVES_CHUNK = 200
+function Duel.ShareMoves(text)
+    if not duel or duel.myMoves then return end
+    duel.myMoves = text
+    local parts = math.max(1, math.ceil(#text / MOVES_CHUNK))
+    for part = 1, parts do
+        Send(duel.opponent, "M", duel.id, part, parts, text:sub((part - 1) * MOVES_CHUNK + 1, part * MOVES_CHUNK))
+    end
 end
 
 -- Gives up during the countdown or race: counts as a loss.
@@ -270,7 +344,24 @@ local function Mine(sender, id)
     return duel and duel.id == id and sender == duel.opponent
 end
 
+-- Turning duels off (SOLCPuzzleDB.acceptDuels = false): challenges are declined without asking. And after you
+-- decline someone (or let their challenge run out), their next challenges are declined quietly for a while.
+
+function Duel.AcceptsDuels() return not SOLCPuzzleDB or SOLCPuzzleDB.acceptDuels ~= false end
+function Duel.SetAcceptDuels(accept)
+    SOLCPuzzleDB.acceptDuels = accept and true or false
+    Changed()
+end
+
 function handlers.C(sender, id, mode, size, seconds)
+    if not Duel.AcceptsDuels() then
+        Send(sender, "D", id, "off")
+        return
+    end
+    if declinedAt[sender] and GetTime() - declinedAt[sender] < DECLINE_COOLDOWN then
+        Send(sender, "D", id, "declined")
+        return
+    end
     if duel and duel.phase ~= "done" then
         Send(sender, "D", id, "busy")
         return
@@ -284,6 +375,14 @@ function handlers.C(sender, id, mode, size, seconds)
         invitedAt = GetTime(), reactions = {} }
     if Duel.OnInvited then Duel.OnInvited(duel) end
     Changed()
+    -- Unanswered: let it go (the challenger gives up after as long), so it doesn't block later challenges.
+    C_Timer.After(INVITE_TIMEOUT, function()
+        if duel and duel.id == id and duel.phase == "invited" then
+            declinedAt[sender] = GetTime()
+            duel = nil
+            Changed()
+        end
+    end)
 end
 
 function handlers.A(sender, id)
@@ -297,6 +396,7 @@ function handlers.D(sender, id, reason)
     local p = duel.phase
     if p ~= "inviting" and p ~= "invited" and p ~= "table" and p ~= "starting" then return end  -- not mid-race
     SOLC.Print(reason == "busy" and ("%s is already in a duel."):format(sender)
+        or reason == "off" and ("%s isn't taking duels right now."):format(sender)
         or reason == "left" and ("%s left the duel table."):format(sender)
         or ("%s declined the duel."):format(sender))
     duel = nil
@@ -367,6 +467,25 @@ function handlers.L(sender, id)
     if not Mine(sender, id) or duel.phase == "done" then return end
     if duel.phase ~= "countdown" and duel.phase ~= "racing" and duel.phase ~= "waiting" then return end
     Finish(true, "they lost")
+end
+
+function handlers.V(sender, id, text)
+    if not Mine(sender, id) or duel.mode == "paint" or not text then return end
+    duel.theirLiveMoves = (duel.theirLiveMoves or 0) + math.floor(#text / 5)
+    if Duel.OnLiveMoves then Duel.OnLiveMoves(duel, ns.DecodeMoves(text)) end
+end
+
+function handlers.M(sender, id, part, parts, chunk)
+    part, parts = tonumber(part), tonumber(parts)
+    if not Mine(sender, id) or not part or not parts or parts > 100 or duel.theirMoves then return end
+    duel.movesIn = duel.movesIn or {}
+    duel.movesIn[part] = chunk or ""
+    for i = 1, parts do
+        if not duel.movesIn[i] then return end
+    end
+    duel.theirMoves = table.concat(duel.movesIn, "", 1, parts)
+    duel.movesIn = nil
+    Changed()
 end
 
 function handlers.G(sender, id, minted, traits)

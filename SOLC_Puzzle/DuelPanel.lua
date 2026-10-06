@@ -167,6 +167,20 @@ function ns.BuildDuelPanel(page)
     end
     ns.SpreadRow(setup, timeRow, 162)
 
+    -- Whether others can challenge you (Duel.AcceptsDuels); also /solcpuzzle duels.
+    local accept = CreateFrame("CheckButton", nil, setup, "UICheckButtonTemplate")
+    accept:SetSize(24, 24)
+    accept:SetPoint("TOPLEFT", 0, -310)
+    accept.label = setup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    accept.label:SetPoint("LEFT", accept, "RIGHT", 4, 0)
+    accept.label:SetText("Accept duel challenges")
+    accept.note = setup:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    accept.note:SetPoint("TOPLEFT", accept, "BOTTOMLEFT", 4, -2)
+    accept.note:SetPoint("RIGHT", setup, "RIGHT")
+    accept.note:SetJustifyH("LEFT")
+    accept.note:SetText("Off: challenges are declined without asking you. Someone you decline can't challenge you again for a minute.")
+    accept:SetScript("OnClick", function(self) Duel.SetAcceptDuels(self:GetChecked()) end)
+
     -- At the table: your offer, Ready, reactions, leave.
     local atTable = CreateFrame("Frame", nil, panel)
     atTable:SetAllPoints()
@@ -238,6 +252,26 @@ function ns.BuildDuelPanel(page)
     local resultThumb = TableCard(panel, "", 0, 150)
     resultThumb:Hide()
 
+    -- Puzzle duels: the opponent's board live (their moves arrive once a second), with how far along they are.
+    local live = CreateFrame("Frame", nil, panel)
+    live:SetPoint("TOPLEFT", 0, -150)
+    live:SetPoint("RIGHT", panel, "RIGHT")
+    live:SetHeight(290)
+    live:Hide()
+    live.heading = live:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    live.heading:SetPoint("TOPLEFT", 0, 0)
+    live.board = ns.CreateBoard(live, 180)
+    live.board:SetPoint("TOPLEFT", 0, -18)
+    live.bar = UI.CreateBar(live, 188, 0.3, 0.8, 0.3)
+    live.bar:SetPoint("TOPLEFT", live.board, "BOTTOMLEFT", 0, -6)
+    live.moves = live:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    live.moves:SetPoint("TOPLEFT", live.bar, "BOTTOMLEFT", 0, -4)
+    local function UpdateLive(d)
+        local inPlace, total = live.board:InPlace()
+        live.bar:SetProgress(total > 0 and inPlace / total or 0, ("%d of %d pieces in place"):format(inPlace, total))
+        live.moves:SetText(("%d moves"):format(d.theirLiveMoves or 0))
+    end
+
     -- The countdown, big over the board (on its own frame: the pieces are child frames and would cover it).
     local countdownFrame = CreateFrame("Frame", nil, page.board)
     countdownFrame:SetAllPoints()
@@ -260,6 +294,7 @@ function ns.BuildDuelPanel(page)
         if key == "duel" then
             self:StopPainting()
             self:ClosePaintings()
+            self:CloseReplays()
         end
         self.tab = key
         practicePanel:SetShown(key == "practice")
@@ -304,12 +339,17 @@ function ns.BuildDuelPanel(page)
         opponentLine:SetText("")
         countdown:SetText("")
         resultThumb:Hide()
+        local showLive = d and d.mode ~= "paint" and d.liveStarted
+            and (phase == "racing" or phase == "waiting" or phase == "done")
+        live:SetShown(showLive and true or false)
+        if showLive then live.heading:SetText(("%s's board"):format(d.opponent)) end
 
         if not d then
             local opponents = Duel.OnlineGuildmates()
             if #opponents > 0 then opponentIndex = (opponentIndex - 1) % #opponents + 1 end
             local opponent = opponents[opponentIndex]
             opponentText:SetText(opponent or "|cff999999No guildmates online|r")
+            accept:SetChecked(Duel.AcceptsDuels())
             prevOpponent:SetEnabled(#opponents > 1)
             nextOpponent:SetEnabled(#opponents > 1)
             for key, button in pairs(modeButtons) do
@@ -396,7 +436,10 @@ function ns.BuildDuelPanel(page)
             local r = d.result
             Place(action, 0)
             action:SetText("OK")
-            action:SetScript("OnClick", function() Duel.Clear() end)
+            action:SetScript("OnClick", function()
+                ns.SaveDuelReplay(d)  -- if their moves never came, with only yours
+                Duel.Clear()
+            end)
             local statusY = 40
             if d.mode == "paint" and d.painting then
                 Place(saveDuel, 36)
@@ -423,6 +466,7 @@ function ns.BuildDuelPanel(page)
             resultThumb:ClearAllPoints()
             resultThumb:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(statusY + 50))
             resultThumb:Show()
+            live:Hide()
         end
     end
 
@@ -463,7 +507,41 @@ function ns.BuildDuelPanel(page)
     end
 
     -- Duel events: the board shows the puzzle for the countdown, plays it, and freezes when it's over.
+    -- Puzzle duels are saved as replays by themselves: once their moves arrive, 20 seconds after the end
+    -- without them, or when you press OK.
+    function ns.SaveDuelReplay(d)
+        if not d or d.mode == "paint" or d.replaySaved or not d.result or not d.seed then return end
+        d.replaySaved = true
+        local theirs = d.theirs and SOLC.TraitsToText(d.theirs.traits) == SOLC.TraitsToText(d.puzzle)
+        ns.SaveReplay({ kind = "duel", mode = d.mode, size = d.size, seed = d.seed, traits = d.puzzle,
+            owner = theirs and d.opponent or SOLC.MyName(), number = theirs and d.theirs.number or d.mine.number,
+            moves = d.myMoves, time = d.result.myTime, opponent = d.opponent, theirMoves = d.theirMoves,
+            theirTime = d.result.theirTime, won = d.result.won })
+    end
+
     Duel.OnChange = function(d)
+        if d and d.liveStarted and d.theirMoves and not d.liveFinal then
+            -- Their complete moves: rebuild their board exactly (live batches may have been cut short).
+            d.liveFinal = true
+            local all = ns.DecodeMoves(d.theirMoves)
+            d.theirLiveMoves = #all
+            live.board:Mirror(d.puzzle, d.mode, d.seed, d.size)
+            live.board:ApplyMoves(all)
+            UpdateLive(d)
+        end
+        -- After your race (solved, out of time or given up): send your moves; save once theirs are here.
+        if d and d.mode ~= "paint" and (d.phase == "waiting" or d.phase == "done") and not d.myMoves then
+            -- (no race yet, e.g. given up in the countdown: the board still holds an older recording)
+            Duel.ShareMoves(d.startedAt and ns.EncodeMoves(page.board.recording) or "")
+        end
+        if d and d.phase == "done" and d.mode ~= "paint" and not d.replaySaved then
+            if d.theirMoves then
+                ns.SaveDuelReplay(d)
+            elseif not d.replayTimer then
+                d.replayTimer = true
+                C_Timer.After(20, function() ns.SaveDuelReplay(d) end)
+            end
+        end
         if d and d.phase == "countdown" then
             if page.tab ~= "duel" then page:SetTab("duel") end
             page.canvas:Hide()
@@ -479,7 +557,30 @@ function ns.BuildDuelPanel(page)
         page:UpdateDuel()
     end
     Duel.OnRaceStart = function(d)
-        if d.mode ~= "paint" then return page.board:Start(d.puzzle, d.mode, d.seed, d.size) end
+        if d.mode ~= "paint" then
+            page.board:Start(d.puzzle, d.mode, d.seed, d.size)
+            live.board:Mirror(d.puzzle, d.mode, d.seed, d.size)
+            d.liveStarted, d.theirLiveMoves = true, 0
+            UpdateLive(d)
+            local sent = 0
+            local ticker
+            ticker = C_Timer.NewTicker(1, function()
+                local recording = page.board.recording or {}
+                if Duel.Get() ~= d or (d.phase ~= "racing" and d.phase ~= "waiting") then
+                    ticker:Cancel()
+                    return
+                end
+                if #recording > sent then
+                    local fresh = {}
+                    for i = sent + 1, #recording do fresh[#fresh + 1] = recording[i] end
+                    sent = #recording
+                    Duel.SendLive(ns.EncodeMoves(fresh))
+                end
+                if d.phase == "waiting" then ticker:Cancel() end  -- solved: that was the last batch
+            end)
+            page:UpdateDuel()
+            return
+        end
         local target = ns.PaintTarget(d.puzzle, d.size)
         local palette = ns.PaintPalette(target)
         page.board:Hide()
@@ -492,6 +593,11 @@ function ns.BuildDuelPanel(page)
                 score = score, opponent = d.opponent } }
             Duel.Painted(score)
         end)
+    end
+    Duel.OnLiveMoves = function(d, moves)
+        if not d.liveStarted then return end
+        live.board:ApplyMoves(moves)
+        UpdateLive(d)
     end
     Duel.OnReaction = function()
         pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_CHAT_EMOTE_BUTTON or 1115)

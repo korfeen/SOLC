@@ -120,6 +120,12 @@ local function Ranks()
     return ranks
 end
 
+-- True if sender ("Name" or "Name-Realm") is in your guild, by your own guild roster.
+function ns.IsGuildMember(sender)
+    local r = Ranks()
+    return r[sender] ~= nil or r[sender:match("^[^-]+")] ~= nil
+end
+
 -- True if sender ("Name" or "Name-Realm") is a guild master or officer, by your own guild roster.
 function ns.IsGuildOfficer(sender)
     local r = Ranks()

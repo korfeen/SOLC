@@ -789,7 +789,10 @@ local function ShowcaseRow(parent, y)
             tile.canvas:SetShown(mint ~= nil)
             tile.empty:SetShown(mint == nil and key == nil)
             if mint then
-                ns.RenderMint(tile.canvas, mint.traits)
+                if tile.drawn ~= mint.traits then  -- only when it shows other traits
+                    ns.RenderMint(tile.canvas, mint.traits)
+                    tile.drawn = mint.traits
+                end
                 tile:SetBackdropBorderColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
             else
                 tile:SetBackdropBorderColor(0.4, 0.4, 0.4)
@@ -1323,7 +1326,11 @@ ns.RegisterPage({
             local column, line = (i - 1) % perRow, math.floor((i - 1) / perRow)
             tile:ClearAllPoints()
             tile:SetPoint("TOPLEFT", column * (TILE + TILE_GAP), -line * (TILE + 34 + TILE_GAP))
-            ns.RenderMint(tile.canvas, picture.mint.traits)
+            -- Redraw only when the tile shows other traits (another picture, or a rerolled one: new traits table).
+            if tile.drawn ~= picture.mint.traits then
+                ns.RenderMint(tile.canvas, picture.mint.traits)
+                tile.drawn = picture.mint.traits
+            end
             local rarity = ns.MintRarity(picture.mint.traits)
             tile:SetBackdropBorderColor(ns.RarityRGB(rarity))
             tile.owner:SetText(picture.me and ("|cffffd100%s|r"):format(picture.owner) or picture.owner)

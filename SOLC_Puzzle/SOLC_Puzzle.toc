@@ -12,4 +12,5 @@ DuelPanel.lua
 PaintData.lua
 Paint.lua
 PaintPanel.lua
+Replays.lua
 Page.lua

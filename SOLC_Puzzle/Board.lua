@@ -74,7 +74,9 @@ function ns.CreateBoard(parent, pixels)
     board:SetBackdropColor(0, 0, 0, 0.8)
 
     local size, pieceSize, pieces  -- the current grid
-    local slots, mode, moves, selected, hovered, playing
+    local slots, mode, moves, selected, hovered, playing, startedAt
+    local replay  -- a replay in progress: { moves, next, started, speed, onTick, onDone }
+    local mirroring  -- showing someone else's board live (board:Mirror), moved by board:ApplyMoves
     local sets = {}  -- [size] = pieces, made on first use
 
     -- Each piece is a clipping frame showing its part of a full-size copy of the picture.
@@ -124,7 +126,7 @@ function ns.CreateBoard(parent, pixels)
             local row, col = math.floor((slot - 1) / size), (slot - 1) % size
             piece:ClearAllPoints()
             piece:SetPoint("TOPLEFT", 4 + col * pieceSize, -4 - row * pieceSize)
-            piece:SetShown(not (mode == "sliding" and id == gapID and playing))
+            piece:SetShown(not (mode == "sliding" and id == gapID and (playing or replay or mirroring)))
         end
     end
 
@@ -158,7 +160,8 @@ function ns.CreateBoard(parent, pixels)
         end
     end
 
-    local function Moved()
+    local function Moved(a, b)
+        board.recording[#board.recording + 1] = { t = GetTime() - startedAt, a = a, b = b }
         moves = moves + 1
         Place()
         if board.OnMove then board.OnMove(moves) end
@@ -177,7 +180,7 @@ function ns.CreateBoard(parent, pixels)
             if Slidable(piece) then
                 local gap = SlotOf(size * size)
                 slots[slot], slots[gap] = slots[gap], slots[slot]
-                Moved()
+                Moved(slot, gap)
             end
         elseif not selected then
             selected = piece
@@ -188,12 +191,57 @@ function ns.CreateBoard(parent, pixels)
             if first ~= piece then  -- clicking the same piece again just deselects it
                 local other = SlotOf(first.id)
                 slots[slot], slots[other] = slots[other], slots[slot]
-                Moved()
+                Moved(slot, other)
             else
                 Paint()
             end
         end
     end
+
+    -- Keyboard, while a puzzle is played. Sliding: an arrow slides the piece on that side of the gap into it
+    -- (Up moves the piece below the gap up). Swap: arrows move a cursor (the hover outline), Space or Enter
+    -- clicks the piece under it. Only those keys are kept; everything else passes on to the game, and in combat
+    -- (where addons may not keep keys) nothing is kept at all.
+    local DIRECTIONS = { UP = { -1, 0 }, DOWN = { 1, 0 }, LEFT = { 0, -1 }, RIGHT = { 0, 1 } }
+    local cursor  -- swap mode: the slot the keyboard cursor is on
+
+    local function Keyboard(on)
+        if InCombatLockdown() then return end
+        pcall(board.EnableKeyboard, board, on)
+        if on then pcall(board.SetPropagateKeyboardInput, board, true) end
+    end
+
+    board:SetScript("OnKeyDown", function(self, key)
+        local handled = false
+        local direction = DIRECTIONS[key]
+        if playing and not InCombatLockdown() then
+            if mode == "sliding" and direction then
+                local gap = SlotOf(size * size)
+                local row, col = math.floor((gap - 1) / size) - direction[1], (gap - 1) % size - direction[2]
+                if row >= 0 and col >= 0 and row < size and col < size then
+                    local from = row * size + col + 1
+                    slots[from], slots[gap] = slots[gap], slots[from]
+                    Moved(from, gap)
+                end
+                handled = true
+            elseif mode ~= "sliding" and direction then
+                cursor = cursor or 1
+                local row = math.max(0, math.min(size - 1, math.floor((cursor - 1) / size) + direction[1]))
+                local col = math.max(0, math.min(size - 1, (cursor - 1) % size + direction[2]))
+                cursor = row * size + col + 1
+                hovered = pieces[slots[cursor]]
+                Paint()
+                handled = true
+            elseif mode ~= "sliding" and (key == "SPACE" or key == "ENTER") then
+                cursor = cursor or 1
+                Click(pieces[slots[cursor]])
+                hovered = playing and pieces[slots[cursor]] or nil
+                Paint()
+                handled = true
+            end
+        end
+        if not InCombatLockdown() then pcall(self.SetPropagateKeyboardInput, self, not handled) end
+    end)
 
     -- The picture's size in UI units: about `pixels`, but a whole number of screen pixels that every grid size
     -- divides (a multiple of 60 for 3, 4 and 5), so every cut between pieces falls exactly on a screen pixel.
@@ -251,8 +299,11 @@ function ns.CreateBoard(parent, pixels)
 
     function board:Start(traits, newMode, seed, newSize)
         Use(newSize or ns.DEFAULT_SIZE, traits)
-        mode, moves, playing, selected = newMode, 0, true, nil
+        mode, moves, playing, selected, replay, mirroring = newMode, 0, true, nil, nil, false
+        board.recording, startedAt = {}, GetTime()  -- every move, for replays
         slots = Scramble(mode, seed, size)
+        cursor = nil
+        Keyboard(true)
         Place()
         Paint()
     end
@@ -260,7 +311,8 @@ function ns.CreateBoard(parent, pixels)
     -- Shows the picture whole (before a race starts, or to preview). Not "Show": that's the frame's own.
     function board:ShowWhole(traits, newSize)
         Use(newSize or size or ns.DEFAULT_SIZE, traits)
-        playing, selected = false, nil
+        playing, selected, replay, mirroring = false, nil, nil, false
+        Keyboard(false)
         slots = {}
         for i = 1, size * size do slots[i] = i end
         Place()
@@ -269,10 +321,72 @@ function ns.CreateBoard(parent, pixels)
 
     function board:Stop()
         playing, selected = false, nil
+        Keyboard(false)
         if pieces then Paint() end
     end
 
     function board:IsPlaying() return playing end
+
+    -- Replays a recorded solve: the same scramble (mode, seed, size), then each move at its time, speed times as
+    -- fast. onTick(seconds, moves) as it plays; onDone() at the end. board:StopReplay() cuts it short.
+    function board:Replay(traits, newMode, seed, newSize, recorded, speed, onTick, onDone)
+        Use(newSize, traits)
+        mode, playing, selected, mirroring = newMode, false, nil, false
+        Keyboard(false)
+        slots = Scramble(mode, seed, size)
+        replay = { moves = recorded, next = 1, started = GetTime(), speed = speed or 1, onTick = onTick, onDone = onDone }
+        Place()
+        Paint()
+    end
+
+    function board:StopReplay() replay = nil end
+
+    -- Someone else's board, live: the same scramble, then their moves as they arrive (board:ApplyMoves).
+    function board:Mirror(traits, newMode, seed, newSize)
+        Use(newSize, traits)
+        mode, playing, selected, replay, mirroring = newMode, false, nil, nil, true
+        slots = Scramble(mode, seed, size)
+        Place()
+        Paint()
+    end
+
+    -- Applies moves { { a, b } } (slots swapped) to a mirrored board. Once solved, the last piece shows.
+    function board:ApplyMoves(list)
+        if not mirroring then return end
+        for _, m in ipairs(list) do
+            if slots[m.a] and slots[m.b] then slots[m.a], slots[m.b] = slots[m.b], slots[m.a] end
+        end
+        if Solved(slots) then mirroring = false end
+        Place()
+    end
+
+    -- How many pieces are in their place, and how many there are.
+    function board:InPlace()
+        local count = 0
+        for i, id in ipairs(slots or {}) do
+            if id == i then count = count + 1 end
+        end
+        return count, #(slots or {})
+    end
+    function board:IsReplaying() return replay ~= nil end
+
+    board:SetScript("OnUpdate", function()
+        if not replay then return end
+        local at = (GetTime() - replay.started) * replay.speed
+        local changed = false
+        while replay.next <= #replay.moves and replay.moves[replay.next].t <= at do
+            local m = replay.moves[replay.next]
+            if slots[m.a] and slots[m.b] then slots[m.a], slots[m.b] = slots[m.b], slots[m.a] end
+            replay.next = replay.next + 1
+            changed = true
+        end
+        local finished = replay.next > #replay.moves
+        local current = replay
+        if finished then replay = nil end  -- (the last piece shows again once it's over)
+        if changed or finished then Place() end
+        if current.onTick then current.onTick(at, current.next - 1) end
+        if finished and current.onDone then current.onDone() end
+    end)
     return board
 end
 

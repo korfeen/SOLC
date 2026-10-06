@@ -568,6 +568,29 @@ function handlers.H(sender, channel, protocol, syncID, seq, wantReply, configVer
     end
 end
 
+-- Requests for our data are collected for GET_BATCH seconds: when a few guildmates ask at once (typically
+-- right after we log in), one guild broadcast from the earliest change any of them lacks answers them all,
+-- instead of the same data whispered to each. Updates carry totals, so getting data you already have is
+-- harmless. A single request, or one from outside the guild (/kt sync), is whispered as before.
+local GET_BATCH = 2
+local gets = {}  -- [sender] = the change number they have
+local getsTimer
+
+local function AnswerGets()
+    getsTimer = nil
+    local senders, base = {}, nil
+    for sender, have in pairs(gets) do
+        senders[#senders + 1] = sender
+        base = base and math.min(base, have) or have
+    end
+    wipe(gets)
+    if #senders == 1 then
+        SendUpdate(senders[1], base)
+    elseif #senders > 1 then
+        SendUpdate(nil, base)
+    end
+end
+
 function handlers.G(sender, _, protocol, syncID, haveSeq)
     if protocol ~= PROTOCOL then return end
     local db = KillTrackerDB
@@ -576,7 +599,13 @@ function handlers.G(sender, _, protocol, syncID, haveSeq)
         return
     end
     haveSeq = FromBase36(haveSeq) or 0
-    SendUpdate(sender, (syncID == db.syncID and haveSeq <= db.seq) and haveSeq or 0)
+    local base = (syncID == db.syncID and haveSeq <= db.seq) and haveSeq or 0
+    if not IsInGuild() or not ns.IsGuildMember(sender) then
+        SendUpdate(sender, base)  -- they can't hear a guild broadcast
+        return
+    end
+    gets[sender] = math.min(gets[sender] or base, base)
+    getsTimer = getsTimer or C_Timer.NewTimer(GET_BATCH, AnswerGets)
 end
 
 function handlers.N(sender)

@@ -104,8 +104,29 @@ end)
 -- Each row: { category (display name), tribe (true for the 1000-kill tribe achievement), kills, earned (number of tiers), next (tier or nil), tiers = {...} }
 -- where tiers[i] = { name, kills, earned, time (nil if unknown) }. source is KillTrackerDB (default) or a
 -- friend's stats; friends' earn dates aren't synced, so their tiers count as earned once reached.
+-- Pages ask for this several times per refresh (totals, lists); the rows are kept per source until its
+-- data changes (its change number, total or earned achievements). Callers only read them.
+local progressCache = setmetatable({}, { __mode = "k" })
+
+local function ProgressStamp(source)
+    if not source.seq then return nil end  -- e.g. the combined stats, rebuilt each time
+    local earned = 0
+    for _ in pairs(source.achievements or {}) do earned = earned + 1 end
+    return ("%d:%d:%d"):format(source.seq, source.total or 0, earned)
+end
+
+local BuildProgress
 function ns.GetAchievementProgress(source)
     source = source or KillTrackerDB
+    local stamp = ProgressStamp(source)
+    local cached = progressCache[source]
+    if stamp and cached and cached.stamp == stamp then return cached.rows end
+    local rows = BuildProgress(source)
+    if stamp then progressCache[source] = { stamp = stamp, rows = rows } end
+    return rows
+end
+
+BuildProgress = function(source)
     local earnedTimes = source.achievements
     local counts = CountKills(source)
     local rows = {}

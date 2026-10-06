@@ -7,8 +7,8 @@ local _, ns = ...
 local BOARD = 384  -- px, whatever the grid size
 local MODES = { { key = "swap", label = "Swap pieces" }, { key = "sliding", label = "Sliding" }, { key = "paint", label = "Paint" } }
 local MODE_HELP = {
-    swap = "Click two pieces to swap them.",
-    sliding = "Click a piece next to the gap to slide it in.",
+    swap = "Click two pieces to swap them, or move with the arrow keys and press Space.",
+    sliding = "Click a piece next to the gap to slide it in, or use the arrow keys.",
     paint = "Copy the picture with its own colours before time runs out.",
 }
 
@@ -148,11 +148,15 @@ local function Create(parent)
     page.saveButton = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
     page.saveButton:SetHeight(24)
     page.saveButton:SetText("Save painting")
-    page.saveButton:SetScript("OnClick", function() page:SaveLastPainting() end)
+    page.saveButton:SetScript("OnClick", function()
+        if page.mode == "paint" then page:SaveLastPainting() else page:SaveLastRun() end
+    end)
     page.galleryButton = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
     page.galleryButton:SetHeight(24)
     page.galleryButton:SetText("My paintings")
-    page.galleryButton:SetScript("OnClick", function() page:OpenPaintings() end)
+    page.galleryButton:SetScript("OnClick", function()
+        if page.mode == "paint" then page:OpenPaintings() else page:OpenReplays() end
+    end)
     ns.SpreadRow(right, { page.saveButton, page.galleryButton }, 412)
 
     page.bestHeading = UI.CreateSection(right, "Your best", 446)
@@ -170,6 +174,11 @@ local function Create(parent)
     page.toolsHolder:SetAllPoints(right)
     page.paintTools = ns.CreatePaintTools(page.toolsHolder, page.canvas)
     page.viewer = ns.CreatePaintingViewer(page.toolsHolder, page.canvas)
+    page.replayViewer = ns.CreateReplayViewer(page)
+    page.replayViewer.OnBack = function()
+        right:Show()
+        page:ShowPicture()
+    end
     page.viewer.OnBack = function()
         right:Show()
         page:ShowPicture()
@@ -178,6 +187,8 @@ local function Create(parent)
     page.mode, page.size, page.paintSize, page.index = "swap", ns.DEFAULT_SIZE, ns.PAINT_SIZES[1], 1
     page.paintTime = ns.DEFAULT_PAINT_TIME
     local lastPainting  -- the finished practice painting, until saved: { size, palette, info }
+    local lastRun       -- the finished practice puzzle, until saved (ns.SaveReplay fields)
+    local runSeed       -- the current practice puzzle's scramble
     local started
     local painting  -- practice painting in progress: { target, palette }
 
@@ -188,6 +199,10 @@ local function Create(parent)
 
     page.board.OnMove = function(moves) page.movesText:SetText(("%d moves"):format(moves)) end
     page.board.OnSolved = function(moves)
+        local picture = page:Picture()
+        lastRun = picture and { kind = "practice", mode = page.mode, size = page.size, seed = runSeed, traits = picture.traits,
+            owner = picture.owner, number = picture.number, moves = ns.EncodeMoves(page.board.recording),
+            time = GetTime() - started }
         local seconds = GetTime() - started
         started = nil
         page.clock:SetText(FormatTime(seconds))
@@ -246,6 +261,23 @@ local function Create(parent)
         self.paintTime = seconds
         self:Update()
     end
+
+    -- Saves the solved practice puzzle as a replay (once).
+    function page:SaveLastRun()
+        if not lastRun then return end
+        local count, dropped = ns.SaveReplay(lastRun)
+        lastRun = nil
+        self.result:SetText(("Saved - %d in My replays%s."):format(count, dropped and " (the oldest made room)" or ""))
+        self:Update()
+    end
+
+    function page:OpenReplays()
+        if self.board:IsPlaying() then self:StopPractice() end
+        right:Hide()
+        self.replayViewer:Open()
+    end
+
+    function page:CloseReplays() self.replayViewer:Close() end
 
     -- Saves the finished practice painting (once).
     function page:SaveLastPainting()
@@ -333,7 +365,8 @@ local function Create(parent)
         self.clock:SetText("")
         if self.mode == "paint" then return self:StartPainting(picture) end
         self:ShowPicture()
-        self.board:Start(picture.traits, self.mode, math.random(1, 2 ^ 30), self.size)
+        runSeed, lastRun = math.random(1, 2 ^ 30), nil
+        self.board:Start(picture.traits, self.mode, runSeed, self.size)
         started = GetTime()
         self.result:SetText("")
         self.movesText:SetText("0 moves")
@@ -349,7 +382,10 @@ local function Create(parent)
         self.next:SetEnabled(#list > 1)
         self.thumb.canvas:SetShown(picture ~= nil)
         if picture then
-            SOLC.RenderPicture(self.thumb.canvas, picture.traits)
+            if self.thumb.drawn ~= picture.traits then  -- only when it shows another picture
+                SOLC.RenderPicture(self.thumb.canvas, picture.traits)
+                self.thumb.drawn = picture.traits
+            end
             self.thumb:SetBackdropBorderColor(SOLC.RarityColor(picture.rarity))
             self.pictureText:SetText(("%s's #%d\n%s"):format(picture.owner, picture.number, SOLC.RarityText(picture.rarity)))
         else
@@ -371,9 +407,13 @@ local function Create(parent)
             button:SetShown(paintMode)
             if seconds == self.paintTime then button:LockHighlight() else button:UnlockHighlight() end
         end
-        self.saveButton:SetShown(paintMode)
-        self.galleryButton:SetShown(paintMode)
-        self.saveButton:SetEnabled(lastPainting ~= nil and self.canvas:IsShown())
+        self.saveButton:SetText(paintMode and "Save painting" or "Save replay")
+        self.galleryButton:SetText(paintMode and "My paintings" or "My replays")
+        if paintMode then
+            self.saveButton:SetEnabled(lastPainting ~= nil and self.canvas:IsShown())
+        else
+            self.saveButton:SetEnabled(lastRun ~= nil and not self.board:IsPlaying())
+        end
         self.help:SetText(MODE_HELP[self.mode])
         local best = SOLCPuzzleDB.best or {}
         local lines = {}
@@ -457,3 +497,17 @@ SOLC.AddCollectionRows(function()
     end
     return rows
 end)
+
+-- /solcpuzzle duels [on|off]: whether guildmates can challenge you (toggles without on/off).
+SLASH_SOLCPUZZLE1 = "/solcpuzzle"
+SlashCmdList.SOLCPUZZLE = function(input)
+    local command, arg = strtrim(input or ""):lower():match("^(%S*)%s*(.-)$")
+    if command == "duels" then
+        local accept = not ns.Duel.AcceptsDuels()
+        if arg == "on" then accept = true elseif arg == "off" then accept = false end
+        ns.Duel.SetAcceptDuels(accept)
+        SOLC.Print(accept and "You accept duel challenges again." or "Duel challenges are now declined without asking you.")
+    else
+        SOLC.Print("/solcpuzzle duels [on|off] - accept duel challenges, or decline them without asking")
+    end
+end
