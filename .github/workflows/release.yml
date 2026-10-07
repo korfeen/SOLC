@@ -1,6 +1,7 @@
 # Builds a release when a version tag is pushed (e.g. v0.36.0): checks the tag matches the TOC's
 # "## Version", then the BigWigs packager zips the addon (see .pkgmeta) and attaches it to a GitHub
-# release, with a release.json that WowUp reads to find it.
+# release, with a release.json that WowUp reads to find it. Then, if the repository has a
+# DISCORD_RELEASE_WEBHOOK secret (a webhook in #addon-updates), the release commit's notes are posted there.
 name: Release
 
 on:
@@ -13,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      DISCORD_RELEASE_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,3 +32,15 @@ jobs:
       - uses: BigWigsMods/packager@v2
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+
+      # The release commit's subject and notes (without the co-author line) as a Discord embed.
+      - name: Announce in Discord
+        if: env.DISCORD_RELEASE_WEBHOOK != ''
+        run: |
+          title=$(git log -1 --format=%s "$GITHUB_REF_NAME")
+          notes=$(git log -1 --format=%b "$GITHUB_REF_NAME" | grep -v '^Co-Authored-By:' | head -c 3800)
+          jq -n --arg title "$title" --arg notes "$notes" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" \
+            '{username: "SOLC Bot", embeds: [{title: $title, url: $url, color: 16765184,
+              description: ($notes + "\n\nUpdate in WowUp, or download it from the release page.")}]}' \
+          | curl -sSf -H "Content-Type: application/json" -d @- "$DISCORD_RELEASE_WEBHOOK"
