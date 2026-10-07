@@ -16,9 +16,11 @@ function ns.MintCost() return ns.Config("mintCost") end
 local RARITY_WEIGHTS = { uncommon = 25, rare = 10, epic = 4, legendary = 1 }
 ns.MINT_WEIGHTS = RARITY_WEIGHTS
 local RARITY_SCORE = { uncommon = 1, rare = 2, epic = 3, legendary = 4 }
+ns.MINT_SCORES = RARITY_SCORE
 local RARITY_ORDER = { "uncommon", "rare", "epic", "legendary" }
 -- A picture's overall rarity: the share of all rolls that score at least as high (see ns.MintRarity).
 local PICTURE_TIERS = { { "legendary", 0.015 }, { "epic", 0.05 }, { "rare", 0.17 } }  -- the rest: uncommon
+ns.MINT_TIERS = PICTURE_TIERS  -- (these settings are read by the SOLC Puzzle Discord Activity's art build too)
 
 -- Layers from back to front; options { id (never change once released), name, rarity, texture, rect,
 -- perSkin } from MintArt.lua. rect = { x, y, width, height } as fractions of the picture places a
@@ -281,6 +283,7 @@ end
 -- Options drawn in front of every layer instead of in their own layer's place: face accessories that a hat
 -- would otherwise cover (the eye mask sits where hats go). Here, not in MintArt.lua, which is generated.
 local IN_FRONT = { eye_mask_pushed_up = true, monocle = true }
+ns.MINT_IN_FRONT = IN_FRONT
 local FRONT_SUBLEVEL = 7  -- the top of the ARTWORK draw layer
 
 -- A picture's layers in drawing order, back to front: { { layer key, option id } }, with IN_FRONT options
