@@ -562,10 +562,17 @@ local function ScaleRings(button, look, scale)
     if button.ogre then button.ogre:SetScale(scale) end
 end
 
+-- Lays the sidebar out now and again a moment later: a font's first use (the crayon font, the first time ogre
+-- mode is on) measures wrong until the game has loaded it, so the words would only fit after the next redraw.
+local function LayoutSidebarSoon()
+    LayoutSidebar()
+    C_Timer.After(0.1, LayoutSidebar)
+end
+
 function ns.UI.SetOgreMode(on)
     KillTrackerDB.ogreMode = on or nil
     if not sidebarBuilt then return end
-    LayoutSidebar()  -- writes and fits the new words
+    LayoutSidebarSoon()  -- writes and fits the new words
     if ns.OnKillsChanged then ns.OnKillsChanged() end  -- redraws the tabs
 end
 
@@ -597,7 +604,7 @@ local function BuildSidebar()
             navList[#navList + 1] = button
         end
     end
-    LayoutSidebar()
+    LayoutSidebarSoon()
 end
 
 -- Tabs under the window, Blizzard style, for a page and the pages that are its tabs (tabOf).
