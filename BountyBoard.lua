@@ -21,11 +21,12 @@ board:SetSize(WIDTH, HEIGHT)
 board:SetPoint("CENTER", -180, 0)
 board:SetFrameStrata("DIALOG")
 board:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    bgFile = ns.WINDOW_BACKGROUND,  -- solid (the dialog texture is see-through)
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
     tile = true, tileSize = 32, edgeSize = 32,
     insets = { left = 11, right = 12, top = 12, bottom = 11 },
 })
+board:SetBackdropColor(unpack(ns.WINDOW_COLOR))
 board:SetClampedToScreen(true)
 board:SetMovable(true)
 board:EnableMouse(true)

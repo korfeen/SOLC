@@ -52,11 +52,12 @@ local RarityRGB = ns.RarityRGB
 -- Placed over the main window's page area when a show starts (the window is made later than this file).
 local panel = CreateFrame("Frame", "SOLCMintReel", UIParent, "BackdropTemplate")
 panel:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    bgFile = ns.WINDOW_BACKGROUND,  -- solid (the dialog texture is see-through)
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile = true, tileSize = 32, edgeSize = 12,
     insets = { left = 3, right = 3, top = 3, bottom = 3 },
 })
+panel:SetBackdropColor(unpack(ns.WINDOW_COLOR))
 panel:EnableMouse(true)
 panel:Hide()
 

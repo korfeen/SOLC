@@ -80,8 +80,26 @@ local function Send(target, ...)
     end
 end
 
+-- Duel.Tick runs a few times a second while a race is on (racing or waiting for their result), whether or not
+-- the window is open.
+local ticker = CreateFrame("Frame")
+ticker:Hide()
+local sinceTick = 0
+ticker:SetScript("OnUpdate", function(self, elapsed)
+    if not duel or (duel.phase ~= "racing" and duel.phase ~= "waiting") then return self:Hide() end
+    sinceTick = sinceTick + elapsed
+    if sinceTick < 0.2 then return end
+    sinceTick = 0
+    Duel.Tick()
+end)
+
+-- Something about the duel changed: the page (Duel.OnChange) and any listeners (Duel.Listen) hear of it.
+local listeners = {}
+function Duel.Listen(callback) listeners[#listeners + 1] = callback end
 local function Changed()
+    if duel and (duel.phase == "racing" or duel.phase == "waiting") then ticker:Show() end
     if Duel.OnChange then Duel.OnChange(duel) end
+    for _, callback in ipairs(listeners) do callback(duel) end
 end
 
 local function NewID() return tostring(math.random(100000, 999999)) end
@@ -316,8 +334,8 @@ function Duel.Painted(score)
     Decide()
 end
 
--- Checked every frame by the page while racing: out of time, or past the opponent's finished time. (Paint
--- duels end when the paint time is up; the tools submit then.)
+-- Checked by the ticker while racing: out of time, or past the opponent's finished time. (Paint duels end when
+-- the paint time is up; the tools submit then.)
 function Duel.Tick()
     if not duel then return end
     local elapsed = Duel.Elapsed()

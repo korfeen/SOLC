@@ -409,7 +409,7 @@ function ns.ConfirmMint()
 end
 
 -- Showcase: up to SHOWCASE_SIZE of your pictures on your Overview, synced to guildmates (Sync.lua):
--- KillTrackerDB.showcase = { numbers = { picture number, ... }, seq }.
+-- KillTrackerDB.showcase = { numbers = { picture number, ... }, backdrop = background option id, seq }.
 
 ns.SHOWCASE_SIZE = 3
 
@@ -441,6 +441,57 @@ function ns.ToggleShowcase(mint)
     ns.Touch(showcase)
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     return true
+end
+
+-- The background behind your 3D model on the Overview: one from a picture you own, chosen by right-clicking
+-- the model; showcase.backdrop = its option id, synced with the showcase.
+
+-- The backgrounds on your pictures, each once, as options (id, name, rarity, texture), rarest first.
+function ns.OwnedBackgrounds()
+    local layer
+    for _, l in ipairs(ns.MintLayers) do
+        if l.key == "background" then layer = l end
+    end
+    local seen, list = {}, {}
+    for _, mint in ipairs(layer and KillTrackerDB.mints or {}) do
+        local id = mint.traits and mint.traits.background
+        local option = id and not seen[id] and FindOption(layer, id)
+        if option then
+            seen[id] = true
+            list[#list + 1] = option
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.rarity ~= b.rarity then return (RARITY_SCORE[a.rarity] or 0) > (RARITY_SCORE[b.rarity] or 0) end
+        return a.name < b.name
+    end)
+    return list
+end
+
+-- Sets (option id) or clears (nil) the background behind your model.
+function ns.SetModelBackdrop(id)
+    local showcase = Showcase()
+    if showcase.backdrop == id then return end
+    showcase.backdrop = id
+    ns.Touch(showcase)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+
+-- The background behind someone's model, as an option: yours (key nil; only while you still own a picture with
+-- it) or a synced guildmate's. nil for none.
+function ns.GetModelBackdrop(key)
+    local source = key and KillTrackerFriends[key] or KillTrackerDB
+    local id = source and source.showcase and source.showcase.backdrop
+    if not id then return nil end
+    if key then
+        for _, l in ipairs(ns.MintLayers) do
+            if l.key == "background" then return FindOption(l, id) end
+        end
+        return nil
+    end
+    for _, option in ipairs(ns.OwnedBackgrounds()) do
+        if option.id == id then return option end
+    end
 end
 
 -- Someone's showcased pictures, in order: yours (key nil) or a synced guildmate's. Pictures that no

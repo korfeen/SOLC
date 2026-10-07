@@ -30,8 +30,9 @@
 --                Gear.lua; only when changed, empty otherwise; enchant and suffix in decimal)
 --   professions = P^line:rank:max:icon:name;...^line=recipeID,recipeID...^line=...   (see Professions.lua;
 --                only when changed, empty otherwise; the "P" tells "no professions" from "unchanged")
---   showcase   = S^number,number,number              (pictures on their Overview, see Minting.lua; only when
---                changed, empty otherwise; the "S" tells "none" from "unchanged")
+--   showcase   = S^number,number,number^backdrop     (pictures on their Overview and the background option
+--                behind their model, see Minting.lua; only when changed, empty otherwise; the "S" tells
+--                "none" from "unchanged")
 --   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
 
 local addonName, ns = ...
@@ -162,7 +163,7 @@ local function SerializeShowcase(db, baseSeq)
     if not showcase or (showcase.seq or 0) <= baseSeq then return "" end
     local numbers = {}
     for i, number in ipairs(showcase.numbers) do numbers[i] = Base36(number) end
-    return "S" .. FIELD .. table.concat(numbers, ",")
+    return "S" .. FIELD .. table.concat(numbers, ",") .. FIELD .. (showcase.backdrop or "")
 end
 
 -- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
@@ -334,7 +335,7 @@ local function Deserialize(payload)
     if f[1] == "S" then
         local numbers = {}
         for number in (f[2] or ""):gmatch("[^,]+") do numbers[#numbers + 1] = FromBase36(number) end
-        update.showcase = { numbers = numbers }
+        update.showcase = { numbers = numbers, backdrop = Optional(f[3]) }  -- backdrop from 0.39.0 on
     end
     update.removed = {}  -- from 0.38.0 on
     for number in (s[17] or ""):gmatch("[^,]+") do update.removed[#update.removed + 1] = FromBase36(number) end

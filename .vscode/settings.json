@@ -34,6 +34,10 @@
         "LOCALIZED_CLASS_NAMES_MALE",
         "ShoppingTooltip1",
         "ShoppingTooltip2",
-        "DECLINE"
+        "DECLINE",
+        "PanelTemplates_TabResize",
+        "PanelTemplates_DeselectTab",
+        "PanelTemplates_SelectTab",
+        "ITEM_QUALITY_COLORS"
     ]
 }

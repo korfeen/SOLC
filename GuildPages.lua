@@ -177,6 +177,7 @@ end
 -- the edge, the model box 12px), so their left edges line up.
 local MODEL_WIDTH = UI.VIEWING_WIDTH + 2 * UI.ARROW_SIZE + 2 * 2 + 10 - 12
 local LEFT_WIDTH = WIDTH - MODEL_WIDTH - 36
+local MODEL_HEIGHT = 250  -- the model at the top of its column; below it the buttons, then room for more
 
 -- Model camera distance by race ID (1 = the game's own fit). The fit is limited by width, so short,
 -- broad races come out small in the tall model column.
@@ -207,34 +208,50 @@ end
 local function CharacterModel(page)
     local box = CreateFrame("Frame", nil, page, "BackdropTemplate")
     box:SetPoint("TOPRIGHT", -12, -44)
-    box:SetPoint("BOTTOMRIGHT", -12, 12)
-    box:SetWidth(MODEL_WIDTH)
+    -- Just tall enough for the model, the two text lines and the buttons, with an even margin below them.
+    box:SetSize(MODEL_WIDTH, MODEL_HEIGHT + 116)
     box:SetBackdrop(UI.INSET_BACKDROP)
     box:SetBackdropColor(0, 0, 0, 0.5)
 
     local model = CreateFrame("DressUpModel", nil, box)
+    -- The model at the top, its level and item level and the view buttons right under it; the rest of the box
+    -- is left free (box.spare, below the box) for more later.
     model:SetPoint("TOPLEFT", 4, -4)
-    model:SetPoint("BOTTOMRIGHT", -4, 84)
+    model:SetPoint("TOPRIGHT", -4, -4)
+    model:SetHeight(MODEL_HEIGHT)
     model:EnableMouse(true)
 
+    -- The background behind the model: one from a minted picture (ns.GetModelBackdrop). The pictures are square
+    -- and the model area is taller than wide, so the sides are cropped to fill it without stretching.
+    local backdrop = box:CreateTexture(nil, "ARTWORK")
+    backdrop:SetPoint("TOPLEFT", model, "TOPLEFT")
+    backdrop:SetPoint("BOTTOMRIGHT", model, "BOTTOMRIGHT")
+    local crop = (1 - (MODEL_WIDTH - 8) / MODEL_HEIGHT) / 2
+    backdrop:SetTexCoord(crop, 1 - crop, 0, 1)
+    backdrop:Hide()
+
     box.info = box:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    box.info:SetPoint("BOTTOM", 0, 68)
+    box.info:SetPoint("TOP", model, "BOTTOM", 0, -4)
     box.itemLevel = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    box.itemLevel:SetPoint("BOTTOM", 0, 55)
+    box.itemLevel:SetPoint("TOP", box.info, "BOTTOM", 0, -2)
     -- The gear and professions views (box.OnViewClick(view), set by the page); clicking the model opens gear.
-    local function ViewButton(view, label, y)
+    local function ViewButton(view, label, anchor, gap)
         local button = CreateFrame("Button", nil, box, "UIPanelButtonTemplate")
-        button:SetSize(MODEL_WIDTH - 24, 20)
-        button:SetPoint("BOTTOM", 0, y)
+        button:SetSize(MODEL_WIDTH - 24, 30)
+        UI.SkinButton(button)  -- the wooden buttons (being tried out here first)
+        button:SetPoint("TOP", anchor, "BOTTOM", 0, -gap)
         button:SetText(label)
         button:SetScript("OnClick", function() if box.OnViewClick then box.OnViewClick(view) end end)
         return button
     end
-    box.gearButton = ViewButton("gear", "Gear", 30)
-    box.professionsButton = ViewButton("professions", "Professions", 8)
+    box.gearButton = ViewButton("gear", "Gear", box.itemLevel, 8)
+    box.professionsButton = ViewButton("professions", "Professions", box.gearButton, 4)
+    box.spare = CreateFrame("Frame", nil, page)
+    box.spare:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 0, -8)
+    box.spare:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -12, 12)
     box.OnGearClick = function() if box.OnViewClick then box.OnViewClick("gear") end end
     box.empty = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    box.empty:SetPoint("CENTER", 0, 20)
+    box.empty:SetPoint("CENTER", model, "CENTER")
     box.empty:SetWidth(MODEL_WIDTH - 20)
     box.empty:SetText("No character synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
 
@@ -327,16 +344,52 @@ local function CharacterModel(page)
         box.itemLevel:SetText(itemLevel and ("Item level %d"):format(itemLevel) or "")
     end
 
+    local function UpdateBackdrop()
+        local option = ns.GetModelBackdrop and ns.GetModelBackdrop(key)
+        if option then
+            backdrop:SetTexture(ns.MintTexture(option, {}))
+            backdrop:Show()
+        else
+            backdrop:Hide()
+        end
+    end
+
+    -- Right-clicking your own model: pick its background from the ones on your pictures.
+    local function PickBackdrop(owner)
+        local owned = ns.OwnedBackgrounds()
+        if not MenuUtil then  -- no menus: step through them instead
+            local current, nextID = KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop, nil
+            for i, option in ipairs(owned) do
+                if option.id == current then nextID = owned[i + 1] and owned[i + 1].id end
+            end
+            ns.SetModelBackdrop(current and nextID or (owned[1] and owned[1].id))
+            return
+        end
+        MenuUtil.CreateContextMenu(owner, function(_, root)
+            root:CreateTitle("Background")
+            local function IsCurrent(id) return (KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop) == id end
+            root:CreateRadio("None", function() return IsCurrent(nil) end, function() ns.SetModelBackdrop(nil) end)
+            for _, option in ipairs(owned) do
+                local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name)
+                root:CreateRadio(name, function() return IsCurrent(option.id) end,
+                    function() ns.SetModelBackdrop(option.id) end)
+            end
+            if #owned == 0 then root:CreateTitle("Mint a picture to get backgrounds") end
+        end)
+    end
+
     -- Reloads only for another player or new gear, so turning it sticks while the page refreshes.
     local loaded
     function box:SetPlayer(newKey)
         if loaded and newKey == key and Gear() == shownGear then
             UpdateInfo()  -- item levels may have loaded since
+            UpdateBackdrop()
             return
         end
         loaded, key = true, newKey
         Load()
         UpdateInfo()
+        UpdateBackdrop()
     end
 
     -- Drag to turn; a click without dragging opens the gear details.
@@ -356,6 +409,8 @@ local function CharacterModel(page)
         self:SetScript("OnUpdate", nil)
         if button == "LeftButton" and startX and math.abs(GetCursorPosition() - startX) < 4 and box.OnGearClick then
             box.OnGearClick()
+        elseif button == "RightButton" and not key then
+            PickBackdrop(self)
         end
         startX = nil
     end)
@@ -365,6 +420,7 @@ local function CharacterModel(page)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("Click for gear details")
         GameTooltip:AddLine("Drag to turn, scroll to zoom", 0.6, 0.6, 0.6)
+        if not key then GameTooltip:AddLine("Right-click to pick a background", 0.6, 0.6, 0.6) end
         local gear = Gear()
         if key and gear and not NearbyUnit(gear.guid) then
             GameTooltip:AddLine("Default hair and face - their real look shows when they're nearby.", 0.6, 0.6, 0.6, true)
@@ -804,17 +860,43 @@ end
 
 -- Overview sections that can take over the space below the showcase (page:Expand).
 local EXPANDED_TOP = SHOWCASE_TOP + SHOWCASE_PICTURE + 6 + 12  -- below the showcase
-local EXPANDED_ROWS = math.floor((UI.PAGE_HEIGHT - 8 - EXPANDED_TOP - 18) / UI.ROW_HEIGHT)
+-- Each section is a panel: a title bar (SECTION_BAR tall) and under it a box holding its content, inset
+-- SECTION_PAD; SECTION_GAP between panels.
+local SECTION_BAR, SECTION_PAD, SECTION_GAP = 20, 4, 6
+local EXPANDED_ROWS = math.floor((UI.PAGE_HEIGHT - 8 - EXPANDED_TOP - SECTION_BAR - 2 * SECTION_PAD) / UI.ROW_HEIGHT)
+
+local PANEL_BACKDROP = {
+    bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    edgeSize = 10, insets = { left = 2, right = 2, top = 2, bottom = 2 },
+}
+
+-- The box under a section's title bar, behind its content. box:Place(y, height).
+local function SectionBox(parent)
+    local box = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    box:SetFrameLevel(parent:GetFrameLevel())  -- behind the content, which sits a level above the parent
+    box:SetBackdrop(PANEL_BACKDROP)
+    box:SetBackdropColor(0.11, 0.12, 0.14, 0.75)  -- dark slate
+    box:SetBackdropBorderColor(0.45, 0.45, 0.48, 0.9)
+    function box:Place(y, height)
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", 8, -y)
+        self:SetSize(LEFT_WIDTH + 8, height)
+    end
+    return box
+end
 
 -- A gold section title you can click, with a +/- on the right. header:Place(y, expanded).
 local function ExpandHeader(parent, text, onClick)
-    local header = CreateFrame("Button", nil, parent)
-    header:SetSize(LEFT_WIDTH, 16)
+    local header = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    header:SetSize(LEFT_WIDTH + 8, SECTION_BAR)
+    header:SetBackdrop(PANEL_BACKDROP)
+    header:SetBackdropColor(0.04, 0.04, 0.05, 0.95)
+    header:SetBackdropBorderColor(0.75, 0.62, 0.3, 0.9)  -- muted gold, like the titles
     header.text = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    header.text:SetPoint("LEFT")
+    header.text:SetPoint("LEFT", 6, 0)
     header.text:SetText(text)
     header.icon = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")  -- text stays sharp at any size
-    header.icon:SetPoint("RIGHT", -4, 0)
+    header.icon:SetPoint("RIGHT", -6, 0)
     header:SetScript("OnClick", onClick)
     header:SetScript("OnEnter", function(self)
         self.text:SetTextColor(1, 1, 1)
@@ -830,24 +912,38 @@ local function ExpandHeader(parent, text, onClick)
     end)
     function header:Place(y, expanded)
         self:ClearAllPoints()
-        self:SetPoint("TOPLEFT", 12, -y)
+        self:SetPoint("TOPLEFT", 8, -y)
         self.expanded = expanded
         self.icon:SetText(expanded and "-" or "+")
     end
     return header
 end
 
-local function StatCard(page, index, label)
+-- A stat card: an icon on the left, the value and its label beside it.
+local CARD_ICON = 28
+
+local function StatCard(page, index, label, icon)
     local card = CreateFrame("Frame", nil, page, "BackdropTemplate")
     local width = (LEFT_WIDTH - 3 * 8) / 4
     card:SetSize(width, 46)
     card:SetPoint("TOPLEFT", 12 + (index - 1) * (width + 8), -48)
     card:SetBackdrop(UI.INSET_BACKDROP)
     card:SetBackdropColor(0, 0, 0, 0.5)
+    card.icon = card:CreateTexture(nil, "ARTWORK")
+    card.icon:SetSize(CARD_ICON, CARD_ICON)
+    card.icon:SetPoint("LEFT", 8, 0)
+    card.icon:SetTexture(icon)
+    card.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- trim the icon's built-in border
+    -- The value with its label under it, as one block beside the icon, centred on the card's height.
     card.value = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    card.value:SetPoint("TOP", 0, -8)
+    card.value:SetPoint("BOTTOMLEFT", card.icon, "RIGHT", 8, -1)
+    card.value:SetPoint("RIGHT", -6, 0)
+    card.value:SetJustifyH("LEFT")
     card.label = card:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    card.label:SetPoint("BOTTOM", 0, 7)
+    card.label:SetPoint("TOPLEFT", card.icon, "RIGHT", 8, -1)
+    card.label:SetPoint("RIGHT", -6, 0)
+    card.label:SetJustifyH("LEFT")
+    card.label:SetWordWrap(false)
     card.label:SetText(label)
     return card
 end
@@ -860,12 +956,19 @@ ns.RegisterPage({
         local left = CreateFrame("Frame", nil, page)
         left:SetAllPoints()
         page.left = left
-        page.cards = { StatCard(left, 1, "points"), StatCard(left, 2, "kills"), StatCard(left, 3, "achievements"), StatCard(left, 4, "PvP kills") }
+        page.cards = {
+            StatCard(left, 1, "points", "Interface\\Icons\\INV_Misc_Coin_02"),
+            StatCard(left, 2, "kills", "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01"),
+            StatCard(left, 3, "achievements", "Interface\\Icons\\INV_Misc_Ribbon_01"),
+            StatCard(left, 4, "PvP kills", "Interface\\Icons\\Ability_DualWield"),
+        }
         UI.CreateSection(left, "Showcase", SHOWCASE_TOP - 18)
         page.showcase = ShowcaseRow(left, SHOWCASE_TOP)
         page.bountyHeader = ExpandHeader(left, "Guild bounty", function() page:Expand("bounty") end)
-        page.bounty = BountyBlock(left, EXPANDED_TOP + 18, LEFT_WIDTH)
-        page.contributors = RowStack(left, EXPANDED_TOP + 82, EXPANDED_ROWS - 4, LEFT_WIDTH)
+        page.bountyBox, page.closeBox, page.recentBox = SectionBox(left), SectionBox(left), SectionBox(left)
+        local contentTop = EXPANDED_TOP + SECTION_BAR + SECTION_PAD
+        page.bounty = BountyBlock(left, contentTop, LEFT_WIDTH)
+        page.contributors = RowStack(left, contentTop + 62, EXPANDED_ROWS - 4, LEFT_WIDTH)
         page.closeHeader = ExpandHeader(left, "Almost there", function() page:Expand("close") end)
         page.close = RowStack(left, EXPANDED_TOP, EXPANDED_ROWS, LEFT_WIDTH)
         page.recentHeader = ExpandHeader(left, "Recent highlights", function() page:Expand("recent") end)
@@ -883,21 +986,36 @@ ns.RegisterPage({
                 header:SetShown(e == nil or e == which)
                 header:Place(e == which and EXPANDED_TOP or y, e == which)
             end
-            -- Shared: the bounty, then the two lists splitting the rest of the page's height.
-            local closeY = EXPANDED_TOP + 18 + 58 + 4
-            local rows = math.max(1, math.floor((UI.PAGE_HEIGHT - 8 - closeY - 2 * 18 - 6) / 2 / UI.ROW_HEIGHT))
-            local recentY = closeY + 18 + rows * UI.ROW_HEIGHT + 6
+            -- Shared: the bounty panel, then the two list panels splitting the rest of the page's height.
+            local inner = SECTION_BAR + SECTION_PAD  -- from a panel's top to its content
+            local bountyHeight = 58 + 2 * SECTION_PAD
+            local closeY = EXPANDED_TOP + SECTION_BAR + bountyHeight + SECTION_GAP
+            local listChrome = SECTION_BAR + 2 * SECTION_PAD  -- a list panel without its rows
+            local rows = math.max(1, math.floor((UI.PAGE_HEIGHT - 8 - closeY - 2 * listChrome - SECTION_GAP) / 2 / UI.ROW_HEIGHT))
+            local recentY = closeY + listChrome + rows * UI.ROW_HEIGHT + SECTION_GAP
+            local bottom = UI.PAGE_HEIGHT - 8  -- an expanded panel reaches down to here
             Header(self.bountyHeader, "bounty", EXPANDED_TOP)
             Header(self.closeHeader, "close", closeY)
             Header(self.recentHeader, "recent", recentY)
+            local function Box(box, which, y, height)
+                box:SetShown(e == nil or e == which)
+                if e == which then
+                    box:Place(EXPANDED_TOP + SECTION_BAR, bottom - EXPANDED_TOP - SECTION_BAR)
+                else
+                    box:Place(y + SECTION_BAR, height)
+                end
+            end
+            Box(self.bountyBox, "bounty", EXPANDED_TOP, bountyHeight)
+            Box(self.closeBox, "close", closeY, rows * UI.ROW_HEIGHT + 2 * SECTION_PAD)
+            Box(self.recentBox, "recent", recentY, rows * UI.ROW_HEIGHT + 2 * SECTION_PAD)
             self.bounty:SetShown(e == nil or e == "bounty")
             self.contributors.holder:SetShown(e == "bounty")
             self.close.holder:SetShown(e == nil or e == "close")
-            self.close:Place(e == "close" and EXPANDED_TOP + 18 or closeY + 18, e == "close" and EXPANDED_ROWS or rows)
+            self.close:Place(e == "close" and EXPANDED_TOP + inner or closeY + inner, e == "close" and EXPANDED_ROWS or rows)
             self.recent.holder:SetShown(e == nil or e == "recent")
-            self.recent:Place(e == "recent" and EXPANDED_TOP + 18 or recentY + 18, e == "recent" and EXPANDED_ROWS or rows)
+            self.recent:Place(e == "recent" and EXPANDED_TOP + inner or recentY + inner, e == "recent" and EXPANDED_ROWS or rows)
             self.recentEmpty:ClearAllPoints()
-            self.recentEmpty:SetPoint("TOPLEFT", 16, -((e == "recent" and EXPANDED_TOP or recentY) + 22))
+            self.recentEmpty:SetPoint("TOPLEFT", 16, -((e == "recent" and EXPANDED_TOP or recentY) + inner + 4))
             if not initial then ns.OpenPage("overview") end  -- refill the rows
         end
         page:Expand(nil, true)
@@ -1172,7 +1290,7 @@ local function RefreshCrafters(page)
 end
 
 ns.RegisterPage({
-    key = "crafters", label = "Crafters", section = "guild", order = 2.5,
+    key = "crafters", label = "Crafters", section = "guild", order = 2.5, tabOf = "members",
     create = function(parent)
         local page = NewPage(parent, "Crafters")
         page.search = CreateFrame("EditBox", nil, page, "SearchBoxTemplate")
@@ -1259,7 +1377,7 @@ ns.RegisterPage({
 -- Bounties -----------------------------------------------------------------------------------------
 
 ns.RegisterPage({
-    key = "bounties", label = "Bounties", section = "guild", order = 4,
+    key = "bounties", label = "Bounties", section = "guild", order = 4, tabOf = "leaderboard",
     create = function(parent) return ns.EmbedBountyBoard(parent, WIDTH) end,
     refresh = function() if ns.RefreshBountyBoard then ns.RefreshBountyBoard() end end,
 })

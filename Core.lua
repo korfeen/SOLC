@@ -264,6 +264,8 @@ local function InitDB()
     db.syncID = db.syncID or NewSyncID()
     db.seq = db.seq or 0
     Migrate(db)
+    -- Settings from trying out the look (0.39.0 development), now fixed in UI.lua.
+    db.navWidth, db.buttonStyle, db.ogreFont, db.ogreColors, db.ogreOutline = nil, nil, nil, nil, nil
     for _, entry in pairs(db.kills) do
         if not entry.seq then Touch(entry) end
     end
@@ -458,6 +460,7 @@ local function ShowHelp()
     Print("/solc unknown - mobs with a guessed or unknown faction, with Wowhead links")
     Print("/solc announce - toggle per-kill chat messages")
     Print("/solc minimap - show/hide the minimap button")
+    Print("/solc ogre - ogre mode: the menu in ogre words")
     Print("/solc debug - announce kills and say why a mob wasn't counted")
     Print("/solc reset - clear all data for this character")
 end
@@ -491,6 +494,9 @@ SlashCmdList.SOLC = function(input)
     elseif msg == "debug" then
         ns.debugKills = not ns.debugKills
         Print("Kill debugging " .. (ns.debugKills and "on: kills are announced, and mobs that aren't counted say why." or "off."))
+    elseif msg == "ogre" then
+        ns.UI.SetOgreMode(not db.ogreMode)
+        Print(db.ogreMode and "Ogre mode: ON. Me smash buttons." or "Ogre mode off.")
     elseif msg == "minimap" then
         db.minimap.hide = not db.minimap.hide
         ns.UpdateMinimapButton()

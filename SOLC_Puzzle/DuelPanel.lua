@@ -112,9 +112,10 @@ function ns.BuildDuelPanel(page)
     local duelTable = CreateFrame("Frame", nil, page, "BackdropTemplate")
     duelTable:SetAllPoints(page.board)
     duelTable:SetFrameLevel(page.board:GetFrameLevel() + 30)
-    duelTable:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    duelTable:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8",  -- solid, like SOLC's windows
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+    duelTable:SetBackdropColor(0.07, 0.07, 0.08, 1)
     duelTable:Hide()
     duelTable.title = duelTable:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     duelTable.title:SetPoint("TOP", 0, -14)
@@ -470,16 +471,13 @@ function ns.BuildDuelPanel(page)
         end
     end
 
-    -- Every frame: reaction bubbles, the countdown, the clocks and Duel.Tick.
+    -- Every frame: reaction bubbles, the countdown and the clocks (Duel.lua ticks the race itself).
     page:HookScript("OnUpdate", function()
         if page.tab ~= "duel" then return end
         local d = Duel.Get()
         if not d then return end
         myCard:React(d.reactions.mine)
         theirCard:React(d.reactions.theirs)
-        Duel.Tick()
-        d = Duel.Get()
-        if not d then return end
         if d.phase == "countdown" then
             countdown:SetText(tostring(math.max(1, math.ceil(d.countdownEnds - GetTime()))))
         elseif d.phase == "racing" or d.phase == "waiting" then
@@ -628,10 +626,8 @@ end
 
 -- The duel table opening or a race starting while the window is closed or on another page: show it, once
 -- per phase (you can still close the window or look elsewhere afterwards).
-local opener = CreateFrame("Frame")
 local lastPhase
-opener:SetScript("OnUpdate", function()
-    local d = Duel.Get()
+Duel.Listen(function(d)
     local p = d and d.phase
     if p == lastPhase then return end
     lastPhase = p

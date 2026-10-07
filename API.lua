@@ -86,7 +86,8 @@ function SOLC.MintForBattle()
 end
 
 -- A page in SOLC's sidebar: { key, label, section = "me" | "guild", order, create(parent) -> frame,
--- refresh(frame) }. Register while loading, before the window is first opened.
+-- refresh(frame), tabOf = "<page key>" (optional: a tab of that page instead of a sidebar button) }. Register
+-- while loading, before the window is first opened.
 function SOLC.RegisterPage(page) ns.RegisterPage(page) end
 function SOLC.OpenPage(key) ns.OpenPage(key) end
 

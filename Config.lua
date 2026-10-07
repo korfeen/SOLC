@@ -10,6 +10,11 @@
 
 local _, ns = ...
 
+-- Every SOLC window's background: a solid fill (bgFile) in WINDOW_COLOR, set with SetBackdropColor after
+-- SetBackdrop. Blizzard's dialog texture lets the game show through, which is distracting.
+ns.WINDOW_BACKGROUND = "Interface\\Buttons\\WHITE8X8"
+ns.WINDOW_COLOR = { 0.07, 0.07, 0.08, 1 }
+
 local OFFICER_RANKS = 2  -- rank indexes 0 (guild master) and 1
 local SOLO = "*solo*"    -- settings key outside a guild
 
@@ -233,11 +238,12 @@ panel:SetSize(PANEL_WIDTH, 460)
 panel:SetPoint("CENTER", 180, 0)
 panel:SetFrameStrata("DIALOG")
 panel:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    bgFile = ns.WINDOW_BACKGROUND,  -- solid (the dialog texture is see-through)
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
     tile = true, tileSize = 32, edgeSize = 32,
     insets = { left = 11, right = 12, top = 12, bottom = 11 },
 })
+panel:SetBackdropColor(unpack(ns.WINDOW_COLOR))
 panel:SetClampedToScreen(true)
 panel:SetMovable(true)
 panel:EnableMouse(true)
