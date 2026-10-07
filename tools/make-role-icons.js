@@ -263,6 +263,20 @@ const ICONS = {
     crayonShape(c, [[78, 194], [178, 194], [178, 220], [78, 220]], pink, random, { hatch: 7 });
     crayonShape(c, circle(128, 96, 81, 64), pink, random, { holes: [circle(128, 96, 51, 64)] });
   },
+  nonbinary(c, random) {
+    // The nonbinary symbol: a ring with a stem topped by an asterisk (the stem is its upright line). Drawn twice:
+    // outlined, then filled again a little inside the outlines, so the crossings show one shape, not a knot.
+    const purple = hex("#9c59d1");
+    const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    for (const [inset, outline] of [[0, OUTLINE], [9, null]]) {
+      const i = inset;
+      crayonShape(c, box(114 + i, 12 + i, 142 - i, 116 + i), purple, random, { hatch: 7, outline });
+      for (const angle of [Math.PI / 6, -Math.PI / 6]) {
+        crayonShape(c, rotate(box(78 + i, 48 + i, 178 - i, 76 - i), angle, 128, 62), purple, random, { hatch: 7, outline });
+      }
+      crayonShape(c, circle(128, 180, 66 - i, 64), purple, random, { holes: [circle(128, 180, 38 + i, 64)], outline });
+    }
+  },
 
   // --- Professions ---
 
@@ -515,7 +529,7 @@ const names = Object.keys(ICONS);
 const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
   "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
-  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female"];
+  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
