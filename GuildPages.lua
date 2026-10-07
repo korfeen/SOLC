@@ -920,7 +920,8 @@ local function ExpandHeader(parent, text, onClick)
 end
 
 -- A stat card: an icon on the left, the value and its label beside it.
-local CARD_ICON = 28
+local CARD_ICON = 34
+local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"  -- painted crayon icons (tools/make-role-icons.js)
 
 local function StatCard(page, index, label, icon)
     local card = CreateFrame("Frame", nil, page, "BackdropTemplate")
@@ -931,9 +932,8 @@ local function StatCard(page, index, label, icon)
     card:SetBackdropColor(0, 0, 0, 0.5)
     card.icon = card:CreateTexture(nil, "ARTWORK")
     card.icon:SetSize(CARD_ICON, CARD_ICON)
-    card.icon:SetPoint("LEFT", 8, 0)
+    card.icon:SetPoint("LEFT", 5, 0)
     card.icon:SetTexture(icon)
-    card.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- trim the icon's built-in border
     -- The value with its label under it, as one block beside the icon, centred on the card's height.
     card.value = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     card.value:SetPoint("BOTTOMLEFT", card.icon, "RIGHT", 8, -1)
@@ -957,10 +957,10 @@ ns.RegisterPage({
         left:SetAllPoints()
         page.left = left
         page.cards = {
-            StatCard(left, 1, "points", "Interface\\Icons\\INV_Misc_Coin_02"),
-            StatCard(left, 2, "kills", "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01"),
-            StatCard(left, 3, "achievements", "Interface\\Icons\\INV_Misc_Ribbon_01"),
-            StatCard(left, 4, "PvP kills", "Interface\\Icons\\Ability_DualWield"),
+            StatCard(left, 1, "points", ICONS .. "Points"),
+            StatCard(left, 2, "kills", ICONS .. "Kills"),
+            StatCard(left, 3, "achievements", ICONS .. "Achievements"),
+            StatCard(left, 4, "PvP kills", ICONS .. "PvP"),
         }
         UI.CreateSection(left, "Showcase", SHOWCASE_TOP - 18)
         page.showcase = ShowcaseRow(left, SHOWCASE_TOP)

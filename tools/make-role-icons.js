@@ -1,6 +1,7 @@
 // Draws the Discord role icons (256x256 PNG, transparent) in "ogre crayon" style: chunky shapes filled with
 // wobbly crayon hatching on paper grain, with a thick dark crayon outline, in the ogre mode crayon colours.
-// Writes %USERPROFILE%\killtracker-art-extra\RoleIcons\<name>.png and a preview sheet (preview.png) there.
+// Writes %USERPROFILE%\killtracker-art-extra\RoleIcons\<name>.png and a preview sheet (preview.png) there, and
+// the stat card icons (ADDON_ICONS) as textures into Media/Icons.
 // Usage: node tools/make-role-icons.js   No dependencies.
 
 const fs = require("fs");
@@ -145,6 +146,16 @@ const CLASS = {
 
 // --- The icons ---------------------------------------------------------------------------------------
 
+// A chunky sword standing on the centre line, turned by tilt (radians) and shrunk by scale.
+function sword(c, random, tilt, scale = 1) {
+  const shape = (poly) => rotate(poly.map(([x, y]) => [128 + (x - 128) * scale, 128 + (y - 128) * scale]), tilt);
+  crayonShape(c, shape([[128, 8], [154, 40], [154, 164], [102, 164], [102, 40]]), C.steel, random);
+  crayonShape(c, shape([[125, 34], [131, 34], [131, 156], [125, 156]]), C.white, random, { outline: null, hatch: 6 });
+  crayonShape(c, shape([[66, 162], [190, 162], [190, 192], [66, 192]]), C.gold, random, { hatch: 8 });
+  crayonShape(c, shape([[114, 192], [142, 192], [142, 226], [114, 226]]), C.brown, random, { hatch: 8 });
+  crayonShape(c, shape(circle(128, 234, 18)), C.red, random, { hatch: 7 });
+}
+
 const ICONS = {
   // A big round-topped shield with a gold boss.
   tank(c, random) {
@@ -171,13 +182,42 @@ const ICONS = {
   },
   // A chunky sword, point up and to the right.
   dps(c, random) {
-    const tilt = Math.PI / 4;
-    const blade = rotate([[128, 8], [154, 40], [154, 164], [102, 164], [102, 40]], tilt);
-    crayonShape(c, blade, C.steel, random);
-    crayonShape(c, rotate([[125, 34], [131, 34], [131, 156], [125, 156]], tilt), C.white, random, { outline: null, hatch: 6 });
-    crayonShape(c, rotate([[66, 162], [190, 162], [190, 192], [66, 192]], tilt), C.gold, random, { hatch: 8 });
-    crayonShape(c, rotate([[114, 192], [142, 192], [142, 226], [114, 226]], tilt), C.brown, random, { hatch: 8 });
-    crayonShape(c, rotate(circle(128, 234, 18), tilt), C.red, random, { hatch: 7 });
+    sword(c, random, Math.PI / 4);
+  },
+
+  // --- The Overview's stat cards (also written into the addon as textures, see ADDON_ICONS) ---
+
+  // A stack of gold coins.
+  points(c, random) {
+    const rim = hex("#e0a020");
+    for (const y of [206, 180, 154]) crayonShape(c, ellipse(104, y, 78, 26), rim, random, { hatch: 7 });
+    crayonShape(c, circle(156, 112, 74), hex("#ffcf3a"), random);
+    crayonShape(c, circle(156, 112, 46), hex("#fff09a"), random, { outline: null, hatch: 7 });
+    crayonShape(c, star(156, 112, 30, 13), rim, random, { outline: null, hatch: 5 });
+  },
+  // A cartoon skull.
+  kills(c, random) {
+    // The cranium: a circle's arc from lower left, over the top, to lower right; then the jaw.
+    const cranium = Array.from({ length: 41 }, (_, i) => {
+      const a = Math.PI - 0.5 + (i / 40) * (Math.PI + 1);
+      return [128 + 88 * Math.cos(a), 108 + 88 * Math.sin(a)];
+    });
+    crayonShape(c, [...cranium, [186, 160], [176, 216], [80, 216], [70, 160]], hex("#f4ecd8"), random);
+    for (const x of [94, 162]) crayonShape(c, ellipse(x, 118, 26, 30), OUTLINE, random, { outline: null, hatch: 6 });
+    crayonShape(c, [[128, 142], [114, 170], [142, 170]], OUTLINE, random, { outline: null, hatch: 5 });
+    for (const x of [106, 128, 150]) stroke(c, [[x, 188], [x, 214]], 7, OUTLINE, 0.9, random);
+  },
+  // A medal on a red ribbon, with a star.
+  achievements(c, random) {
+    crayonShape(c, [[70, 12], [118, 12], [146, 120], [104, 132]], C.red, random, { hatch: 7 });
+    crayonShape(c, [[186, 12], [138, 12], [110, 120], [152, 132]], hex("#d8322a"), random, { hatch: 7 });
+    crayonShape(c, circle(128, 168, 66), C.gold, random);
+    crayonShape(c, star(128, 168, 40, 17), C.white, random, { hatch: 6 });
+  },
+  // Two crossed swords.
+  pvp(c, random) {
+    sword(c, random, Math.PI / 4, 0.8);
+    sword(c, random, -Math.PI / 4, 0.8);
   },
 
   // --- Classes: each in its class colour (CLASS below) ---
@@ -332,13 +372,31 @@ const toRgba = (c) => {
 
 fs.mkdirSync(OUT, { recursive: true });
 const names = Object.keys(ICONS);
+// Each icon's wobble is seeded by its place in this list, so adding icons (at the end) never changes the others.
+const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
+  "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp"];
+const seedOf = (name) => {
+  const index = SEED_ORDER.indexOf(name);
+  if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
+  return index * 7919 + 17;
+};
+// The icons the addon uses too: written as 128x128 textures into Media/Icons (the Overview's stat cards).
+const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP" };
+const { resize, writeBlp, bleedEdges } = require("./convert-art");
+const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.
 const sheet = Buffer.alloc(SIZE * names.length * SIZE * 2 * 4);
 names.forEach((name, n) => {
   const c = canvas();
-  ICONS[name](c, rng(n * 7919 + 17));
+  ICONS[name](c, rng(seedOf(name)));
   const rgba = toRgba(c);
   writePng(path.join(OUT, name + ".png"), SIZE, SIZE, rgba);
+  if (ADDON_ICONS[name]) {
+    const small = Buffer.from(resize({ width: SIZE, height: SIZE, rgba }, 128));
+    bleedEdges(small, 128, 128);
+    fs.mkdirSync(ADDON_OUT, { recursive: true });
+    writeBlp(path.join(ADDON_OUT, ADDON_ICONS[name] + ".blp"), 128, 128, small);
+  }
   for (const [row, bg] of [[0, [49, 51, 56]], [1, [242, 243, 245]]]) {
     for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
       const i = (y * SIZE + x) * 4, a = rgba[i + 3] / 255, o = ((row * SIZE + y) * SIZE * names.length + n * SIZE + x) * 4;

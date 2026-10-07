@@ -356,7 +356,7 @@ function readBlp(file) {
     return { width, height, rgba };
 }
 
-module.exports = { SOURCE, decodePng, resize, resample, writeBlp, readBlp };
+module.exports = { SOURCE, decodePng, resize, resample, writeBlp, readBlp, bleedEdges };
 if (require.main !== module) return;  // used as a library (the chain companion's renderer)
 
 const toId = (name) => name.toLowerCase().replace(/\.png$/, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
