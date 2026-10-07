@@ -241,6 +241,101 @@ const ICONS = {
     crayonShape(c, circle(128, 128, 34), OUTLINE, random, { outline: null, hatch: 6 });
   },
 
+  // --- Professions ---
+
+  // A round flask of green potion with a cork.
+  alchemy(c, random) {
+    crayonShape(c, [[106, 34], [150, 34], [150, 100], [106, 100]], hex("#cfe8f0"), random, { hatch: 7 });
+    crayonShape(c, circle(128, 160, 78), hex("#cfe8f0"), random);
+    crayonShape(c, [...circle(128, 160, 62).filter(([, y]) => y > 150), [70, 150], [186, 150]].sort((a, b) =>
+      Math.atan2(a[1] - 160, a[0] - 128) - Math.atan2(b[1] - 160, b[0] - 128)), hex("#5be04a"), random, { outline: null, hatch: 7 });
+    crayonShape(c, [[100, 14], [156, 14], [152, 44], [104, 44]], C.brown, random, { hatch: 6 });
+    crayonShape(c, circle(100, 130, 12), C.white, random, { outline: null, hatch: 5 });
+  },
+  // An anvil.
+  blacksmithing(c, random) {
+    const steel = hex("#8e98a6");
+    crayonShape(c, [[20, 70], [196, 70], [226, 92], [196, 120], [176, 120], [160, 150], [96, 150], [80, 120], [40, 120]], steel, random);
+    crayonShape(c, [[96, 150], [160, 150], [182, 214], [74, 214]], hex("#6d7684"), random);
+    crayonShape(c, [[48, 214], [208, 214], [208, 238], [48, 238]], hex("#5a6270"), random, { hatch: 7 });
+  },
+  // A wand with a purple magic star.
+  enchanting(c, random) {
+    crayonShape(c, rotate([[120, 100], [136, 100], [136, 244], [120, 244]], 0.6), C.brown, random, { hatch: 7 });
+    crayonShape(c, star(170, 76, 62, 26), hex("#c27cff"), random);
+    crayonShape(c, star(170, 76, 24, 10), C.white, random, { outline: null, hatch: 5 });
+    for (const [x, y, r] of [[70, 50, 22], [214, 168, 18], [52, 136, 15]]) crayonShape(c, star(x, y, r, r * 0.45), C.gold, random, { outline: null, hatch: 4 });
+  },
+  // A wrench.
+  engineering(c, random) {
+    const tilt = Math.PI / 4;
+    crayonShape(c, rotate([[114, 80], [142, 80], [142, 236], [114, 236]], tilt), C.steel, random);
+    crayonShape(c, rotate([...circle(128, 62, 44), ], tilt), C.steel, random);
+    crayonShape(c, rotate([[114, 10], [142, 10], [142, 62], [114, 62]], tilt), OUTLINE, random, { outline: null, hatch: 6 });
+    crayonShape(c, rotate(circle(128, 220, 10), tilt), OUTLINE, random, { outline: null, hatch: 5 });
+  },
+  // A flower with leaves.
+  herbalism(c, random) {
+    stroke(c, [[128, 244], [124, 190], [130, 130]], 12, hex("#3d8a2e"), 0.95, random);
+    crayonShape(c, [...quad([126, 200], [60, 196], [52, 150]), ...quad([52, 150], [104, 150], [126, 200]).slice(1)], hex("#62c94a"), random, { hatch: 6 });
+    crayonShape(c, [...quad([130, 178], [196, 172], [206, 126]), ...quad([206, 126], [150, 130], [130, 178]).slice(1)], hex("#62c94a"), random, { hatch: 6 });
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * 2 * Math.PI - Math.PI / 2;
+      crayonShape(c, circle(128 + 40 * Math.cos(a), 84 + 40 * Math.sin(a), 30), hex("#ff8fc8"), random, { hatch: 6 });
+    }
+    crayonShape(c, circle(128, 84, 24), C.gold, random, { hatch: 6 });
+  },
+  // A stretched leather hide with stitches.
+  leatherworking(c, random) {
+    const hide = [[60, 30], [100, 52], [156, 52], [196, 30], [214, 84], [196, 128], [222, 192], [180, 228], [128, 210], [76, 228], [34, 192], [60, 128], [42, 84]];
+    crayonShape(c, hide, hex("#b5763a"), random);
+    for (let y = 76; y <= 188; y += 28) stroke(c, [[96, y], [160, y]], 5, hex("#f3e2c0"), 0.85, random);
+  },
+  // A pickaxe.
+  mining(c, random) {
+    crayonShape(c, rotate([[116, 70], [140, 70], [140, 246], [116, 246]], 0.5), C.brown, random, { hatch: 7 });
+    const head = [...quad([18, 112], [118, 14], [238, 64]), [226, 102], ...quad([204, 96], [128, 70], [46, 136]).slice(1)];
+    crayonShape(c, rotate(head, 0.5), C.steel, random);
+  },
+  // A curved skinning knife.
+  skinning(c, random) {
+    const blade = [...quad([62, 150], [70, 40], [214, 22]), ...quad([214, 22], [150, 90], [146, 168]).slice(1)];
+    crayonShape(c, blade, C.steel, random);
+    crayonShape(c, rotate([[104, 156], [152, 156], [152, 238], [104, 238]], 0.45), hex("#8a5a2e"), random, { hatch: 7 });
+  },
+  // A spool of red thread with a needle.
+  tailoring(c, random) {
+    crayonShape(c, [[60, 40], [196, 40], [196, 66], [60, 66]], hex("#c8a26a"), random, { hatch: 7 });
+    crayonShape(c, [[74, 66], [182, 66], [182, 190], [74, 190]], hex("#e8433a"), random);
+    for (let y = 84; y <= 176; y += 18) stroke(c, [[80, y], [176, y + 6]], 4, hex("#a82a22"), 0.7, random);
+    crayonShape(c, [[60, 190], [196, 190], [196, 216], [60, 216]], hex("#c8a26a"), random, { hatch: 7 });
+    crayonShape(c, rotate([[214, 20], [224, 20], [222, 244], [216, 244]], -0.35), C.steel, random, { hatch: 4 });
+  },
+  // A big meat drumstick: a teardrop of roast meat on a bone with knobbly ends.
+  cooking(c, random) {
+    const tilt = -0.75;
+    crayonShape(c, rotate([[114, 150], [142, 150], [142, 226], [114, 226]], tilt), hex("#f4ecd8"), random, { hatch: 6 });
+    for (const x of [112, 144]) crayonShape(c, rotate(circle(x, 232, 20), tilt), hex("#f4ecd8"), random, { hatch: 5 });
+    const meat = [...quad([128, 176], [40, 150], [52, 82]), ...quad([52, 82], [72, 18], [128, 16]).slice(1),
+      ...quad([128, 16], [184, 18], [204, 82]).slice(1), ...quad([204, 82], [216, 150], [128, 176]).slice(1)];
+    crayonShape(c, rotate(meat, tilt), hex("#b8642a"), random);
+    crayonShape(c, rotate(ellipse(104, 74, 30, 20), tilt), hex("#e0904a"), random, { outline: null, hatch: 6 });
+  },
+  // A rolled bandage.
+  firstaid(c, random) {
+    crayonShape(c, [[90, 150], [230, 150], [230, 210], [90, 210]], hex("#f4f1ea"), random);
+    crayonShape(c, circle(90, 120, 76), hex("#f4f1ea"), random);
+    crayonShape(c, circle(90, 120, 30), hex("#d9d2c4"), random, { hatch: 6 });
+    crayonShape(c, [[150, 166], [196, 166], [196, 194], [150, 194]], C.red, random, { hatch: 5 });
+  },
+  // A blue fish.
+  fishing(c, random) {
+    crayonShape(c, ellipse(116, 128, 92, 56), hex("#4f9ae8"), random);
+    crayonShape(c, [[196, 128], [246, 76], [246, 180]], hex("#3a7cc8"), random);
+    crayonShape(c, circle(62, 112, 12), OUTLINE, random, { outline: null, hatch: 5 });
+    stroke(c, [[94, 92], [104, 128], [94, 164]], 6, hex("#2d5fa0"), 0.9, random);
+  },
+
   // --- Classes: each in its class colour (CLASS below) ---
 
   // A double-bladed axe.
@@ -396,7 +491,8 @@ const names = Object.keys(ICONS);
 // Each icon's wobble is seeded by its place in this list, so adding icons (at the end) never changes the others.
 const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
   "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
-  "close", "settings"];
+  "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
+  "skinning", "tailoring", "cooking", "firstaid", "fishing"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
