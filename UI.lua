@@ -435,10 +435,15 @@ local function DrawOgreWord(button, word)
         holder:SetPoint("CENTER", 0, 1)
         holder:SetSize(NAV_WIDTH, NAV_HEIGHT)
         holder.letters = {}
+        -- Measures letters: no box of its own, and its text is cleared first, so the width is always fresh (a
+        -- letter's own width can be stale when its text didn't change, or bound by its box).
+        holder.measure = holder:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        holder.measure:Hide()
         button.ogre = holder
     end
     local random = Wobble(word)
-    local total, lastColor = 0, nil
+    local total, lastColor, sizes, widths = 0, nil, {}, {}
+    local measure = holder.measure
     for i = 1, #word do
         local letter = holder.letters[i]
         if not letter then
@@ -451,10 +456,12 @@ local function DrawOgreWord(button, word)
         if pick == lastColor then pick = pick % #OGRE_COLORS + 1 end
         lastColor = pick
         letter:SetTextColor(unpack(OGRE_COLORS[pick]))
-        local size = NAV_FONT_SIZE * (1 + random() * OGRE_SIZE_JITTER)
-        if not letter:SetFont(OGRE_FONT, size, "") then letter:SetFont(NAV_FONT, size, "") end
-        letter:SetText(word:sub(i, i))
-        total = total + letter:GetStringWidth()
+        sizes[i] = NAV_FONT_SIZE * (1 + random() * OGRE_SIZE_JITTER)
+        if not measure:SetFont(OGRE_FONT, sizes[i], "") then measure:SetFont(NAV_FONT, sizes[i], "") end
+        measure:SetText("")
+        measure:SetText(word:sub(i, i))
+        widths[i] = measure:GetStringWidth()
+        total = total + widths[i]
     end
     -- Every letter grows (or shrinks) by the same share to fill OGRE_TEXT_SHARE of the plank, over the swirls,
     -- up to OGRE_MAX_SCALE: short words come out huge. The gaps stay.
@@ -463,11 +470,13 @@ local function DrawOgreWord(button, word)
     local x = -(total * fit + gaps) / 2
     for i = 1, #word do
         local letter = holder.letters[i]
-        local file, size = letter:GetFont()
-        letter:SetFont(file, size * fit, "")
-        local advance = letter:GetStringWidth()
+        local size = sizes[i] * fit
+        if not letter:SetFont(OGRE_FONT, size, "") then letter:SetFont(NAV_FONT, size, "") end
+        letter:SetText("")
+        letter:SetText(word:sub(i, i))
+        local advance = widths[i] * fit  -- (text width grows with the font size)
         -- A roomy box of its own: a narrow letter (I) in a box its own width could vanish.
-        letter:SetSize(size * fit * 2, size * fit * 2)
+        letter:SetSize(size * 2, size * 2)
         letter:ClearAllPoints()
         letter:SetPoint("CENTER", holder, "CENTER", x + advance / 2, random() * OGRE_BOUNCE)
         x = x + advance + OGRE_GAP
