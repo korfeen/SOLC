@@ -109,8 +109,9 @@ function crescent(ax, ay, ar, bx, by, br, n = 180) {
 const rotate = (poly, angle, cx = 128, cy = 128) => poly.map(([x, y]) => [
   cx + (x - cx) * Math.cos(angle) - (y - cy) * Math.sin(angle), cy + (x - cx) * Math.sin(angle) + (y - cy) * Math.cos(angle)]);
 
-// Fills a polygon with crayon hatching (two directions, like scribbling it in), then outlines it.
-function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, angle = 0.6 } = {}) {
+// Fills a polygon with crayon hatching (two directions, like scribbling it in), then outlines it. holes: polygons
+// cut out of it (a ring: a circle with a smaller circle as its hole), outlined too.
+function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, angle = 0.6, holes = [] } = {}) {
   for (const [a, strength] of [[angle, 0.75], [angle + 1.2, 0.45]]) {
     const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
     for (let offset = -200; offset <= 200; offset += hatch * 0.85) {
@@ -121,13 +122,13 @@ function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, ang
       let run = [];
       for (let t = -190; t <= 190; t += 2) {
         const x = 128 + nx * offset + dx * t, y = 128 + ny * offset + dy * t;
-        if (inside(x, y, poly)) run.push([x, y]);
+        if (inside(x, y, poly) && !holes.some((hole) => inside(x, y, hole))) run.push([x, y]);
         else if (run.length) { if (run.length > 1) stroke(c, run, hatch, tone, strength, random); run = []; }
       }
       if (run.length > 1) stroke(c, run, hatch, tone, strength, random);
     }
   }
-  if (outline) stroke(c, [...poly, poly[0]], 11, outline, 0.95, random);
+  if (outline) for (const edge of [poly, ...holes]) stroke(c, [...edge, edge[0]], 11, outline, 0.95, random);
 }
 
 // --- Colours (the ogre mode crayons) -----------------------------------------------------------------
@@ -245,6 +246,22 @@ const ICONS = {
   level(c, random) {
     crayonShape(c, circle(128, 128, 112), C.blue, random);
     crayonShape(c, [[128, 34], [206, 122], [158, 122], [158, 214], [98, 214], [98, 122], [50, 122]], C.gold, random);
+  },
+
+  // Gender: the male symbol (a ring with an arrow) and the female symbol (a ring with a cross), as crayon rings.
+  male(c, random) {
+    const blue = hex("#4f9ae8"), ring = [104, 154, 66, 30];  // centre x, y, radius, thickness
+    const along = (d, side = 0) => [ring[0] + d * Math.SQRT1_2 + side * Math.SQRT1_2, ring[1] - d * Math.SQRT1_2 + side * Math.SQRT1_2];
+    crayonShape(c, [along(70, -17), along(142, -17), along(142, 17), along(70, 17)], blue, random, { hatch: 7 });
+    crayonShape(c, [along(186), along(128, -44), along(128, 44)], blue, random);
+    crayonShape(c, circle(ring[0], ring[1], ring[2] + ring[3] / 2, 64), blue, random,
+      { holes: [circle(ring[0], ring[1], ring[2] - ring[3] / 2, 64)] });
+  },
+  female(c, random) {
+    const pink = hex("#ff7fbf");
+    crayonShape(c, [[114, 160], [142, 160], [142, 244], [114, 244]], pink, random, { hatch: 7 });
+    crayonShape(c, [[78, 194], [178, 194], [178, 220], [78, 220]], pink, random, { hatch: 7 });
+    crayonShape(c, circle(128, 96, 81, 64), pink, random, { holes: [circle(128, 96, 51, 64)] });
   },
 
   // --- Professions ---
@@ -498,7 +515,7 @@ const names = Object.keys(ICONS);
 const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
   "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
-  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level"];
+  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
