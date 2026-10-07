@@ -461,6 +461,7 @@ local function ShowHelp()
     Print("/solc announce - toggle per-kill chat messages")
     Print("/solc minimap - show/hide the minimap button")
     Print("/solc ogre - ogre mode: the menu in ogre words")
+    Print("/solc sounds - turn the wooden buttons' click sounds on/off")
     Print("/solc debug - announce kills and say why a mob wasn't counted")
     Print("/solc reset - clear all data for this character")
 end
@@ -494,6 +495,9 @@ SlashCmdList.SOLC = function(input)
     elseif msg == "debug" then
         ns.debugKills = not ns.debugKills
         Print("Kill debugging " .. (ns.debugKills and "on: kills are announced, and mobs that aren't counted say why." or "off."))
+    elseif msg == "sounds" then
+        db.clickSounds = db.clickSounds == false
+        Print("Button click sounds " .. (db.clickSounds and "on." or "off."))
     elseif msg == "ogre" then
         ns.UI.SetOgreMode(not db.ogreMode)
         Print(db.ogreMode and "Ogre mode: ON. Me smash buttons." or "Ogre mode off.")

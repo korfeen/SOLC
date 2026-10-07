@@ -17,7 +17,9 @@ ns.HeaderLayout = {
         { x = 600, y = 19, w = 54, h = 42, tilt = -12, texture = "Piece", shade = 1 },
     },
     buttons = {
-        settings = { x = 818, y = 4, w = 53, h = 50, icon = "Settings", iconSize = 28 },
+        settings = { x = 818, y = 4, w = 53, h = 50, icon = "Settings", iconSize = 26, runes = true },
         close = { x = 870, y = -4, w = 76, h = 60, icon = "Close", iconSize = 48 },
     },
+    plankEnd = 0.645,
+    runeHeight = 0.6,
 }

@@ -285,8 +285,17 @@ local frame = CreateFrame("Frame", "SOLCFrame", UIParent, "BackdropTemplate")
 frame:SetSize(WIDTH, HEIGHT)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
-frame:SetBackdrop(DIALOG_BACKDROP)
-frame:SetBackdropColor(unpack(ns.WINDOW_COLOR))
+-- The window's background and border only behind the pages: the menu column on the left has none, its
+-- planks hang in the open under the logo. That strip doesn't take the mouse either (clicks there reach the
+-- game), only the planks themselves do.
+local BODY_LEFT = 14 + SIDEBAR_WIDTH - 6  -- just left of the page area (which starts 8 right of the menu column)
+local body = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+body:SetPoint("TOPLEFT", BODY_LEFT, 0)
+body:SetPoint("BOTTOMRIGHT")
+body:SetFrameLevel(frame:GetFrameLevel())
+body:SetBackdrop(DIALOG_BACKDROP)
+body:SetBackdropColor(unpack(ns.WINDOW_COLOR))
+frame:SetHitRectInsets(BODY_LEFT, 0, 0, 0)
 frame:SetClampedToScreen(true)
 frame:SetMovable(true)
 frame:EnableMouse(true)
@@ -346,14 +355,32 @@ local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
 local woodHeader = CreateFrame("Frame", nil, frame)
 woodHeader:SetAllPoints()
 woodHeader:SetFrameLevel(frame:GetFrameLevel() + 40)
-for i, plank in ipairs(ns.HeaderLayout and ns.HeaderLayout.planks or {}) do
-    local texture = woodHeader:CreateTexture(nil, "ARTWORK", nil, math.min(7, i - 8))  -- later planks on top
-    texture:SetTexture(WOOD .. plank.texture)
-    texture:SetSize(plank.w, plank.h)
-    texture:SetPoint("CENTER", frame, "TOPLEFT", plank.x, -plank.y)
-    texture:SetRotation(-math.rad(plank.tilt))  -- the layout's tilt is clockwise; WoW turns anticlockwise
-    local shade = plank.shade or 1  -- the back row a little darker, for depth
+-- One tilted texture, centred on (x, y) from the window's top-left (y down).
+local function Board(layer, file, x, y, w, h, tilt, shade)
+    local texture = woodHeader:CreateTexture(nil, "ARTWORK", nil, layer)
+    texture:SetTexture(WOOD .. file)
+    texture:SetSize(w, h)
+    texture:SetPoint("CENTER", frame, "TOPLEFT", x, -y)
+    texture:SetRotation(-math.rad(tilt))  -- the layout's tilt is clockwise; WoW turns anticlockwise
     texture:SetVertexColor(shade, shade, shade)
+end
+local PLANK_END = ns.HeaderLayout and ns.HeaderLayout.plankEnd or 0.645
+for i, plank in ipairs(ns.HeaderLayout and ns.HeaderLayout.planks or {}) do
+    local layer = math.min(7, i - 8)  -- later planks on top
+    local shade = plank.shade or 1     -- the back row a little darker, for depth
+    if plank.texture == "Plank" then
+        -- In three parts, like the sidebar buttons: the ends (with the nails) at their own shape, the middle
+        -- stretched; each turned by the plank's tilt and placed along its line, so they stay joined.
+        local endWidth = math.min(plank.h * PLANK_END, plank.w / 2 - 1)
+        local angle = math.rad(plank.tilt)
+        local reach = (plank.w - endWidth) / 2
+        local dx, dy = math.cos(angle) * reach, math.sin(angle) * reach
+        Board(layer, "Plank", plank.x, plank.y, plank.w - 2 * endWidth + 2, plank.h, plank.tilt, shade)
+        Board(layer, "PlankLeft", plank.x - dx, plank.y - dy, endWidth, plank.h, plank.tilt, shade)
+        Board(layer, "PlankRight", plank.x + dx, plank.y + dy, endWidth, plank.h, plank.tilt, shade)
+    else
+        Board(layer, plank.texture, plank.x, plank.y, plank.w, plank.h, plank.tilt, shade)
+    end
 end
 -- The plank strip moves the window too, like the logo (just the band the planks cover, so the pages under it
 -- still take clicks).
@@ -368,6 +395,21 @@ headerGrip:SetScript("OnDragStop", function() frame:GetScript("OnDragStop")(fram
 -- A square wooden button with a painted icon, behaving like the sidebar's planks: dimmed at rest, lit while
 -- hovered or pressed, shrinking a little when pressed (as much as the sidebar's pushed art) with the icon
 -- dipping, and lit with a gold icon while selected (button:SetSelected, the Settings page being open).
+-- Click sounds for the wooden buttons: the game's own clack of putting down a small wooden item, and now and
+-- then (1 in 30, 1 in 10 in ogre mode) an ogre's grunt or battle cry instead. Off with /solc sounds
+-- (KillTrackerDB.clickSounds = false). Game sound files by id (the original ogre and item sounds).
+local CLICK_SOUND = 567566        -- sound/interface/pickup/putdownwoodsmall.ogg
+local OGRE_SOUNDS = { 557657, 557662, 557656, 557661, 557651 }  -- mogrefidget1-2, mogreaggro1-3
+function ns.UI.ClickSound()
+    if KillTrackerDB and KillTrackerDB.clickSounds == false then return end
+    local ogre = KillTrackerDB and KillTrackerDB.ogreMode
+    if math.random(ogre and 10 or 30) == 1 then
+        PlaySoundFile(OGRE_SOUNDS[math.random(#OGRE_SOUNDS)], "SFX")
+    else
+        PlaySoundFile(CLICK_SOUND, "SFX")
+    end
+end
+
 local HEADER_DIMMED = 0.55  -- as the sidebar's unselected planks (DIMMED, further down)
 local HEADER_PUSHED = ns.ButtonArt and ns.ButtonArt.pushed.width / ns.ButtonArt.normal.width or 0.96
 local function HeaderButton(spec, tooltip, onClick)
@@ -380,6 +422,19 @@ local function HeaderButton(spec, tooltip, onClick)
     wood:SetTexture(WOOD .. "Square")
     local icon = button:CreateTexture(nil, "OVERLAY")
     icon:SetTexture(ICONS .. spec.icon)
+    -- Runes as on the sidebar planks, one at each side: blue, yellow while selected.
+    local runes = {}
+    if spec.runes then
+        local runeHeight = spec.h * (ns.HeaderLayout.runeHeight or 0.6)
+        for side = 1, 2 do
+            local rune = button:CreateTexture(nil, "OVERLAY")
+            rune:SetTexture(WOOD .. "Rune")
+            rune:SetSize(runeHeight / 2, runeHeight)
+            rune:SetPoint("CENTER", button, side == 1 and "LEFT" or "RIGHT", (side == 1 and 1 or -1) * (3 + runeHeight / 4), 0)
+            if side == 2 then rune:SetTexCoord(1, 0, 0, 1) end  -- mirrored, as the plank's right end
+            runes[side] = rune
+        end
+    end
     local hovered, pressed, selected = false, false, false
     local function Redraw()
         local lit = hovered or pressed or selected
@@ -390,6 +445,9 @@ local function HeaderButton(spec, tooltip, onClick)
         icon:SetSize(spec.iconSize * scale, spec.iconSize * scale)
         icon:SetPoint("CENTER", pressed and 1 or 0, pressed and -2 or 0)
         if selected then icon:SetVertexColor(1, 0.82, 0) else icon:SetVertexColor(lit and 1 or 0.85, lit and 1 or 0.85, lit and 1 or 0.85) end
+        for _, rune in ipairs(runes) do
+            if selected then rune:SetVertexColor(0.92, 0.82, 0.14) else rune:SetVertexColor(0.22 * shade, 0.36 * shade, 0.78 * shade) end
+        end
     end
     function button:SetSelected(value)
         selected = value and true or false
@@ -409,7 +467,7 @@ local function HeaderButton(spec, tooltip, onClick)
     end)
     button:SetScript("OnMouseDown", function() pressed = true Redraw() end)
     button:SetScript("OnMouseUp", function() pressed = false Redraw() end)
-    button:SetScript("OnClick", onClick)
+    button:SetScript("OnClick", function(...) ns.UI.ClickSound() onClick(...) end)
     Redraw()
     return button
 end
@@ -420,12 +478,11 @@ if buttons then
     HeaderButton(buttons.close, "Close", function() frame:Hide() end)
 end
 
-local sidebar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+-- The menu column: no box of its own, the wooden planks hang straight on the window.
+local sidebar = CreateFrame("Frame", nil, frame)
 sidebar:SetPoint("TOPLEFT", 14, -44)
 sidebar:SetPoint("BOTTOMLEFT", 14, 14)
 sidebar:SetWidth(SIDEBAR_WIDTH)
-sidebar:SetBackdrop(INSET_BACKDROP)
-sidebar:SetBackdropColor(0, 0, 0, 0.5)
 
 local pageArea = CreateFrame("Frame", nil, frame, "BackdropTemplate")
 pageArea:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 8, 0)
@@ -635,7 +692,10 @@ end
 local function ScaleRings(button, look, scale)
     if look ~= "pushed" then scale = 1 end
     for _, ring in ipairs(button.rings or {}) do ring:SetSize(ring.width * scale, ring.height * scale) end
-    if button.ogre then button.ogre:SetScale(scale) end
+    if button.ogre then
+        button.ogre:SetScale(scale)
+        button.ogre:SetPoint("CENTER", look == "pushed" and 1 or 0, look == "pushed" and -1 or 1)  -- dips, like the text
+    end
 end
 
 -- Lays the sidebar out now and again a moment later: a font's first use (the crayon font, the first time ogre
@@ -675,7 +735,7 @@ local function BuildSidebar()
             ns.UI.OutlineText(button.text, NAV_OUTLINE)
             button:SetScript("OnClick", function() ns.OpenPage(lastTab[page.key] or page.key) end)
             -- Wooden; the current page is selected (Refresh).
-            ns.UI.SkinButton(button, { dimUnselected = true, onRedraw = ScaleRings })
+            ns.UI.SkinButton(button, { dimUnselected = true, steady = true, onRedraw = ScaleRings })
             navButtons[page.key] = button
             navList[#navList + 1] = button
         end
@@ -837,9 +897,15 @@ function ns.UI.SkinButton(button, options)
     local unpressedFont  -- { file, size, flags } while the text is drawn at the pushed size
     local function Redraw()
         local look = pressed and "pushed" or hovered and "hover" or selected and "selected" or "normal"
-        local art, base = ns.ButtonArt[look], ns.ButtonArt.normal
+        -- options.steady (the sidebar): the same plank in every state, only lit (hover, press, selected) or dimmed,
+        -- shrinking a little while pressed, like the window's Settings and Close buttons; the selected art (yellow
+        -- runes) while selected. Otherwise each state has its own art (hover swells, pushed dips).
+        local steady = options and options.steady
+        local artLook = steady and (selected and "selected" or "normal") or look
+        local art, base = ns.ButtonArt[artLook], ns.ButtonArt.normal
         -- This state's size relative to normal, applied to the button's size.
-        local scaleX, scaleY = art.width / base.width, art.height / base.height
+        local press = steady and pressed and ns.ButtonArt.pushed.width / base.width or 1
+        local scaleX, scaleY = art.width / base.width * press, art.height / base.height * press
         local width, height = button:GetWidth() * scaleX, button:GetHeight() * scaleY
         plate:SetSize(width, height)
         local capArt = art.width * CAP_SHARE
@@ -848,23 +914,29 @@ function ns.UI.SkinButton(button, options)
         right:SetWidth(cap)
         local u, v = art.width / art.textureWidth, art.height / art.textureHeight
         local capU = capArt / art.textureWidth
-        local file = BUTTON_FOLDER .. look
+        local file = BUTTON_FOLDER .. artLook
         local coords = { { 0, capU }, { capU, u - capU }, { u - capU, u } }
-        local shade = options and options.dimUnselected and look == "normal" and DIMMED or 1
+        local lit = hovered or pressed or selected
+        local shade = options and options.dimUnselected and not lit and DIMMED or 1
         for i, t in ipairs(pieces) do
             t:SetTexture(file)
             t:SetTexCoord(coords[i][1], coords[i][2], 0, v)
             t:SetDesaturated(not button:IsEnabled())
             t:SetVertexColor(shade, shade, shade)
         end
-        if options and options.onRedraw then options.onRedraw(button, look, scaleY) end
+        -- How much the press shrinks it (steady: the press alone, not the bigger selected art).
+        local pushScale = steady and press or scaleY
+        if options and options.onRedraw then options.onRedraw(button, look, pushScale) end
         -- The text shrinks or grows with the art while pressed (its font as it was is put back on release).
         local text = button.text or button:GetFontString()
+        if text and steady then
+            text:SetPoint("CENTER", pressed and 1 or 0, pressed and -1 or 1)  -- dips while pressed, like the icons
+        end
         if text then
-            if look == "pushed" and scaleY ~= 1 and not unpressedFont then
+            if look == "pushed" and pushScale ~= 1 and not unpressedFont then
                 unpressedFont = { text:GetFont() }
                 if unpressedFont[1] then
-                    text:SetFont(unpressedFont[1], unpressedFont[2] * scaleY, unpressedFont[3])
+                    text:SetFont(unpressedFont[1], unpressedFont[2] * pushScale, unpressedFont[3])
                 end
             elseif look ~= "pushed" and unpressedFont then
                 if unpressedFont[1] then text:SetFont(unpack(unpressedFont)) end
@@ -876,6 +948,7 @@ function ns.UI.SkinButton(button, options)
     button:HookScript("OnLeave", function() hovered, pressed = false, false Redraw() end)
     button:HookScript("OnMouseDown", function() if button:IsEnabled() then pressed = true Redraw() end end)
     button:HookScript("OnMouseUp", function() pressed = false Redraw() end)
+    button:HookScript("OnClick", function() ns.UI.ClickSound() end)
     button:HookScript("OnEnable", Redraw)
     button:HookScript("OnDisable", Redraw)
     button:HookScript("OnSizeChanged", Redraw)
