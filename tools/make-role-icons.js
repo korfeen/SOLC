@@ -241,6 +241,12 @@ const ICONS = {
     crayonShape(c, circle(128, 128, 34), OUTLINE, random, { outline: null, hatch: 6 });
   },
 
+  // Level: a round blue badge with a big gold up-arrow.
+  level(c, random) {
+    crayonShape(c, circle(128, 128, 112), C.blue, random);
+    crayonShape(c, [[128, 34], [206, 122], [158, 122], [158, 214], [98, 214], [98, 122], [50, 122]], C.gold, random);
+  },
+
   // --- Professions ---
 
   // A round flask of green potion with a cork.
@@ -492,7 +498,7 @@ const names = Object.keys(ICONS);
 const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
   "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
-  "skinning", "tailoring", "cooking", "firstaid", "fishing"];
+  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
