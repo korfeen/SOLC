@@ -90,6 +90,21 @@ const arcBand = (cx, cy, r, w, a0, a1, n = 32) => {
   });
   return [...arc(r + w / 2), ...arc(r - w / 2).reverse()];
 };
+// A crescent: circle (ax, ay, ar) with circle (bx, by, br) bitten out of it.
+function crescent(ax, ay, ar, bx, by, br, n = 180) {
+  const inB = ([x, y]) => Math.hypot(x - bx, y - by) < br;
+  const inA = ([x, y]) => Math.hypot(x - ax, y - ay) < ar;
+  const outer = Array.from({ length: n }, (_, i) => [ax + ar * Math.cos((i / n) * 2 * Math.PI), ay + ar * Math.sin((i / n) * 2 * Math.PI)]);
+  const inner = Array.from({ length: n }, (_, i) => [bx + br * Math.cos((i / n) * 2 * Math.PI), by + br * Math.sin((i / n) * 2 * Math.PI)]);
+  // The outer arc that's left, starting just after the bite, then the bite's edge back the other way.
+  const start = outer.findIndex((p, i) => !inB(p) && inB(outer[(i + n - 1) % n]));
+  const arc = [];
+  for (let i = 0; i < n; i++) { const p = outer[(start + i) % n]; if (inB(p)) break; arc.push(p); }
+  const startB = inner.findIndex((p, i) => inA(p) && !inA(inner[(i + n - 1) % n]));
+  const bite = [];
+  for (let i = 0; i < n; i++) { const p = inner[(startB + i) % n]; if (!inA(p)) break; bite.push(p); }
+  return [...arc, ...bite.reverse()];
+}
 const rotate = (poly, angle, cx = 128, cy = 128) => poly.map(([x, y]) => [
   cx + (x - cx) * Math.cos(angle) - (y - cy) * Math.sin(angle), cy + (x - cx) * Math.sin(angle) + (y - cy) * Math.cos(angle)]);
 
@@ -243,6 +258,54 @@ const ICONS = {
     crayonShape(c, ellipse(128, 168, 62, 52), CLASS.druid, random);
     for (const [x, y, r] of [[58, 108, 24], [98, 62, 26], [158, 62, 26], [198, 108, 24]]) {
       crayonShape(c, ellipse(x, y, r, r * 1.2), CLASS.druid, random, { hatch: 7 });
+    }
+  },
+
+  // --- Races (the guild's Alliance races in WoW: Forever) ---
+
+  // A gold crown with red gems.
+  human(c, random) {
+    crayonShape(c, [[44, 196], [44, 92], [88, 138], [128, 62], [168, 138], [212, 92], [212, 196]], C.gold, random);
+    for (const [x, y] of [[44, 84], [128, 54], [212, 84]]) crayonShape(c, circle(x, y, 14), C.gold, random, { hatch: 6 });
+    crayonShape(c, [[44, 166], [212, 166], [212, 198], [44, 198]], hex("#e8a92a"), random, { hatch: 7 });
+    for (const x of [88, 128, 168]) crayonShape(c, circle(x, 182, 11), C.red, random, { hatch: 5 });
+  },
+  // A horned helmet over a ginger beard.
+  dwarf(c, random) {
+    const horn = hex("#f3e6c4");
+    const left = [...quad([70, 118], [30, 96], [26, 34]), ...quad([26, 34], [54, 92], [92, 96]).slice(1)];
+    crayonShape(c, left, horn, random, { hatch: 6 });
+    crayonShape(c, left.map(([x, y]) => [256 - x, y]), horn, random, { hatch: 6 });
+    const beard = [[70, 140], [186, 140], ...quad([186, 140], [198, 206], [160, 222]).slice(1), [146, 240], [128, 226],
+      [110, 240], [96, 222], ...quad([96, 222], [58, 206], [70, 140]).slice(1)];
+    crayonShape(c, beard, hex("#d9652b"), random);
+    crayonShape(c, [...quad([60, 132], [64, 36], [128, 32]), ...quad([128, 32], [192, 36], [196, 132]).slice(1)], C.steel, random);
+    crayonShape(c, [[50, 120], [206, 120], [206, 150], [50, 150]], hex("#c9a227"), random, { hatch: 7 });
+    crayonShape(c, [[118, 118], [138, 118], [138, 182], [118, 182]], C.steel, random, { hatch: 6 });
+  },
+  // A crescent moon with a little star.
+  nightelf(c, random) {
+    crayonShape(c, crescent(116, 132, 100, 156, 104, 84), hex("#c7b6ff"), random);
+    crayonShape(c, star(186, 170, 30, 13), C.gold, random, { hatch: 6 });
+  },
+  // A cog with a pink centre.
+  gnome(c, random) {
+    const cog = [];
+    const teeth = 10;
+    for (let i = 0; i < teeth * 4; i++) {
+      const a = (i / (teeth * 4)) * 2 * Math.PI, r = i % 4 < 2 ? 112 : 86;
+      cog.push([128 + r * Math.cos(a), 128 + r * Math.sin(a)]);
+    }
+    crayonShape(c, cog, C.steel, random);
+    crayonShape(c, circle(128, 128, 42), hex("#ff8fc8"), random, { hatch: 7 });
+  },
+  // A feather, for the Skyborne's gift of the wind.
+  skyborne(c, random) {
+    const feather = [...quad([80, 222], [44, 110], [208, 22]), ...quad([208, 22], [214, 150], [100, 230]).slice(1)];
+    crayonShape(c, feather, hex("#9fe3ff"), random);
+    stroke(c, [[64, 248], [96, 206], ...quad([96, 206], [146, 120], [204, 30]).slice(1)], 7, OUTLINE, 0.95, random);
+    for (const [x0, y0, x1, y1] of [[96, 176, 70, 158], [124, 138, 168, 140], [140, 104, 112, 88]]) {
+      stroke(c, [[x0, y0], [x1, y1]], 6, OUTLINE, 0.9, random);
     }
   },
 };
