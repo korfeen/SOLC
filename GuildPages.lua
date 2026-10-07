@@ -107,6 +107,19 @@ local function ScrollList(page, top)
     return list
 end
 
+-- Activity feed rows (Guild home, the Overview's recent list): the event and its date; a minted or won picture
+-- opens in the picture viewer on click.
+local function ShowFeedPicture(item)
+    if item.mint then ns.ShowMint(item.mint, item.owner) end
+end
+local function FeedTooltip(row, item)
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(item.text, 1, 1, 1, true)
+    GameTooltip:AddLine(date("%Y-%m-%d %H:%M", item.time), 0.6, 0.6, 0.6)
+    if item.mint then GameTooltip:AddLine("Click to see the picture", 0.4, 0.8, 1) end
+    GameTooltip:Show()
+end
+
 -- The bounty block shared by Overview and Guild home: name, bar, details. Click opens the Bounty Board.
 -- width: default the whole page.
 local function BountyBlock(page, y, width)
@@ -1091,7 +1104,7 @@ ns.RegisterPage({
         page.recent:Set(mine, function(row, item)
             row.label:SetText(item.text)
             row.count:SetText("|cff999999" .. ns.TimeAgo(item.time) .. "|r")
-        end)
+        end, ShowFeedPicture, FeedTooltip)
         page.recentEmpty:SetShown(#mine == 0 and (page.expanded == nil or page.expanded == "recent"))
     end,
 })
@@ -1123,12 +1136,7 @@ ns.RegisterPage({
         page.feed:Set(feed, function(row, item)
             row.label:SetText(item.text)
             row.count:SetText("|cff999999" .. ns.TimeAgo(item.time) .. "|r")
-        end, nil, function(row, item)
-            GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(item.text, 1, 1, 1, true)
-            GameTooltip:AddLine(date("%Y-%m-%d %H:%M", item.time), 0.6, 0.6, 0.6)
-            GameTooltip:Show()
-        end)
+        end, ShowFeedPicture, FeedTooltip)
         page.empty:SetShown(#feed == 0)
     end,
 })

@@ -47,6 +47,18 @@ local function AchievementText(id)
     return ("%s kills: %s"):format(kills, name)
 end
 
+-- The picture a minted (M) or won (W) event is about, if its owner still has it.
+local function EventMint(e, source)
+    if e.k ~= "M" and e.k ~= "W" then return nil end
+    if source == KillTrackerDB then
+        for _, m in ipairs(KillTrackerDB.mints or {}) do
+            if m.number == tonumber(e.a) then return m end
+        end
+        return nil
+    end
+    return source.mints and source.mints[tonumber(e.a)]
+end
+
 -- An event as text, or nil if unknown. who: the player's name; source: their stats (for mob names).
 local function Describe(e, who, source)
     if e.k == "L" then
@@ -56,18 +68,12 @@ local function Describe(e, who, source)
     elseif e.k == "A" then
         return ("%s earned |cffff8000%s|r"):format(who, AchievementText(e.a))
     elseif e.k == "M" then
-        local mint = source.mints and source.mints[tonumber(e.a)]
-        if source == KillTrackerDB then
-            for _, m in ipairs(KillTrackerDB.mints or {}) do if m.number == tonumber(e.a) then mint = m end end
-        end
+        local mint = EventMint(e, source)
         local rarity = mint and ns.MintRarity(mint.traits)
         return ("%s minted %spicture #%s"):format(who,
             rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a))
     elseif e.k == "W" then
-        local mint = source.mints and source.mints[tonumber(e.a)]
-        if source == KillTrackerDB then
-            for _, m in ipairs(KillTrackerDB.mints or {}) do if m.number == tonumber(e.a) then mint = m end end
-        end
+        local mint = EventMint(e, source)
         local rarity = mint and ns.MintRarity(mint.traits)
         return ("%s won %spicture #%s%s"):format(who,
             rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a),
@@ -80,13 +86,17 @@ local function Describe(e, who, source)
     end
 end
 
--- The guild feed, newest first: { { time, text, who } }, from you and everyone synced.
+-- The guild feed, newest first: { { time, text, who, mint, owner } }, from you and everyone synced. mint: the
+-- picture a minted/won event is about (click to view); owner: whose it is (nil for yours).
 function ns.GetFeed()
     local feed = {}
     local function Add(who, source)
         for _, e in ipairs(source.events or {}) do
             local text = Describe(e, who, source)
-            if text then feed[#feed + 1] = { time = e.t, text = text, who = who } end
+            if text then
+                feed[#feed + 1] = { time = e.t, text = text, who = who, mint = EventMint(e, source),
+                    owner = source ~= KillTrackerDB and who or nil }
+            end
         end
     end
     Add(ns.MyName(), KillTrackerDB)
