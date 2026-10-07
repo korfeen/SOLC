@@ -337,21 +337,88 @@ do
     end
 end
 
-local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-close:SetPoint("TOPRIGHT", -6, -6)
+-- Header ------------------------------------------------------------------------------------------------
+-- Wooden planks along the window's top edge, from the logo to the two square buttons (Settings and Close), as
+-- laid out in HeaderLayout.lua (tools/header-layout.js, which also draws a preview). Every plank is one of two
+-- small textures (Media/Wood, tools/convert-wood.js), stretched and tilted. Under the logo, over the window.
+local WOOD = "Interface\\AddOns\\SOLC\\Media\\Wood\\"
+local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
+local woodHeader = CreateFrame("Frame", nil, frame)
+woodHeader:SetAllPoints()
+woodHeader:SetFrameLevel(frame:GetFrameLevel() + 40)
+for i, plank in ipairs(ns.HeaderLayout and ns.HeaderLayout.planks or {}) do
+    local texture = woodHeader:CreateTexture(nil, "ARTWORK", nil, math.min(7, i - 8))  -- later planks on top
+    texture:SetTexture(WOOD .. plank.texture)
+    texture:SetSize(plank.w, plank.h)
+    texture:SetPoint("CENTER", frame, "TOPLEFT", plank.x, -plank.y)
+    texture:SetRotation(-math.rad(plank.tilt))  -- the layout's tilt is clockwise; WoW turns anticlockwise
+    local shade = plank.shade or 1  -- the back row a little darker, for depth
+    texture:SetVertexColor(shade, shade, shade)
+end
+-- The plank strip moves the window too, like the logo (just the band the planks cover, so the pages under it
+-- still take clicks).
+local headerGrip = CreateFrame("Frame", nil, woodHeader)
+headerGrip:SetPoint("TOPLEFT", frame, "TOPLEFT", 186, 8)
+headerGrip:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -110, -42)
+headerGrip:EnableMouse(true)
+headerGrip:RegisterForDrag("LeftButton")
+headerGrip:SetScript("OnDragStart", function() frame:StartMoving() end)
+headerGrip:SetScript("OnDragStop", function() frame:GetScript("OnDragStop")(frame) end)
 
-local cog = CreateFrame("Button", nil, frame)  -- opens Settings
-cog:SetSize(20, 20)
-cog:SetPoint("RIGHT", close, "LEFT", -2, 0)
-cog:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
-cog:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-cog:SetScript("OnClick", function() ns.OpenPage("settings") end)
-cog:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Settings")
-    GameTooltip:Show()
-end)
-cog:SetScript("OnLeave", GameTooltip_Hide)
+-- A square wooden button with a painted icon, behaving like the sidebar's planks: dimmed at rest, lit while
+-- hovered or pressed, shrinking a little when pressed (as much as the sidebar's pushed art) with the icon
+-- dipping, and lit with a gold icon while selected (button:SetSelected, the Settings page being open).
+local HEADER_DIMMED = 0.55  -- as the sidebar's unselected planks (DIMMED, further down)
+local HEADER_PUSHED = ns.ButtonArt and ns.ButtonArt.pushed.width / ns.ButtonArt.normal.width or 0.96
+local function HeaderButton(spec, tooltip, onClick)
+    local button = CreateFrame("Button", nil, woodHeader)
+    button:SetFrameLevel(woodHeader:GetFrameLevel() + 2)
+    button:SetSize(spec.w, spec.h)
+    button:SetPoint("TOPLEFT", frame, "TOPLEFT", spec.x, -spec.y)
+    local wood = button:CreateTexture(nil, "ARTWORK")
+    wood:SetPoint("CENTER")
+    wood:SetTexture(WOOD .. "Square")
+    local icon = button:CreateTexture(nil, "OVERLAY")
+    icon:SetTexture(ICONS .. spec.icon)
+    local hovered, pressed, selected = false, false, false
+    local function Redraw()
+        local lit = hovered or pressed or selected
+        local shade = lit and 1 or HEADER_DIMMED
+        wood:SetVertexColor(shade, shade, shade)
+        local scale = pressed and HEADER_PUSHED or 1
+        wood:SetSize(spec.w * scale, spec.h * scale)
+        icon:SetSize(spec.iconSize * scale, spec.iconSize * scale)
+        icon:SetPoint("CENTER", pressed and 1 or 0, pressed and -2 or 0)
+        if selected then icon:SetVertexColor(1, 0.82, 0) else icon:SetVertexColor(lit and 1 or 0.85, lit and 1 or 0.85, lit and 1 or 0.85) end
+    end
+    function button:SetSelected(value)
+        selected = value and true or false
+        Redraw()
+    end
+    button:SetScript("OnEnter", function(self)
+        hovered = true
+        Redraw()
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(tooltip)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function()
+        hovered, pressed = false, false
+        Redraw()
+        GameTooltip_Hide()
+    end)
+    button:SetScript("OnMouseDown", function() pressed = true Redraw() end)
+    button:SetScript("OnMouseUp", function() pressed = false Redraw() end)
+    button:SetScript("OnClick", onClick)
+    Redraw()
+    return button
+end
+local settingsButton  -- lit while the Settings page is open (Refresh)
+local buttons = ns.HeaderLayout and ns.HeaderLayout.buttons
+if buttons then
+    settingsButton = HeaderButton(buttons.settings, "Settings", function() ns.OpenPage("settings") end)
+    HeaderButton(buttons.close, "Close", function() frame:Hide() end)
+end
 
 local sidebar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
 sidebar:SetPoint("TOPLEFT", 14, -44)
@@ -1330,6 +1397,7 @@ function Refresh()
         end
     end
     ShowTabs(current)
+    if settingsButton then settingsButton:SetSelected(current.key == "settings") end
     if not current.frame then
         current.frame = current.create(pageArea)
         current.frame:SetParent(pageArea)

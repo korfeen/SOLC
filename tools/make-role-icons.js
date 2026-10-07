@@ -138,6 +138,8 @@ const C = {
   blue: hex("#4f86e8"), steel: hex("#b7c1cc"), green: hex("#5bd24a"), white: hex("#fff6dc"),
   red: hex("#ff4a3a"), orange: hex("#ff9a2a"), brown: hex("#8a5a2e"), gold: hex("#ffd23f"),
 };
+// The header buttons' light grey paint (as in the header design).
+const PAINT = hex("#e6e1d6");
 // WoW's class colours (the same as the Discord class roles).
 const CLASS = {
   warrior: hex("#C69B6D"), paladin: hex("#F48CBA"), hunter: hex("#AAD372"), rogue: hex("#FFF468"),
@@ -218,6 +220,25 @@ const ICONS = {
   pvp(c, random) {
     sword(c, random, Math.PI / 4, 0.8);
     sword(c, random, -Math.PI / 4, 0.8);
+  },
+
+  // --- The window's header buttons (on the dark wooden squares) ---
+
+  // A chunky X.
+  close(c, random) {
+    const bar = [[106, 26], [150, 26], [150, 230], [106, 230]];
+    crayonShape(c, rotate(bar, Math.PI / 4), PAINT, random);
+    crayonShape(c, rotate(bar, -Math.PI / 4), PAINT, random);
+  },
+  // A cog with a hole.
+  settings(c, random) {
+    const cog = [];
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * 2 * Math.PI, r = i % 4 < 2 ? 112 : 84;
+      cog.push([128 + r * Math.cos(a), 128 + r * Math.sin(a)]);
+    }
+    crayonShape(c, cog, PAINT, random);
+    crayonShape(c, circle(128, 128, 34), OUTLINE, random, { outline: null, hatch: 6 });
   },
 
   // --- Classes: each in its class colour (CLASS below) ---
@@ -374,14 +395,15 @@ fs.mkdirSync(OUT, { recursive: true });
 const names = Object.keys(ICONS);
 // Each icon's wobble is seeded by its place in this list, so adding icons (at the end) never changes the others.
 const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
-  "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp"];
+  "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
+  "close", "settings"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
   return index * 7919 + 17;
 };
 // The icons the addon uses too: written as 128x128 textures into Media/Icons (the Overview's stat cards).
-const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP" };
+const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP", close: "Close", settings: "Settings" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.

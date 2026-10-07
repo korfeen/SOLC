@@ -27,6 +27,7 @@ Guild.lua
 BountyBoard.lua
 Combined.lua
 LogoMask.lua
+HeaderLayout.lua
 ButtonArt.lua
 UI.lua
 GuildPages.lua
