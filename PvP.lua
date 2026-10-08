@@ -85,6 +85,7 @@ local function RecordPvPKill(victim)
     pvp.total = pvp.total + 1
     ns.Touch(pvp)  -- guildmates get the new total (and points) with the next live update
     sessionKills = sessionKills + 1
+    if ns.CheckAchievements then ns.CheckAchievements() end
     if ns.OnBountyEvent then ns.OnBountyEvent("pvp", victim) end
 
     local key = victim and victim.name and (victim.name .. "-" .. (victim.realm or GetNormalizedRealmName() or ""))

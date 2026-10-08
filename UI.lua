@@ -31,11 +31,13 @@ local VIEWS = {
     rank = { label = "Rank", levels = { "rank" } },
     mobs = { label = "Mobs", levels = {} },
     pvp = { levels = { "race", "class" }, players = true },
+    rares = { levels = { "zone" }, rares = true },  -- every rare in the game (Rares.lua), by zone
 }
-local PLURALS = { subtype = "subtypes", faction = "factions", rank = "ranks", race = "races", class = "classes" }
+local PLURALS = { subtype = "subtypes", faction = "factions", rank = "ranks", race = "races", class = "classes", zone = "zones" }
 
 local EMPTY_TEXT = {
     achievements = "No achievements yet - keep killing.",
+    rares = "No rares known.",
     pvp = "No PvP kills yet.",
 }
 
@@ -115,6 +117,46 @@ local function LeaderStatus(level, category)
     return status
 end
 
+-- Rares (Rares.lua): a silver star, gold once killed. Each rare's categories (as for kills), and zone.
+local RARE_STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:14:14:0:0:64:64:0:64:0:64:255:210:60|t"
+local RARE_STAR_GREY = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:14:14:0:0:64:64:0:64:0:64:150:150:150|t"
+local rareCategories  -- [npcID] = categories, with zone (built on first use)
+local function RareCategories()
+    if not rareCategories then
+        rareCategories = {}
+        for npcID, rare in pairs(ns.Rares or {}) do
+            local c = ns.Categorize(npcID, { name = rare[1] })
+            c.zone = ns.RareZones[rare[2]]
+            rareCategories[npcID] = c
+        end
+    end
+    return rareCategories
+end
+local function IsRare(npcID) return ns.Rares and ns.Rares[npcID] ~= nil end
+
+-- The rares inside the categories clicked into so far (path: { value } per level of levels), how often the viewed
+-- player killed them: { { npcID, name, kills, zone, level, elite, c } }.
+local function RaresInside(levels, path)
+    local list, kills = {}, Source().kills or {}
+    for npcID, c in pairs(RareCategories()) do
+        local inside = true
+        for i, step in ipairs(path) do
+            if CategoryOf(c, levels[i]) ~= step.value then inside = false break end
+        end
+        if inside then
+            local rare, entry = ns.Rares[npcID], kills[npcID]
+            list[#list + 1] = { npcID = npcID, name = rare[1], kills = entry and entry.count or 0, zone = c.zone,
+                level = rare[3], elite = rare[4], c = c }
+        end
+    end
+    return list
+end
+-- "rares 1/3" after a category with rares: found / all, gold when all are found.
+local function RareNote(found, all)
+    if all == 0 then return nil end
+    return (found == all and "|cffffd200rares %d/%d|r" or "|cff999999rares %d/%d|r"):format(found, all)
+end
+
 -- Crown after a faction name: gold when all its leaders are dead, grey (with "1/3" if several) until then.
 local function LeaderCrown(status)
     local killed = 0
@@ -178,6 +220,34 @@ local function BuildRows()
         return rows
     end
 
+    if state.view == "rares" then
+        if #state.path == 0 then
+            local found, all = {}, {}
+            for _, rare in ipairs(RaresInside({}, {})) do
+                all[rare.zone] = (all[rare.zone] or 0) + 1
+                if rare.kills > 0 then found[rare.zone] = (found[rare.zone] or 0) + 1 end
+            end
+            for zone, count in pairs(all) do
+                rows[#rows + 1] = { label = zone, count = found[zone] or 0, category = zone, rareZone = true,
+                    rareAll = count, hint = "Click to see its rares." }
+            end
+            table.sort(rows, function(a, b)
+                local fa, fb = a.count / a.rareAll, b.count / b.rareAll
+                if fa ~= fb then return fa > fb end
+                return a.label < b.label
+            end)
+        else
+            for _, rare in ipairs(RaresInside({ "zone" }, state.path)) do
+                rows[#rows + 1] = { label = rare.name, count = rare.kills, rare = rare }
+            end
+            table.sort(rows, function(a, b)
+                if (a.count > 0) ~= (b.count > 0) then return a.count > 0 end
+                return a.rare.level < b.rare.level
+            end)
+        end
+        return rows
+    end
+
     if state.view == "achievements" then
         for _, progress in ipairs(ns.GetAchievementProgress(Source())) do
             -- Sort key: closest to its next tier first, fully completed categories last.
@@ -210,7 +280,8 @@ local function BuildRows()
                 rows[#rows + 1] = { label = mob.name, count = mob.count, player = mob.player,
                     hint = not mob.player and "Honorable kills where the victim couldn't be identified." or nil }
             else
-                rows[#rows + 1] = { label = mob.name, count = mob.count, mob = mob, leading = IsLeader(mob.npcID) }
+                rows[#rows + 1] = { label = mob.name, count = mob.count, mob = mob, leading = IsLeader(mob.npcID),
+                    rareMob = IsRare(mob.npcID) }
             end
         end
     else
@@ -237,6 +308,36 @@ local function BuildRows()
             local note = level == "subtype" and types[key] ~= key and types[key] or nil
             rows[#rows + 1] = { label = label, count = count, category = key, note = note, hint = hint,
                 leaders = LeaderStatus(level, key) }
+        end
+        if not view.players then
+            local path = { unpack(state.path) }
+            for _, row in ipairs(rows) do
+                if row.category then
+                    path[#state.path + 1] = { value = row.category }
+                    local found, all = 0, 0
+                    for _, rare in ipairs(RaresInside(levels, path)) do
+                        all = all + 1
+                        if rare.kills > 0 then found = found + 1 end
+                    end
+                    row.rares = RareNote(found, all)
+                end
+            end
+        end
+    end
+
+    -- Inside a category, its rares are always listed like the leaders: greyed out until killed. Those in a
+    -- category shown below (one you can click into) are listed in there instead.
+    if #state.path > 0 and not view.players then
+        local listed, shown = {}, {}
+        for _, row in ipairs(rows) do
+            if row.mob then listed[row.mob.npcID] = true end
+            if row.category then shown[row.category] = true end
+        end
+        local next = levels[#state.path + 1]
+        for _, rare in ipairs(RaresInside(levels, state.path)) do
+            if not listed[rare.npcID] and rare.kills == 0 and not (next and shown[CategoryOf(rare.c, next)]) then
+                rows[#rows + 1] = { label = rare.name, count = 0, rare = rare }
+            end
         end
     end
 
@@ -1180,13 +1281,13 @@ local function ShowAchievementTooltip(row)
     local progress = row.data.achievement
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:AddLine(progress.category)
-    AddValue("Kills", progress.kills)
+    AddValue((progress.unit or "kills"):gsub("^%l", string.upper), progress.kills)
     GameTooltip:AddLine(" ")
     for _, tier in ipairs(progress.tiers) do
         if tier.earned then
             GameTooltip:AddDoubleLine(tier.name, tier.time and date("%Y-%m-%d", tier.time) or "Earned", 0.2, 1, 0.2, 0.2, 1, 0.2)
         else
-            GameTooltip:AddDoubleLine(tier.name, ("%d kills"):format(tier.kills), 0.6, 0.6, 0.6, 0.6, 0.6, 0.6)
+            GameTooltip:AddDoubleLine(tier.name, ("%d %s"):format(tier.kills, progress.unit or "kills"), 0.6, 0.6, 0.6, 0.6, 0.6, 0.6)
         end
     end
     GameTooltip:Show()
@@ -1263,6 +1364,18 @@ local function GetRow(i)
             if p.level then AddValue("Level", p.level) end
             if p.zone and p.zone ~= "" then AddValue("Last killed in", p.zone) end
             if p.time then AddValue("Last killed", date("%Y-%m-%d %H:%M", p.time)) end
+            GameTooltip:Show()
+        elseif self.data.rare then
+            local rare = self.data.rare
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(rare.name)
+            GameTooltip:AddLine(rare.elite and "Rare elite" or "Rare", 0.75, 0.75, 0.85)
+            AddValue("Level", rare.level)
+            AddValue("Zone", rare.zone)
+            AddValue("Creature", rare.c.subtype)
+            if rare.c.faction ~= rare.c.subtype then AddValue("Faction", rare.c.faction) end
+            AddValue("Kills", rare.kills > 0 and rare.kills or "Not found yet")
+            GameTooltip:AddLine(ns.WOWHEAD_NPC_URL:format(rare.npcID), 0.6, 0.6, 0.6)
             GameTooltip:Show()
         elseif self.data.leader then
             local leader = self.data.leader
@@ -1370,7 +1483,7 @@ local function RefreshList()
     local data = BuildRows()
     local total, max = 0, 0
     for _, d in ipairs(data) do
-        if not d.leader then total = total + d.count end  -- leaders listed from elsewhere don't add up
+        if not d.leader and not d.rare then total = total + d.count end  -- leaders and rares listed from elsewhere don't add up
         if d.count > max then max = d.count end
     end
 
@@ -1431,16 +1544,29 @@ local function RefreshList()
                 barFraction = 1
             end
             row.bar:SetVertexColor(1, 0.5, 0.1, 0.45)
+        elseif d.rare then
+            local killed = d.rare.kills > 0
+            row.label:SetText((killed and RARE_STAR or RARE_STAR_GREY) .. " " .. (killed and d.label or "|cff888888" .. d.label .. "|r")
+                .. ("  |cff999999%d%s|r"):format(d.rare.level, d.rare.elite and " elite" or ""))
+            row.count:SetText(killed and d.rare.kills or "|cff888888not found|r")
+            barFraction = 0
+        elseif d.rareZone then
+            row.label:SetText(d.count == d.rareAll and (d.label .. "  " .. RARE_STAR) or d.label)
+            row.count:SetText(("%d/%d"):format(d.count, d.rareAll))
+            barFraction = d.count / d.rareAll
+            row.bar:SetVertexColor(0.85, 0.85, 0.9, 0.35)
         elseif d.leader then
             local killed = d.leader.kills > 0
             row.label:SetText((killed and CROWN or CROWN_GREY) .. " " .. (killed and d.label or "|cff888888" .. d.label .. "|r"))
             row.count:SetText(killed and d.count or "|cff888888not killed|r")
         elseif d.category then
             local label = d.note and ("%s  |cff999999%s|r"):format(d.label, d.note) or d.label
-            row.label:SetText(d.leaders and label .. "  " .. LeaderCrown(d.leaders) or label)
+            if d.leaders then label = label .. "  " .. LeaderCrown(d.leaders) end
+            row.label:SetText(d.rares and label .. "  " .. d.rares or label)
             row.count:SetText(("%d  |cff999999%d%%|r"):format(d.count, total > 0 and math.floor(d.count / total * 100 + 0.5) or 0))
         else
-            if d.leading then row.label:SetText(CROWN .. " " .. d.label) end
+            if d.leading then row.label:SetText(CROWN .. " " .. d.label)
+            elseif d.rareMob then row.label:SetText(RARE_STAR .. " " .. d.label) end
             row.count:SetText(d.count)
         end
         row:SetBar(barFraction)
@@ -1589,5 +1715,6 @@ ns.OnFriendsChanged = ns.OnKillsChanged
 
 ListPage("kills", "Kills", 2)
 ListPage("pvp", "PvP", 3, "pvp", "kills")
+ListPage("rares", "Rares", 6, "rares", "kills")
 ListPage("achievements", "Achievements", 4, "achievements")
 ListPage("collection", "Collection", 5, "collection")

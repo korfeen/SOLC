@@ -61,6 +61,7 @@ local function LeaderPoints(npcID)
 end
 
 local function AchievementPoints(id)
+    if ns.FeatPoints and ns.FeatPoints(id) then return ns.FeatPoints(id) end
     local dimension, kills = id:match("^(%a+):.*:(%d+)$")
     kills = tonumber(kills)
     if dimension == "faction" then return kills == 1000 and ns.Config("achTribe") or 0 end
@@ -84,7 +85,7 @@ function ns.GetPoints(source)
     else
         for _, row in ipairs(ns.GetAchievementProgress(source)) do
             for _, tier in ipairs(row.tiers) do
-                if tier.earned then p.achievements = p.achievements + (row.tribe and ns.Config("achTribe") or TierPoints(tier.kills)) end
+                if tier.earned then p.achievements = p.achievements + (tier.points or 0) end
             end
         end
     end

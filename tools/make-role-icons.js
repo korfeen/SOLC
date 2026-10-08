@@ -111,7 +111,7 @@ const rotate = (poly, angle, cx = 128, cy = 128) => poly.map(([x, y]) => [
 
 // Fills a polygon with crayon hatching (two directions, like scribbling it in), then outlines it. holes: polygons
 // cut out of it (a ring: a circle with a smaller circle as its hole), outlined too.
-function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, angle = 0.6, holes = [] } = {}) {
+function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, angle = 0.6, holes = [], line = 11 } = {}) {
   for (const [a, strength] of [[angle, 0.75], [angle + 1.2, 0.45]]) {
     const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
     for (let offset = -200; offset <= 200; offset += hatch * 0.85) {
@@ -128,7 +128,7 @@ function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, ang
       if (run.length > 1) stroke(c, run, hatch, tone, strength, random);
     }
   }
-  if (outline) for (const edge of [poly, ...holes]) stroke(c, [...edge, edge[0]], 11, outline, 0.95, random);
+  if (outline) for (const edge of [poly, ...holes]) stroke(c, [...edge, edge[0]], line, outline, 0.95, random);
 }
 
 // --- Colours (the ogre mode crayons) -----------------------------------------------------------------
@@ -240,6 +240,64 @@ const ICONS = {
     }
     crayonShape(c, cog, PAINT, random);
     crayonShape(c, circle(128, 128, 34), OUTLINE, random, { outline: null, hatch: 6 });
+  },
+
+  // --- The activity feed's icons: drawn to be read at about 17 pixels (few big shapes, a thick outline) ---
+
+  // A leader slain: a gold crown with a red gem.
+  feedLeader(c, random) {
+    const crown = [[34, 196], [34, 70], [84, 128], [128, 46], [172, 128], [222, 70], [222, 196]];
+    crayonShape(c, crown, C.gold, random, { line: 20 });
+    crayonShape(c, circle(128, 160, 24), C.red, random, { hatch: 7, line: 16 });
+  },
+  // A rare found: a big silver star.
+  feedRare(c, random) {
+    crayonShape(c, star(128, 136, 120, 52), hex("#d6dbe4"), random, { line: 20 });
+    crayonShape(c, star(128, 136, 52, 22), C.white, random, { outline: null, hatch: 6 });
+  },
+  // An achievement: a medal on a short ribbon.
+  feedAchievement(c, random) {
+    crayonShape(c, [[66, 10], [124, 10], [148, 104], [100, 112]], C.red, random, { hatch: 7, line: 18 });
+    crayonShape(c, [[190, 10], [132, 10], [108, 104], [156, 112]], hex("#d8322a"), random, { hatch: 7, line: 18 });
+    crayonShape(c, circle(128, 164, 80), C.gold, random, { line: 20 });
+    crayonShape(c, star(128, 164, 48, 20), C.white, random, { hatch: 6, line: 14 });
+  },
+  // A picture minted (when there's no picture to show): a framed picture of a hill under the sky.
+  feedMint(c, random) {
+    crayonShape(c, [[22, 30], [234, 30], [234, 226], [22, 226]], C.brown, random, { line: 20,
+      holes: [[[58, 66], [198, 66], [198, 190], [58, 190]]] });
+    crayonShape(c, [[58, 66], [198, 66], [198, 190], [58, 190]], hex("#8fd0f0"), random, { outline: null, hatch: 7 });
+    crayonShape(c, [[58, 190], [58, 150], [110, 112], [160, 150], [198, 132], [198, 190]], C.green, random, { outline: null, hatch: 7 });
+  },
+  // A picture won in a puzzle race: a puzzle piece. Outlined first, then filled again without outlines, so the
+  // knobs join the body as one shape.
+  feedWon(c, random) {
+    const purple = hex("#b07ae8");
+    const parts = [[[46, 70], [186, 70], [186, 210], [46, 210]], circle(116, 52, 36), circle(204, 140, 36)];
+    for (const outline of [OUTLINE, null]) {
+      for (const part of parts) crayonShape(c, part, purple, random, { hatch: 7, line: 20, outline });
+    }
+    crayonShape(c, circle(84, 176, 18), hex("#2b1a10"), random, { outline: null, hatch: 5 });  // a hole in the corner
+  },
+  // A bounty done: a wanted poster with a red seal.
+  feedBounty(c, random) {
+    crayonShape(c, rotate([[50, 22], [206, 22], [206, 234], [50, 234]], 0.06), hex("#f0d9a4"), random, { line: 20 });
+    for (const y of [70, 110, 150]) stroke(c, rotate([[80, y], [176, y]], 0.06), 12, OUTLINE, 0.85, random);
+    crayonShape(c, circle(160, 196, 30), C.red, random, { hatch: 6, line: 14 });
+  },
+  // A guild boss down: a horned skull.
+  feedBoss(c, random) {
+    for (const side of [-1, 1]) {
+      const horn = [[128 + side * 54, 76], [128 + side * 108, 12], [128 + side * 112, 70], [128 + side * 80, 104]];
+      crayonShape(c, horn, hex("#e8d8a8"), random, { hatch: 7, line: 18 });
+    }
+    const cranium = Array.from({ length: 41 }, (_, i) => {
+      const a = Math.PI - 0.5 + (i / 40) * (Math.PI + 1);
+      return [128 + 78 * Math.cos(a), 124 + 78 * Math.sin(a)];
+    });
+    crayonShape(c, [...cranium, [178, 170], [170, 226], [86, 226], [78, 170]], hex("#f4ecd8"), random, { line: 20 });
+    for (const x of [98, 158]) crayonShape(c, ellipse(x, 132, 24, 28), C.red, random, { outline: null, hatch: 6 });
+    stroke(c, [[110, 200], [146, 200]], 12, OUTLINE, 0.9, random);
   },
 
   // Level: a round blue badge with a big gold up-arrow.
@@ -529,14 +587,18 @@ const names = Object.keys(ICONS);
 const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage",
   "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
-  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary"];
+  "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary", "feedLeader",
+  "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
   return index * 7919 + 17;
 };
-// The icons the addon uses too: written as 128x128 textures into Media/Icons (the Overview's stat cards).
-const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP", close: "Close", settings: "Settings" };
+// The icons the addon uses too: written as 128x128 textures into Media/Icons (the Overview's stat cards, the header
+// buttons, the activity feed's icons).
+const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP", close: "Close", settings: "Settings",
+  feedLeader: "Feed_Leader", feedRare: "Feed_Rare", feedAchievement: "Feed_Achievement", feedMint: "Feed_Mint", feedWon: "Feed_Won",
+  feedBounty: "Feed_Bounty", feedBoss: "Feed_Boss" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.

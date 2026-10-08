@@ -33,12 +33,15 @@ local STAT_COLOR = { 1, 1, 1 }
 local FEED_COLOR, FEED_TIME_COLOR = { 0.93, 0.88, 0.78 }, { 0.72, 0.6, 0.36 }  -- cream, muted gold
 local FEED_STRIPE, FEED_HOVER = 0.035, 0.08  -- every other row a touch lighter; the row under the mouse lighter still
 -- The small icon at the start of a line, by the event's kind (Feed.lua); a picture's line shows the picture itself.
+local FEED_ICON = "Interface\\AddOns\\SOLC\\Media\\Icons\\Feed_"  -- the feed's own crayon icons (tools/make-role-icons.js)
 local FEED_ICONS = {
-    L = { "Interface\AddOns\SOLC\Media\Crown", { 1, 0.82, 0.25 } },  -- a leader slain
-    R = { "Interface\AddOns\SOLC\Media\Icons\Kills" },               -- a rare
-    D = { "Interface\AddOns\SOLC\Media\Icons\Kills" },               -- a boss with the guild
-    A = { "Interface\AddOns\SOLC\Media\Icons\Achievements" },
-    B = { "Interface\AddOns\SOLC\Media\Icons\Points" },               -- a bounty
+    L = "Leader",       -- a leader slain
+    R = "Rare",         -- a rare found
+    A = "Achievement",
+    M = "Mint",         -- a picture minted (shown as the picture itself while they still have it)
+    W = "Won",          -- a picture won in a puzzle race
+    B = "Bounty",
+    D = "Boss",         -- a boss with the guild
 }
 local GEAR_COLOR = { 1, 0.78, 0.1 }
 local TEXT_OUTLINE = { 0.12, 0.07, 0.03 }    -- dark brown round the light text on the boards (ns.UI.OutlineText)
@@ -669,14 +672,12 @@ ns.RegisterPage({
             local line = item and item.text:gsub("^" .. who:gsub("%p", "%%%0") .. " ", "", 1):gsub("^%l", string.upper)
             row.text:SetText(line or (i == 1 and "Nothing yet - go smash something." or ""))
             row.time:SetText(item and ns.TimeAgo(item.time) or "")
-            local icon = item and FEED_ICONS[item.kind]
+            local thumbnail = item and item.kind == "M" and item.mint
+            local icon = item and not thumbnail and FEED_ICONS[item.kind]
             row.icon:SetShown(icon ~= nil)
-            if icon then
-                row.icon:SetTexture(icon[1])
-                row.icon:SetVertexColor(unpack(icon[2] or { 1, 1, 1 }))
-            end
-            row.picture:SetShown(item and item.mint ~= nil or false)
-            if item and item.mint and row.drawn ~= item.mint.traits then
+            if icon then row.icon:SetTexture(FEED_ICON .. icon) end
+            row.picture:SetShown(thumbnail and true or false)
+            if thumbnail and row.drawn ~= item.mint.traits then
                 ns.RenderMint(row.picture, item.mint.traits)
                 row.drawn = item.mint.traits
             end

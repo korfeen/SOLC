@@ -12,6 +12,8 @@ Config.lua
 Core.lua
 Toast.lua
 Records.lua
+Rares.lua
+AchievementNames.lua
 Achievements.lua
 PvP.lua
 Gear.lua

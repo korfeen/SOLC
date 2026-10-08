@@ -196,6 +196,7 @@ function ns.Mint()
     db.mints[#db.mints + 1] = mint
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("M", mint.number) end
+    if ns.CheckAchievements then ns.CheckAchievements() end
     return mint
 end
 
@@ -241,6 +242,7 @@ function ns.AddWonMint(traits, from, mintedAt)
     db.mints[#db.mints + 1] = mint
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("W", mint.number, from) end
+    if ns.CheckAchievements then ns.CheckAchievements() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     return mint
 end
@@ -452,6 +454,7 @@ function ns.ToggleShowcase(mint)
         showcase.numbers[#showcase.numbers + 1] = mint.number
     end
     ns.Touch(showcase)
+    if ns.CheckAchievements then ns.CheckAchievements() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     return true
 end

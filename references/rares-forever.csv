@@ -1,0 +1,393 @@
+npcID,name,level,rank,zone,spawns
+9417,"Sleeping Dragon",60,Rare Elite,"unknown",0
+5348,"Dreamwatcher Forktongue",62,Rare,"unknown",0
+14281,"Jimmy the Bleeder",23,Rare,"Alterac Mountains",1
+14223,"Cranky Benj",32,Rare,"Alterac Mountains",1
+14222,"Araga",35,Rare,"Alterac Mountains",1
+2452,"Skhowl",36,Rare,"Alterac Mountains",1
+14221,"Gravis Slipknot",36,Rare,"Alterac Mountains",1
+2258,"Stone Fury",37,Rare,"Alterac Mountains",1
+2453,"Lo'Grosh",39,Rare,"Alterac Mountains",2
+2447,"Narillasanz",44,Rare Elite,"Alterac Mountains",1
+2600,"Singer",34,Rare,"Arathi Highlands",1
+2603,"Kovork",36,Rare,"Arathi Highlands",3
+2606,"Nimar the Slayer",37,Rare,"Arathi Highlands",15
+2598,"Darbel Montrose",39,Rare Elite,"Arathi Highlands",14
+2602,"Ruul Onestone",39,Rare Elite,"Arathi Highlands",2
+2604,"Molok the Crusher",39,Rare,"Arathi Highlands",3
+2605,"Zalas Witherbark",40,Rare,"Arathi Highlands",10
+2609,"Geomancer Flintdagger",40,Rare,"Arathi Highlands",1
+2779,"Prince Nazjak",41,Rare,"Arathi Highlands",24
+2601,"Foulbelly",42,Rare Elite,"Arathi Highlands",4
+3735,"Apothecary Falthis",22,Rare,"Ashenvale",3
+10559,"Lady Vespia",22,Rare,"Ashenvale",2
+10644,"Mist Howler",22,Rare,"Ashenvale",2
+10643,"Mugglefin",23,Rare,"Ashenvale",1
+10639,"Rorgish Jowl",25,Rare,"Ashenvale",1
+10641,"Branch Snapper",25,Rare,"Ashenvale",1
+3773,"Akkrilus",26,Rare,"Ashenvale",1
+10640,"Oakpaw",27,Rare,"Ashenvale",1
+10642,"Eck'alom",27,Rare,"Ashenvale",1
+12037,"Ursol'lok",31,Rare,"Ashenvale",1
+3792,"Terrowulf Packlord",32,Rare,"Ashenvale",1
+10647,"Prince Raze",32,Rare,"Ashenvale",2
+6118,"Varo'then's Ghost",48,Rare,"Azshara",1
+8660,"The Evalcharr",48,Rare,"Azshara",1
+6648,"Antilos",50,Rare,"Azshara",1
+6651,"Gatekeeper Rageroar",50,Rare,"Azshara",1
+6649,"Lady Sesspira",51,Rare,"Azshara",1
+6650,"General Fangferror",51,Rare,"Azshara",1
+6647,"Magister Hawkhelm",52,Rare,"Azshara",1
+6652,"Master Feardred",52,Rare,"Azshara",3
+13896,"Scalebeard",52,Rare Elite,"Azshara",1
+6646,"Monnos the Elder",54,Rare Elite,"Azshara",1
+10203,"Berylgos",62,Rare Elite,"Azshara",0
+2751,"War Golem",36,Rare,"Badlands",3
+2850,"Broken Tooth",37,Rare,"Badlands",4
+7057,"Digmaster Shovelphlange",38,Rare Elite,"Badlands",1
+2744,"Shadowforge Commander",40,Rare,"Badlands",1
+2749,"Siege Golem",40,Rare Elite,"Badlands",14
+14224,"7:XT",41,Rare,"Badlands",7
+2752,"Rumbler",45,Rare,"Badlands",4
+2754,"Anathemus",45,Rare Elite,"Badlands",1
+2931,"Zaricotl",55,Rare Elite,"Badlands",3
+10820,"Duke Ragereaver",45,Rare,"Blackrock Depths",0
+8924,"The Behemoth",50,Rare Elite,"Blackrock Depths",0
+9025,"Lord Roccor",51,Rare Elite,"Blackrock Depths",1
+9024,"Pyromancer Loregrain",52,Rare Elite,"Blackrock Depths",1
+9042,"Verek",55,Rare Elite,"Blackrock Depths",1
+9041,"Warder Stilgiss",56,Rare Elite,"Blackrock Depths",1
+8923,"Panzor the Invincible",57,Rare Elite,"Blackrock Depths",1
+9046,"Scarshield Quartermaster",55,Rare Elite,"Blackrock Mountain",1
+10263,"Burning Felguard",56-57,Rare Elite,"Blackrock Spire",1
+9219,"Spirestone Butcher",57,Rare Elite,"Blackrock Spire",1
+9217,"Spirestone Lord Magus",58,Rare Elite,"Blackrock Spire",1
+9218,"Spirestone Battle Lord",58,Rare Elite,"Blackrock Spire",1
+9596,"Bannok Grimaxe",59,Rare Elite,"Blackrock Spire",1
+9718,"Ghok Bashguud",59,Rare Elite,"Blackrock Spire",1
+9736,"Quartermaster Zigris",59,Rare Elite,"Blackrock Spire",1
+10509,"Jed Runewatcher",59,Rare Elite,"Blackrock Spire",1
+10376,"Crystal Fang",60,Rare Elite,"Blackrock Spire",1
+10584,"Urok Doomhowl",60,Rare Elite,"Blackrock Spire",1
+10819,"Baron Bloodbane",45,Rare,"Blasted Lands",0
+8296,"Mojo the Twisted",48,Rare,"Blasted Lands",4
+8302,"Deatheye",49,Rare,"Blasted Lands",13
+8303,"Grunter",50,Rare,"Blasted Lands",18
+8300,"Ravage",51,Rare,"Blasted Lands",14
+8299,"Spiteflayer",52,Rare,"Blasted Lands",15
+8301,"Clack the Reaver",53,Rare,"Blasted Lands",17
+8298,"Akubar the Seer",54,Rare,"Blasted Lands",8
+8297,"Magronos the Unyielding",56,Rare,"Blasted Lands",1
+8304,"Dreadscorn",57,Rare,"Blasted Lands",1
+10077,"Deathmaw",53,Rare,"Burning Steppes",4
+9602,"Hahk'Zor",54,Rare,"Burning Steppes",4
+9604,"Gorgon'och",54,Rare,"Burning Steppes",5
+10078,"Terrorspark",55,Rare,"Burning Steppes",8
+8981,"Malfunctioning Reaver",56,Rare,"Burning Steppes",5
+8978,"Thauris Balgarr",57,Rare,"Burning Steppes",9
+8979,"Gruklash",59,Rare,"Burning Steppes",7
+8976,"Hematos",60,Rare Elite,"Burning Steppes",1
+10119,"Volchan",60,Rare Elite,"Burning Steppes",1
+2175,"Shadowclaw",13,Rare,"Darkshore",1
+2191,"Licillin",14,Rare,"Darkshore",1
+2186,"Carnivous the Breaker",16,Rare,"Darkshore",5
+7015,"Flagglemurk the Cruel",16,Rare,"Darkshore",2
+7017,"Lord Sinslayer",16,Rare,"Darkshore",3
+2184,"Lady Moongazer",17,Rare,"Darkshore",1
+2192,"Firecaller Radison",19,Rare,"Darkshore",1
+2172,"Strider Clutchmother",20,Rare,"Darkshore",1
+7016,"Lady Vespira",22,Rare,"Darkshore",8
+10236,"Wep",33,Rare,"Desolace",0
+14225,"Prince Kellen",33,Rare,"Desolace",1
+14228,"Giggler",34,Rare,"Desolace",1
+10237,"Yor",35,Rare,"Desolace",0
+10238,"Staggon",35,Rare,"Desolace",0
+14229,"Accursed Slitherblade",35,Rare,"Desolace",1
+14227,"Hissperak",37,Rare,"Desolace",1
+10239,"Tepolar",38,Rare Elite,"Desolace",0
+14226,"Kaskk",40,Rare,"Desolace",1
+11688,"Cursed Centaur",43,Rare,"Desolace",1
+11447,"Mushgog",60,Rare Elite,"Dire Maul",0
+11497,"The Razza",60,Rare Elite,"Dire Maul",0
+1137,"Edan the Howler",9,Rare,"Dun Morogh",2
+1132,"Timber",10,Rare,"Dun Morogh",3
+1260,"Great Father Arctikus",11,Rare,"Dun Morogh",6
+8503,"Gibblewilt",11,Rare,"Dun Morogh",2
+1119,"Hammerspine",12,Rare,"Dun Morogh",1
+1130,"Bjarn",12,Rare,"Dun Morogh",4
+5808,"Warlord Kolkanis",9,Rare,"Durotar",3
+5809,"Watch Commander Zalaphil",9,Rare,"Durotar",2
+5826,"Geolord Mottle",9,Rare,"Durotar",3
+5822,"Felweaver Scornn",11,Rare Elite,"Durotar",3
+5823,"Death Flayer",11,Rare,"Durotar",1
+5824,"Captain Flat Tusk",11,Rare Elite,"Durotar",3
+521,"Lupos",23,Rare,"Duskwood",16
+574,"Naraxis",27,Rare,"Duskwood",1
+503,"Lord Malathrom",31,Rare,"Duskwood",7
+507,"Fenros",32,Rare,"Duskwood",8
+771,"Commander Felstrom",32,Rare,"Duskwood",10
+534,"Nefaru",34,Rare,"Duskwood",3
+14231,"Drogoth the Roamer",37,Rare,"Dustwallow Marsh",1
+14230,"Burgle Eye",38,Rare,"Dustwallow Marsh",1
+14232,"Dart",38,Rare,"Dustwallow Marsh",1
+14233,"Ripscale",39,Rare,"Dustwallow Marsh",5
+4380,"Darkmist Widow",40,Rare,"Dustwallow Marsh",1
+14234,"Hayoc",41,Rare,"Dustwallow Marsh",1
+14237,"Oozeworm",42,Rare,"Dustwallow Marsh",3
+14236,"Lord Angler",44,Rare,"Dustwallow Marsh",1
+4339,"Brimgore",45,Rare Elite,"Dustwallow Marsh",1
+10817,"Duggan Wildhammer",55,Rare,"Eastern Plaguelands",7
+10825,"Gish the Unmoving",56,Rare,"Eastern Plaguelands",1
+10827,"Deathspeaker Selendre",56,Rare,"Eastern Plaguelands",1
+10821,"Hed'mush the Rotting",57,Rare,"Eastern Plaguelands",4
+10826,"Lord Darkscythe",57,Rare,"Eastern Plaguelands",1
+10822,"Warlord Thresh'jin",58,Rare,"Eastern Plaguelands",1
+10823,"Zul'Brin Warpbranch",59,Rare,"Eastern Plaguelands",1
+10828,"High General Abbendis",59,Rare Elite,"Eastern Plaguelands",1
+10824,"Ranger Lord Hawkspear",60,Rare,"Eastern Plaguelands",1
+471,"Mother Fang",7-10,Rare,"Elwynn Forest",1
+79,"Narg the Taskmaster",10,Rare,"Elwynn Forest",1
+99,"Morgaine the Sly",10,Rare,"Elwynn Forest",1
+61,"Thuros Lightfingers",11,Rare,"Elwynn Forest",8
+100,"Gruff Swiftbite",12,Rare,"Elwynn Forest",5
+472,"Fedfennel",12,Rare,"Elwynn Forest",4
+14339,"Death Howl",49,Rare,"Felwood",4
+14344,"Mongress",50,Rare,"Felwood",4
+14342,"Ragepaw",51,Rare,"Felwood",1
+14345,"The Ongar",51,Rare,"Felwood",1
+14343,"Olm the Wise",52,Rare,"Felwood",1
+14341,"Felendor the Accuser",53-54,Rare,"Felwood",0
+14340,"Alshirr Banebreath",54,Rare,"Felwood",1
+7104,"Dessecus",56,Rare Elite,"Felwood",1
+7137,"Immolatus",56,Rare Elite,"Felwood",1
+5356,"Snarler",42,Rare,"Feralas",1
+5352,"Old Grizzlegut",43,Rare,"Feralas",1
+5354,"Gnarl Leafbrother",44,Rare,"Feralas",1
+5345,"Diamond Head",45,Rare,"Feralas",1
+5343,"Lady Szallah",46,Rare,"Feralas",1
+5350,"Qirot",47,Rare,"Feralas",1
+5346,"Bloodroar the Stalker",48,Rare,"Feralas",1
+5347,"Antilus the Soarer",48,Rare,"Feralas",1
+5349,"Arash-ethis",49,Rare,"Feralas",1
+11498,"Skarr the Unbreakable",58,Rare Elite,"Feralas",1
+6228,"Dark Iron Ambassador",33,Rare Elite,"Gnomeregan",1
+14279,"Creepthess",24,Rare,"Hillsbrad Foothills",1
+14280,"Big Samras",27,Rare,"Hillsbrad Foothills",1
+14275,"Tamra Stormpike",28,Rare Elite,"Hillsbrad Foothills",3
+14278,"Ro'Bark",28,Rare,"Hillsbrad Foothills",1
+14276,"Scargil",30,Rare,"Hillsbrad Foothills",1
+14277,"Lady Zephris",33,Rare,"Hillsbrad Foothills",1
+5367,"Scillia Daggerquil",35,Rare Elite,"Hillsbrad Foothills",0
+1425,"Grizlak",15,Rare,"Loch Modan",1
+14268,"Lord Condar",16,Rare,"Loch Modan",4
+14266,"Shanda the Spinner",19,Rare,"Loch Modan",1
+14267,"Emogg the Crusher",19,Rare Elite,"Loch Modan",1
+1399,"Magosh",21,Rare,"Loch Modan",1
+1398,"Boss Galgosh",22,Rare,"Loch Modan",1
+2476,"Large Loch Crocolisk",22,Rare,"Loch Modan",2
+12237,"Meshlok the Harvester",48,Rare Elite,"Maraudon",1
+3068,"Mazzranache",9,Rare,"Mulgore",1
+5786,"Snagglespear",9,Rare,"Mulgore",2
+5807,"The Rake",10,Rare,"Mulgore",1
+5785,"Sister Hatelash",11,Rare Elite,"Mulgore",1
+5787,"Enforcer Emilgund",11,Rare,"Mulgore",1
+3056,"Ghost Howl",12,Rare,"Mulgore",3
+4438,"Razorfen Spearhide",29-30,Rare Elite,"Razorfen Kraul",1
+4425,"Blind Hunter",32,Rare Elite,"Razorfen Kraul",1
+4842,"Earthcaller Halmgar",32,Rare Elite,"Razorfen Kraul",1
+14271,"Ribchaser",17,Rare,"Redridge Mountains",15
+14272,"Snarlflare",18,Rare,"Redridge Mountains",12
+14270,"Squiddic",19,Rare,"Redridge Mountains",31
+14269,"Seeker Aqualon",21,Rare,"Redridge Mountains",3
+616,"Chatter",23,Rare,"Redridge Mountains",14
+14273,"Boulderheart",25,Rare,"Redridge Mountains",1
+947,"Rohh the Silent",26,Rare,"Redridge Mountains",13
+584,"Kazon",27,Rare,"Redridge Mountains",4
+6488,"Fallen Champion",33,Rare Elite,"Scarlet Monastery",1
+6489,"Ironspine",33,Rare Elite,"Scarlet Monastery",1
+6490,"Azshir the Sleepless",33,Rare Elite,"Scarlet Monastery",1
+8279,"Faulty War Golem",46,Rare,"Searing Gorge",5
+8280,"Shleipnarr",47,Rare,"Searing Gorge",1
+8277,"Rekk'tilac",48,Rare,"Searing Gorge",5
+8281,"Scald",49,Rare,"Searing Gorge",2
+8278,"Smoldar",50,Rare,"Searing Gorge",1
+8283,"Slave Master Blackheart",50,Rare,"Searing Gorge",5
+8282,"Highlord Mastrogonde",51,Rare Elite,"Searing Gorge",4
+3872,"Deathsworn Captain",25,Rare Elite,"Shadowfang Keep",1
+14476,"Krellack",56,Rare,"Silithus",1
+14472,"Gretheer",57,Rare,"Silithus",1
+14475,"Rex Ashil",57,Rare Elite,"Silithus",1
+14477,"Grubthor",58,Rare,"Silithus",1
+14478,"Huricanian",58,Rare,"Silithus",1
+14474,"Zora",59,Rare Elite,"Silithus",1
+14473,"Lapress",60,Rare Elite,"Silithus",2
+14479,"Twilight Lord Everun",60,Rare,"Silithus",3
+14471,"Setis",61,Rare Elite,"Silithus",1
+17075,"Sandworm",63,Rare Elite,"Silithus",0
+12431,"Gorefang",13,Rare,"Silverpine Forest",1
+12432,"Old Vicejaw",14,Rare,"Silverpine Forest",1
+12433,"Krethis Shadowspinner",15,Rare,"Silverpine Forest",1
+1920,"Dalaran Spellscribe",21,Rare,"Silverpine Forest",1
+1944,"Rot Hide Bruiser",22,Rare,"Silverpine Forest",1
+2283,"Ravenclaw Regent",22,Rare,"Silverpine Forest",1
+1948,"Snarlmane",23,Rare,"Silverpine Forest",1
+5932,"Taskmaster Whipfang",22,Rare Elite,"Stonetalon Mountains",1
+5931,"Foreman Rigger",24,Rare Elite,"Stonetalon Mountains",1
+4015,"Pridewing Patriarch",25,Rare,"Stonetalon Mountains",2
+5916,"Sentinel Amarassan",27,Rare Elite,"Stonetalon Mountains",1
+5928,"Sorrow Wing",27,Rare Elite,"Stonetalon Mountains",1
+5930,"Sister Riven",28,Rare Elite,"Stonetalon Mountains",1
+5915,"Brother Ravenoak",29,Rare Elite,"Stonetalon Mountains",1
+4030,"Vengeful Ancient",30,Rare,"Stonetalon Mountains",1
+4066,"Nal'taszar",30,Rare Elite,"Stonetalon Mountains",1
+3581,"Sewer Beast",50,Rare,"Stormwind City",2
+14487,"Gluggle",37,Rare,"Stranglethorn Vale",4
+14488,"Roloch",38,Rare,"Stranglethorn Vale",1
+14491,"Kurmokk",42,Rare,"Stranglethorn Vale",1
+14492,"Verifonix",42,Rare,"Stranglethorn Vale",6
+723,"Mosh'Ogg Butcher",44,Rare Elite,"Stranglethorn Vale",1
+14490,"Rippa",44,Rare,"Stranglethorn Vale",2
+1552,"Scale Belly",45,Rare,"Stranglethorn Vale",4
+2541,"Lord Sakrasis",45,Rare,"Stranglethorn Vale",2
+10818,"Death Knight Soulbearer",43,Rare,"Stratholme",0
+10558,"Hearthsinger Forresten",57,Rare Elite,"Stratholme",1
+10393,"Skul",58,Rare Elite,"Stratholme",1
+10808,"Timmy the Cruel",58,Rare Elite,"Stratholme",1
+10809,"Stonespine",60,Rare Elite,"Stratholme",1
+16379,"Spirit of the Damned",61,Rare,"Stratholme",0
+16380,"Bone Witch",61,Rare,"Stratholme",0
+5399,"Veyzhak the Cannibal",48,Rare Elite,"Sunken Temple",0
+5400,"Zekkis",49,Rare Elite,"Sunken Temple",0
+1106,"Lost One Cook",37,Rare,"Swamp of Sorrows",6
+763,"Lost One Chieftain",39,Rare,"Swamp of Sorrows",5
+14448,"Molt Thorn",42,Rare,"Swamp of Sorrows",19
+14235,"The Rot",43,Rare,"Swamp of Sorrows",0
+14446,"Fingat",43,Rare,"Swamp of Sorrows",1
+14447,"Gilmorian",43,Rare,"Swamp of Sorrows",1
+14445,"Lord Captain Wyrmak",45,Rare Elite,"Swamp of Sorrows",1
+1063,"Jade",47,Rare Elite,"Swamp of Sorrows",0
+8208,"Murderous Blisterpaw",43,Rare,"Tanaris",1
+8199,"Warleader Krazzilak",45,Rare Elite,"Tanaris",1
+8200,"Jin'Zallah the Sandbringer",46,Rare Elite,"Tanaris",1
+8207,"Greater Firebird",46,Rare,"Tanaris",1
+8203,"Kregg Keelhaul",47,Rare,"Tanaris",1
+8202,"Cyclok the Mad",48,Rare,"Tanaris",1
+8201,"Omgorn the Lost",50,Rare,"Tanaris",1
+8204,"Soriid the Devourer",50,Rare,"Tanaris",1
+8205,"Haarka the Ravenous",50,Rare,"Tanaris",1
+8206,"Soul of Tanaris",51,Rare Elite,"Tanaris",0
+14432,"Threggil",6,Rare,"Teldrassil",1
+14428,"Uruson",7,Rare,"Teldrassil",1
+14431,"Fury Shelda",8,Rare,"Teldrassil",1
+14430,"Duskstalker",9,Rare,"Teldrassil",1
+14429,"Grimmaw",11,Rare,"Teldrassil",1
+3535,"Blackmoss the Fetid",13,Rare,"Teldrassil",4
+5865,"Dishu",13,Rare,"The Barrens",1
+3270,"Elder Mystic Razorsnout",15,Rare Elite,"The Barrens",1
+3470,"Rathorian",15,Rare,"The Barrens",1
+5837,"Stonearm",15,Rare,"The Barrens",1
+601,"Capo the Mean",16,Rare Elite,"The Barrens",0
+5829,"Snort the Heckler",17,Rare,"The Barrens",1
+5838,"Brokespear",17,Rare,"The Barrens",1
+5841,"Rocklance",17,Rare Elite,"The Barrens",1
+3295,"Sludge Beast",19,Rare,"The Barrens",1
+3652,"Trigore the Lasher",19,Rare Elite,"The Barrens",1
+5830,"Sister Rathtalon",19,Rare Elite,"The Barrens",1
+5835,"Foreman Grills",19,Rare,"The Barrens",1
+5836,"Engineer Whirleygig",19,Rare,"The Barrens",1
+5842,"Takk the Leaper",19,Rare Elite,"The Barrens",1
+5863,"Geopriest Gukk'rok",19,Rare,"The Barrens",1
+3398,"Gesharahan",20,Rare Elite,"The Barrens",1
+3672,"Boahn",20,Rare Elite,"The Barrens",1
+5831,"Swiftmane",21,Rare Elite,"The Barrens",1
+5864,"Swinegart Spearhide",22,Rare Elite,"The Barrens",1
+5828,"Humar the Pridelord",23,Rare Elite,"The Barrens",1
+3253,"Silithid Harvester",24,Rare,"The Barrens",1
+5799,"Hannah Bladeleaf",24,Rare Elite,"The Barrens",1
+5800,"Marcus Bel",24,Rare Elite,"The Barrens",1
+5832,"Thunderstomp",24,Rare,"The Barrens",1
+5847,"Heggin Stonewhisker",24,Rare,"The Barrens",2
+5849,"Digger Flameforge",24,Rare,"The Barrens",1
+5798,"Thora Feathermoon",25,Rare Elite,"The Barrens",1
+5834,"Azzere the Skyblade",25,Rare,"The Barrens",1
+5848,"Malgin Barleybrew",25,Rare,"The Barrens",1
+5797,"Aean Swiftriver",26,Rare Elite,"The Barrens",1
+5859,"Hagg Taurenbane",26,Rare Elite,"The Barrens",3
+5827,"Brontus",27,Rare Elite,"The Barrens",1
+5851,"Captain Gerogg Hammertoe",27,Rare Elite,"The Barrens",1
+7895,"Ambassador Bloodrage",36,Rare Elite,"The Barrens",1
+3586,"Miner Johnson",19,Rare Elite,"The Deadmines",1
+639,"Edwin VanCleef",21,Rare Elite,"The Deadmines",1
+8211,"Old Cliff Jumper",42,Rare,"The Hinterlands",1
+8219,"Zul'arek Hatefowler",43,Rare,"The Hinterlands",1
+8210,"Razortalon",44,Rare,"The Hinterlands",1
+8218,"Witherheart the Stalker",45,Rare,"The Hinterlands",1
+8216,"Retherokk the Berserker",48,Rare,"The Hinterlands",1
+8212,"The Reak",49,Rare,"The Hinterlands",1
+8214,"Jalinde Summerdrake",49,Rare,"The Hinterlands",1
+8215,"Grimungous",50,Rare Elite,"The Hinterlands",1
+8213,"Ironback",51,Rare,"The Hinterlands",1
+8217,"Mith'rethis the Enchanter",52,Rare Elite,"The Hinterlands",1
+1720,"Bruegal Ironknuckle",26,Rare Elite,"The Stockade",1
+14426,"Harb Foulmountain",27,Rare,"Thousand Needles",1
+14427,"Gibblesnik",28,Rare,"Thousand Needles",1
+5933,"Achellios the Banished",31,Rare,"Thousand Needles",1
+5934,"Heartrazor",32,Rare Elite,"Thousand Needles",1
+5937,"Vile Sting",35,Rare Elite,"Thousand Needles",1
+4132,"Silithid Ravager",37,Rare,"Thousand Needles",3
+5935,"Ironeye the Invincible",37,Rare Elite,"Thousand Needles",1
+1531,"Lost Soul",6-7,Rare,"Tirisfal Glades",3
+1533,"Tormented Spirit",8-9,Rare,"Tirisfal Glades",1
+1936,"Farmer Solliden",8,Rare,"Tirisfal Glades",4
+1910,"Muad",10,Rare,"Tirisfal Glades",1
+10356,"Bayne",10,Rare,"Tirisfal Glades",1
+10357,"Ressan the Needler",11,Rare,"Tirisfal Glades",1
+1911,"Deeb",12,Rare,"Tirisfal Glades",1
+10358,"Fellicent's Shade",12,Rare,"Tirisfal Glades",1
+10359,"Sri'skulk",13,Rare,"Tirisfal Glades",1
+11580,"Kelemis the Lifeless",41,Rare,"Uldaman",0
+6581,"Ravasaur Matriarch",50,Rare,"Un'Goro Crater",1
+6585,"Uhk'loc",53,Rare,"Un'Goro Crater",1
+6582,"Clutchmother Zavas",54,Rare,"Un'Goro Crater",1
+6583,"Gruff",57,Rare Elite,"Un'Goro Crater",1
+6584,"King Mosh",60,Rare Elite,"Un'Goro Crater",1
+5912,"Deviate Faerie Dragon",20,Rare Elite,"Wailing Caverns",1
+1847,"Foulmane",52,Rare,"Western Plaguelands",1
+1848,"Lord Maldazzar",56,Rare,"Western Plaguelands",1
+1844,"Foreman Marcrid",58,Rare,"Western Plaguelands",1
+1849,"Dreadwhisper",58,Rare,"Western Plaguelands",0
+1850,"Putridius",58,Rare Elite,"Western Plaguelands",1
+1885,"Scarlet Smith",59,Rare,"Western Plaguelands",1
+1837,"Scarlet Judge",60,Rare,"Western Plaguelands",1
+1841,"Scarlet Executioner",60,Rare Elite,"Western Plaguelands",1
+1838,"Scarlet Interrogator",61,Rare Elite,"Western Plaguelands",1
+1843,"Foreman Jerris",62,Rare Elite,"Western Plaguelands",1
+1851,"The Husk",62,Rare,"Western Plaguelands",1
+1839,"Scarlet High Clerist",63,Rare Elite,"Western Plaguelands",3
+519,"Slark",15,Rare,"Westfall",1
+1424,"Master Digger",15,Rare,"Westfall",1
+506,"Sergeant Brashclaw",18,Rare,"Westfall",1
+596,"Brainwashed Noble",18,Rare Elite,"Westfall",1
+599,"Marisa du'Paige",18,Rare Elite,"Westfall",3
+520,"Brack",19,Rare,"Westfall",1
+572,"Leprithus",19,Rare,"Westfall",2
+573,"Foe Reaper 4000",20,Rare,"Westfall",41
+462,"Vultros",26,Rare,"Westfall",16
+2090,"Ma'ruk Wyrmscale",23,Rare,"Wetlands",1
+1112,"Leech Widow",24,Rare,"Wetlands",1
+14425,"Gnawbone",24,Rare,"Wetlands",6
+14424,"Mirelow",25,Rare,"Wetlands",21
+2108,"Garneg Charskull",29,Rare,"Wetlands",1
+1037,"Dragonmaw Battlemaster",30,Rare,"Wetlands",1
+14433,"Sludginn",30,Rare,"Wetlands",1
+1140,"Razormaw Matriarch",31,Rare,"Wetlands",1
+10197,"Mezzir the Howler",55,Rare,"Winterspring",1
+10196,"General Colbatann",57,Rare Elite,"Winterspring",3
+10200,"Rak'shiri",57,Rare,"Winterspring",1
+10199,"Grizzle Snowpaw",59,Rare,"Winterspring",1
+10202,"Azurous",59,Rare Elite,"Winterspring",1
+10198,"Kashoch the Reaver",60,Rare Elite,"Winterspring",1
+10201,"Lady Hederine",61,Rare Elite,"Winterspring",1
+10080,"Sandarr Dunereaver",45,Rare Elite,"Zul'Farrak",1
+10081,"Dustwraith",45,Rare Elite,"Zul'Farrak",1
+10082,"Zerillis",45,Rare Elite,"Zul'Farrak",1

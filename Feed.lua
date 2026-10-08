@@ -41,6 +41,7 @@ local function NpcName(npcID, source)
 end
 
 local function AchievementText(id)
+    if ns.AchievementTitle then return (ns.AchievementTitle(id)) end
     local dimension, category, kills = tostring(id):match("^(%a+):(.*):(%d+)$")
     if not dimension then return tostring(id) end
     local name = dimension == "faction" and ns.BountyTribeName and ns.BountyTribeName(category) or category

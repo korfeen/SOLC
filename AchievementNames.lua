@@ -1,0 +1,205 @@
+-- The achievements' names (Achievements.lua). Names only: an achievement is saved by its id, so renaming one here
+-- is safe. Change anything that reads off.
+--   CREATURES[subtype]  the seven kill tiers (10, 25, 50, 100, 250, 500, 1000) of a kind of creature
+--   TRIBES[tribe]       the 1000-kill achievement of a tribe or faction (its short name: "Riverpaw", "Defias
+--                       Brotherhood"); %s in a name is the tribe
+-- Creatures without names of their own get a ladder of general ones; tribes without a name one of a few patterns.
+
+local _, ns = ...
+
+local CREATURES = {
+    -- Humanoids
+    ["Gnoll"] = { "Dog Walker", "Flea Collar", "Bad Doggo", "Kennel Closed", "Pound Patrol", "Who Let Them Out", "Last Of The Litter" },
+    ["Kobold"] = { "Candle Snuffer", "You No Take", "Tunnel Trouble", "Wax On Wax Off", "Mine Now", "Took All The Candles", "Lights Out" },
+    ["Murloc"] = { "Mrglwhat?", "Fish Fingers", "Gill Puller", "Mrgl No More", "Fish Fry", "Ocean Emptier", "The Great Mrrgl Hush" },
+    ["Human"] = { "Pickpocket Puncher", "Bandit Basher", "Hat Collector", "No Brotherhood", "Vanished Cleef's Friends", "Stormwind Will Thank You", "Big Ogre In Town" },
+    ["Dwarf"] = { "Beard Tugger", "Short Work", "Ale Spiller", "Dark Iron Dented", "Forge Breaker", "Mountain Mover", "Shortest Story Ever" },
+    ["Gnome"] = { "Tiny Problem", "Gear Grinder", "Leper Lifter", "Small Talk Over", "Sprocket Stomper", "Cog In The Machine", "Short Circuit" },
+    ["Orc"] = { "Green Thumb", "Tusk Tapper", "Blackrock Bruiser", "Lok'tar Nope", "Warchief's Headache", "Horde Hammer", "Throm-Ka-Bye" },
+    ["Troll"] = { "Mon Gone", "Tusk Polisher", "Voodoo Nope", "Stay Away From Da Ogre", "Mojo Breaker", "Hex Reflector", "No Troll Too Tall" },
+    ["Ogre"] = { "Cousin Bonk", "Family Feud", "Two Heads Worse", "Ogre-Load", "Smash The Smashers", "King Of Ogres", "Only One Ogre Left" },
+    ["Trogg"] = { "Rock Rattler", "Cave Cleaner", "Stone Skipper", "Pebble Pusher", "Boulder Basher", "Deep Delver", "Trogg-gone" },
+    ["Harpy"] = { "Feather Plucker", "Screech Stopper", "Pillow Stuffer", "Wing Clipper", "Sky Is Quieter", "Nest Wrecker", "Harpy Ever After" },
+    ["Furbolg"] = { "Bear Hugger", "Totem Tipper", "Fur Flyer", "Big Hug Over", "Grumpy Bear Tamer", "Woods Are Mine", "Unbearable" },
+    ["Satyr"] = { "Goat Tamer", "Hoof Hearted", "Horn Snapper", "Fel Goats Away", "Pan Flute Breaker", "Goat Rodeo Over", "Greatest Of All Time" },
+    ["Naga"] = { "Scale Scraper", "Fin Flipper", "Tail Tied", "Sea Witch Hunter", "Tide Turner", "Deep Water Ogre", "Azshara Says No" },
+    ["Quilboar"] = { "Pig Poker", "Quill Picker", "Bacon Bits", "Thorn In Their Side", "Razor Burned", "Hog Wild", "Whole Hog" },
+    ["Centaur"] = { "Hoof Clipper", "Horsing Around", "Half A Problem", "Stable Hand", "Saddle Sore", "Last Gallop", "Neigh More" },
+    ["Goblin"] = { "Coin Flipper", "No Refunds", "Bargain Bin", "Hostile Takeover", "Bankrupt", "Market Crash", "Time Is Money, Friend" },
+    ["Night Elf"] = { "Leaf Blower", "Moonwell Muddler", "Ears Too Long", "Shadowmeld Fail", "Grove Gone", "Ten Thousand Years Too Many", "Nightfall" },
+    ["Worgen"] = { "Bad Wolf", "Moon Howler", "Fur Real", "Silver Bullet", "Pack Breaker", "Curse Lifter", "No More Full Moons" },
+    ["Wendigo"] = { "Snow Shoveller", "Yeti Or Not", "Frosty Fists", "Abominable Ogre", "Snowball Fight", "Blizzard Buster", "Thaw" },
+    ["Makrura"] = { "Pinch Hitter", "Shell Shocked", "Lobster Night", "Clawful", "Seafood Platter", "Big Boil", "Surf And Smash" },
+    ["Lost One"] = { "Found One", "Lost And Found", "Map Giver", "Lost Cause", "Finders Keepers", "Never Found Again", "Nobody Left To Lose" },
+    -- Undead
+    ["Ghoul"] = { "Bone Muncher", "Ghoul Gone", "Leftovers", "Back To Bed", "Grave Digger", "Graveyard Shift", "Rest In Pieces" },
+    ["Skeleton"] = { "Bone Rattler", "Funny Bone", "Spine Tingler", "Skull Duggery", "Calcium Overdose", "Bone Yard Boss", "Bare Bones" },
+    ["Zombie"] = { "Brains? Nope", "Shambler Shover", "Rot Stopper", "Dead Again", "Undead Undone", "Night Of The Living Ogre", "Permanently Dead" },
+    ["Ghost"] = { "Boo Who?", "Ghost Buster", "Sheet Puller", "Spooked Spooks", "Afterlife Ender", "Haunt Hunter", "Nobody Home" },
+    ["Banshee"] = { "Earplugs In", "Shriek Shusher", "Wail Breaker", "Quiet Please", "Silent Night", "Scream Queen Dethroned", "Library Voice" },
+    ["Lich"] = { "Phylactery Finder", "Robe Ripper", "Cold Feet", "Frozen Out", "Necromancy Nope", "Dead Wizards Society", "Lich-ed Clean" },
+    ["Abomination"] = { "Stitch Ripper", "Hook Dodger", "Patchwork Puncher", "Meat Wagon Empty", "Seams Undone", "Butcher Beaten", "Fresh Meat" },
+    ["Wraith"] = { "Shade Thrower", "Shadow Boxer", "Lights On", "Dim Prospects", "Darkness Dispeller", "Shade Of Its Former Self", "Eclipse" },
+    ["Undead"] = { "Grave Business", "Dead End", "Corpse Collector", "Scourge Scrubber", "Plague Cleaner", "Lord Of The Lost", "Final Rest" },
+    -- Demons
+    ["Imp"] = { "Imp-possible", "Tiny Flame Out", "Fire Extinguisher", "Imp-eached", "Shrimp Stomper", "Imp-ossible Odds", "Imp-erial Smasher" },
+    ["Voidwalker"] = { "Void Filler", "Empty Inside", "Hole In One", "Nothing To See", "Void Contract", "Null And Void", "Void Where Prohibited" },
+    ["Succubus"] = { "Whip Snapper", "Not Charmed", "Heart Breaker", "Unimpressed", "Seduction Failed", "Cold Hearted Ogre", "Immune" },
+    ["Felguard"] = { "Fel Felled", "Green Gone", "Axe To Grind", "Legion Loser", "Fel Flattener", "Armored Ogre", "Fel Free" },
+    ["Felhunter"] = { "Mana Muncher Munched", "Tentacle Tangler", "Hound Hounded", "Spell Lock Broken", "Felhound Pound", "Magic Eaten", "Dinner Served" },
+    ["Infernal"] = { "Rock Fall", "Meteor Shower", "Hot Rocks", "Ember Stomper", "Crater Maker", "Doom Rocks", "Cooled Down" },
+    ["Demon"] = { "Hellraiser Lowered", "Horn Collector", "Brimstone Sweeper", "Legion Bane", "Nether Ender", "Burning Crusade Cancelled", "Demon-strated" },
+    -- Elementals
+    ["Fire Elemental"] = { "Fire Starter Stopper", "Hot Potato", "Ember Smasher", "Fire Fighter", "Ashes To Ashes", "Inferno Out", "Fire Marshal" },
+    ["Water Elemental"] = { "Puddle Jumper", "Splash Zone", "Wet Wipes", "Drained", "Bucket Brigade", "Tide Breaker", "Bone Dry" },
+    ["Earth Elemental"] = { "Rock Kicker", "Dirt Cheap", "Pebble Pounder", "Landslide", "Quake Breaker", "Mountain Mover", "Rock Bottom" },
+    ["Air Elemental"] = { "Hot Air", "Gust Buster", "Wind Bag", "Calm Down", "Storm Chaser", "Breath Taker", "Dead Calm" },
+    ["Elemental"] = { "Element Basher", "Primal Punch", "Spirit Shaker", "Totem Of Doom", "Elemental Ogre", "Nature's Bouncer", "Elements Of Surprise" },
+    ["Treant"] = { "Leaf Peeper", "Branch Manager", "Timber!", "Lumberjack", "Bark Biter", "Deforested", "Paper Mill" },
+    ["Bog Beast"] = { "Mud Slinger", "Swamp Thing", "Bog Off", "Mire Mauler", "Mud Bath", "Swamp Drainer", "Clean Feet" },
+    -- Dragonkin
+    ["Whelp"] = { "Whelp Smacker", "Tiny Wings", "Baby Sitter", "Nursery Rhyme", "Whelp Patrol", "Many Whelps, Handle It", "Daycare Closed" },
+    ["Dragonspawn"] = { "Scale Scrubber", "Spawn Camper", "Dragon Junior", "Wyrmkin Whacker", "Flight Grounded", "Spawn Point Closed", "Last Of The Brood" },
+    ["Drake"] = { "Drake Breaker", "Wing Nut", "Low Flyer", "Dragon Practice", "Sky Clearer", "Drake Lake", "Grounded For Good" },
+    ["Dragon"] = { "Dragon Poker", "Big Lizard", "Scale Model", "Dragonslayer", "Hoard Raider", "Wyrm Squirmer", "Dragon-Ogre" },
+    -- Beasts
+    ["Wolf"] = { "Bad Dog", "Howl Stopper", "Pelt Collector", "Pack Leader", "Moon Off", "Alpha Ogre", "Big Bad Ogre" },
+    ["Spider"] = { "Web Duster", "Itsy Bitsy Brutal", "Leg Counter", "Eight Legs Less", "Web Developer", "Spidey Sense Tingling", "Arachnophobia Cured" },
+    ["Boar"] = { "Pork Chop", "Bacon Bringer", "Tusk Twister", "Pig Out", "Ham Fisted", "Hog Heaven", "Whole Hog" },
+    ["Bear"] = { "Bear Necessities", "Teddy Tossed", "Honey Thief", "Bear Market", "Grin And Bear It", "Unbearable", "Bear Hug Champion" },
+    ["Cat"] = { "Cat Napper", "Hairball", "Scratch Post", "Nine Lives Each", "Litter Box", "Cat-astrophe", "Top Cat" },
+    ["Raptor"] = { "Clever Girl", "Claw Clipper", "Raptor Wrangler", "Jurassic Bark", "Feather Duster", "Extinction Level", "Raptor Rapture" },
+    ["Crocolisk"] = { "Snap Back", "Handbag Maker", "Croc Shocker", "Swamp Boots", "Never Smile At One", "Croc Hunter", "See You Later" },
+    ["Hyena"] = { "Laugh Stopper", "Not Funny", "Giggle Silencer", "Last Laugh", "Joke's Over", "Comedy Club Closed", "Who's Laughing Now" },
+    ["Carrion Bird"] = { "Vulture Culture", "Circle Breaker", "Bird Brain", "Scavenger Hunt", "Feather Fall", "Sky Sweeper", "Nobody Circles Ogre" },
+    ["Gorilla"] = { "Monkey Business", "Banana Split", "Chest Thumper", "King Of The Jungle", "Ape Escape", "Silverback Smasher", "Planet Of The Ogres" },
+    ["Bat"] = { "Batter Up", "Wing It", "Echo Stopper", "Night Flight", "Belfry Cleaner", "Dark Knight", "Batty" },
+    ["Basilisk"] = { "Don't Look", "Rock Hard", "Stare Down", "Gaze Breaker", "Statue Maker", "Mirror Ogre", "Petrified Of Nothing" },
+    ["Crab"] = { "Pinchy", "Sideways Smasher", "Crab Cake", "Shell Game", "Crabby Ogre", "Clawed Back", "Seafood Buffet" },
+    ["Scorpid"] = { "Sting Stopper", "Tail Twister", "Desert Pest", "Pinch And Poke", "Scorpid Scrubber", "Poison Proof", "King Of The Sands" },
+    ["Silithid"] = { "Bug Squasher", "Swatter", "Pest Control", "Hive Minder", "Exterminator", "Swarm Stopper", "Bug Free" },
+    ["Owlbeast"] = { "Who? You.", "Hoot Hush", "Night Owl", "Feather Flurry", "Moonkin Muffler", "Owl Be Back", "Owl-standing" },
+    ["Wind Serpent"] = { "Snake In The Sky", "Kite Cutter", "Lightning Rod", "Tangled Up", "Sky Snake Charmer", "Wind Breaker", "Calm Skies" },
+    ["Kodo"] = { "Kodo Kicker", "Big Beef", "Stampede", "Kodo Graveyard", "Trunk Show", "Herd Mentality", "Kodo-ne" },
+    ["Tallstrider"] = { "Leg Day", "Bird Legs", "Long Neck", "Drumstick Dinner", "Tall Order", "Strut Stopper", "Short Strider" },
+    ["Turtle"] = { "Shell Cracker", "Slow Poke", "Turtle Soup", "Shell Shock", "Hard Shell", "Slow And Smashed", "Turtle Tower" },
+    ["Snake"] = { "Hiss Fit", "Scale Scrubber", "Snake Eyes", "Ssssmashed", "Venom Shrugger", "Snake Charmer", "No More Hissing" },
+    ["Stag"] = { "Antler Snapper", "Deer In Headlights", "Venison", "Hunting Season", "Rack Collector", "Buck Stops Here", "Doe-n" },
+    ["Deer"] = { "Deer Me", "Oh Deer", "Bambi's Bane", "Doe-nated", "Fawn Over", "Deerly Departed", "Deer Hunter" },
+    ["Rat"] = { "Rat Race", "Cheese Thief", "Sewer Sweeper", "Pied Ogre", "Rat Trap", "Plague Of Rats Over", "Rat King" },
+    ["Chicken"] = { "Why Cross The Road", "Egg Breaker", "Feather Puller", "Drumsticks", "Coop Cleaner", "Chicken Run", "Bwak Bwak" },
+    ["Ooze"] = { "Goo Getter", "Slime Time", "Gooey Fists", "Ooze Control", "Jelly Spreader", "Slime Lord", "Sticky Situation" },
+    ["Frenzy"] = { "Feeding Time", "Nibble Nibble", "Toothy", "Piranha Party", "Fish Out Of Water", "Frenzy Fed", "Calm Waters" },
+    ["Shark"] = { "Fin Spotter", "Jaws Shut", "Shark Bait", "Bigger Boat", "Fin Soup", "Deep Blue", "Apex Ogre" },
+    ["Hydra"] = { "Head Counter", "Two Heads Less", "Grows Back?", "Many Heads Rolled", "Head Hunter", "Hydra Headache", "Headless" },
+    ["Devilsaur"] = { "Big Foot", "Stomp Stopper", "Tiny Arms", "Thunder Thighs", "Devil's Due", "King Of Un'Goro", "Extinct" },
+    ["Thunder Lizard"] = { "Thunder Thumper", "Lightning Licker", "Rolling Thunder", "Thunder Struck", "Storm Stopper", "Thunder Dome", "Silence After Thunder" },
+    ["Pterrordax"] = { "Wing Wonk", "Pterrible", "Pterror Over", "Beak Breaker", "Sky Lizard", "Pterrordactyl Wrangler", "Grounded Forever" },
+    ["Chimaera"] = { "Three Heads Worse", "Chimaera Smasher", "Head Count", "Poison Spitter", "Wing Wrecker", "Three-Way Tie", "Mythic Smasher" },
+    ["Scarab"] = { "Beetle Juice", "Bug Stomper", "Crunchy", "Shell Shocker", "Dung Ho", "Scarab Lord", "Bug Out" },
+    ["Worm"] = { "Early Bird", "Wiggle Room", "Can Of Worms", "Bait Shop", "Worm Turned", "Tunnel Vision", "Bookworm" },
+    ["Owl"] = { "Owl Ow", "Hoot Not", "Feather Ball", "Night Shift", "Wise Up", "Owl Gone", "Hooten Plenty" },
+    ["Gryphon"] = { "Flight Delayed", "Beak Bopper", "Feather And Fur", "Grounded", "Wing It", "No More Flights", "Walk Instead" },
+    ["Wisp"] = { "Light Snuffer", "Wisp-er", "Floaty Light", "Lights Off", "Spirit Catcher", "Wisp Away", "Pitch Black" },
+    -- Machines and giants
+    ["Golem"] = { "Bolt Loosener", "Rust Bucket", "Scrap Heap", "Golem Gone", "Gears Ground", "Iron Will Broken", "Scrapyard King" },
+    ["Mechanical"] = { "Spare Parts", "Unplugged", "Wrench Thrower", "Blown Fuse", "Recall Notice", "Machine Breaker", "Factory Reset" },
+    ["Mechano-Tank"] = { "Tank Tipper", "Spider Bot Squasher", "Gear Grinder", "Treads Off", "Armored Down", "Tank Commander", "Scrap Metal" },
+    ["Mountain Giant"] = { "Tall Order", "Big Feet", "Giant Steps", "Rock Biter", "Mountain Mover", "Bigger They Are", "Harder They Fall" },
+    ["Sea Giant"] = { "Wet Giant", "Tide Stopper", "Big Splash", "Wave Breaker", "Sea Sick", "Giant Waves", "Low Tide" },
+    ["Titan Construct"] = { "Titan Tapper", "Ancient Rust", "Stone Keeper", "Watcher Watched", "Titan Toppler", "Made By Titans", "Broken By Ogres" },
+    -- Everything else
+    ["Critter"] = { "Squeaky Toy", "Pest Control", "Tiny Terror", "Critter Crusher", "Nature's Bully", "Not The Bunnies!", "Ogre Of Small Things" },
+    ["Beast"] = { "Beast Botherer", "Wild Thing", "Animal Control", "Zookeeper", "Safari Ogre", "King Of The Wild", "Apex Predator" },
+    ["Humanoid"] = { "Brawler", "Bar Fight", "Street Fighter", "Town Crier", "Gang Breaker", "Law Of The Ogre", "Last One Standing" },
+    ["Dragonkin"] = { "Scale Snatcher", "Lizard Lord", "Wing Clipper", "Flight Ender", "Brood Breaker", "Dragon Bane", "Dragon-Ogre" },
+    ["Giant"] = { "Big Problem", "Tall Tale", "Giant Leap", "Size Matters Not", "Giant Killer", "Jack Of All Giants", "Bigger Ogre" },
+}
+
+-- The general ladder, for creatures without names of their own: "<Creature> <title>".
+local LADDER = { "Botherer", "Basher", "Smasher", "Bane", "Wrecker", "Nightmare", "Extinction" }
+
+local TRIBES = {
+    ["Riverpaw"] = "Sent Up The River",
+    ["Redridge"] = "Redridge Rinsed",
+    ["Shadowhide"] = "No More Hiding",
+    ["Mosshide"] = "Moss Removed",
+    ["Rothide"] = "Rot In Peace",
+    ["Mudsnout"] = "Mud In Your Eye",
+    ["Palemane"] = "Pale By Comparison",
+    ["Wildpaw"] = "Paws Off",
+    ["Defias Brotherhood"] = "Hat Trick",
+    ["Syndicate"] = "Syndicate Dissolved",
+    ["Dark Iron Dwarves"] = "Rusted Iron",
+    ["Kurzen's Mercenaries"] = "Contract Terminated",
+    ["Scarlet Crusade"] = "Crusade Cancelled",
+    ["Blackrock"] = "Rock Bottom",
+    ["Burning Blade"] = "Blade Blunted",
+    ["Bluegill"] = "Gills Out",
+    ["Murkgill"] = "Murk Cleared",
+    ["Vile Fin"] = "Vile No More",
+    ["Torn Fin"] = "Fin Torn Indeed",
+    ["Saltspittle"] = "Spit Take",
+    ["Mirefin"] = "Mire Drained",
+    ["Bloodscalp"] = "Scalped",
+    ["Skullsplitter"] = "Split Decision",
+    ["Witherbark"] = "Bark Withered",
+    ["Vilebranch"] = "Branch Snapped",
+    ["Frostmane"] = "Mane Melted",
+    ["Mossflayer"] = "Flayer Flayed",
+    ["Sandfury"] = "Sand In The Boots",
+    ["Gurubashi"] = "Bashed Guru",
+    ["Atal'ai"] = "Atal-gone",
+    ["Winterax"] = "Ax Frozen",
+    ["Smolderthorn"] = "Smouldering Ruin",
+    ["Crushridge"] = "Crushed Ridge (Sorry Cousins)",
+    ["Boulderfist"] = "Fist Bumped",
+    ["Dreadmaul"] = "Mauled Back",
+    ["Dustbelcher"] = "Dust Settled",
+    ["Mosh'Ogg"] = "Mosh Pit Closed",
+    ["Gordok"] = "Gordok Gone",
+    ["Splinter Fist"] = "Splinters Everywhere",
+    ["Stonesplinter"] = "Splintered Stone",
+    ["Rockjaw"] = "Jaw Dropped",
+    ["Irondeep"] = "In Too Deep",
+    ["Gnarlpine"] = "Pine Gnarled",
+    ["Thistlefur"] = "Thistle Plucked",
+    ["Deadwood"] = "Deadwood Indeed",
+    ["Foulweald"] = "Fair And Square",
+    ["Winterfall"] = "Fall Of Winterfall",
+    ["Windfury"] = "Wind Down",
+    ["Bloodfeather"] = "Feathers Everywhere",
+    ["Witchwing"] = "Witch Hunt Over",
+    ["Razormane"] = "Mane Shaved",
+    ["Razorfen"] = "Fen Drained",
+    ["Bristleback"] = "Bristles Brushed",
+    ["Deathshead"] = "Death's Head Off",
+    ["Kolkar"] = "Kolkar Kollapse",
+    ["Galak"] = "Galak-tic Defeat",
+    ["Magram"] = "Magram-mar School",
+    ["Gelkis"] = "Gelkis Gelded",
+    ["Maraudine"] = "Marauders Marauded",
+    ["Daggerspine"] = "Spineless",
+    ["Hatecrest"] = "Crest Fallen",
+    ["Spitelash"] = "Lashed Back",
+    ["Slitherblade"] = "Slithered Off",
+    ["Jadefire"] = "Fire Out",
+    ["Hatefury"] = "Fury Spent",
+    ["Leper"] = "Lepers Cured (Sort Of)",
+}
+local TRIBE_PATTERNS = { "%s? Never Heard Of Them", "Last Of The %s", "%s, Smashed Flat", "The %s Problem, Solved",
+    "%s Are No More", "Ask The %s (You Can't)" }
+
+-- The name of a kill tier: creature (subtype) and tier number (1-7).
+function ns.CreatureAchievementName(subtype, tier)
+    local names = CREATURES[subtype]
+    return names and names[tier] or ("%s %s"):format(subtype, LADDER[tier] or "Bane")
+end
+
+-- The name of a tribe's 1000-kill achievement (tribe: its short name).
+function ns.TribeAchievementName(tribe)
+    if TRIBES[tribe] then return TRIBES[tribe] end
+    local hash = 0
+    for i = 1, #tribe do hash = (hash * 31 + tribe:byte(i)) % 1000003 end
+    return TRIBE_PATTERNS[hash % #TRIBE_PATTERNS + 1]:format(tribe)
+end
