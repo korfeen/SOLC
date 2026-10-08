@@ -149,6 +149,21 @@ const CLASS = {
 
 // --- The icons ---------------------------------------------------------------------------------------
 
+// An Ogre Rank badge (Ranks.lua): a shield in its tier's colour, pointed at the bottom, with room in its upper half
+// for the rank's number (written over it in the game); the emblem goes in its lower half.
+const BADGE = [...quad([30, 40], [128, 4], [226, 40]), ...quad([226, 40], [226, 170], [128, 246]).slice(1),
+  ...quad([128, 246], [30, 170], [30, 40]).slice(1)];
+function badge(c, random, color, rim) {
+  crayonShape(c, BADGE, color, random, { line: 18 });
+  crayonShape(c, BADGE.map(([x, y]) => [128 + (x - 128) * 0.78, 120 + (y - 120) * 0.78]), rim, random, { outline: null, hatch: 7 });
+}
+// A club for the badges: a handle and a knobbly head, turned by tilt.
+function club(c, random, tilt, cx = 128, cy = 178, scale = 1) {
+  const shape = (poly) => rotate(poly.map(([x, y]) => [cx + (x - 128) * scale, cy + (y - 178) * scale]), tilt, cx, cy);
+  crayonShape(c, shape([[120, 240], [136, 240], [140, 168], [116, 168]]), hex("#6b4422"), random, { hatch: 6, line: 14 });
+  crayonShape(c, shape(ellipse(128, 140, 26, 40)), C.brown, random, { hatch: 6, line: 14 });
+}
+
 // A chunky sword standing on the centre line, turned by tilt (radians) and shrunk by scale.
 function sword(c, random, tilt, scale = 1) {
   const shape = (poly) => rotate(poly.map(([x, y]) => [128 + (x - 128) * scale, 128 + (y - 128) * scale]), tilt);
@@ -298,6 +313,48 @@ const ICONS = {
     crayonShape(c, [...cranium, [178, 170], [170, 226], [86, 226], [78, 170]], hex("#f4ecd8"), random, { line: 20 });
     for (const x of [98, 158]) crayonShape(c, ellipse(x, 132, 24, 28), C.red, random, { outline: null, hatch: 6 });
     stroke(c, [[110, 200], [146, 200]], 12, OUTLINE, 0.9, random);
+  },
+
+  // --- Ogre Rank badges (Ranks.lua), one per five ranks; the rank's number is written over the top half ---
+
+  // Ranks 1-4: a grey stone badge with a pebble.
+  rank1(c, random) {
+    badge(c, random, hex("#9a958c"), hex("#b8b3a8"));
+    crayonShape(c, ellipse(128, 186, 34, 22), hex("#7d776d"), random, { hatch: 6, line: 14 });
+  },
+  // Ranks 5-9: a wooden badge with a club.
+  rank2(c, random) {
+    badge(c, random, hex("#a8743e"), hex("#c48c4e"));
+    club(c, random, 0.5, 128, 176, 0.75);
+  },
+  // Ranks 10-14: a bronze badge with two crossed clubs.
+  rank3(c, random) {
+    badge(c, random, hex("#c27a3a"), hex("#dd9a55"));
+    club(c, random, 0.55, 128, 178, 0.7);
+    club(c, random, -0.55, 128, 178, 0.7);
+  },
+  // Ranks 15-19: a silver badge with a star.
+  rank4(c, random) {
+    badge(c, random, hex("#aab4c2"), hex("#d0d8e2"));
+    crayonShape(c, star(128, 182, 44, 19), C.white, random, { hatch: 6, line: 14 });
+  },
+  // Ranks 20-24: a gold badge with a crown.
+  rank5(c, random) {
+    badge(c, random, hex("#f2b72c"), hex("#ffd65a"));
+    crayonShape(c, [[84, 212], [84, 160], [106, 184], [128, 148], [150, 184], [172, 160], [172, 212]], hex("#fff1a8"), random, { hatch: 6, line: 14 });
+  },
+  // Ranks 25-29: a purple badge with a gem.
+  rank6(c, random) {
+    badge(c, random, hex("#8c58d6"), hex("#ad7cf0"));
+    crayonShape(c, [[128, 148], [164, 176], [128, 222], [92, 176]], hex("#7ff0e0"), random, { hatch: 6, line: 14 });
+  },
+  // Rank 30: Grand Sleepy Ogre: a gold badge with the sleepy ogre himself (closed eyes, tusks, a Z).
+  rank7(c, random) {
+    badge(c, random, hex("#f2b72c"), hex("#ffd65a"));
+    crayonShape(c, circle(128, 184, 40), hex("#8fc25a"), random, { hatch: 6, line: 14 });
+    for (const x of [112, 144]) stroke(c, quad([x - 9, 178], [x, 186], [x + 9, 178], 6), 6, OUTLINE, 0.9, random);
+    for (const x of [114, 142]) crayonShape(c, [[x - 5, 204], [x + 5, 204], [x, 190]], C.white, random, { hatch: 4, line: 6 });
+    stroke(c, [[164, 130], [184, 130], [164, 150], [184, 150]], 8, OUTLINE, 0.9, random);
   },
 
   // Level: a round blue badge with a big gold up-arrow.
@@ -588,7 +645,8 @@ const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "ro
   "warlock", "druid", "human", "dwarf", "nightelf", "gnome", "skyborne", "points", "kills", "achievements", "pvp",
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
   "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary", "feedLeader",
-  "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss"];
+  "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss", "rank1", "rank2", "rank3", "rank4", "rank5",
+  "rank6", "rank7"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
@@ -598,7 +656,8 @@ const seedOf = (name) => {
 // buttons, the activity feed's icons).
 const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP", close: "Close", settings: "Settings",
   feedLeader: "Feed_Leader", feedRare: "Feed_Rare", feedAchievement: "Feed_Achievement", feedMint: "Feed_Mint", feedWon: "Feed_Won",
-  feedBounty: "Feed_Bounty", feedBoss: "Feed_Boss" };
+  feedBounty: "Feed_Bounty", feedBoss: "Feed_Boss", rank1: "Rank_1", rank2: "Rank_2", rank3: "Rank_3", rank4: "Rank_4",
+  rank5: "Rank_5", rank6: "Rank_6", rank7: "Rank_7" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.

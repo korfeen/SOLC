@@ -19,6 +19,7 @@ PvP.lua
 Gear.lua
 Professions.lua
 Points.lua
+Ranks.lua
 Collection.lua
 MintArt.lua
 Minting.lua

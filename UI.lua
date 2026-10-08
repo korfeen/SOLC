@@ -537,7 +537,8 @@ local OGRE_SOUNDS = { 557657, 557662, 557656, 557661, 557651 }  -- mogrefidget1-
 function ns.UI.ClickSound()
     if KillTrackerDB and KillTrackerDB.clickSounds == false then return end
     local ogre = KillTrackerDB and KillTrackerDB.ogreMode
-    if math.random(ogre and 10 or 30) == 1 then
+    local voices = ns.RankPerk and ns.RankPerk("voices") or 1  -- your rank makes them more frequent (Ranks.lua)
+    if math.random(math.floor((ogre and 10 or 30) / voices)) == 1 then
         PlaySoundFile(OGRE_SOUNDS[math.random(#OGRE_SOUNDS)], "SFX")
     else
         PlaySoundFile(CLICK_SOUND, "SFX")
@@ -675,6 +676,9 @@ local OGRE_BOUNCE = 2         -- and up to this many pixels up or down
 local OGRE_GAP = 2            -- pixels between letters
 local OGRE_TEXT_SHARE = 0.86  -- ogre words fill this much of the plank's width, painting over the swirls
 local OGRE_MAX_SCALE = 2.3    -- but grow to at most this times the normal size (ME: about 41 px tall)
+-- Crayons your rank adds (Ranks.lua, "crayons" perks), in this order.
+local RANK_CRAYONS = { { 0.2, 0.85, 0.8 }, { 1, 1, 0.95 }, { 1, 0.82, 0.25 }, { 0.75, 0.78, 0.85 },
+    { 0.7, 1, 0.3 }, { 0.85, 0.15, 0.3 }, { 0.5, 0.85, 1 } }
 local OGRE_COLORS = {  -- crayons; each letter gets one, never the one next to it
     { 1, 0.3, 0.25 }, { 1, 0.62, 0.15 }, { 1, 0.9, 0.25 }, { 0.45, 0.88, 0.3 },
     { 0.35, 0.65, 1 }, { 0.78, 0.5, 1 }, { 1, 0.55, 0.78 },
@@ -715,10 +719,12 @@ local function DrawOgreWord(button, word)
             letter:SetWordWrap(false)
             holder.letters[i] = letter
         end
-        local pick = math.floor((random() + 1) / 2 * #OGRE_COLORS) % #OGRE_COLORS + 1
-        if pick == lastColor then pick = pick % #OGRE_COLORS + 1 end
+        local crayons = { unpack(OGRE_COLORS) }
+        for i = 1, math.min(#RANK_CRAYONS, ns.RankPerk and ns.RankPerk("crayons") or 0) do crayons[#crayons + 1] = RANK_CRAYONS[i] end
+        local pick = math.floor((random() + 1) / 2 * #crayons) % #crayons + 1
+        if pick == lastColor then pick = pick % #crayons + 1 end
         lastColor = pick
-        letter:SetTextColor(unpack(OGRE_COLORS[pick]))
+        letter:SetTextColor(unpack(crayons[pick]))
         sizes[i] = NAV_FONT_SIZE * (1 + random() * OGRE_SIZE_JITTER)
         if not measure:SetFont(OGRE_FONT, sizes[i], "") then measure:SetFont(NAV_FONT, sizes[i], "") end
         measure:SetText("")

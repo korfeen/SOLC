@@ -8,6 +8,7 @@
 --   W  won a picture in a puzzle race          a = picture number, b = who it was won from
 --   B  did their share of a completed bounty   a = bounty id
 --   D  killed a boss in a guild group          a = boss name, b = 1 for a final boss
+--   K  reached an Ogre Rank (Ranks.lua)         a = rank
 
 local _, ns = ...
 
@@ -62,8 +63,9 @@ end
 
 -- The colours of an event's highlighted parts: as in the guild feed, or calm (the new Overview's list: the thing done
 -- in one warm colour, a picture in a soft green, as it can be clicked).
-local COLOURS = { leader = "ffffd100", rare = "ff0070dd", achievement = "ffff8000", bounty = "ffffd100", boss = "ffffd100" }
-local CALM = { leader = "ffe2c07e", rare = "ffe2c07e", achievement = "ffe2c07e", bounty = "ffe2c07e", boss = "ffe2c07e",
+local COLOURS = { leader = "ffffd100", rare = "ff0070dd", achievement = "ffff8000", bounty = "ffffd100", boss = "ffffd100",
+    rank = "ffff8000" }
+local CALM = { leader = "ffe2c07e", rare = "ffe2c07e", achievement = "ffe2c07e", bounty = "ffe2c07e", boss = "ffe2c07e", rank = "ffe2c07e",
     picture = "ff8fd68f" }
 
 -- An event as text, or nil if unknown. who: the player's name; source: their stats (for mob names); calm: the calm
@@ -94,6 +96,9 @@ local function Describe(e, who, source, calm)
     elseif e.k == "B" then
         local bounty = ns.ResolveBounty and ns.ResolveBounty(e.a)
         return ("%s helped complete the bounty |c%s%s|r"):format(who, c.bounty, bounty and bounty.name or tostring(e.a))
+    elseif e.k == "K" then
+        local rank = ns.RANKS and ns.RANKS[tonumber(e.a)]
+        return ("%s reached rank %s: |c%s%s|r"):format(who, tostring(e.a), c.rank, rank and rank.title or "?")
     elseif e.k == "D" then
         return ("%s %s |c%s%s|r with the guild"):format(who, tonumber(e.b) == 1 and "cleared" or "killed", c.boss, tostring(e.a))
     end

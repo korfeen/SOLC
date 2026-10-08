@@ -10,7 +10,11 @@
 local _, ns = ...
 
 -- The price of a mint is a guild setting (Config.lua); each picture remembers what it cost.
-function ns.MintCost() return ns.Config("mintCost") end
+-- A picture's price: the guild's setting, less your rank's discount (Ranks.lua).
+function ns.MintCost()
+    local discount = ns.RankPerk and ns.RankPerk("discount") or 0
+    return math.max(1, math.floor(ns.Config("mintCost") * (1 - discount) + 0.5))
+end
 
 -- Four rarities; there is no common (uncommon is the everyday tier).
 local RARITY_WEIGHTS = { uncommon = 25, rare = 10, epic = 4, legendary = 1 }
@@ -51,12 +55,21 @@ local function FindOption(layer, id)
     end
 end
 
+-- Your rank's luck while you mint (Ranks.lua): epic and legendary options weigh this much more. 1 otherwise (an
+-- officer's mint battle rolls without it).
+local luck = 1
+local LUCKY = { epic = true, legendary = true }
+local function Weight(option)
+    local weight = option.weight or RARITY_WEIGHTS[option.rarity]
+    return LUCKY[option.rarity] and weight * luck or weight
+end
+
 local function Roll(layer)
     local total = 0
-    for _, option in ipairs(layer.options) do total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
+    for _, option in ipairs(layer.options) do total = total + Weight(option) end
     local pick = math.random() * total
     for _, option in ipairs(layer.options) do
-        pick = pick - (option.weight or RARITY_WEIGHTS[option.rarity])
+        pick = pick - Weight(option)
         if pick <= 0 then return option end
     end
     return layer.options[#layer.options]
@@ -189,7 +202,9 @@ function ns.Mint()
     if balance < cost then
         return nil, ("Not enough points (%d of %d)."):format(balance, cost)
     end
+    luck = ns.RankPerk and ns.RankPerk("luck") or 1
     local traits = RollFree(TakenPictures())
+    luck = 1
     if not traits then return nil, "Every possible picture is already taken." end
     db.points.spent = db.points.spent + cost
     local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost }

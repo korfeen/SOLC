@@ -48,6 +48,12 @@ local TEXT_OUTLINE = { 0.12, 0.07, 0.03 }    -- dark brown round the light text 
 local DATE_COLOR = { 0.3, 0.3, 0.32 }
 local RARITY_EDGE, EDGE_FILL = 1.5, 60 / 64  -- the rarity colour round a small polaroid's picture; Media/Overview/Edge's square
 local GEAR_PANEL = { left = 214, top = 56, width = 324, height = 522 }  -- the gear over the left page (window pixels)
+-- The Ogre Rank badge (Ranks.lua): a sticker on the polaroid's top-left corner (window pixels), tilted; the badge art
+-- per five ranks (Media/Icons/Rank_1..7, tools/make-role-icons.js). Clicking it shows the rank over the left page.
+local RANK_BADGE = { x = 638, y = 142, size = 46, tilt = -12 }
+local RANK_ICON = "Interface\\AddOns\\SOLC\\Media\\Icons\\Rank_"
+local RANK_LINES = 18  -- perk lines in the rank panel
+local function BadgeArt(rank) return RANK_ICON .. (rank >= 30 and 7 or math.floor(rank / 5) + 1) end
 
 local issecret = issecretvalue or function() return false end
 local function Readable(value) if not issecret(value) then return value end end
@@ -535,18 +541,124 @@ ns.RegisterPage({
         shade:SetPoint("TOPLEFT", -8, 8)
         shade:SetPoint("BOTTOMRIGHT", 8, -8)
         shade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
-        local function ShowGear(shown)
-            page.gearShown = shown
-            page.gearPanel:SetShown(shown)
-            left:SetShown(not shown)
+        -- The Ogre Rank over the left page: rank, title, points to the next, every perk (unlocked ones lit).
+        local rankPanel = CreateFrame("Frame", nil, page)
+        rankPanel:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
+        rankPanel:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
+        rankPanel:SetFrameLevel(left:GetFrameLevel() + 20)
+        local rankShade = rankPanel:CreateTexture(nil, "BACKGROUND")
+        rankShade:SetPoint("TOPLEFT", -8, 8)
+        rankShade:SetPoint("BOTTOMRIGHT", 8, -8)
+        rankShade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
+        rankPanel.badge = rankPanel:CreateTexture(nil, "ARTWORK")
+        rankPanel.badge:SetSize(64, 64)
+        rankPanel.badge:SetPoint("TOPLEFT", 4, -4)
+        rankPanel.number = rankPanel:CreateFontString(nil, "OVERLAY")
+        rankPanel.number:SetFont(NAME_FONT, 20, "")
+        rankPanel.number:SetPoint("CENTER", rankPanel.badge, "CENTER", 0, 9)
+        UI.OutlineText(rankPanel.number, TEXT_OUTLINE)
+        rankPanel.title = rankPanel:CreateFontString(nil, "OVERLAY")
+        rankPanel.title:SetFont(NAME_FONT, 18, "")
+        rankPanel.title:SetTextColor(1, 0.82, 0.25)
+        rankPanel.title:SetPoint("TOPLEFT", rankPanel.badge, "TOPRIGHT", 8, -6)
+        rankPanel.points = rankPanel:CreateFontString(nil, "OVERLAY")
+        rankPanel.points:SetFont(NAME_FONT, 12, "")
+        rankPanel.points:SetTextColor(unpack(FEED_COLOR))
+        rankPanel.points:SetPoint("TOPLEFT", rankPanel.title, "BOTTOMLEFT", 0, -4)
+        local barBack = rankPanel:CreateTexture(nil, "ARTWORK")
+        barBack:SetColorTexture(1, 1, 1, 0.08)
+        barBack:SetPoint("TOPLEFT", rankPanel.points, "BOTTOMLEFT", 0, -6)
+        barBack:SetSize(GEAR_PANEL.width - 84, 8)
+        rankPanel.bar = rankPanel:CreateTexture(nil, "OVERLAY")
+        rankPanel.bar:SetColorTexture(1, 0.7, 0.2, 0.85)
+        rankPanel.bar:SetPoint("TOPLEFT", barBack)
+        rankPanel.bar:SetHeight(8)
+        rankPanel.barWidth = GEAR_PANEL.width - 84
+        local perksHeading = rankPanel:CreateFontString(nil, "OVERLAY")
+        perksHeading:SetFont(NAME_FONT, 14, "")
+        perksHeading:SetTextColor(1, 0.82, 0.25)
+        perksHeading:SetPoint("TOPLEFT", 4, -84)
+        perksHeading:SetText("Rank perks")
+        rankPanel.lines = {}
+        for i = 1, RANK_LINES do
+            local line = rankPanel:CreateFontString(nil, "OVERLAY")
+            line:SetFont(NAME_FONT, 12, "")
+            line:SetPoint("TOPLEFT", 4, -84 - i * 22)
+            line:SetWidth(GEAR_PANEL.width - 8)
+            line:SetJustifyH("LEFT")
+            line:SetWordWrap(false)
+            rankPanel.lines[i] = line
+        end
+        local back = CreateFrame("Button", nil, rankPanel, "UIPanelButtonTemplate")
+        back:SetSize(70, 20)
+        back:SetPoint("TOPRIGHT", 0, 0)
+        back:SetText("Back")
+        function rankPanel:SetPlayer(key)
+            local current, nextRank, points = ns.GetRank(key)
+            self.badge:SetTexture(BadgeArt(current.rank))
+            self.number:SetText(current.rank)
+            self.title:SetText(current.title)
+            if nextRank then
+                self.points:SetText(("%d points - %d more to %s"):format(points, nextRank.points - points, nextRank.title))
+                local share = (points - current.points) / math.max(1, nextRank.points - current.points)
+                self.bar:SetWidth(math.max(1, self.barWidth * math.min(1, share)))
+            else
+                self.points:SetText(("%d points - the top rank"):format(points))
+                self.bar:SetWidth(self.barWidth)
+            end
+            for i, line in ipairs(self.lines) do
+                local perk = ns.RANK_PERKS[i]
+                if perk then
+                    local unlocked = perk.rank <= current.rank
+                    line:SetText(("%s|cff999999rank %d|r  %s"):format(unlocked and "|cff55dd55+|r " or "   ", perk.rank,
+                        unlocked and perk.text or "|cff888888" .. perk.text .. "|r"))
+                end
+                line:SetShown(perk ~= nil)
+            end
+        end
+
+        -- One panel at a time over the left page: the gear, the rank, or neither.
+        local function ShowPanel(which)
+            page.gearShown = which == "gear"
+            page.panel = which
+            page.gearPanel:SetShown(which == "gear")
+            rankPanel:SetShown(which == "rank")
+            left:SetShown(which == nil)
             Redraw()
         end
-        page.gearPanel.OnBack = function() ShowGear(false) end
+        page.gearPanel.OnBack = function() ShowPanel(nil) end
+        back:SetScript("OnClick", function() ShowPanel(nil) end)
         gearButton:SetScript("OnClick", function()
             UI.ClickSound()
-            ShowGear(not page.gearShown)
+            ShowPanel(page.panel ~= "gear" and "gear" or nil)
         end)
-        ShowGear(false)
+        page.rankPanel = rankPanel
+
+        -- The rank badge, a sticker on the polaroid's corner.
+        local badge = CreateFrame("Button", nil, cardFrame)
+        badge:SetFrameLevel(cardFrame:GetFrameLevel() + 12)
+        badge:SetSize(RANK_BADGE.size, RANK_BADGE.size)
+        badge:SetPoint("CENTER", UI.frame, "TOPLEFT", RANK_BADGE.x, -RANK_BADGE.y)
+        badge.art = badge:CreateTexture(nil, "ARTWORK")
+        badge.art:SetAllPoints()
+        badge.art:SetRotation(math.rad(-RANK_BADGE.tilt))
+        badge.number = badge:CreateFontString(nil, "OVERLAY")
+        badge.number:SetFont(NAME_FONT, 15, "")
+        badge.number:SetPoint("CENTER", 0, 7)
+        UI.OutlineText(badge.number, TEXT_OUTLINE)
+        badge:SetScript("OnClick", function()
+            UI.ClickSound()
+            ShowPanel(page.panel ~= "rank" and "rank" or nil)
+        end)
+        badge:SetScript("OnEnter", function(self)
+            local current, nextRank, points = ns.GetRank(page.key)
+            SetTooltip(self, { ("Ogre Rank %d: %s"):format(current.rank, current.title),
+                nextRank and ("%d points, %d more to rank %d"):format(points, nextRank.points - points, nextRank.rank)
+                    or ("%d points - the top rank"):format(points), "Click to see the perks" })
+        end)
+        badge:SetScript("OnLeave", GameTooltip_Hide)
+        page.badge = badge
+        ShowPanel(nil)
 
         -- The page is usually created while already showing, so the model may not have its size at the first
         -- load; load once more on the next frame, and whenever the page comes back.
@@ -577,6 +689,12 @@ ns.RegisterPage({
 
         -- The full name, as big as fits on the label.
         Fit(page.name, NAME_FONT, NAME_SIZE, 8, (p.name or ""):upper(), page.nameWidth)
+        -- Their rank: the badge, and their name in their rank's colour (Ranks.lua).
+        local rank = ns.GetRank(key)
+        page.badge.art:SetTexture(BadgeArt(rank.rank))
+        page.badge.number:SetText(rank.rank)
+        page.name:SetTextColor(unpack(ns.RankPerk("nameColor", rank.rank) or NAME_COLOR))
+        page.rankPanel:SetPlayer(key)
 
         -- The photo: their chosen picture, or (no model of them to show) their first showcase picture or else their
         -- newest picture, or the model.
@@ -676,6 +794,11 @@ ns.RegisterPage({
             local icon = item and not thumbnail and FEED_ICONS[item.kind]
             row.icon:SetShown(icon ~= nil)
             if icon then row.icon:SetTexture(FEED_ICON .. icon) end
+            if item and item.kind == "K" then  -- a rank reached: that rank's badge
+                local reached = tonumber(item.text:match("rank (%d+)")) or 1
+                row.icon:SetTexture(BadgeArt(reached))
+                row.icon:Show()
+            end
             row.picture:SetShown(thumbnail and true or false)
             if thumbnail and row.drawn ~= item.mint.traits then
                 ns.RenderMint(row.picture, item.mint.traits)
