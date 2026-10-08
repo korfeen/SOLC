@@ -59,14 +59,26 @@ local function EventMint(e, source)
     return source.mints and source.mints[tonumber(e.a)]
 end
 
--- An event as text, or nil if unknown. who: the player's name; source: their stats (for mob names).
-local function Describe(e, who, source)
+-- The colours of an event's highlighted parts: as in the guild feed, or calm (the new Overview's list: the thing done
+-- in one warm colour, a picture in a soft green, as it can be clicked).
+local COLOURS = { leader = "ffffd100", rare = "ff0070dd", achievement = "ffff8000", bounty = "ffffd100", boss = "ffffd100" }
+local CALM = { leader = "ffe2c07e", rare = "ffe2c07e", achievement = "ffe2c07e", bounty = "ffe2c07e", boss = "ffe2c07e",
+    picture = "ff8fd68f" }
+
+-- An event as text, or nil if unknown. who: the player's name; source: their stats (for mob names); calm: the calm
+-- colours.
+local function Describe(e, who, source, calm)
+    local c = calm and CALM or COLOURS
+    if calm and (e.k == "M" or e.k == "W") then
+        return ("%s %s |c%spicture #%s|r%s"):format(who, e.k == "M" and "minted" or "won", c.picture, tostring(e.a),
+            e.k == "W" and e.b and (" from %s"):format(e.b) or "")
+    end
     if e.k == "L" then
-        return ("%s slew |cffffd100%s|r"):format(who, NpcName(e.a, source))
+        return ("%s slew |c%s%s|r"):format(who, c.leader, NpcName(e.a, source))
     elseif e.k == "R" then
-        return ("%s killed the rare |cff0070dd%s|r"):format(who, NpcName(e.a, source))
+        return ("%s killed the rare |c%s%s|r"):format(who, c.rare, NpcName(e.a, source))
     elseif e.k == "A" then
-        return ("%s earned |cffff8000%s|r"):format(who, AchievementText(e.a))
+        return ("%s earned |c%s%s|r"):format(who, c.achievement, AchievementText(e.a))
     elseif e.k == "M" then
         local mint = EventMint(e, source)
         local rarity = mint and ns.MintRarity(mint.traits)
@@ -80,21 +92,22 @@ local function Describe(e, who, source)
             e.b and (" from %s"):format(e.b) or "")
     elseif e.k == "B" then
         local bounty = ns.ResolveBounty and ns.ResolveBounty(e.a)
-        return ("%s helped complete the bounty |cffffd100%s|r"):format(who, bounty and bounty.name or tostring(e.a))
+        return ("%s helped complete the bounty |c%s%s|r"):format(who, c.bounty, bounty and bounty.name or tostring(e.a))
     elseif e.k == "D" then
-        return ("%s %s |cffffd100%s|r with the guild"):format(who, tonumber(e.b) == 1 and "cleared" or "killed", tostring(e.a))
+        return ("%s %s |c%s%s|r with the guild"):format(who, tonumber(e.b) == 1 and "cleared" or "killed", c.boss, tostring(e.a))
     end
 end
 
--- The guild feed, newest first: { { time, text, who, mint, owner } }, from you and everyone synced. mint: the
--- picture a minted/won event is about (click to view); owner: whose it is (nil for yours).
-function ns.GetFeed()
+-- The guild feed, newest first: { { time, text, who, kind, mint, owner } }, from you and everyone synced. kind: the
+-- event's kind (above); mint: the picture a minted/won event is about (click to view); owner: whose it is (nil for
+-- yours). calm: the calm colours (Describe).
+function ns.GetFeed(calm)
     local feed = {}
     local function Add(who, source)
         for _, e in ipairs(source.events or {}) do
-            local text = Describe(e, who, source)
+            local text = Describe(e, who, source, calm)
             if text then
-                feed[#feed + 1] = { time = e.t, text = text, who = who, mint = EventMint(e, source),
+                feed[#feed + 1] = { time = e.t, text = text, who = who, kind = e.k, mint = EventMint(e, source),
                     owner = source ~= KillTrackerDB and who or nil }
             end
         end

@@ -302,9 +302,13 @@ function ns.MintDrawOrder(traits)
 end
 
 -- Draws a picture into canvas (a frame), creating one texture per layer on first use.
-function ns.RenderMint(canvas, traits)
+-- tilt (degrees clockwise, optional): the whole picture turned round its centre, as on the new Overview's tilted
+-- polaroids (each layer turned and moved round the centre with it).
+function ns.RenderMint(canvas, traits, tilt)
     canvas.layers = canvas.layers or {}
     local size = canvas:GetWidth()
+    local angle = math.rad(tilt or 0)
+    local cos, sin = math.cos(angle), math.sin(angle)
     for i, layer in ipairs(ns.MintLayers) do
         local tex = canvas.layers[i]
         if not tex then
@@ -320,12 +324,18 @@ function ns.RenderMint(canvas, traits)
             tex:Hide()
         else
             local rect = option.rect
-            if rect then
+            if rect and angle ~= 0 then
+                -- Its centre from the canvas's centre (y up), turned clockwise by the tilt.
+                local dx, dy = (rect[1] + rect[3] / 2 - 0.5) * size, (0.5 - rect[2] - rect[4] / 2) * size
+                tex:SetPoint("CENTER", canvas, "CENTER", dx * cos + dy * sin, dy * cos - dx * sin)
+                tex:SetSize(rect[3] * size, rect[4] * size)
+            elseif rect then
                 tex:SetPoint("TOPLEFT", canvas, "TOPLEFT", rect[1] * size, -rect[2] * size)
                 tex:SetSize(rect[3] * size, rect[4] * size)
             else
                 tex:SetAllPoints(canvas)
             end
+            tex:SetRotation(-angle)  -- WoW turns anticlockwise
             if texture then
                 tex:SetTexture(texture)
                 if option.color then tex:SetVertexColor(unpack(option.color)) end
@@ -499,19 +509,32 @@ end
 
 -- Someone's showcased pictures, in order: yours (key nil) or a synced guildmate's. Pictures that no
 -- longer exist are skipped.
+-- Someone's picture by its number: yours (key nil) or a synced guildmate's; nil if they don't have it (any more).
+function ns.FindMint(key, number)
+    local source = key and KillTrackerFriends[key] or KillTrackerDB
+    if not source or not number then return end
+    if key then return source.mints and source.mints[number] end
+    for _, mint in ipairs(source.mints or {}) do
+        if mint.number == number then return mint end
+    end
+end
+
+-- Someone's newest picture (the highest number they own), or nil if they have none.
+function ns.NewestMint(key)
+    local source = key and KillTrackerFriends[key] or KillTrackerDB
+    local newest
+    for _, mint in pairs(source and source.mints or {}) do
+        if not newest or mint.number > newest.number then newest = mint end
+    end
+    return newest
+end
+
 function ns.GetShowcase(key)
     local source = key and KillTrackerFriends[key] or KillTrackerDB
     local numbers = source and source.showcase and source.showcase.numbers or {}
     local pictures = {}
     for _, number in ipairs(numbers) do
-        local mint
-        if key then
-            mint = source.mints and source.mints[number]
-        else
-            for _, m in ipairs(source.mints or {}) do
-                if m.number == number then mint = m end
-            end
-        end
+        local mint = ns.FindMint(key, number)
         if mint then pictures[#pictures + 1] = mint end
     end
     return pictures

@@ -1,12 +1,18 @@
 -- The new Overview, being built: shown instead of the Overview while the WIP button under the sidebar is on
--- (KillTrackerDB.wipOverview). An open book of wooden boards with a character card pinned on its right page:
+-- (KillTrackerDB.wipOverview). An open book of wooden boards. On its left page: plaques with their points,
+-- achievements and kills, their showcase pictures on three small tilted polaroids, and what happened to them lately.
+-- On its right page a character card, with a GEARZ button under it for their gear:
 -- the name bar (arrows to step through you and your synced guildmates), a polaroid with the character's model
 -- on the background they picked, icons for their race, gender, class and professions on the photo, and their
 -- name written under it. The book and the card are the designer's own drawing (Media/Overview/Inside, from
 -- tools/convert-overview.js); the live parts go on its spots, placed by OverviewLayout.lua
 -- (tools/overview-layout.js) in window coordinates.
--- The gender icon follows the character unless they pick one (right-click it on your own card):
--- KillTrackerDB.card = { gender = "MALE" | "FEMALE" | "NONBINARY", seq }, synced (Sync.lua, the card section).
+-- The gender icon follows the character unless they pick one (right-click it on your own card), and the photo can
+-- show one of their pictures instead of their model (right-click your own photo); when there's no model of someone
+-- to show (their character isn't synced), their chosen picture shows, else their first showcase picture, else their
+-- newest.
+-- KillTrackerDB.card = { gender = "MALE" | "FEMALE" | "NONBINARY", portrait = picture number, seq }, synced
+-- (Sync.lua, the card section).
 
 local _, ns = ...
 local UI = ns.UI
@@ -22,6 +28,23 @@ local NAME_COLOR = { 0.95, 0.92, 0.85 }
 local INK = { 0.16, 0.16, 0.18 }            -- the signature's crayon
 local ARROW_LIT, ARROW_GROW = 0.45, 1.05     -- the light over a hovered arrow: strength, size
 local EMPTY_SHAPE = 0.45                     -- an empty icon shape (nothing known yet) is drawn this faint
+local STAT_SIZE, GEAR_SIZE = 17, 26          -- the stat plaques' numbers, the GEARZ button's word (at most)
+local STAT_COLOR = { 1, 1, 1 }
+local FEED_COLOR, FEED_TIME_COLOR = { 0.93, 0.88, 0.78 }, { 0.72, 0.6, 0.36 }  -- cream, muted gold
+local FEED_STRIPE, FEED_HOVER = 0.035, 0.08  -- every other row a touch lighter; the row under the mouse lighter still
+-- The small icon at the start of a line, by the event's kind (Feed.lua); a picture's line shows the picture itself.
+local FEED_ICONS = {
+    L = { "Interface\AddOns\SOLC\Media\Crown", { 1, 0.82, 0.25 } },  -- a leader slain
+    R = { "Interface\AddOns\SOLC\Media\Icons\Kills" },               -- a rare
+    D = { "Interface\AddOns\SOLC\Media\Icons\Kills" },               -- a boss with the guild
+    A = { "Interface\AddOns\SOLC\Media\Icons\Achievements" },
+    B = { "Interface\AddOns\SOLC\Media\Icons\Points" },               -- a bounty
+}
+local GEAR_COLOR = { 1, 0.78, 0.1 }
+local TEXT_OUTLINE = { 0.12, 0.07, 0.03 }    -- dark brown round the light text on the boards (ns.UI.OutlineText)
+local DATE_COLOR = { 0.3, 0.3, 0.32 }
+local RARITY_EDGE, EDGE_FILL = 1.5, 60 / 64  -- the rarity colour round a small polaroid's picture; Media/Overview/Edge's square
+local GEAR_PANEL = { left = 214, top = 56, width = 324, height = 522 }  -- the gear over the left page (window pixels)
 
 local issecret = issecretvalue or function() return false end
 local function Readable(value) if not issecret(value) then return value end end
@@ -51,12 +74,14 @@ local function Profile(key)
             p.classFile, p.sex, p.level = gear.class, gear.sex, gear.level
         end
         p.chosenGender = friend and friend.card and friend.card.gender
+        p.portrait = friend and friend.card and friend.card.portrait
     else
         p.name = ns.MyName()
         p.raceName, p.raceFile = Readable(UnitRace("player")), Readable(select(2, UnitRace("player")))
         p.classFile = Readable(select(2, UnitClass("player")))
         p.sex, p.level = Readable(UnitSex("player")), Readable(UnitLevel("player"))
         p.chosenGender = KillTrackerDB.card and KillTrackerDB.card.gender
+        p.portrait = KillTrackerDB.card and KillTrackerDB.card.portrait
     end
     p.gender = GENDERS[p.chosenGender or ""] and p.chosenGender or SEX_GENDER[p.sex]
     p.race = RACES[IconKey(p.raceFile) or ""] and IconKey(p.raceFile) or RACES[IconKey(p.raceName) or ""] and IconKey(p.raceName)
@@ -83,6 +108,40 @@ local function ChooseGender(gender)
     KillTrackerDB.card.gender = gender
     ns.Touch(KillTrackerDB.card)
     ns.OpenPage("overview")
+end
+
+-- The picture shown on your photo instead of your model: a picture number, or nil for your model.
+local function ChoosePortrait(number)
+    KillTrackerDB.card = KillTrackerDB.card or {}
+    KillTrackerDB.card.portrait = number
+    ns.Touch(KillTrackerDB.card)
+    ns.OpenPage("overview")
+end
+
+-- Right-clicking your own photo: what it shows (your model or one of your pictures) and the background behind your
+-- model (from the ones on your pictures).
+local function PhotoMenu(owner)
+    if not MenuUtil then return UI.PickBackdrop(owner) end  -- no menus: step through the backgrounds
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle("Photo")
+        local chosen = KillTrackerDB.card and KillTrackerDB.card.portrait
+        root:CreateRadio("My character", function() return chosen == nil end, function() ChoosePortrait(nil) end)
+        local mints = KillTrackerDB.mints or {}
+        for _, mint in ipairs(mints) do
+            local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[ns.MintRarity(mint.traits)] or "ffffffff", ("Picture #%d"):format(mint.number))
+            root:CreateRadio(name, function() return chosen == mint.number end, function() ChoosePortrait(mint.number) end)
+        end
+        if #mints == 0 then root:CreateTitle("Mint a picture to show one here") end
+        local background = root:CreateButton("Background behind my character")
+        local function IsCurrent(id) return (KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop) == id end
+        background:CreateRadio("None", function() return IsCurrent(nil) end, function() ns.SetModelBackdrop(nil) end)
+        local owned = ns.OwnedBackgrounds()
+        for _, option in ipairs(owned) do
+            local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name)
+            background:CreateRadio(name, function() return IsCurrent(option.id) end, function() ns.SetModelBackdrop(option.id) end)
+        end
+        if #owned == 0 then background:CreateTitle("Mint a picture to get backgrounds") end
+    end)
 end
 
 -- Writes text as big as fits in width (from size down to smallest). The text is cleared first: a font string
@@ -192,6 +251,7 @@ ns.RegisterPage({
         -- The photo: a picture (their chosen background, else an evening sky over grass) and the model on it.
         local photo = CreateFrame("Frame", nil, cardFrame)
         Place(photo, card.photo)
+        page.photo = photo
         photo:SetFrameLevel(cardFrame:GetFrameLevel() + 2)
         local sky = photo:CreateTexture(nil, "BACKGROUND")
         sky:SetAllPoints()
@@ -228,12 +288,34 @@ ns.RegisterPage({
         end)
         model:SetScript("OnMouseUp", function(self, button)
             self:SetScript("OnUpdate", nil)
-            if button == "RightButton" and not page.key then UI.PickBackdrop(self) end
+            if button == "RightButton" and not page.key then PhotoMenu(self) end
         end)
         model:SetScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
         model:SetScript("OnEnter", function(self)
-            SetTooltip(self, { "Drag to turn, scroll to zoom", not page.key and "Right-click to pick a background" or nil })
+            SetTooltip(self, { "Drag to turn, scroll to zoom", not page.key and "Right-click to show a picture instead, or pick a background" or nil })
         end)
+        -- A picture instead of the model: square, as tall as the photo, its sides cut off by the photo's edges.
+        photo:SetClipsChildren(true)
+        page.portrait = CreateFrame("Frame", nil, photo)
+        page.portrait:SetSize(card.photo.h, card.photo.h)
+        page.portrait:SetPoint("CENTER")
+        page.portrait:Hide()
+        -- While it shows, the photo takes the clicks: left to open the picture, right (yours) for the menu.
+        photo:SetScript("OnMouseUp", function(self, button)
+            if not page.portraitMint then return end
+            if button == "RightButton" and not page.key then
+                PhotoMenu(self)
+            elseif button == "LeftButton" then
+                UI.ClickSound()
+                ns.ShowMint(page.portraitMint, page.key and Ambiguate(page.key, "short") or nil)
+            end
+        end)
+        photo:SetScript("OnEnter", function(self)
+            if not page.portraitMint then return end
+            SetTooltip(self, { ("Picture #%d"):format(page.portraitMint.number), "Click to view",
+                not page.key and "Right-click to show your character instead" or nil })
+        end)
+        photo:SetScript("OnLeave", GameTooltip_Hide)
         model:SetScript("OnLeave", GameTooltip_Hide)
         page.empty = photo:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         page.empty:SetPoint("CENTER")
@@ -271,9 +353,207 @@ ns.RegisterPage({
         page.signature:SetShadowOffset(0, 0)
         page.signatureWidth = sign.w
 
+        -- The left page: the stat plaques' numbers, the showcase's polaroids, the activity list.
+        local left = CreateFrame("Frame", nil, page)
+        left:SetAllPoints()
+        left:SetFrameLevel(book:GetFrameLevel() + 2)
+        page.left = left
+        page.stats = {}
+        for i, board in ipairs(LAYOUT.stats.boards) do
+            local stat = CreateFrame("Frame", nil, left)
+            Place(stat, board)
+            stat:EnableMouse(true)
+            local number = LAYOUT.stats.numbers[i]
+            stat.value = left:CreateFontString(nil, "OVERLAY")
+            stat.value:SetPoint("CENTER", UI.frame, "TOPLEFT", number.x, -number.y)
+            stat.value:SetFont(NAME_FONT, STAT_SIZE, "")
+            stat.value:SetTextColor(unpack(STAT_COLOR))
+            UI.OutlineText(stat.value, TEXT_OUTLINE)
+            stat.width = number.w
+            stat:SetScript("OnEnter", function(self) if self.lines then SetTooltip(self, self.lines) end end)
+            stat:SetScript("OnLeave", GameTooltip_Hide)
+            page.stats[i] = stat
+        end
+
+        -- The showcase's polaroids, each turned by its tilt: the picture, its rarity's colour a pixel round it, the
+        -- date it was minted, the nail. Frames can't turn, so the textures do (the picture's layers round its centre:
+        -- ns.RenderMint's tilt); the date is written straight.
+        local small = LAYOUT.polaroid
+        page.polaroids = {}
+        for i, spot in ipairs(LAYOUT.polaroids) do
+            local holder = CreateFrame("Button", nil, left)
+            holder:SetFrameLevel(left:GetFrameLevel() + i * 3)  -- in the layout's order, each over the one before
+            holder:SetSize(small.w, small.h)
+            holder:SetPoint("CENTER", UI.frame, "TOPLEFT", spot.x, -spot.y)
+            holder.slot, holder.tilt = spot.slot, spot.tilt
+            local angle = math.rad(spot.tilt)
+            -- An offset from the polaroid's centre (y down), turned with it, in WoW's terms (y up).
+            local function Turned(dx, dy)
+                return dx * math.cos(angle) - dy * math.sin(angle), -(dx * math.sin(angle) + dy * math.cos(angle))
+            end
+            local base = holder:CreateTexture(nil, "BACKGROUND")
+            base:SetTexture(ART .. "PolaroidSmall")
+            base:SetAllPoints()
+            base:SetRotation(-angle)
+            holder.border = holder:CreateTexture(nil, "BORDER")
+            holder.border:SetTexture(ART .. "Edge")  -- a square with a soft rim: turned, its edges stay smooth
+            local edge = (small.photo.size + 2 * RARITY_EDGE) / EDGE_FILL
+            holder.border:SetSize(edge, edge)
+            holder.border:SetPoint("CENTER", Turned(small.photo.x, small.photo.y))
+            holder.border:SetRotation(-angle)
+            holder.canvas = CreateFrame("Frame", nil, holder)
+            holder.canvas:SetSize(small.photo.size, small.photo.size)
+            holder.canvas:SetPoint("CENTER", Turned(small.photo.x, small.photo.y))
+            holder.empty = holder:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+            holder.empty:SetPoint("CENTER", Turned(small.photo.x, small.photo.y))
+            holder.empty:SetText("+")
+            holder.empty:SetTextColor(0.5, 0.5, 0.5)
+            holder.date = holder:CreateFontString(nil, "OVERLAY")
+            holder.date:SetFont(NAME_FONT, 9, "")
+            holder.date:SetTextColor(unpack(DATE_COLOR))
+            holder.date:SetPoint("RIGHT", holder, "CENTER", Turned(small.date.x, small.date.y))
+            local nail = holder:CreateTexture(nil, "OVERLAY")
+            nail:SetTexture(ART .. "Nail")
+            nail:SetSize(small.nail, small.nail)
+            nail:SetPoint("CENTER", UI.frame, "TOPLEFT", spot.nail.x, -spot.nail.y)
+            holder:SetScript("OnClick", function(self)
+                UI.ClickSound()
+                if self.mint then
+                    ns.ShowMint(self.mint, self.key and Ambiguate(self.key, "short") or nil)
+                elseif not self.key then
+                    ns.OpenPage("collection")  -- your pictures, to pick one
+                end
+            end)
+            holder:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                if self.mint then
+                    local rarity = ns.MintRarity(self.mint.traits)
+                    GameTooltip:AddLine(("Picture #%d"):format(self.mint.number))
+                    GameTooltip:AddLine((rarity:gsub("^%l", string.upper)), ns.RarityRGB(rarity))
+                    for _, trait in ipairs(ns.MintTraits(self.mint.traits)) do
+                        GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
+                    end
+                    GameTooltip:AddLine("Click to view", 0.6, 0.6, 0.6)
+                else
+                    GameTooltip:AddLine("Showcase")
+                    GameTooltip:AddLine(("Open one of your pictures and click \"Show on your Overview\" (up to %d)."):format(ns.SHOWCASE_SIZE),
+                        1, 1, 1, true)
+                    GameTooltip:AddLine("Click to see your pictures", 0.6, 0.6, 0.6)
+                end
+                GameTooltip:Show()
+            end)
+            holder:SetScript("OnLeave", GameTooltip_Hide)
+            page.polaroids[i] = holder
+        end
+
+        -- What happened to them lately, on the flat panel: a row per event, its kind's icon, the line, its time at the
+        -- right end; every other row a touch lighter, the one under the mouse lighter still. The rows run on under the
+        -- frame's post and the spine (the spine drawn again over them, below the polaroids).
+        local feed = LAYOUT.feed
+        local inset, outset = feed.left - feed.rowLeft, feed.rowRight - (feed.left + feed.width)  -- the text inside the row
+        page.feed = {}
+        for i = 1, feed.rows do
+            local row = CreateFrame("Button", nil, left)
+            row:SetSize(feed.rowRight - feed.rowLeft, feed.rowHeight)
+            row:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", feed.rowLeft, -(feed.top + (i - 1) * feed.rowHeight))
+            local stripe = row:CreateTexture(nil, "BACKGROUND")
+            stripe:SetAllPoints()
+            stripe:SetColorTexture(1, 1, 1, i % 2 == 0 and FEED_STRIPE or 0)
+            local hover = row:CreateTexture(nil, "HIGHLIGHT")
+            hover:SetAllPoints()
+            hover:SetColorTexture(1, 1, 1, FEED_HOVER)
+            local iconSize = feed.textSize + 4
+            row.icon = row:CreateTexture(nil, "ARTWORK")
+            row.icon:SetSize(iconSize, iconSize)
+            row.icon:SetPoint("LEFT", inset + 4, 0)
+            row.picture = CreateFrame("Frame", nil, row)  -- a picture's line: the picture, small
+            row.picture:SetSize(iconSize, iconSize)
+            row.picture:SetPoint("LEFT", inset + 4, 0)
+            row.time = row:CreateFontString(nil, "OVERLAY")
+            row.time:SetFont(NAME_FONT, feed.timeSize, "")
+            row.time:SetTextColor(unpack(FEED_TIME_COLOR))
+            row.time:SetShadowOffset(1, -1)
+            row.time:SetPoint("RIGHT", -(outset + 6), 0)
+            row.text = row:CreateFontString(nil, "OVERLAY")
+            row.text:SetFont(NAME_FONT, feed.textSize, "")
+            row.text:SetTextColor(unpack(FEED_COLOR))
+            row.text:SetShadowOffset(1, -1)
+            row.text:SetShadowColor(0, 0, 0, 0.8)
+            row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+            row.text:SetPoint("RIGHT", row.time, "LEFT", -8, 0)
+            row.text:SetJustifyH("LEFT")
+            row.text:SetWordWrap(false)
+            row:SetScript("OnClick", function(self) if self.item then UI.ShowFeedPicture(self.item) end end)
+            row:SetScript("OnEnter", function(self) if self.item then UI.FeedTooltip(self, self.item) end end)
+            row:SetScript("OnLeave", GameTooltip_Hide)
+            page.feed[i] = row
+        end
+        local spine = CreateFrame("Frame", nil, left)
+        spine:SetAllPoints()
+        spine:SetFrameLevel(left:GetFrameLevel() + 2)  -- over the rows (level + 1), under the polaroids (+ 3 and up)
+        UI.WoodPiece(spine, feed.spine)
+
+        -- GEARZ: the wooden button under the card (its art per state: Media/Overview/Button_*), showing their gear
+        -- over the left page while selected.
+        -- Like the window's Settings and Close buttons: dimmed at rest, lit while hovered or pressed, shrinking a little
+        -- when pressed (the word with it, dipping), lit with yellow runes while selected (the gear showing).
+        local gearButton = CreateFrame("Button", nil, cardFrame)
+        Place(gearButton, card.gear)
+        local art = gearButton:CreateTexture(nil, "ARTWORK")
+        art:SetPoint("CENTER")
+        local word = gearButton:CreateFontString(nil, "OVERLAY")
+        word:SetFont(NAME_FONT, GEAR_SIZE, "")
+        word:SetTextColor(unpack(GEAR_COLOR))
+        word:SetText("GEARZ")
+        UI.OutlineText(word, TEXT_OUTLINE)
+        local hovered, pressed = false, false
+        local function Redraw()
+            local lit = hovered or pressed or page.gearShown
+            local shade = lit and 1 or UI.HEADER_DIMMED
+            art:SetTexture(ART .. (page.gearShown and "Button_SELECTED" or "Button_NORMAL"))
+            art:SetVertexColor(shade, shade, shade)
+            local scale = pressed and UI.HEADER_PUSHED or 1
+            art:SetSize(card.gear.w * scale, card.gear.h * scale)
+            local glow = lit and 1 or 0.85  -- the word a little dimmer at rest, like the header buttons' icons
+            word:SetTextColor(GEAR_COLOR[1] * glow, GEAR_COLOR[2] * glow, GEAR_COLOR[3] * glow)
+            word:SetFont(NAME_FONT, GEAR_SIZE * scale, "")  -- shrinks with the plank while pressed, and dips
+            word:SetPoint("CENTER", pressed and 1 or 0, pressed and -2 or 0)
+        end
+        gearButton:SetScript("OnEnter", function() hovered = true Redraw() end)
+        gearButton:SetScript("OnLeave", function() hovered, pressed = false, false Redraw() end)
+        gearButton:SetScript("OnMouseDown", function() pressed = true Redraw() end)
+        gearButton:SetScript("OnMouseUp", function() pressed = false Redraw() end)
+        page.gearPanel = UI.CreateGearPanel(page, GEAR_PANEL.width - 12)
+        page.gearPanel:ClearAllPoints()
+        page.gearPanel:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
+        page.gearPanel:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
+        page.gearPanel:SetFrameLevel(left:GetFrameLevel() + 20)
+        local shade = page.gearPanel:CreateTexture(nil, "BACKGROUND")
+        shade:SetPoint("TOPLEFT", -8, 8)
+        shade:SetPoint("BOTTOMRIGHT", 8, -8)
+        shade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
+        local function ShowGear(shown)
+            page.gearShown = shown
+            page.gearPanel:SetShown(shown)
+            left:SetShown(not shown)
+            Redraw()
+        end
+        page.gearPanel.OnBack = function() ShowGear(false) end
+        gearButton:SetScript("OnClick", function()
+            UI.ClickSound()
+            ShowGear(not page.gearShown)
+        end)
+        ShowGear(false)
+
         -- The page is usually created while already showing, so the model may not have its size at the first
         -- load; load once more on the next frame, and whenever the page comes back.
         page.Load = function()
+            if page.portraitMint then  -- a picture shows instead
+                model:ClearModel()
+                model:Hide()
+                page.empty:Hide()
+                return
+            end
             model:Show()
             local shown = UI.LoadCharacter(model, page.key)
             model:SetShown(shown)
@@ -295,16 +575,29 @@ ns.RegisterPage({
         -- The full name, as big as fits on the label.
         Fit(page.name, NAME_FONT, NAME_SIZE, 8, (p.name or ""):upper(), page.nameWidth)
 
-        -- The model: reloaded only for someone else or new gear, so turning it sticks while the page refreshes.
+        -- The photo: their chosen picture, or (no model of them to show) their first showcase picture or else their
+        -- newest picture, or the model.
         local friend = key and KillTrackerFriends[key]
         local gear = friend and friend.gear
-        if not page.loaded or key ~= page.key or (key and gear ~= page.model.shownGear) then
+        local portrait = ns.FindMint(key, p.portrait)
+        if not portrait and key and not gear then portrait = ns.GetShowcase(key)[1] or ns.NewestMint(key) end
+        local switched = (page.portraitMint ~= nil) ~= (portrait ~= nil)
+        page.portraitMint = portrait
+        page.portrait:SetShown(portrait ~= nil)
+        page.photo:EnableMouse(portrait ~= nil)
+        if portrait and page.portraitDrawn ~= portrait.traits then
+            ns.RenderMint(page.portrait, portrait.traits)
+            page.portraitDrawn = portrait.traits
+        end
+        -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
+        -- refreshes.
+        if not page.loaded or switched or key ~= page.key or (key and gear ~= page.model.shownGear) then
             page.loaded, page.key = true, key
             page.Load()
         end
-        local option = ns.GetModelBackdrop and ns.GetModelBackdrop(key)
+        local option = not portrait and ns.GetModelBackdrop and ns.GetModelBackdrop(key)
         if option then page.backdrop:SetTexture(ns.MintTexture(option, {})) end
-        page.backdrop:SetShown(option ~= nil)
+        page.backdrop:SetShown(option ~= nil and option ~= false)
 
         -- The icons.
         local color = p.classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[p.classFile]
@@ -325,6 +618,70 @@ ns.RegisterPage({
             icon:Set(prof and "Prof_" .. s.key, "Base_SECONDARY",
                 prof and { prof.name, ("%d / %d"):format(prof.rank or 0, prof.max or 0) } or { "Not learned" })
         end
+
+        -- The plaques: points, achievements (earned of those in the kinds of creature they've killed), kills.
+        local source = key and KillTrackerFriends[key] or KillTrackerDB
+        local earned, possible = 0, 0
+        for _, row in ipairs(ns.GetAchievementProgress(source)) do
+            earned, possible = earned + row.earned, possible + #row.tiers
+        end
+        local stats = {
+            { key and (source.earned or 0) or ns.GetPoints().balance, { "Points", key and "Earned in all" or "To spend on minting pictures" } },
+            { ("%d/%d"):format(earned, possible), { "Achievements", "Earned, of those for the kinds of creature killed so far" } },
+            { source.total or 0, { "Kills" } },
+        }
+        for i, stat in ipairs(page.stats) do
+            Fit(stat.value, NAME_FONT, STAT_SIZE, 9, tostring(stats[i][1]), stat.width)
+            stat.lines = stats[i][2]
+        end
+
+        -- The showcase's pictures on the polaroids (your empty ones show a +; someone else's empty ones aren't there).
+        local pictures = ns.GetShowcase(key)
+        for _, holder in ipairs(page.polaroids) do
+            local mint = pictures[holder.slot]
+            holder.mint, holder.key = mint, key
+            holder:SetShown(mint ~= nil or key == nil)
+            holder.canvas:SetShown(mint ~= nil)
+            holder.empty:SetShown(mint == nil)
+            if mint then
+                if holder.drawn ~= mint.traits then  -- only when it shows other traits
+                    ns.RenderMint(holder.canvas, mint.traits, holder.tilt)
+                    holder.drawn = mint.traits
+                end
+                holder.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
+                holder.date:SetText(mint.time and date("%Y-%m-%d", mint.time) or "")
+            else
+                holder.border:SetVertexColor(0.35, 0.35, 0.35)
+                holder.date:SetText("")
+            end
+        end
+
+        -- What happened to them lately: the lines without their name in front (it's on the card), calm colours.
+        local who = key and Ambiguate(key, "short") or ns.MyName()
+        local items = {}
+        for _, item in ipairs(ns.GetFeed(true)) do
+            if item.who == who then items[#items + 1] = item end
+            if #items == #page.feed then break end
+        end
+        for i, row in ipairs(page.feed) do
+            local item = items[i]
+            row.item = item
+            local line = item and item.text:gsub("^" .. who:gsub("%p", "%%%0") .. " ", "", 1):gsub("^%l", string.upper)
+            row.text:SetText(line or (i == 1 and "Nothing yet - go smash something." or ""))
+            row.time:SetText(item and ns.TimeAgo(item.time) or "")
+            local icon = item and FEED_ICONS[item.kind]
+            row.icon:SetShown(icon ~= nil)
+            if icon then
+                row.icon:SetTexture(icon[1])
+                row.icon:SetVertexColor(unpack(icon[2] or { 1, 1, 1 }))
+            end
+            row.picture:SetShown(item and item.mint ~= nil or false)
+            if item and item.mint and row.drawn ~= item.mint.traits then
+                ns.RenderMint(row.picture, item.mint.traits)
+                row.drawn = item.mint.traits
+            end
+        end
+        page.gearPanel:SetPlayer(key)
 
         -- The first name under the photo, as big as fits.
         local first = (p.name or ""):match("^(%S+)") or ""

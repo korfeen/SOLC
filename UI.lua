@@ -383,6 +383,7 @@ ns.UI.FRAME_LEVEL = { wood = 30, header = 40 }  -- above the window's own level
 -- small textures (Media/Wood, tools/convert-wood.js), stretched and tilted. Under the logo, over the window.
 local WOOD = "Interface\\AddOns\\SOLC\\Media\\Wood\\"
 local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
+local HEADER_WOOD_SHADE = 0.81  -- a little darker than painted, like the frame (tools/convert-overview.js WOOD_SHADE)
 local woodHeader = CreateFrame("Frame", nil, frame)
 woodHeader:SetAllPoints()
 woodHeader:SetFrameLevel(frame:GetFrameLevel() + 40)
@@ -393,6 +394,7 @@ local function Board(layer, file, x, y, w, h, tilt, shade)
     texture:SetSize(w, h)
     texture:SetPoint("CENTER", frame, "TOPLEFT", x, -y)
     texture:SetRotation(-math.rad(tilt))  -- the layout's tilt is clockwise; WoW turns anticlockwise
+    shade = shade * HEADER_WOOD_SHADE
     texture:SetVertexColor(shade, shade, shade)
 end
 local PLANK_END = ns.HeaderLayout and ns.HeaderLayout.plankEnd or 0.645
@@ -443,6 +445,7 @@ end
 
 local HEADER_DIMMED = 0.55  -- as the sidebar's unselected planks (DIMMED, further down)
 local HEADER_PUSHED = ns.ButtonArt and ns.ButtonArt.pushed.width / ns.ButtonArt.normal.width or 0.96
+ns.UI.HEADER_DIMMED, ns.UI.HEADER_PUSHED = HEADER_DIMMED, HEADER_PUSHED  -- the GEARZ button behaves the same (OverviewCard.lua)
 local function HeaderButton(spec, tooltip, onClick)
     local button = CreateFrame("Button", nil, woodHeader)
     button:SetFrameLevel(woodHeader:GetFrameLevel() + 2)
@@ -1018,7 +1021,9 @@ function ns.UI.SkinButton(button, options)
 end
 
 -- A coloured outline for a font string (WoW's own OUTLINE is always black): copies of the text in that colour,
--- shifted a pixel each way, drawn behind it. They follow the text's SetText and SetFont (the pushed shrink).
+-- shifted a pixel each way, drawn behind it, each over the text's whole box with its alignment and wrapping (so a
+-- left-aligned or cut-short text gets an outline that fits). They follow the text's SetText and SetFont (the
+-- pushed shrink); colour codes in the text are left out of them, or the copies would show those colours.
 local LAYER_BELOW = { BORDER = "BACKGROUND", ARTWORK = "BORDER", OVERLAY = "ARTWORK", HIGHLIGHT = "OVERLAY" }
 local OUTLINE_OFFSETS = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { -1, 1 }, { 1, -1 }, { 1, 1 } }
 function ns.UI.OutlineText(text, color)
@@ -1027,7 +1032,8 @@ function ns.UI.OutlineText(text, color)
     local copies = {}
     for i, offset in ipairs(OUTLINE_OFFSETS) do
         local copy = text:GetParent():CreateFontString(nil, layer)
-        copy:SetPoint("CENTER", text, "CENTER", offset[1], offset[2])
+        copy:SetPoint("TOPLEFT", text, "TOPLEFT", offset[1], offset[2])
+        copy:SetPoint("BOTTOMRIGHT", text, "BOTTOMRIGHT", offset[1], offset[2])
         copy:SetTextColor(color[1], color[2], color[3], color[4] or 1)
         copy:SetShadowOffset(0, 0)
         copies[i] = copy
@@ -1035,9 +1041,13 @@ function ns.UI.OutlineText(text, color)
     local function Sync()
         local file, size, flags = text:GetFont()
         if not file then return end  -- no font yet: nothing the copies could draw
+        local plain = (text:GetText() or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
         for _, copy in ipairs(copies) do
             copy:SetFont(file, size, flags)
-            copy:SetText(text:GetText())
+            copy:SetJustifyH(text:GetJustifyH())
+            copy:SetJustifyV(text:GetJustifyV())
+            copy:SetWordWrap(text:CanWordWrap())
+            copy:SetText(plain)
         end
     end
     hooksecurefunc(text, "SetText", Sync)

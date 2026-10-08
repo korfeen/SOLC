@@ -112,6 +112,7 @@ end
 local function ShowFeedPicture(item)
     if item.mint then ns.ShowMint(item.mint, item.owner) end
 end
+UI.ShowFeedPicture = ShowFeedPicture
 local function FeedTooltip(row, item)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:AddLine(item.text, 1, 1, 1, true)
@@ -119,6 +120,7 @@ local function FeedTooltip(row, item)
     if item.mint then GameTooltip:AddLine("Click to see the picture", 0.4, 0.8, 1) end
     GameTooltip:Show()
 end
+UI.FeedTooltip = FeedTooltip
 
 -- The bounty block shared by Overview and Guild home: name, bar, details. Click opens the Bounty Board.
 -- width: default the whole page.
@@ -495,10 +497,11 @@ local GetItemStats = C_Item and C_Item.GetItemStats or GetItemStats
 local GetItemQualityColor = C_Item and C_Item.GetItemQualityColor or GetItemQualityColor
 local GetItemIcon = C_Item and C_Item.GetItemIconByID or GetItemIcon
 
-local function GearPanel(page)
+local function GearPanel(page, width)
+    width = width or LEFT_WIDTH
     local panel = CreateFrame("Frame", nil, page)
     panel:SetPoint("TOPLEFT", 0, -44)
-    panel:SetSize(LEFT_WIDTH + 12, UI.PAGE_HEIGHT - 56)
+    panel:SetSize(width + 12, UI.PAGE_HEIGHT - 56)
     panel:Hide()
     UI.CreateSection(panel, "Gear", 4)
     local back = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
@@ -508,7 +511,7 @@ local function GearPanel(page)
     back:SetScript("OnClick", function() if panel.OnBack then panel.OnBack() end end)
 
     local key
-    local columnWidth = (LEFT_WIDTH - 8) / 2
+    local columnWidth = (width - 8) / 2
     local cells = {}
     for c, slots in ipairs(GEAR_COLUMNS) do
         for r, slot in ipairs(slots) do
@@ -561,7 +564,7 @@ local function GearPanel(page)
     end
     panel.empty = panel:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     panel.empty:SetPoint("TOP", 0, -60)
-    panel.empty:SetWidth(LEFT_WIDTH - 20)
+    panel.empty:SetWidth(width - 20)
     panel.empty:SetText("No gear synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
 
     -- The item in a slot: item link or string, or nil.
@@ -662,6 +665,7 @@ local function GearPanel(page)
     panel:SetScript("OnShow", function(self) self:Refresh() end)
     return panel
 end
+UI.CreateGearPanel = GearPanel  -- (page, width): also on the new Overview (OverviewCard.lua)
 
 -- Professions: each profession's level, and the known recipes of the one picked (hover for the recipe).
 -- Shown in place of the Overview's left side; panel:SetPlayer(key) like the model.
