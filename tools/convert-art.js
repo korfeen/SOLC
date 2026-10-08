@@ -492,6 +492,19 @@ function convertOption(layer, option, images, target) {
             pixels: `${cx.pixels}x${cy.pixels}` };
 }
 
+// New paintings first get their sketch twin (tools/crayonize-art.js, only for files without one), and the ones
+// still without a crayon twin are listed (those are drawn by hand: tools/make-crayon-*.js).
+{
+    const sketch = EDITIONS.find((e) => e.key === "sketch"), crayon = EDITIONS.find((e) => e.key === "crayon");
+    const files = Object.values(layers).flatMap((layer) => layer.options.flatMap((o) => o.files.map((f) => path.relative(SOURCE, f.file))));
+    for (const rel of files.filter((f) => !fs.existsSync(path.join(sketch.source, f)))) {
+        console.log(`Sketching ${rel}`);
+        require("child_process").execFileSync(process.execPath, [path.join(__dirname, "crayonize-art.js"), rel], { stdio: "ignore" });
+    }
+    const noCrayon = files.filter((f) => !fs.existsSync(path.join(crayon.source, f)));
+    if (noCrayon.length) console.log(`No crayon version yet (shown painted until drawn): ${noCrayon.join(", ")}`);
+}
+
 // Convert.
 fs.rmSync(TARGET, { recursive: true, force: true });
 for (const edition of EDITIONS) fs.rmSync(edition.target, { recursive: true, force: true });
