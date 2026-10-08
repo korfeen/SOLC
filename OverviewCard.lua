@@ -191,6 +191,173 @@ local function CreateIcon(parent, spot)
     return icon
 end
 
+-- GEARZ: their gear over the left page, like a character sheet. Two columns of slots (icon with a rim in the item's
+-- quality colour, its name and item level beside it), the weapons in a row under them, the average item level at the
+-- top and the stats the gear adds up to at the bottom. Hover for the item, shift-click to link it. page: the Overview
+-- page; returns a frame with :SetPlayer(key).
+local GEAR_LEFT = { 1, 2, 3, 15, 5, 4, 19, 9 }
+local GEAR_RIGHT = { 10, 6, 7, 8, 11, 12, 13, 14 }
+local GEAR_WEAPONS = { 16, 17, 18 }
+local SLOT_SIZE, SLOT_ROW = 34, 40
+local GEAR_STAT_LINES = 8
+local QUALITY_GREY = { 0.35, 0.35, 0.35 }
+
+local function GearPage(page)
+    local gear = CreateFrame("Frame", nil, page)
+    gear:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
+    gear:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
+    local shade = gear:CreateTexture(nil, "BACKGROUND")
+    shade:SetPoint("TOPLEFT", -8, 8)
+    shade:SetPoint("BOTTOMRIGHT", 8, -8)
+    shade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
+
+    local title = gear:CreateFontString(nil, "OVERLAY")
+    title:SetFont(NAME_FONT, 20, "")
+    title:SetTextColor(unpack(GEAR_COLOR))
+    title:SetPoint("TOPLEFT", 2, -2)
+    title:SetText("GEARZ")
+    UI.OutlineText(title, TEXT_OUTLINE)
+    gear.average = gear:CreateFontString(nil, "OVERLAY")
+    gear.average:SetFont(NAME_FONT, 13, "")
+    gear.average:SetTextColor(unpack(FEED_COLOR))
+    gear.average:SetPoint("LEFT", title, "RIGHT", 10, -1)
+    gear.empty = gear:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    gear.empty:SetPoint("TOP", 0, -80)
+    gear.empty:SetWidth(GEAR_PANEL.width - 20)
+    gear.empty:SetText("No gear synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
+
+    -- A slot: the icon on a rim in the quality's colour (Media/Overview/Edge, soft-edged), name and level beside it
+    -- (side: "left" column puts them right of the icon, "right" left of it, nil: under it, the weapons).
+    local slots = {}
+    local function Slot(slot, x, y, side)
+        local cell = CreateFrame("Button", nil, gear)
+        cell:SetSize(SLOT_SIZE, SLOT_SIZE)
+        cell:SetPoint("TOPLEFT", x, -y)
+        cell.slot = slot
+        cell.rim = cell:CreateTexture(nil, "BACKGROUND")
+        cell.rim:SetTexture(ART .. "Edge")
+        cell.rim:SetPoint("CENTER")
+        cell.rim:SetSize((SLOT_SIZE + 4) / EDGE_FILL, (SLOT_SIZE + 4) / EDGE_FILL)
+        cell.icon = cell:CreateTexture(nil, "ARTWORK")
+        cell.icon:SetPoint("TOPLEFT", 1, -1)
+        cell.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        cell.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        if side then
+            cell.name = gear:CreateFontString(nil, "OVERLAY")
+            cell.name:SetFont(NAME_FONT, 11, "")
+            cell.name:SetWidth(GEAR_PANEL.width / 2 - SLOT_SIZE - 14)
+            cell.name:SetWordWrap(false)
+            cell.level = gear:CreateFontString(nil, "OVERLAY")
+            cell.level:SetFont(NAME_FONT, 10, "")
+            cell.level:SetTextColor(0.6, 0.55, 0.45)
+            if side == "left" then
+                cell.name:SetPoint("TOPLEFT", cell, "TOPRIGHT", 6, -3)
+                cell.name:SetJustifyH("LEFT")
+                cell.level:SetPoint("TOPLEFT", cell.name, "BOTTOMLEFT", 0, -2)
+            else
+                cell.name:SetPoint("TOPRIGHT", cell, "TOPLEFT", -6, -3)
+                cell.name:SetJustifyH("RIGHT")
+                cell.level:SetPoint("TOPRIGHT", cell.name, "BOTTOMRIGHT", 0, -2)
+            end
+        end
+        cell:SetScript("OnEnter", function(self)
+            if not self.item then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if gear.key then GameTooltip:SetHyperlink(self.item) else GameTooltip:SetInventoryItem("player", self.slot) end
+            GameTooltip:Show()
+        end)
+        cell:SetScript("OnLeave", GameTooltip_Hide)
+        cell:SetScript("OnClick", function(self)
+            if self.item and IsModifiedClick("CHATLINK") then
+                local _, link = GetItemInfo(self.item)
+                if link then ChatEdit_InsertLink(link) end
+            end
+        end)
+        slots[#slots + 1] = cell
+    end
+    for i, slot in ipairs(GEAR_LEFT) do Slot(slot, 2, 32 + (i - 1) * SLOT_ROW, "left") end
+    for i, slot in ipairs(GEAR_RIGHT) do Slot(slot, GEAR_PANEL.width - SLOT_SIZE - 2, 32 + (i - 1) * SLOT_ROW, "right") end
+    for i, slot in ipairs(GEAR_WEAPONS) do
+        Slot(slot, GEAR_PANEL.width / 2 - SLOT_SIZE / 2 + (i - 2) * (SLOT_SIZE + 14), 32 + #GEAR_LEFT * SLOT_ROW + 6)
+    end
+
+    -- The stats the gear adds up to, in two columns.
+    local statsTop = 32 + #GEAR_LEFT * SLOT_ROW + SLOT_SIZE + 22
+    local statsTitle = gear:CreateFontString(nil, "OVERLAY")
+    statsTitle:SetFont(NAME_FONT, 14, "")
+    statsTitle:SetTextColor(1, 0.82, 0.25)
+    statsTitle:SetPoint("TOPLEFT", 4, -statsTop)
+    statsTitle:SetText("Stats from gear")
+    gear.statLines = {}
+    for i = 1, GEAR_STAT_LINES do
+        local line = gear:CreateFontString(nil, "OVERLAY")
+        line:SetFont(NAME_FONT, 12, "")
+        line:SetTextColor(unpack(FEED_COLOR))
+        line:SetPoint("TOPLEFT", 4 + ((i - 1) % 2) * (GEAR_PANEL.width / 2), -statsTop - 20 - math.floor((i - 1) / 2) * 16)
+        line:SetWidth(GEAR_PANEL.width / 2 - 8)
+        line:SetJustifyH("LEFT")
+        line:SetWordWrap(false)
+        gear.statLines[i] = line
+    end
+
+    function gear:Refresh()
+        local data = UI.GearData(self.key)
+        self.empty:SetShown(not data.has)
+        self.average:SetText(data.average and ("Item level %d"):format(data.average) or "")
+        for _, cell in ipairs(slots) do
+            local item = data.slots[cell.slot]
+            cell:SetShown(data.has)
+            if cell.name then cell.name:SetShown(data.has) cell.level:SetShown(data.has) end
+            cell.item = item and item.item
+            if item then
+                cell.icon:SetTexture(item.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
+                cell.icon:SetDesaturated(false)
+                local r, g, b = unpack(QUALITY_GREY)
+                if item.quality and GetItemQualityColor then r, g, b = GetItemQualityColor(item.quality) end
+                cell.rim:SetVertexColor(r, g, b)
+                if cell.name then
+                    cell.name:SetText(item.name or "...")
+                    cell.name:SetTextColor(r, g, b)
+                    cell.level:SetText(item.level and ("ilvl %d"):format(item.level) or "")
+                end
+            else
+                local emptyTexture = GetInventorySlotInfo and select(2, GetInventorySlotInfo(UI.GEAR_SLOT_NAMES[cell.slot]))
+                cell.icon:SetTexture(emptyTexture)
+                cell.icon:SetDesaturated(true)
+                cell.rim:SetVertexColor(unpack(QUALITY_GREY))
+                if cell.name then
+                    cell.name:SetText(_G[UI.GEAR_SLOT_NAMES[cell.slot]] or "")
+                    cell.name:SetTextColor(0.4, 0.4, 0.4)
+                    cell.level:SetText("")
+                end
+            end
+        end
+        for i, line in ipairs(self.statLines) do
+            local stat = data.stats[i]
+            line:SetText(stat and ("|cff40ff40+%d|r %s"):format(stat[2], stat[1]) or (i == 1 and data.loading and "loading items..." or ""))
+            line:SetShown(data.has)
+        end
+    end
+    function gear:SetPlayer(key)
+        self.key = key
+        if self:IsShown() then self:Refresh() end
+    end
+    -- Item info arrives later for items this client hasn't seen yet; your own gear can change while open.
+    local pending
+    gear:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+    gear:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+    gear:SetScript("OnEvent", function(self)
+        if not self:IsVisible() or pending then return end
+        pending = true
+        C_Timer.After(0.2, function()
+            pending = nil
+            if self:IsVisible() then self:Refresh() end
+        end)
+    end)
+    gear:SetScript("OnShow", function(self) self:Refresh() end)
+    return gear
+end
+
 ns.RegisterPage({
     key = "wipOverview",
     label = "Overview",
@@ -505,7 +672,8 @@ ns.RegisterPage({
         -- GEARZ: the wooden button under the card (its art per state: Media/Overview/Button_*), showing their gear
         -- over the left page while selected.
         -- Like the window's Settings and Close buttons: dimmed at rest, lit while hovered or pressed, shrinking a little
-        -- when pressed (the word with it, dipping), lit with yellow runes while selected (the gear showing).
+        -- when pressed (the word with it, dipping). It says where it goes: GEARZ on the overview, OVERVIEW (ME in ogre
+        -- mode) while the gear or the rank covers the left page.
         local gearButton = CreateFrame("Button", nil, cardFrame)
         Place(gearButton, card.gear)
         local art = gearButton:CreateTexture(nil, "ARTWORK")
@@ -513,34 +681,28 @@ ns.RegisterPage({
         local word = gearButton:CreateFontString(nil, "OVERLAY")
         word:SetFont(NAME_FONT, GEAR_SIZE, "")
         word:SetTextColor(unpack(GEAR_COLOR))
-        word:SetText("GEARZ")
         UI.OutlineText(word, TEXT_OUTLINE)
         local hovered, pressed = false, false
         local function Redraw()
-            local lit = hovered or pressed or page.gearShown
+            local lit = hovered or pressed
             local shade = lit and 1 or UI.HEADER_DIMMED
-            art:SetTexture(ART .. (page.gearShown and "Button_SELECTED" or "Button_NORMAL"))
+            art:SetTexture(ART .. "Button_NORMAL")
             art:SetVertexColor(shade, shade, shade)
             local scale = pressed and UI.HEADER_PUSHED or 1
             art:SetSize(card.gear.w * scale, card.gear.h * scale)
             local glow = lit and 1 or 0.85  -- the word a little dimmer at rest, like the header buttons' icons
             word:SetTextColor(GEAR_COLOR[1] * glow, GEAR_COLOR[2] * glow, GEAR_COLOR[3] * glow)
-            word:SetFont(NAME_FONT, GEAR_SIZE * scale, "")  -- shrinks with the plank while pressed, and dips
+            local ogre = KillTrackerDB and KillTrackerDB.ogreMode
+            local label = page.panel and (ogre and "ME" or "OVERVIEW") or "GEARZ"
+            Fit(word, NAME_FONT, GEAR_SIZE * scale, 10, label, card.gear.w * 0.62 * scale)  -- shrinks with the plank, and dips
             word:SetPoint("CENTER", pressed and 1 or 0, pressed and -2 or 0)
         end
         gearButton:SetScript("OnEnter", function() hovered = true Redraw() end)
         gearButton:SetScript("OnLeave", function() hovered, pressed = false, false Redraw() end)
         gearButton:SetScript("OnMouseDown", function() pressed = true Redraw() end)
         gearButton:SetScript("OnMouseUp", function() pressed = false Redraw() end)
-        page.gearPanel = UI.CreateGearPanel(page, GEAR_PANEL.width - 12)
-        page.gearPanel:ClearAllPoints()
-        page.gearPanel:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
-        page.gearPanel:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
+        page.gearPanel = GearPage(page)
         page.gearPanel:SetFrameLevel(left:GetFrameLevel() + 20)
-        local shade = page.gearPanel:CreateTexture(nil, "BACKGROUND")
-        shade:SetPoint("TOPLEFT", -8, 8)
-        shade:SetPoint("BOTTOMRIGHT", 8, -8)
-        shade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
         -- The Ogre Rank over the left page: rank, title, points to the next, every perk (unlocked ones lit).
         local rankPanel = CreateFrame("Frame", nil, page)
         rankPanel:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
@@ -589,10 +751,6 @@ ns.RegisterPage({
             line:SetWordWrap(false)
             rankPanel.lines[i] = line
         end
-        local back = CreateFrame("Button", nil, rankPanel, "UIPanelButtonTemplate")
-        back:SetSize(70, 20)
-        back:SetPoint("TOPRIGHT", 0, 0)
-        back:SetText("Back")
         function rankPanel:SetPlayer(key)
             local current, nextRank, points = ns.GetRank(key)
             self.badge:SetTexture(BadgeArt(current.rank))
@@ -626,11 +784,9 @@ ns.RegisterPage({
             left:SetShown(which == nil)
             Redraw()
         end
-        page.gearPanel.OnBack = function() ShowPanel(nil) end
-        back:SetScript("OnClick", function() ShowPanel(nil) end)
         gearButton:SetScript("OnClick", function()
             UI.ClickSound()
-            ShowPanel(page.panel ~= "gear" and "gear" or nil)
+            ShowPanel(not page.panel and "gear" or nil)
         end)
         page.rankPanel = rankPanel
 
@@ -706,10 +862,7 @@ ns.RegisterPage({
         page.portraitMint = portrait
         page.portrait:SetShown(portrait ~= nil)
         page.photo:EnableMouse(portrait ~= nil)
-        if portrait and page.portraitDrawn ~= portrait.traits then
-            ns.RenderMint(page.portrait, portrait.traits)
-            page.portraitDrawn = portrait.traits
-        end
+        if portrait then ns.DrawMint(page.portrait, portrait) end
         -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
         -- refreshes.
         if not page.loaded or switched or key ~= page.key or (key and gear ~= page.model.shownGear) then
@@ -765,10 +918,7 @@ ns.RegisterPage({
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
             if mint then
-                if holder.drawn ~= mint.traits then  -- only when it shows other traits
-                    ns.RenderMint(holder.canvas, mint.traits, holder.tilt)
-                    holder.drawn = mint.traits
-                end
+                ns.DrawMint(holder.canvas, mint, holder.tilt)
                 holder.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
                 holder.date:SetText(mint.time and date("%Y-%m-%d", mint.time) or "")
             else
@@ -800,10 +950,7 @@ ns.RegisterPage({
                 row.icon:Show()
             end
             row.picture:SetShown(thumbnail and true or false)
-            if thumbnail and row.drawn ~= item.mint.traits then
-                ns.RenderMint(row.picture, item.mint.traits)
-                row.drawn = item.mint.traits
-            end
+            if thumbnail then ns.DrawMint(row.picture, item.mint) end
         end
         page.gearPanel:SetPlayer(key)
 

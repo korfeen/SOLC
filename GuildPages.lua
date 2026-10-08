@@ -667,6 +667,52 @@ local function GearPanel(page, width)
 end
 UI.CreateGearPanel = GearPanel  -- (page, width): also on the new Overview (OverviewCard.lua)
 
+-- Someone's gear for the new Overview's GEARZ page (OverviewCard.lua): you (key nil) or a synced guildmate.
+-- Returns { has (gear known), loading (items still arriving), slots = { [slot] = { item, name, quality, level,
+-- texture, enchanted } }, stats = { { label, value } } (main ones first), average (item level) }.
+function UI.GearData(key)
+    local friend = key and KillTrackerFriends[key]
+    local data = { has = not key or (friend and friend.gear) ~= nil, slots = {}, stats = {}, loading = false }
+    if not data.has then return data end
+    local totals, sum, count = {}, 0, 0
+    for slot = 1, 19 do
+        local item
+        if key then item = ns.GearItemString(friend.gear, slot) else item = GetInventoryItemLink("player", slot) end
+        if item then
+            local name, _, quality, itemLevel, _, _, _, _, _, texture = GetItemInfo(item)
+            local itemID = tonumber(item:match("item:(%d+)"))
+            if not name then
+                data.loading = true
+                if C_Item and C_Item.RequestLoadItemDataByID and itemID then C_Item.RequestLoadItemDataByID(itemID) end
+            end
+            local enchant = tonumber(item:match("item:%d+:(%d*)") or "") or 0
+            data.slots[slot] = { item = item, name = name, quality = quality, level = not NO_ITEM_LEVEL[slot] and itemLevel or nil,
+                texture = texture or (itemID and GetItemIcon and GetItemIcon(itemID)), enchanted = enchant > 0 }
+            if itemLevel and not NO_ITEM_LEVEL[slot] then sum, count = sum + itemLevel, count + 1 end
+            local stats = GetItemStats and GetItemStats(item)
+            for stat, value in pairs(stats or {}) do
+                if not stat:find("DAMAGE_PER_SECOND") then
+                    local label = StatLabel(stat)
+                    totals[label] = (totals[label] or 0) + value
+                end
+            end
+        end
+    end
+    data.average = count > 0 and sum / count or nil
+    local known = {}
+    for _, statKey in ipairs(STAT_ORDER) do
+        local label = StatLabel(statKey)
+        if totals[label] then data.stats[#data.stats + 1] = { label, math.floor(totals[label] + 0.5) } end
+        known[label] = true
+    end
+    local rest = {}
+    for label in pairs(totals) do if not known[label] then rest[#rest + 1] = label end end
+    table.sort(rest)
+    for _, label in ipairs(rest) do data.stats[#data.stats + 1] = { label, math.floor(totals[label] + 0.5) } end
+    return data
+end
+UI.GEAR_SLOT_NAMES = SLOT_NAMES
+
 -- Professions: each profession's level, and the known recipes of the one picked (hover for the recipe).
 -- Shown in place of the Overview's left side; panel:SetPlayer(key) like the model.
 local MAX_PROFESSIONS = 5
@@ -876,10 +922,7 @@ local function ShowcaseRow(parent, y)
             tile.canvas:SetShown(mint ~= nil)
             tile.empty:SetShown(mint == nil and key == nil)
             if mint then
-                if tile.drawn ~= mint.traits then  -- only when it shows other traits
-                    ns.RenderMint(tile.canvas, mint.traits)
-                    tile.drawn = mint.traits
-                end
+                ns.DrawMint(tile.canvas, mint)
                 tile:SetBackdropBorderColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
             else
                 tile:SetBackdropBorderColor(0.4, 0.4, 0.4)
@@ -1476,7 +1519,7 @@ ns.RegisterPage({
             tile:SetPoint("TOPLEFT", column * (TILE + TILE_GAP), -line * (TILE + 34 + TILE_GAP))
             -- Redraw only when the tile shows other traits (another picture, or a rerolled one: new traits table).
             if tile.drawn ~= picture.mint.traits then
-                ns.RenderMint(tile.canvas, picture.mint.traits)
+                ns.DrawMint(tile.canvas, picture.mint)
                 tile.drawn = picture.mint.traits
             end
             local rarity = ns.MintRarity(picture.mint.traits)
