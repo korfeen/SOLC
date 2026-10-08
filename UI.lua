@@ -10,10 +10,12 @@
 local _, ns = ...
 
 local WIDTH, HEIGHT = 950, 625
-local SIDEBAR_WIDTH = 150
+local SIDEBAR_LEFT, SIDEBAR_WIDTH = 36, 150  -- the menu column, its right edge against the frame's left post
 local VIEWING_WIDTH = 170  -- the name between the "whose stats" arrows: fixed, so the arrows don't move
 local ARROW_SIZE = 26     -- the arrows (spellbook page textures, drawn for 32px; smaller clips their edges)
-local PAGE_WIDTH, PAGE_HEIGHT = WIDTH - SIDEBAR_WIDTH - 44, HEIGHT - 68
+-- The page area: inside the wooden frame (OverviewLayout.lua, tools/overview-layout.js).
+local INNER = ns.OverviewLayout and ns.OverviewLayout.inner or { left = 206, right = 923, top = 44, bottom = 588 }
+local PAGE_WIDTH, PAGE_HEIGHT = INNER.right - INNER.left - 8, INNER.bottom - INNER.top - 10
 local ROW_HEIGHT = 18
 local LIST_WIDTH = PAGE_WIDTH - 40
 local NORMAL_RANK = "Normal"
@@ -285,17 +287,17 @@ local frame = CreateFrame("Frame", "SOLCFrame", UIParent, "BackdropTemplate")
 frame:SetSize(WIDTH, HEIGHT)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
--- The window's background and border only behind the pages: the menu column on the left has none, its
--- planks hang in the open under the logo. That strip doesn't take the mouse either (clicks there reach the
--- game), only the planks themselves do.
-local BODY_LEFT = 14 + SIDEBAR_WIDTH - 6  -- just left of the page area (which starts 8 right of the menu column)
+-- The window's background only behind the pages, its edges under the wooden frame (the posts and the bottom
+-- planks, further down): the menu column on the left has none, its planks hang in the open under the logo.
+-- Outside the frame the window doesn't take the mouse either (clicks there reach the game).
+local BODY = { left = INNER.left - 16, right = INNER.right + 16, bottom = INNER.bottom + 12 }  -- under the posts' middles
 local body = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-body:SetPoint("TOPLEFT", BODY_LEFT, 0)
-body:SetPoint("BOTTOMRIGHT")
+body:SetPoint("TOPLEFT", BODY.left, 0)
+body:SetPoint("BOTTOMRIGHT", BODY.right - WIDTH, HEIGHT - BODY.bottom)
 body:SetFrameLevel(frame:GetFrameLevel())
-body:SetBackdrop(DIALOG_BACKDROP)
+body:SetBackdrop({ bgFile = ns.WINDOW_BACKGROUND })
 body:SetBackdropColor(unpack(ns.WINDOW_COLOR))
-frame:SetHitRectInsets(BODY_LEFT, 0, 0, 0)
+frame:SetHitRectInsets(BODY.left, WIDTH - BODY.right, 0, HEIGHT - BODY.bottom)
 frame:SetClampedToScreen(true)
 frame:SetMovable(true)
 frame:EnableMouse(true)
@@ -314,12 +316,12 @@ tinsert(UISpecialFrames, "SOLCFrame")  -- close with Escape
 local LOGO_SIZE = 210  -- the texture is square; the logo itself fills its width and about 3/4 of its height
 local logo = CreateFrame("Frame", nil, frame)
 logo:SetSize(LOGO_SIZE, LOGO_SIZE)
--- Centred over the sidebar (14 + 150 / 2 = 89 from the left); the banner tips (about 0.92 of the texture
--- down) end LOGO_BANNERS px below the window's top edge, just over the sidebar's top border (at 44).
+-- Centred over the sidebar; the banner tips (about 0.92 of the texture down) end LOGO_BANNERS px below the
+-- window's top edge, just over the sidebar's top (at 44).
 local LOGO_BANNERS = 52
 local LOGO_Y = LOGO_SIZE * 0.92 - LOGO_BANNERS - 31  -- the logo's top, above the window's top edge
 local LOGO_SIGN_BOTTOM = 1060 / 1254  -- the "Leisure Club" sign's bottom edge, share of the texture's height
-logo:SetPoint("TOPLEFT", frame, "TOPLEFT", 14 + SIDEBAR_WIDTH / 2 - LOGO_SIZE / 2 - 5, LOGO_Y)
+logo:SetPoint("TOPLEFT", frame, "TOPLEFT", SIDEBAR_LEFT + SIDEBAR_WIDTH / 2 - LOGO_SIZE / 2 - 5, LOGO_Y)
 logo:SetFrameLevel(frame:GetFrameLevel() + 50)
 logo.texture = logo:CreateTexture(nil, "OVERLAY")
 logo.texture:SetAllPoints()
@@ -345,6 +347,35 @@ do
         end
     end
 end
+
+-- Frame ---------------------------------------------------------------------------------------------------
+-- A wooden post down each side of the pages, broken planks along the bottom and grey squares on the corners,
+-- on every page (OverviewLayout.lua, from tools/overview-layout.js; the textures in Media/Overview, from
+-- tools/convert-overview.js). Over the pages, under the header.
+local OVERVIEW_ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\"
+local DRAW_LAYERS = { "BACKGROUND", "BORDER", "ARTWORK", "OVERLAY" }
+-- Draws a layout piece on parent: { x, y (centre, from the window's top-left, y down), w, h, tilt (degrees
+-- clockwise), texture, shade, flip, coords (the part of the texture to draw: left, right, top, bottom) }.
+-- order: its place in its list; later pieces go on top (16 per draw layer).
+function ns.UI.WoodPiece(parent, piece, order)
+    local i = (order or 1) - 1
+    local texture = parent:CreateTexture(nil, DRAW_LAYERS[math.min(4, math.floor(i / 16) + 1)], nil, i % 16 - 8)
+    texture:SetTexture(OVERVIEW_ART .. piece.texture)
+    texture:SetSize(piece.w, piece.h)
+    texture:SetPoint("CENTER", frame, "TOPLEFT", piece.x, -piece.y)
+    if piece.coords then texture:SetTexCoord(unpack(piece.coords)) end
+    if piece.flip then texture:SetTexCoord(1, 0, 0, 1) end
+    if piece.tilt ~= 0 then texture:SetRotation(-math.rad(piece.tilt)) end  -- WoW turns anticlockwise
+    local shade = piece.shade or 1
+    texture:SetVertexColor(shade, shade, shade)
+    return texture
+end
+local woodFrame = CreateFrame("Frame", nil, frame)
+woodFrame:SetAllPoints()
+woodFrame:SetFrameLevel(frame:GetFrameLevel() + 30)
+for i, piece in ipairs(ns.OverviewLayout and ns.OverviewLayout.frame or {}) do ns.UI.WoodPiece(woodFrame, piece, i) end
+ns.UI.frame = frame  -- for pages that place things in window coordinates (OverviewCard.lua)
+ns.UI.FRAME_LEVEL = { wood = 30, header = 40 }  -- above the window's own level
 
 -- Header ------------------------------------------------------------------------------------------------
 -- Wooden planks along the window's top edge, from the logo to the two square buttons (Settings and Close), as
@@ -480,14 +511,16 @@ end
 
 -- The menu column: no box of its own, the wooden planks hang straight on the window.
 local sidebar = CreateFrame("Frame", nil, frame)
-sidebar:SetPoint("TOPLEFT", 14, -44)
-sidebar:SetPoint("BOTTOMLEFT", 14, 14)
+sidebar:SetPoint("TOPLEFT", SIDEBAR_LEFT, -44)
+sidebar:SetPoint("BOTTOMLEFT", SIDEBAR_LEFT, 14)
 sidebar:SetWidth(SIDEBAR_WIDTH)
 
+-- The pages: inside the wooden frame, on the window's background (a page with bare = true has none: its own
+-- wood fills the frame, and the game shows through its gaps).
 local pageArea = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-pageArea:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 8, 0)
-pageArea:SetPoint("BOTTOMRIGHT", -14, 14)
-pageArea:SetBackdrop(INSET_BACKDROP)
+pageArea:SetPoint("TOPLEFT", INNER.left, -INNER.top)
+pageArea:SetPoint("BOTTOMRIGHT", INNER.right - WIDTH, HEIGHT - INNER.bottom)
+pageArea:SetBackdrop({ bgFile = ns.WINDOW_BACKGROUND })
 pageArea:SetBackdropColor(0, 0, 0, 0.35)
 ns.UI.pageArea = pageArea  -- for things that take over the whole page, like the minting show (MintReel.lua)
 
@@ -504,6 +537,8 @@ end
 
 local navButtons, sidebarBuilt = {}, false
 local navList = {}  -- the sidebar's buttons in their normal order
+-- Under the sidebar: switches the Overview to the new one being built (OverviewCard.lua), lit while it's on.
+local wipButton
 -- The sidebar's page buttons (wooden, see ns.UI.SkinButton) keep the art's shape: their height follows the width.
 local NAV_WIDTH = 138
 local NAV_HEIGHT = math.floor(NAV_WIDTH * ns.ButtonArt.normal.height / ns.ButtonArt.normal.width + 0.5)
@@ -685,6 +720,10 @@ local function LayoutSidebar()
         if button.ogre then button.ogre:SetShown(OgreMode()) end
         y = y - NAV_HEIGHT
     end
+    if wipButton and order[#order] then
+        wipButton:ClearAllPoints()
+        wipButton:SetPoint("TOP", order[#order], "BOTTOM", 0, -2)
+    end
 end
 
 -- A pushed sidebar button's art shrinks; its rings, above and below, and its ogre letters shrink with it in
@@ -740,6 +779,27 @@ local function BuildSidebar()
             navList[#navList + 1] = button
         end
     end
+    if pages.wipOverview then
+        wipButton = CreateFrame("Button", nil, sidebar)
+        wipButton:SetSize(math.floor(NAV_WIDTH * 0.55), math.floor(NAV_HEIGHT * 0.55))
+        wipButton.text = wipButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        wipButton.text:SetPoint("CENTER", 0, 1)
+        if not wipButton.text:SetFont(NAV_FONT, 13, "") then wipButton.text:SetFontObject("GameFontHighlightSmall") end
+        ns.UI.OutlineText(wipButton.text, NAV_OUTLINE)
+        wipButton.text:SetText("WIP")
+        wipButton:SetScript("OnClick", function()
+            KillTrackerDB.wipOverview = not KillTrackerDB.wipOverview or nil
+            ns.OpenPage("overview")
+        end)
+        wipButton:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Work in progress")
+            GameTooltip:AddLine("Shows the new Overview being built instead of the current one.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        wipButton:SetScript("OnLeave", GameTooltip_Hide)
+        ns.UI.SkinButton(wipButton, { dimUnselected = true, steady = true })
+    end
     LayoutSidebarSoon()
 end
 
@@ -761,7 +821,7 @@ local function ShowTabs(current)
         if not tab then
             tab = CreateFrame("Button", nil, frame, "PanelTabButtonTemplate")
             if i == 1 then
-                tab:SetPoint("TOPLEFT", pageArea, "BOTTOMLEFT", 6, -12)
+                tab:SetPoint("TOPLEFT", pageArea, "BOTTOMLEFT", 6, -26)  -- below the frame's bottom planks
             else
                 tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 4, 0)  -- (the beta's tabs have no see-through edges to overlap)
             end
@@ -1028,6 +1088,7 @@ local function StepViewing(delta, withCombined)
     state.path = {}
     Refresh()
 end
+ns.UI.StepViewing = StepViewing  -- (delta): the next or previous of you and the synced guildmates
 local function CreateArrow(parent, direction, texture, withCombined)
     local arrow = CreateFrame("Button", nil, parent)
     arrow:SetSize(ARROW_SIZE, ARROW_SIZE)
@@ -1462,6 +1523,13 @@ function Refresh()
     local current = pages[state.page] or pages.overview
     state.page = current.key
     local navKey = current.tabOf or current.key  -- a tab lights its page's button
+    -- The new Overview being built (OverviewCard.lua) stands in for the Overview while the WIP button is on.
+    if current.key == "overview" and KillTrackerDB.wipOverview and pages.wipOverview then current = pages.wipOverview end
+    if wipButton then
+        if KillTrackerDB.wipOverview then wipButton:LockHighlight() else wipButton:UnlockHighlight() end
+    end
+    body:SetShown(not current.bare)
+    pageArea:SetBackdropColor(0, 0, 0, current.bare and 0 or 0.35)
     for key, page in pairs(pages) do
         if key ~= current.key and page.frame and page.frame ~= (current.frame or false) then page.frame:Hide() end
         if navButtons[key] then

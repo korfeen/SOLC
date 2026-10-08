@@ -16,7 +16,7 @@
 -- Wire format: H|6|syncID|seq|wantReply|configVersion|addonVersion   G|6|syncID|haveSeq   N|6
 --              U|transferID|part|parts|chunk   C|transferID|part|parts|chunk (chunk of "6#version#settings#bounties")
 -- Update payload: 6 # name # syncID # baseSeq # seq # total # kills # records # group kills # pictures # bounty
---                 # summary # events # gear # professions # showcase # removed pictures   (sections added
+--                 # summary # events # gear # professions # showcase # removed pictures # card   (sections added
 --                 later go at the end; receivers ignore unknown ones)
 -- (items "~", fields "^"; npcID, count and time in base 36):
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
@@ -34,6 +34,8 @@
 --                behind their model, see Minting.lua; only when changed, empty otherwise; the "S" tells
 --                "none" from "unchanged")
 --   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
+--   card       = C^gender                           (their character card's choices, see OverviewCard.lua; only
+--                when changed, empty otherwise)
 
 local addonName, ns = ...
 
@@ -166,6 +168,13 @@ local function SerializeShowcase(db, baseSeq)
     return "S" .. FIELD .. table.concat(numbers, ",") .. FIELD .. (showcase.backdrop or "")
 end
 
+-- The card section: the choices on your character card (the gender icon), if they changed after baseSeq.
+local function SerializeCard(db, baseSeq)
+    local card = db.card
+    if not card or (card.seq or 0) <= baseSeq then return "" end
+    return "C" .. FIELD .. Clean(card.gender)
+end
+
 -- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
 local function SerializeRemoved(db, baseSeq)
     local numbers = {}
@@ -235,7 +244,7 @@ local function Serialize(db, baseSeq)
     return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
         table.concat(kills, ITEM), table.concat(records, ITEM), table.concat(group, ITEM), table.concat(pictures, ITEM),
         bounty, summary, table.concat(events, ITEM), gear, SerializeProfessions(db, baseSeq),
-        SerializeShowcase(db, baseSeq), SerializeRemoved(db, baseSeq) }, SECTION)
+        SerializeShowcase(db, baseSeq), SerializeRemoved(db, baseSeq), SerializeCard(db, baseSeq) }, SECTION)
 end
 
 -- Returns the update as a table, or nil if the payload is malformed or from another protocol.
@@ -339,6 +348,8 @@ local function Deserialize(payload)
     end
     update.removed = {}  -- from 0.38.0 on
     for number in (s[17] or ""):gmatch("[^,]+") do update.removed[#update.removed + 1] = FromBase36(number) end
+    f = Split(s[18] or "", FIELD)  -- from 0.40.0 on
+    if f[1] == "C" then update.card = { gender = Optional(f[2]) } end
     return update
 end
 
@@ -384,6 +395,7 @@ local function Apply(sender, update)
         friend.professions = update.professions
     end
     if update.showcase then friend.showcase = update.showcase end  -- see Minting.lua
+    if update.card then friend.card = update.card end  -- see OverviewCard.lua
     friend.name, friend.syncID, friend.total = update.name, update.syncID, update.total
     friend.version = ns.SeenVersion(sender) or friend.version
     friend.seq = math.max(friend.seq or 0, update.seq)

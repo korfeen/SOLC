@@ -28,8 +28,10 @@ BountyBoard.lua
 Combined.lua
 LogoMask.lua
 HeaderLayout.lua
+OverviewLayout.lua
 ButtonArt.lua
 UI.lua
 GuildPages.lua
+OverviewCard.lua
 Minimap.lua
 API.lua

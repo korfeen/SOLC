@@ -215,8 +215,78 @@ local function NearbyUnit(guid)
     end
 end
 
--- A character in their gear: you, or a synced guildmate (their real look if they're nearby, otherwise
--- their race in their synced gear, with default hair and face). Drag to turn, hover for the items.
+-- Shows a character on a model: you (key nil), or a synced guildmate (key in KillTrackerFriends): their real look
+-- if they're nearby, otherwise their race in their synced gear, with default hair and face. Returns false (and
+-- clears the model) if there's nothing to show yet.
+local function DressFromGear(model, gear)
+    model:Undress()
+    for _, itemID in pairs(gear.items) do model:TryOn("item:" .. itemID) end
+end
+local function LoadCharacter(model, key)
+    local friend = key and KillTrackerFriends[key]
+    local gear = friend and friend.gear
+    model.shownGear = gear
+    if not key then
+        model:SetUnit("player")
+        return true
+    end
+    local unit = gear and NearbyUnit(gear.guid)
+    if unit then
+        model:SetUnit(unit)
+    elseif gear and gear.race and gear.race > 0 and model.SetCustomRace then
+        model:SetCustomRace(gear.race, gear.sex == 3 and 1 or 0)
+        DressFromGear(model, gear)
+        C_Timer.After(0.2, function()  -- the race model may still be loading
+            if model.shownGear == gear then DressFromGear(model, gear) end
+        end)
+    else
+        model:ClearModel()
+        return false
+    end
+    return true
+end
+UI.LoadCharacter = LoadCharacter
+
+-- The camera distance for someone's model (1 = the game's own fit; zoom added), closer for short, broad races.
+local function CharacterCamera(key, zoom)
+    local race
+    if key then
+        local friend = KillTrackerFriends[key]
+        race = friend and friend.gear and friend.gear.race
+    else
+        race = select(3, UnitRace("player"))
+    end
+    return math.max(0.4, (RACE_CAMERA[race] or 1) + (zoom or 0))
+end
+UI.CharacterCamera = CharacterCamera
+UI.MIN_ZOOM, UI.MAX_ZOOM = MIN_ZOOM, MAX_ZOOM
+
+-- Right-clicking your own model: pick its background from the ones on your pictures.
+local function PickBackdrop(owner)
+    local owned = ns.OwnedBackgrounds()
+    if not MenuUtil then  -- no menus: step through them instead
+        local current, nextID = KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop, nil
+        for i, option in ipairs(owned) do
+            if option.id == current then nextID = owned[i + 1] and owned[i + 1].id end
+        end
+        ns.SetModelBackdrop(current and nextID or (owned[1] and owned[1].id))
+        return
+    end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle("Background")
+        local function IsCurrent(id) return (KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop) == id end
+        root:CreateRadio("None", function() return IsCurrent(nil) end, function() ns.SetModelBackdrop(nil) end)
+        for _, option in ipairs(owned) do
+            local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name)
+            root:CreateRadio(name, function() return IsCurrent(option.id) end,
+                function() ns.SetModelBackdrop(option.id) end)
+        end
+        if #owned == 0 then root:CreateTitle("Mint a picture to get backgrounds") end
+    end)
+end
+UI.PickBackdrop = PickBackdrop
+
+-- A character in their gear (LoadCharacter). Drag to turn, hover for the items.
 -- box:SetPlayer(key) with key nil for you or a key in KillTrackerFriends.
 local function CharacterModel(page)
     local box = CreateFrame("Frame", nil, page, "BackdropTemplate")
@@ -277,48 +347,16 @@ local function CharacterModel(page)
         return friend and friend.gear
     end
 
-    -- The camera distance (1 = the game's own fit), closer for short, broad races that the fit leaves small.
     local function ApplyZoom()
-        if not model.SetCamDistanceScale then return end
-        local race
-        if key then
-            local gear = Gear()
-            race = gear and gear.race
-        else
-            race = select(3, UnitRace("player"))
-        end
-        local base = RACE_CAMERA[race] or 1
-        model:SetCamDistanceScale(math.max(0.4, base + zoom))
-    end
-
-    local function DressFromGear(gear)
-        model:Undress()
-        for _, itemID in pairs(gear.items) do model:TryOn("item:" .. itemID) end
+        if model.SetCamDistanceScale then model:SetCamDistanceScale(CharacterCamera(key, zoom)) end
     end
 
     local function Load()
-        local gear = Gear()
-        shownGear = gear
-        box.empty:Hide()
+        shownGear = Gear()
         model:Show()
-        if not key then
-            model:SetUnit("player")
-        else
-            local unit = gear and NearbyUnit(gear.guid)
-            if unit then
-                model:SetUnit(unit)
-            elseif gear and gear.race and gear.race > 0 and model.SetCustomRace then
-                model:SetCustomRace(gear.race, gear.sex == 3 and 1 or 0)
-                DressFromGear(gear)
-                C_Timer.After(0.2, function()  -- the race model may still be loading
-                    if shownGear == gear and key then DressFromGear(gear) end
-                end)
-            else
-                model:ClearModel()
-                model:Hide()
-                box.empty:Show()
-            end
-        end
+        local shown = LoadCharacter(model, key)
+        model:SetShown(shown)
+        box.empty:SetShown(not shown)
         model:SetFacing(facing)
         ApplyZoom()
     end
@@ -365,30 +403,6 @@ local function CharacterModel(page)
         else
             backdrop:Hide()
         end
-    end
-
-    -- Right-clicking your own model: pick its background from the ones on your pictures.
-    local function PickBackdrop(owner)
-        local owned = ns.OwnedBackgrounds()
-        if not MenuUtil then  -- no menus: step through them instead
-            local current, nextID = KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop, nil
-            for i, option in ipairs(owned) do
-                if option.id == current then nextID = owned[i + 1] and owned[i + 1].id end
-            end
-            ns.SetModelBackdrop(current and nextID or (owned[1] and owned[1].id))
-            return
-        end
-        MenuUtil.CreateContextMenu(owner, function(_, root)
-            root:CreateTitle("Background")
-            local function IsCurrent(id) return (KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop) == id end
-            root:CreateRadio("None", function() return IsCurrent(nil) end, function() ns.SetModelBackdrop(nil) end)
-            for _, option in ipairs(owned) do
-                local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name)
-                root:CreateRadio(name, function() return IsCurrent(option.id) end,
-                    function() ns.SetModelBackdrop(option.id) end)
-            end
-            if #owned == 0 then root:CreateTitle("Mint a picture to get backgrounds") end
-        end)
     end
 
     -- Reloads only for another player or new gear, so turning it sticks while the page refreshes.
