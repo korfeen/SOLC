@@ -22,7 +22,8 @@
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
 --   record     = subtype^weight^mob^zone^time
 --   group kill = npcID^spawnKey                  (for the de-duplicated combined total, see Combined.lua)
---   picture    = number^time^layer:option;layer:option...   (minted pictures, see Minting.lua)
+--   picture    = number^time^layer:option;layer:option...[^style]   (minted pictures, see Minting.lua; style: c / s for
+--                every layer in crayon / sketch, layer=c,layer=s for a mix)
 --   bounty     = week^bounty id^kills            (this week's guild bounty kills, see Guild.lua; at most one)
 --   summary    = earned points^PvP kills         (always sent, for the Members and Leaderboard pages)
 --   event      = time^kind^a^b                   (guild activity feed, see Feed.lua)
@@ -211,7 +212,8 @@ local function Serialize(db, baseSeq)
             local traits = {}
             for key, id in pairs(mint.traits) do traits[#traits + 1] = Clean(key) .. ":" .. Clean(id) end
             table.sort(traits)
-            pictures[#pictures + 1] = table.concat({ Base36(mint.number), Base36(mint.time), table.concat(traits, ";") }, FIELD)
+            pictures[#pictures + 1] = table.concat({ Base36(mint.number), Base36(mint.time), table.concat(traits, ";"),
+                ns.StyleKey(mint.style) ~= "" and ns.StyleKey(mint.style) or nil }, FIELD)
         end
     end
     local group = {}
@@ -290,7 +292,7 @@ local function Deserialize(payload)
                 local key, id = pair:match("^([%w_]+):([%w_]+)$")
                 if key then traits[key] = id end
             end
-            update.mints[#update.mints + 1] = { number = number, time = time, traits = traits }
+            update.mints[#update.mints + 1] = { number = number, time = time, traits = traits, style = ns.StyleFromKey(f[4]) }
         end
     end
     local f = Split(s[11], FIELD)

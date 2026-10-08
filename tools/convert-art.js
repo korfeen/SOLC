@@ -12,6 +12,11 @@
 // files, WoW's own compressed format: DXT1 for fully opaque art, DXT5 for art with transparency, with
 // mipmaps. Option ids come from the file names (tiny-top-hat -> tiny_top_hat) and are saved in minted
 // pictures, so never rename a file after release. Media/Collectible is rebuilt from scratch each run.
+// The editions (EDITIONS): every option's twin in another style, the same file under its folder in
+// %USERPROFILE%\killtracker-art-extra, is converted the same way into its Media folder, cropped to its own visible
+// part; MintArt.lua gives such an option <edition> (texture) and <edition>Rect. Crayon: hand-drawn
+// (tools/make-crayon-*.js); sketch: the paintings through a crayon filter (tools/crayonize-art.js). A picture's
+// layers show in an edition once unlocked (Minting.lua).
 // Usage: node tools/convert-art.js [density]   (default 512). No dependencies.
 
 const fs = require("fs");
@@ -23,6 +28,11 @@ const DENSITY = Number(process.argv[2]) || 512;
 const SOURCE = process.env.KILLTRACKER_ART || path.join(os.homedir(), "killtracker-art");
 const TARGET = path.join(__dirname, "..", "Media", "Collectible");
 const LUA_FILE = path.join(__dirname, "..", "MintArt.lua");
+const EDITIONS = [
+    { key: "crayon", source: path.join(os.homedir(), "killtracker-art-extra", "CrayonHand"), folder: "Crayon" },
+    { key: "sketch", source: path.join(os.homedir(), "killtracker-art-extra", "CrayonArt"), folder: "Sketch" },
+];
+for (const edition of EDITIONS) edition.target = path.join(__dirname, "..", "Media", edition.folder);
 const RARITIES = ["uncommon", "rare", "epic", "legendary"];  // no common: uncommon is the everyday tier
 const SKIN_LAYER = "skin";  // per-skin options are drawn once per option of this layer
 
@@ -458,33 +468,52 @@ if (problems) {
     process.exit(1);
 }
 
-// Convert. Per-skin versions of an option share one crop, so the option has a single rect.
-fs.rmSync(TARGET, { recursive: true, force: true });
-let count = 0, bytes = 0;
-for (const layer of Object.values(layers)) {
-    for (const option of layer.options) {
-        const images = option.files.map((f) => ({ ...f, image: decodePng(f.file) }));
+// Converts one option's images (per-skin versions share one crop, so the option has a single rect) into target.
+// Returns { rect, full, pixels }.
+function convertOption(layer, option, images, target) {
         const canvas = images[0].image.width;
         let box = null;
         for (const { file, image } of images) {
             if (image.width !== canvas || image.height !== canvas) {
-                throw new Error(`${path.relative(SOURCE, file)} is ${image.width}x${image.height}, every layer must be ${canvas}x${canvas}`);
+                throw new Error(`${file} is ${image.width}x${image.height}, every layer must be ${canvas}x${canvas}`);
             }
             const b = visibleBox(image);
             if (b) box = box ? { x0: Math.min(box.x0, b.x0), y0: Math.min(box.y0, b.y0), x1: Math.max(box.x1, b.x1), y1: Math.max(box.y1, b.y1) } : b;
         }
         box = box || { x0: 0, y0: 0, x1: canvas, y1: canvas };
         const cx = cropAxis(box.x0, box.x1, canvas), cy = cropAxis(box.y0, box.y1, canvas);
-        option.full = cx.span === canvas && cy.span === canvas;
-        option.rect = [cx.start / canvas, cy.start / canvas, cx.span / canvas, cy.span / canvas];
-        option.perSkin = images.some((f) => f.skin);
         for (const { skin, image } of images) {
-            const out = path.join(TARGET, layer.folder, ...(skin ? [skin] : []), option.id + ".blp");
+            const out = path.join(target, layer.folder, ...(skin ? [skin] : []), option.id + ".blp");
             writeBlp(out, cx.pixels, cy.pixels, resample(image, cx.start, cy.start, cx.span, cy.span, cx.pixels, cy.pixels));
             bytes += fs.statSync(out).size;
             count++;
         }
-        console.log(`${layer.folder}/${option.id} (${option.rarity}${option.perSkin ? ", per skin" : ""}): ${cx.pixels}x${cy.pixels}`);
+        return { full: cx.span === canvas && cy.span === canvas, rect: [cx.start / canvas, cy.start / canvas, cx.span / canvas, cy.span / canvas],
+            pixels: `${cx.pixels}x${cy.pixels}` };
+}
+
+// Convert.
+fs.rmSync(TARGET, { recursive: true, force: true });
+for (const edition of EDITIONS) fs.rmSync(edition.target, { recursive: true, force: true });
+let count = 0, bytes = 0;
+const twinCounts = {};
+for (const layer of Object.values(layers)) {
+    for (const option of layer.options) {
+        const images = option.files.map((f) => ({ ...f, image: decodePng(f.file) }));
+        option.perSkin = images.some((f) => f.skin);
+        const painted = convertOption(layer, option, images, TARGET);
+        option.full = painted.full;
+        option.rect = painted.rect;
+        // Its twins in the editions, where every one of its files has one.
+        option.editions = {};
+        for (const edition of EDITIONS) {
+            const twins = option.files.map((f) => path.join(edition.source, path.relative(SOURCE, f.file)));
+            if (!twins.every((t) => fs.existsSync(t))) continue;
+            option.editions[edition.key] = convertOption(layer, option, option.files.map((f, i) => ({ ...f, image: decodePng(twins[i]) })), edition.target);
+            twinCounts[edition.key] = (twinCounts[edition.key] || 0) + 1;
+        }
+        console.log(`${layer.folder}/${option.id} (${option.rarity}${option.perSkin ? ", per skin" : ""}): ${painted.pixels}` +
+            Object.entries(option.editions).map(([k, e]) => `, ${k} ${e.pixels}`).join(""));
     }
 }
 
@@ -493,11 +522,14 @@ const num = (n) => String(Math.round(n * 10000) / 10000);
 const lines = [
     "-- Generated by tools/convert-art.js from the source art; don't edit, rerun the script instead.",
     "-- [layer key] = options { id, name, rarity, texture, rect = { x, y, width, height } as fractions of the",
-    "-- picture, perSkin = texture has a %s for the skin id }. Layer order and names are in Minting.lua.",
+    "-- picture, perSkin = texture has a %s for the skin id, crayon / sketch = its twin's texture in that edition",
+    "-- (crayonRect / sketchRect its rect) }.",
+    "-- Layer order and names are in Minting.lua.",
     "",
     "local _, ns = ...",
     "",
     'local MEDIA = "Interface\\\\AddOns\\\\SOLC\\\\Media\\\\Collectible\\\\"',
+    ...EDITIONS.map((e) => `local ${e.key.toUpperCase()} = "Interface\\\\AddOns\\\\SOLC\\\\Media\\\\${e.folder}\\\\"`),
     "",
     "ns.MintArt = {",
 ];
@@ -507,10 +539,15 @@ for (const layer of Object.values(layers)) {
     for (const o of sorted) {
         const texture = `MEDIA .. "${layer.folder}\\\\${o.perSkin ? "%s\\\\" : ""}${o.id}"`;
         const rect = o.full ? "" : `, rect = { ${o.rect.map(num).join(", ")} }`;
-        lines.push(`        { id = "${o.id}", name = "${o.name}", rarity = "${o.rarity}", texture = ${texture}${rect}${o.perSkin ? ", perSkin = true" : ""} },`);
+        let crayon = "";
+        for (const [key, e] of Object.entries(o.editions)) {
+            crayon += `, ${key} = ${key.toUpperCase()} .. "${layer.folder}\\\\${o.perSkin ? "%s\\\\" : ""}${o.id}"`;
+            if (!e.full) crayon += `, ${key}Rect = { ${e.rect.map(num).join(", ")} }`;
+        }
+        lines.push(`        { id = "${o.id}", name = "${o.name}", rarity = "${o.rarity}", texture = ${texture}${rect}${o.perSkin ? ", perSkin = true" : ""}${crayon} },`);
     }
     lines.push("    },");
 }
 lines.push("}", "");
 fs.writeFileSync(LUA_FILE, lines.join("\n"));
-console.log(`Converted ${count} file(s), ${(bytes / 1048576).toFixed(1)} MB, and wrote MintArt.lua. Restart WoW (not just /reload) to load new textures.`);
+console.log(`Converted ${count} file(s) (twins: ${Object.entries(twinCounts).map(([k, n]) => n + " " + k).join(", ")}), ${(bytes / 1048576).toFixed(1)} MB, and wrote MintArt.lua. Restart WoW (not just /reload) to load new textures.`);

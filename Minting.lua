@@ -43,10 +43,82 @@ for _, layer in ipairs({
     if #layer.options > 0 then ns.MintLayers[#ns.MintLayers + 1] = layer end
 end
 
--- The texture path of an option in a picture with these traits.
-function ns.MintTexture(option, traits)
-    if option.perSkin then return option.texture:format(traits.skin or "") end
-    return option.texture
+-- The texture path of an option in a picture with these traits; edition ("crayon", "sketch"): its twin in that
+-- edition, if it has one.
+function ns.MintTexture(option, traits, edition)
+    local texture = edition and option[edition] or option.texture
+    if option.perSkin then return texture:format(traits.skin or "") end
+    return texture
+end
+
+-- The editions: every picture layer has twins in other styles (MintArt.lua, from tools/convert-art.js): crayon
+-- (hand-drawn) and sketch (the painting through a crayon filter). Unlocked for a picture for now by minting it yourself
+-- (mint.crayon; more ways to unlock later). Its owner picks each layer's edition: mint.style = an edition (every layer
+-- in it), a table { [layer key] = edition } (a mix: a crayon frog on a painted ogre), or nil (painted). Synced, so
+-- guildmates see it that way too.
+ns.EDITIONS = { "crayon", "sketch" }
+ns.EDITION_NAMES = { crayon = "crayon", sketch = "sketch" }
+local EDITION_CODES = { crayon = "c", sketch = "s" }
+local EDITION_FROM_CODE = { c = "crayon", s = "sketch" }
+function ns.MintStyle(mint) return mint and mint.style or nil end
+function ns.CrayonUnlocked(mint) return mint and mint.crayon == true end  -- (unlocks every edition, for now)
+-- A layer's edition in this style, or nil (painted).
+function ns.LayerEdition(style, layerKey)
+    if type(style) == "table" then return style[layerKey] end
+    return style
+end
+-- The style as text, for syncing and comparing: "" painted, "c" / "s" every layer in that edition, "skin=c,hat=s" a mix.
+function ns.StyleKey(style)
+    if not style then return "" end
+    if type(style) ~= "table" then return EDITION_CODES[style] or "" end
+    local parts = {}
+    for key, edition in pairs(style) do parts[#parts + 1] = key .. "=" .. (EDITION_CODES[edition] or "c") end
+    table.sort(parts)
+    return table.concat(parts, ",")
+end
+function ns.StyleFromKey(text)
+    if not text or text == "" then return nil end
+    if EDITION_FROM_CODE[text] then return EDITION_FROM_CODE[text] end
+    local style, any = {}, false
+    for key, code in text:gmatch("([%w_]+)=(%a)") do
+        if EDITION_FROM_CODE[code] then style[key], any = EDITION_FROM_CODE[code], true end
+    end
+    return any and style or nil
+end
+function ns.SetMintStyle(mint, style)
+    if style and not ns.CrayonUnlocked(mint) then return end
+    mint.style = style
+    ns.Touch(mint)  -- syncs it
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+-- One layer in an edition (or painted: nil); the style kept as simple as it can be.
+function ns.SetLayerEdition(mint, layerKey, edition)
+    if not ns.CrayonUnlocked(mint) then return end
+    local style, first, same, any = {}, nil, true, false
+    for _, layer in ipairs(ns.MintLayers) do
+        local e = layer.key == layerKey and edition or ns.LayerEdition(mint.style, layer.key)
+        if mint.traits[layer.key] then
+            style[layer.key] = e
+            if e then any = true end
+            if first == nil then first = e or false elseif (e or false) ~= first then same = false end
+        end
+    end
+    if not any then ns.SetMintStyle(mint, nil)
+    elseif same then ns.SetMintStyle(mint, first)
+    else ns.SetMintStyle(mint, style) end
+end
+-- The edition after this one: painted, crayon, sketch, painted...
+function ns.NextEdition(edition)
+    if not edition then return ns.EDITIONS[1] end
+    for i, e in ipairs(ns.EDITIONS) do if e == edition then return ns.EDITIONS[i + 1] end end
+end
+-- A picture drawn on canvas in its owner's chosen style, redrawn only when its traits or style changed.
+function ns.DrawMint(canvas, mint, tilt)
+    local style = ns.MintStyle(mint)
+    local key = ns.StyleKey(style)
+    if canvas.drawnTraits == mint.traits and canvas.drawnStyle == key and canvas.drawnTilt == tilt then return end
+    ns.RenderMint(canvas, mint.traits, tilt, style)
+    canvas.drawnTraits, canvas.drawnStyle, canvas.drawnTilt = mint.traits, key, tilt
 end
 
 local function FindOption(layer, id)
@@ -157,7 +229,7 @@ function ns.MintTraits(traits)
     local lines = {}
     for _, layer in ipairs(ns.MintLayers) do
         local option = FindOption(layer, traits[layer.key])
-        if option then lines[#lines + 1] = { layer.name, option.name, option.rarity } end
+        if option then lines[#lines + 1] = { layer.name, option.name, option.rarity, layer.key } end
     end
     return lines
 end
@@ -207,7 +279,7 @@ function ns.Mint()
     luck = 1
     if not traits then return nil, "Every possible picture is already taken." end
     db.points.spent = db.points.spent + cost
-    local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost }
+    local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost, crayon = true }
     db.mints[#db.mints + 1] = mint
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("M", mint.number) end
@@ -320,8 +392,8 @@ end
 
 -- Draws a picture into canvas (a frame), creating one texture per layer on first use.
 -- tilt (degrees clockwise, optional): the whole picture turned round its centre, as on the new Overview's tilted
--- polaroids (each layer turned and moved round the centre with it).
-function ns.RenderMint(canvas, traits, tilt)
+-- polaroids (each layer turned and moved round the centre with it). style: which layers in crayon (ns.MintStyle).
+function ns.RenderMint(canvas, traits, tilt, style)
     canvas.layers = canvas.layers or {}
     local size = canvas:GetWidth()
     local angle = math.rad(tilt or 0)
@@ -333,7 +405,9 @@ function ns.RenderMint(canvas, traits, tilt)
             canvas.layers[i] = tex
         end
         local option = FindOption(layer, traits[layer.key])
-        local texture = option and option.texture and ns.MintTexture(option, traits)
+        local edition = ns.LayerEdition(style, layer.key)
+        if edition and option and not option[edition] then edition = nil end  -- no twin: painted
+        local texture = option and option.texture and ns.MintTexture(option, traits, edition)
         tex:SetDrawLayer("ARTWORK", option and IN_FRONT[option.id] and FRONT_SUBLEVEL or i - 1)
         tex:ClearAllPoints()
         tex:SetVertexColor(1, 1, 1)
@@ -341,6 +415,7 @@ function ns.RenderMint(canvas, traits, tilt)
             tex:Hide()
         else
             local rect = option.rect
+            if edition then rect = option[edition .. "Rect"] end  -- its own crop (none: the whole picture)
             if rect and angle ~= 0 then
                 -- Its centre from the canvas's centre (y up), turned clockwise by the tilt.
                 local dx, dy = (rect[1] + rect[3] / 2 - 0.5) * size, (0.5 - rect[2] - rect[4] / 2) * size
@@ -368,6 +443,9 @@ end
 -- A picture missing a layer added later isn't outdated; it simply has nothing on that layer.
 local function RemoveOutdatedMints()
     local db, kept, refund, removed = KillTrackerDB, {}, 0, 0
+    for _, mint in ipairs(db.mints) do
+        if not mint.wonFrom and mint.crayon == nil then mint.crayon = true end  -- minted before the crayon edition
+    end
     for _, mint in ipairs(db.mints) do
         local valid = true
         for _, layer in ipairs(ns.MintLayers) do

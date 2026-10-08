@@ -1607,7 +1607,7 @@ end
 -- Picture viewer, next to the window --------------------------------------------
 
 local viewer = CreateFrame("Frame", "SOLCMintViewer", frame, "BackdropTemplate")
-viewer:SetSize(290, 440)
+viewer:SetSize(290, 492)  -- the picture, seven trait rows, two buttons
 viewer:SetPoint("TOPLEFT", frame, "TOPRIGHT", -6, 0)
 viewer:SetBackdrop(DIALOG_BACKDROP)
 viewer:SetBackdropColor(unpack(ns.WINDOW_COLOR))
@@ -1621,10 +1621,31 @@ viewer.rarity:SetPoint("TOP", viewer.title, "BOTTOM", 0, -4)
 viewer.canvas = CreateFrame("Frame", nil, viewer)
 viewer.canvas:SetSize(256, 256)
 viewer.canvas:SetPoint("TOP", 0, -56)
-viewer.traits = viewer:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-viewer.traits:SetPoint("TOPLEFT", viewer.canvas, "BOTTOMLEFT", 0, -8)
-viewer.traits:SetPoint("TOPRIGHT", viewer.canvas, "BOTTOMRIGHT", 0, -8)
-viewer.traits:SetJustifyH("LEFT")
+-- The traits, one row per layer; on your own pictures with the crayon edition, click one to draw it in crayon.
+viewer.traitRows = {}
+for i = 1, 7 do
+    local row = CreateFrame("Button", nil, viewer)
+    row:SetSize(256, 14)
+    row:SetPoint("TOPLEFT", viewer.canvas, "BOTTOMLEFT", 0, -6 - (i - 1) * 14)
+    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text:SetPoint("LEFT")
+    row.mark = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.mark:SetPoint("RIGHT")
+    row:SetScript("OnClick", function(self)
+        if not self.editable then return end
+        ns.SetLayerEdition(viewer.mint, self.layer, ns.NextEdition(ns.LayerEdition(ns.MintStyle(viewer.mint), self.layer)))
+        ns.ShowMint(viewer.mint, nil)
+    end)
+    row:SetScript("OnEnter", function(self)
+        if not self.editable then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Click to draw this one painted, in crayon or sketched, in turn", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", GameTooltip_Hide)
+    viewer.traitRows[i] = row
+end
 local viewerClose = CreateFrame("Button", nil, viewer, "UIPanelCloseButton")
 viewerClose:SetPoint("TOPRIGHT", -6, -6)
 -- Your own pictures: put on / take off your Overview's showcase (Minting.lua).
@@ -1639,21 +1660,52 @@ viewer.showcase:SetScript("OnClick", function()
     if not ok then ns.Print(reason) end
     UpdateShowcaseButton()
 end)
+-- Your own pictures with the crayon edition unlocked (Minting.lua): switch it between painted and crayon.
+viewer.style = CreateFrame("Button", nil, viewer, "UIPanelButtonTemplate")
+viewer.style:SetSize(180, 22)
+viewer.style:SetPoint("BOTTOM", viewer.showcase, "TOP", 0, 4)
+local function UpdateStyleButton()
+    local style = ns.MintStyle(viewer.mint)
+    local nextStyle = type(style) == "table" and ns.EDITIONS[1] or ns.NextEdition(style)
+    viewer.style:SetText(nextStyle and ("Show it all in %s"):format(ns.EDITION_NAMES[nextStyle]) or "Show it all painted")
+end
+viewer.style:SetScript("OnClick", function()
+    local style = ns.MintStyle(viewer.mint)
+    ns.SetMintStyle(viewer.mint, type(style) == "table" and ns.EDITIONS[1] or ns.NextEdition(style))
+    ns.ShowMint(viewer.mint, nil)
+end)
+viewer.style:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Crayon and sketch editions")
+    GameTooltip:AddLine("Your picture redrawn in crayon or sketched. Click a trait to switch just that one. Guildmates see it the way you pick.", 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+viewer.style:SetScript("OnLeave", GameTooltip_Hide)
 
 -- Shows a picture next to the window. owner: whose it is, if not yours.
 function ns.ShowMint(mint, owner)
     viewer.mint = mint
     viewer.showcase:SetShown(owner == nil)
     if owner == nil then UpdateShowcaseButton() end
+    viewer.style:SetShown(owner == nil and ns.CrayonUnlocked(mint))
+    if owner == nil then UpdateStyleButton() end
     local rarity = ns.MintRarity(mint.traits)
     viewer.title:SetText(owner and ("%s's #%d"):format(owner, mint.number) or ("Picture #%d"):format(mint.number))
     viewer.rarity:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
-    ns.RenderMint(viewer.canvas, mint.traits)
-    local lines = {}
-    for _, trait in ipairs(ns.MintTraits(mint.traits)) do
-        lines[#lines + 1] = ("|cffffd100%s:|r |c%s%s|r"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2])
+    ns.RenderMint(viewer.canvas, mint.traits, nil, ns.MintStyle(mint))
+    local traits, style = ns.MintTraits(mint.traits), ns.MintStyle(mint)
+    local editable = owner == nil and ns.CrayonUnlocked(mint)
+    for i, row in ipairs(viewer.traitRows) do
+        local trait = traits[i]
+        row:SetShown(trait ~= nil)
+        if trait then
+            row.layer, row.editable = trait[4], editable
+            row:EnableMouse(editable)
+            row.text:SetText(("|cffffd100%s:|r |c%s%s|r"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2]))
+            local edition = ns.LayerEdition(style, trait[4])
+            row.mark:SetText(edition and ("|cffff9a2a%s|r"):format(ns.EDITION_NAMES[edition]) or "")
+        end
     end
-    viewer.traits:SetText(table.concat(lines, "\n"))
     if not frame:IsShown() then ns.ToggleUI() end
     viewer:Show()
 end

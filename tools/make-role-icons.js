@@ -2,14 +2,15 @@
 // wobbly crayon hatching on paper grain, with a thick dark crayon outline, in the ogre mode crayon colours.
 // Writes %USERPROFILE%\killtracker-art-extra\RoleIcons\<name>.png and a preview sheet (preview.png) there, and
 // the stat card icons (ADDON_ICONS) as textures into Media/Icons.
-// Usage: node tools/make-role-icons.js   No dependencies.
+// Usage: node tools/make-role-icons.js   No dependencies. Also a module: the crayon drawing helpers, at any canvas
+// size (setSize), for other crayon art (tools/make-crayon-mints.js).
 
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const zlib = require("zlib");
 
-const SIZE = 256;
+let SIZE = 256;  // the canvas's size (setSize, for other crayon art)
 const OUT = path.join(os.homedir(), "killtracker-art-extra", "RoleIcons");
 
 // --- Randomness and noise, seeded so every run draws the same icons -------------------------------------
@@ -111,17 +112,25 @@ const rotate = (poly, angle, cx = 128, cy = 128) => poly.map(([x, y]) => [
 
 // Fills a polygon with crayon hatching (two directions, like scribbling it in), then outlines it. holes: polygons
 // cut out of it (a ring: a circle with a smaller circle as its hole), outlined too.
-function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, angle = 0.6, holes = [], line = 11 } = {}) {
+// fit: hatch round the shape's own middle, as far as it reaches (for canvases other than the icons' 256; the
+// icons keep the original lines, so they don't change).
+function crayonShape(c, poly, color, random, { outline = OUTLINE, hatch = 9, angle = 0.6, holes = [], line = 11, fit = false } = {}) {
+  let mx = 128, my = 128, reach = 200;
+  if (fit) {
+    const xs = poly.map((p) => p[0]), ys = poly.map((p) => p[1]);
+    mx = (Math.min(...xs) + Math.max(...xs)) / 2; my = (Math.min(...ys) + Math.max(...ys)) / 2;
+    reach = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 + hatch;
+  }
   for (const [a, strength] of [[angle, 0.75], [angle + 1.2, 0.45]]) {
     const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
-    for (let offset = -200; offset <= 200; offset += hatch * 0.85) {
+    for (let offset = -reach; offset <= reach; offset += hatch * 0.85) {
       // Each stroke a slightly different shade, like a real crayon pressed harder or softer.
       const shade = 0.88 + random() * 0.2;
       const tone = color.map((v) => Math.min(255, v * shade));
       // Walk the line across the canvas, stroking the parts inside the shape.
       let run = [];
-      for (let t = -190; t <= 190; t += 2) {
-        const x = 128 + nx * offset + dx * t, y = 128 + ny * offset + dy * t;
+      for (let t = -reach + 10; t <= reach - 10; t += 2) {
+        const x = mx + nx * offset + dx * t, y = my + ny * offset + dy * t;
         if (inside(x, y, poly) && !holes.some((hole) => inside(x, y, hole))) run.push([x, y]);
         else if (run.length) { if (run.length > 1) stroke(c, run, hatch, tone, strength, random); run = []; }
       }
@@ -638,6 +647,9 @@ const toRgba = (c) => {
   return out;
 };
 
+module.exports = { canvas, dab, stroke, crayonShape, inside, circle, ellipse, star, quad, rotate, hex, C, OUTLINE, rng, writePng,
+  toRgba: (c) => toRgba(c), setSize: (n) => { SIZE = n; } };
+if (require.main === module) {
 fs.mkdirSync(OUT, { recursive: true });
 const names = Object.keys(ICONS);
 // Each icon's wobble is seeded by its place in this list, so adding icons (at the end) never changes the others.
@@ -683,3 +695,4 @@ names.forEach((name, n) => {
 });
 writePng(path.join(OUT, "preview.png"), SIZE * names.length, SIZE * 2, sheet);
 console.log(`Wrote ${names.join(", ")} to ${OUT}`);
+}
