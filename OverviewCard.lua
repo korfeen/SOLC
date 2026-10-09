@@ -201,6 +201,18 @@ local GEAR_WEAPONS = { 16, 17, 18 }
 local SLOT_SIZE, SLOT_ROW = 34, 40
 local GEAR_STAT_LINES = 8
 local QUALITY_GREY = { 0.35, 0.35, 0.35 }
+local RIM = 1  -- the quality colour round a slot's icon, pixels
+-- An item quality's colour (the API moved under C_Item; ITEM_QUALITY_COLORS as a fallback).
+local function QualityColor(quality)
+    local get = C_Item and C_Item.GetItemQualityColor or GetItemQualityColor
+    if get then
+        local r, g, b = get(quality)
+        if r then return r, g, b end
+    end
+    local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    if c then return c.r, c.g, c.b end
+    return unpack(QUALITY_GREY)
+end
 
 local function GearPage(page)
     local gear = CreateFrame("Frame", nil, page)
@@ -237,7 +249,7 @@ local function GearPage(page)
         cell.rim = cell:CreateTexture(nil, "BACKGROUND")
         cell.rim:SetTexture(ART .. "Edge")
         cell.rim:SetPoint("CENTER")
-        cell.rim:SetSize((SLOT_SIZE + 4) / EDGE_FILL, (SLOT_SIZE + 4) / EDGE_FILL)
+        cell.rim:SetSize((SLOT_SIZE + 2 * RIM) / EDGE_FILL, (SLOT_SIZE + 2 * RIM) / EDGE_FILL)
         cell.icon = cell:CreateTexture(nil, "ARTWORK")
         cell.icon:SetPoint("TOPLEFT", 1, -1)
         cell.icon:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -313,7 +325,7 @@ local function GearPage(page)
                 cell.icon:SetTexture(item.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
                 cell.icon:SetDesaturated(false)
                 local r, g, b = unpack(QUALITY_GREY)
-                if item.quality and GetItemQualityColor then r, g, b = GetItemQualityColor(item.quality) end
+                if item.quality then r, g, b = QualityColor(item.quality) end
                 cell.rim:SetVertexColor(r, g, b)
                 if cell.name then
                     cell.name:SetText(item.name or "...")

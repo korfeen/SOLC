@@ -96,7 +96,8 @@ function ns.SetLayerEdition(mint, layerKey, edition)
     if not ns.CrayonUnlocked(mint) then return end
     local style, first, same, any = {}, nil, true, false
     for _, layer in ipairs(ns.MintLayers) do
-        local e = layer.key == layerKey and edition or ns.LayerEdition(mint.style, layer.key)
+        local e = edition  -- (not "x and edition or y": edition is nil for painted)
+        if layer.key ~= layerKey then e = ns.LayerEdition(mint.style, layer.key) end
         if mint.traits[layer.key] then
             style[layer.key] = e
             if e then any = true end
