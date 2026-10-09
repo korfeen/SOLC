@@ -27,7 +27,7 @@ function SOLC.GetPictures(key)
     local pictures = {}
     local function Add(mint)
         pictures[#pictures + 1] = { number = mint.number, traits = mint.traits, time = mint.time,
-            rarity = ns.MintRarity(mint.traits) }
+            rarity = ns.MintRarity(mint.traits), style = ns.MintStyle(mint) }
     end
     if key then
         local friend = KillTrackerFriends[key]
@@ -40,7 +40,8 @@ function SOLC.GetPictures(key)
 end
 
 -- Drawing and describing pictures.
-function SOLC.RenderPicture(frame, traits) ns.RenderMint(frame, traits) end
+function SOLC.RenderPicture(frame, traits, style) ns.RenderMint(frame, traits, nil, style) end  -- style: ns.MintStyle
+function SOLC.LayerEdition(style, layerKey) return ns.LayerEdition(style, layerKey) end    -- "crayon", "sketch" or nil
 function SOLC.PictureRarity(traits) return ns.MintRarity(traits) end
 function SOLC.RarityColor(rarity) return ns.RarityRGB(rarity) end           -- r, g, b
 function SOLC.RarityName(rarity) return (rarity:gsub("^%l", string.upper)) end

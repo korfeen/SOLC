@@ -18,6 +18,11 @@ end
 ns.FormatTime = FormatTime
 
 -- Every picture in the guild: yours first, then synced players': { { traits, number, rarity, owner } }.
+-- The paint game's styles, clicked through in this order ("painted": no edition). Until one is picked the picture is
+-- painted as its owner shows it (a mix of editions shows as "Mixed").
+local PAINT_STYLES = { { key = "painted", label = "Painted" }, { key = "crayon", label = "Crayon" },
+    { key = "sketch", label = "Sketch" } }
+
 local function AllPictures()
     local list = {}
     for _, picture in ipairs(SOLC.GetPictures(nil)) do
@@ -106,11 +111,28 @@ local function Create(parent)
         button:SetScript("OnClick", function() page:SetGridSize(size) end)
         page.paintSizeButtons[size] = button
     end
+    -- Paint mode: which edition to paint the picture in, clicked through (PAINT_STYLES), whoever's picture it is.
+    page.paintStyleButton = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
+    page.paintStyleButton:SetHeight(24)
+    page.paintStyleButton:SetScript("OnClick", function()
+        local current, index = page:PaintStyleKey(page:Picture()), 0  -- a mix: on to the first
+        for i, choice in ipairs(PAINT_STYLES) do if choice.key == current then index = i end end
+        page.paintStyle = PAINT_STYLES[index % #PAINT_STYLES + 1].key
+        page:Update()
+    end)
+    page.paintStyleButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Style to paint")
+        GameTooltip:AddLine("Painted, in crayon or sketched: click to change. Until you pick, it's as its owner shows it.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    page.paintStyleButton:SetScript("OnLeave", GameTooltip_Hide)
     -- Rows fill the column's width (ns.SpreadRow), so there's no dead space on the right.
     local modeRow, sizeRow, paintSizeRow = {}, {}, {}
     for i, mode in ipairs(MODES) do modeRow[i] = page.modeButtons[mode.key] end
     for i, size in ipairs(ns.SIZES) do sizeRow[i] = page.sizeButtons[size] end
     for i, size in ipairs(ns.PAINT_SIZES) do paintSizeRow[i] = page.paintSizeButtons[size] end
+    paintSizeRow[#paintSizeRow + 1] = page.paintStyleButton
     ns.SpreadRow(right, modeRow, 128)
     ns.SpreadRow(right, sizeRow, 182)
     ns.SpreadRow(right, paintSizeRow, 182)
@@ -226,8 +248,22 @@ local function Create(parent)
     end
 
     -- Paint practice: the canvas and tools replace the board and the column until time is up or Done.
+    -- The style a picture is painted in: the one chosen ("painted": none), or until then its owner's.
+    function page:PaintStyle(picture)
+        if self.paintStyle == nil then return picture and picture.style end
+        if self.paintStyle == "painted" then return nil end
+        return self.paintStyle
+    end
+    -- That style as a PAINT_STYLES key, or "mixed" for a mix of editions.
+    function page:PaintStyleKey(picture)
+        local style = self:PaintStyle(picture)
+        if type(style) == "table" then return "mixed" end
+        return style or "painted"
+    end
+
     function page:StartPainting(picture)
-        local target = ns.PaintTarget(picture.traits, self.paintSize)
+        local style = self:PaintStyle(picture)
+        local target = ns.PaintTarget(picture.traits, self.paintSize, style)
         painting = { target = target, palette = ns.PaintPalette(target) }
         self.board:Hide()
         self.canvas:Show()
@@ -238,7 +274,7 @@ local function Create(parent)
         self.paintTools:Begin(picture.traits, painting.palette, seconds, function(cells)
             local score = ns.PaintScore(cells, painting.target, painting.palette)
             lastPainting = { size = size, palette = palette, info = { traits = picture.traits, owner = picture.owner,
-                number = picture.number, seconds = seconds, score = score } }
+                number = picture.number, seconds = seconds, score = score, style = style } }
             painting = nil
             self.paintTools:End()
             right:Show()
@@ -254,7 +290,7 @@ local function Create(parent)
             end
             self.start:SetText("Again")
             self:Update()
-        end)
+        end, style)
     end
 
     function page:SetPaintTime(seconds)
@@ -382,9 +418,10 @@ local function Create(parent)
         self.next:SetEnabled(#list > 1)
         self.thumb.canvas:SetShown(picture ~= nil)
         if picture then
-            if self.thumb.drawn ~= picture.traits then  -- only when it shows another picture
-                SOLC.RenderPicture(self.thumb.canvas, picture.traits)
-                self.thumb.drawn = picture.traits
+            local style = self.mode == "paint" and self:PaintStyle(picture) or nil
+            if self.thumb.drawn ~= picture.traits or self.thumb.drawnStyle ~= (style or false) then  -- another picture or style
+                SOLC.RenderPicture(self.thumb.canvas, picture.traits, style)
+                self.thumb.drawn, self.thumb.drawnStyle = picture.traits, style or false
             end
             self.thumb:SetBackdropBorderColor(SOLC.RarityColor(picture.rarity))
             self.pictureText:SetText(("%s's #%d\n%s"):format(picture.owner, picture.number, SOLC.RarityText(picture.rarity)))
@@ -402,6 +439,12 @@ local function Create(parent)
         for size, button in pairs(self.paintSizeButtons) do
             button:SetShown(paintMode)
             if size == self.paintSize then button:LockHighlight() else button:UnlockHighlight() end
+        end
+        self.paintStyleButton:SetShown(paintMode)
+        local key = self:PaintStyleKey(picture)
+        self.paintStyleButton:SetText("Mixed")
+        for _, choice in ipairs(PAINT_STYLES) do
+            if choice.key == key then self.paintStyleButton:SetText(choice.label) end
         end
         for seconds, button in pairs(self.paintTimeButtons) do
             button:SetShown(paintMode)

@@ -39,15 +39,19 @@ local function Decode(text, cells)
     return list
 end
 
--- The picture as size*size cells { r, g, b }: its layers' grids stacked back to front, as the picture is drawn.
-function ns.PaintTarget(traits, size)
+-- The picture as size*size cells { r, g, b }: its layers' grids stacked back to front, as the picture is drawn; each
+-- layer in its edition (style: the picture's, SOLC.LayerEdition) where it has grids for it.
+function ns.PaintTarget(traits, size, style)
     local cells = size * size
     local target = {}
     for i = 1, cells do target[i] = { 0, 0, 0 } end
     local grids = ns.PaintGrids and ns.PaintGrids[size]
     if not grids then return target end
     for _, layer in ipairs(SOLC.PictureLayers(traits)) do
-        local entry = grids[layer.key] and grids[layer.key][layer.id]
+        local edition = style and SOLC.LayerEdition and SOLC.LayerEdition(style, layer.key)
+        local editionGrids = edition and ns.PaintEditionGrids and ns.PaintEditionGrids[edition] and ns.PaintEditionGrids[edition][size]
+        local entry = editionGrids and editionGrids[layer.key] and editionGrids[layer.key][layer.id]
+        if not entry then entry = grids[layer.key] and grids[layer.key][layer.id] end
         if type(entry) == "table" then entry = entry[traits.skin or ""] end
         if type(entry) == "string" then
             for i, cell in ipairs(Decode(entry, cells)) do
@@ -349,9 +353,10 @@ function ns.SavePainting(canvas, size, palette, info)
     end
     local traits = {}
     for key, id in pairs(info.traits) do traits[key] = id end
+    local style = info.style
     SOLCPuzzleDB.paintings = SOLCPuzzleDB.paintings or {}
     local list = SOLCPuzzleDB.paintings
-    table.insert(list, 1, { when = time(), size = size, seconds = info.seconds, score = info.score, traits = traits,
+    table.insert(list, 1, { when = time(), size = size, seconds = info.seconds, score = info.score, traits = traits, style = style,
         owner = info.owner, number = info.number, opponent = info.opponent, palette = table.concat(colors),
         ids = table.concat(ids), events = table.concat(events) })
     local dropped = false

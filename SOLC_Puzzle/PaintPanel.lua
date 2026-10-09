@@ -1,6 +1,6 @@
 -- The paint tools, shown in the page's right column while painting (practice or a duel): the picture to copy,
 -- its palette, brush sizes and fill, the time left and a Done button. ns.CreatePaintTools(parent, canvas);
--- tools:Begin(traits, palette, seconds, onDone) and tools:End(); tools:Remaining() in seconds.
+-- tools:Begin(traits, palette, seconds, onDone, style) and tools:End(); tools:Remaining() in seconds.
 
 local _, ns = ...
 
@@ -96,8 +96,8 @@ function ns.CreatePaintTools(parent, canvas)
     done:SetScript("OnClick", function() tools:Finish() end)
 
     -- Starts painting: the reference, the palette, the clock. onDone(cells) when time runs out or Done.
-    function tools:Begin(traits, palette, seconds, doneCallback)
-        SOLC.RenderPicture(reference.canvas, traits)
+    function tools:Begin(traits, palette, seconds, doneCallback, style)
+        SOLC.RenderPicture(reference.canvas, traits, style)
         reference:SetBackdropBorderColor(SOLC.RarityColor(SOLC.PictureRarity(traits)))
         for i, swatch in ipairs(swatches) do
             local c = palette[i]
@@ -213,7 +213,7 @@ function ns.CreatePaintingViewer(parent, canvas)
         local saved = list[index]
         canvas:Show()
         canvas:ShowPainting(ns.LoadPainting(saved))
-        SOLC.RenderPicture(reference.canvas, saved.traits)
+        SOLC.RenderPicture(reference.canvas, saved.traits, saved.style)
         local rarity = SOLC.PictureRarity(saved.traits)
         reference:SetBackdropBorderColor(SOLC.RarityColor(rarity))
         info:SetText(("Copy of %s's #%d %s\n%.1f%%  -  %dx%d, %ds%s\n|cff999999%s|r"):format(saved.owner or "?",
