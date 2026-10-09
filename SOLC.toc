@@ -13,6 +13,7 @@ Core.lua
 Toast.lua
 Records.lua
 Rares.lua
+Encounters.lua
 AchievementNames.lua
 Achievements.lua
 PvP.lua

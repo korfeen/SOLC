@@ -283,7 +283,9 @@ end
 
 -- Kills made in a group are logged by spawn key too, so the combined total of several players can count
 -- a mob they killed together only once (solo kills can't be shared: others see the mob as tapped).
-local function RecordKill(npcID, unit, guid)
+-- unit and guid: the mob (nil for a boss counted from its encounter: then name, rank and the group log's key are
+-- given in boss = { name, key }, see ns.RecordBossKill).
+local function RecordKill(npcID, unit, guid, boss)
     local db = KillTrackerDB
     db.total = db.total + 1
     sessionKills = sessionKills + 1
@@ -294,14 +296,16 @@ local function RecordKill(npcID, unit, guid)
         db.kills[npcID] = entry
     end
     entry.count = entry.count + 1
-    entry.name = Readable(UnitName(unit)) or entry.name or ("NPC " .. npcID)
+    entry.name = (unit and Readable(UnitName(unit))) or (boss and boss.name) or entry.name or ("NPC " .. npcID)
     Touch(entry)
     if IsInGroup() then
-        db.groupLog[#db.groupLog + 1] = { s = db.seq, n = npcID, k = SpawnKey(guid) }
+        db.groupLog[#db.groupLog + 1] = { s = db.seq, n = npcID, k = guid and SpawnKey(guid) or boss.key }
     end
 
     -- Not in Data.lua: keep what the game tells us so the mob can still be categorized.
-    if not ns.NPCs[npcID] then
+    if boss then
+        if not ns.NPCs[npcID] then entry.rank = "Boss" end
+    elseif not ns.NPCs[npcID] then
         entry.type = Readable(UnitCreatureType(unit)) or entry.type
         entry.family = Readable(UnitCreatureFamily(unit)) or entry.family
         local classification = Readable(UnitClassification(unit))
@@ -389,6 +393,53 @@ local function CheckUnit(unit)
     end
 end
 
+-- A boss killed in a dungeon or raid, from its encounter (Guild.lua): inside instances the mobs themselves can't be
+-- seen. key: the same for everyone in the group who killed it (for the guild's combined total).
+function ns.RecordBossKill(npcID, name, key)
+    RecordKill(npcID, nil, nil, { name = name, key = key })
+end
+
+-- /solc probe: which of the things kill tracking needs are secret right now (for working out what can be counted
+-- inside instances). Says it for your target, in combat or not, and while on, for every loot window (whose corpse
+-- each item came from) and every mob your target's death is seen for. Not saved.
+local function Shown(value)
+    if issecret(value) then return "|cffff6060secret|r" end
+    if value == nil then return "|cff999999nil|r" end
+    return "|cff60ff60" .. tostring(value) .. "|r"
+end
+local function ProbeUnit(unit, why)
+    if not UnitExists(unit) then return Print(("probe (%s): no %s"):format(why, unit)) end
+    Print(("probe (%s, %s, %s): guid %s, name %s, type %s, dead %s, can attack %s, tap denied %s, classification %s"):format(
+        why, IsInInstance() and "in an instance" or "outside", InCombatLockdown() and "in combat" or "out of combat",
+        Shown(UnitGUID(unit)), Shown(UnitName(unit)), Shown(UnitCreatureType(unit)), Shown(UnitIsDead(unit)),
+        Shown(UnitCanAttack("player", unit)), Shown(UnitIsTapDenied(unit)), Shown(UnitClassification(unit))))
+end
+ns.probing = false
+local probe = CreateFrame("Frame")
+probe:SetScript("OnEvent", function(_, event, unit)
+    if event == "LOOT_OPENED" then
+        for slot = 1, (GetNumLootItems and GetNumLootItems() or 0) do
+            local guid, quantity = GetLootSourceInfo(slot)
+            Print(("probe (loot slot %d): from %s, quantity %s"):format(slot, Shown(guid), Shown(quantity)))
+        end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        ProbeUnit("target", "combat just ended")
+    elseif event == "UNIT_HEALTH" and unit == "target" then
+        local dead = UnitIsDead("target")
+        if issecret(dead) or dead then ProbeUnit("target", "target died") probe:UnregisterEvent("UNIT_HEALTH") end
+    elseif event == "PLAYER_TARGET_CHANGED" then
+        probe:RegisterEvent("UNIT_HEALTH")
+    end
+end)
+function ns.ToggleProbe()
+    ns.probing = not ns.probing
+    for _, event in ipairs({ "LOOT_OPENED", "PLAYER_REGEN_ENABLED", "PLAYER_TARGET_CHANGED", "UNIT_HEALTH" }) do
+        if ns.probing then probe:RegisterEvent(event) else probe:UnregisterEvent(event) end
+    end
+    Print("Probe " .. (ns.probing and "on: it reports your target when you start this, when it dies, when combat ends, and every loot window. /solc probe again to stop." or "off."))
+    if ns.probing then ProbeUnit("target", "now") end
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -463,6 +514,7 @@ local function ShowHelp()
     Print("/solc ogre - ogre mode: the menu in ogre words")
     Print("/solc sounds - turn the wooden buttons' click sounds on/off")
     Print("/solc debug - announce kills and say why a mob wasn't counted")
+    Print("/solc probe - test what the game hides from addons (for dungeons)")
     Print("/solc reset - clear all data for this character")
 end
 
@@ -492,6 +544,8 @@ SlashCmdList.SOLC = function(input)
     elseif msg == "announce" then
         db.announce = not db.announce
         Print("Kill announcements " .. (db.announce and "on." or "off."))
+    elseif msg == "probe" then
+        ns.ToggleProbe()
     elseif msg == "debug" then
         ns.debugKills = not ns.debugKills
         Print("Kill debugging " .. (ns.debugKills and "on: kills are announced, and mobs that aren't counted say why." or "off."))

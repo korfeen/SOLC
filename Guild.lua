@@ -232,6 +232,8 @@ local FINAL_BOSSES = {
 }
 
 local issecret = issecretvalue or function() return false end
+-- Kills of bosses no creature data knows yet are kept under this plus their encounter ID (above any real NPC ID).
+local ENCOUNTER_KILL_ID = 9000000
 
 local function Points()
     local p = KillTrackerDB.points
@@ -433,8 +435,11 @@ table.insert(ns.KillHandlers, function(npcID, entry, c, unit)
     local base = ns.KillPoints(c, unit)
     local p = Points()
     local guildmates = math.min(ns.GuildmatesInGroup(), ns.Config("groupMaxGuildmates"))
-    if guildmates > 0 then
-        p.guildGroup = p.guildGroup + base * ns.Config("groupBonus") / 100 * guildmates
+    local bonus = base * ns.Config("groupBonus") / 100 * guildmates
+    if guildmates > 0 then p.guildGroup = p.guildGroup + bonus end
+    if ns.debugKills then
+        ns.Print(("|cffff8000debug:|r  guild group: %d guildmate(s) in the group, +%.2f points (kill worth %d)"):format(
+            guildmates, bonus, base))
     end
     local current = ns.GetBounty()
     if current and current.bounty.count and current.bounty.count(npcID, entry, c) then
@@ -454,6 +459,13 @@ local function OnEncounterEnd(encounterID, encounterName, _, _, success)
             ns.GuildmatesInGroup(), ns.Config("dungeonGuildmates")))
     end
     if issecret(encounterID) or issecret(success) or success ~= 1 then return end
+    -- The boss (or bosses) killed count as kills (Encounters.lua; a boss no creature data knows yet counts under its
+    -- encounter, as ENCOUNTER_KILL_ID + encounterID).
+    local bossName = (encounterName and not issecret(encounterName)) and encounterName or ("Boss " .. encounterID)
+    local key = ("e%d-%s"):format(encounterID, date("%Y%m%d"))
+    for _, boss in ipairs(ns.EncounterNPCs and ns.EncounterNPCs[encounterID] or { { ENCOUNTER_KILL_ID + encounterID, bossName } }) do
+        ns.RecordBossKill(boss[1], boss[2], key)
+    end
     local guildmates = ns.GuildmatesInGroup()
     if guildmates < ns.Config("dungeonGuildmates") then return end
     local db = KillTrackerDB
