@@ -9,12 +9,15 @@
 
 local _, ns = ...
 
-local WIDTH, HEIGHT = 950, 625
-local SIDEBAR_LEFT, SIDEBAR_WIDTH = 36, 150  -- the menu column, its right edge against the frame's left post
+-- The window's skeleton: the logo on the top beam, the posts and the bottom beam (SkeletonLayout.lua, from
+-- tools/convert-skeleton.js). The window is its size, the logo in its top-left corner.
+local SKELETON = ns.SkeletonLayout
+local WIDTH, HEIGHT = SKELETON.width, SKELETON.height
+local SIDEBAR_LEFT, SIDEBAR_WIDTH = 47, 150  -- the menu column, centred under the logo's sign
 local VIEWING_WIDTH = 170  -- the name between the "whose stats" arrows: fixed, so the arrows don't move
 local ARROW_SIZE = 26     -- the arrows (spellbook page textures, drawn for 32px; smaller clips their edges)
--- The page area: inside the wooden frame (OverviewLayout.lua, tools/overview-layout.js).
-local INNER = ns.OverviewLayout and ns.OverviewLayout.inner or { left = 206, right = 923, top = 44, bottom = 588 }
+-- The page area: between the posts, under the top beam, over the bottom beam.
+local INNER = SKELETON.inner
 local PAGE_WIDTH, PAGE_HEIGHT = INNER.right - INNER.left - 8, INNER.bottom - INNER.top - 10
 local ROW_HEIGHT = 18
 local LIST_WIDTH = PAGE_WIDTH - 40
@@ -34,12 +37,6 @@ local VIEWS = {
     rares = { levels = { "zone" }, rares = true },  -- every rare in the game (Rares.lua), by zone
 }
 local PLURALS = { subtype = "subtypes", faction = "factions", rank = "ranks", race = "races", class = "classes", zone = "zones" }
-
-local EMPTY_TEXT = {
-    achievements = "No achievements yet - keep killing.",
-    rares = "No rares known.",
-    pvp = "No PvP kills yet.",
-}
 
 local COMBINED = "*combined*"
 
@@ -388,17 +385,17 @@ local frame = CreateFrame("Frame", "SOLCFrame", UIParent, "BackdropTemplate")
 frame:SetSize(WIDTH, HEIGHT)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
--- The window's background only behind the pages, its edges under the wooden frame (the posts and the bottom
--- planks, further down): the menu column on the left has none, its planks hang in the open under the logo.
--- Outside the frame the window doesn't take the mouse either (clicks there reach the game).
-local BODY = { left = INNER.left - 16, right = INNER.right + 16, bottom = INNER.bottom + 12 }  -- under the posts' middles
+-- The window's background only behind the pages, its edges under the skeleton's beams (further down): the menu
+-- column on the left has none, its planks hang in the open under the logo. Outside the skeleton the window
+-- doesn't take the mouse either (clicks there reach the game).
+local BODY = { left = INNER.left - 20, right = INNER.right + 20, top = INNER.top - 26, bottom = INNER.bottom + 22 }  -- under the beams' middles
 local body = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-body:SetPoint("TOPLEFT", BODY.left, 0)
+body:SetPoint("TOPLEFT", BODY.left, -BODY.top)
 body:SetPoint("BOTTOMRIGHT", BODY.right - WIDTH, HEIGHT - BODY.bottom)
 body:SetFrameLevel(frame:GetFrameLevel())
 body:SetBackdrop({ bgFile = ns.WINDOW_BACKGROUND })
 body:SetBackdropColor(unpack(ns.WINDOW_COLOR))
-frame:SetHitRectInsets(BODY.left, WIDTH - BODY.right, 0, HEIGHT - BODY.bottom)
+frame:SetHitRectInsets(BODY.left, WIDTH - BODY.right, SKELETON.topBeam.top, HEIGHT - BODY.bottom)
 frame:SetClampedToScreen(true)
 frame:SetMovable(true)
 frame:EnableMouse(true)
@@ -412,34 +409,45 @@ end)
 frame:Hide()
 tinsert(UISpecialFrames, "SOLCFrame")  -- close with Escape
 
--- The club logo instead of a title: over the top-left corner, centred over the menu column, its two banners
--- hanging down over the menu column's top border (Media/Logo.blp, made by tools/convert-logo.js).
-local LOGO_SIZE = 210  -- the texture is square; the logo itself fills its width and about 3/4 of its height
-local logo = CreateFrame("Frame", nil, frame)
-logo:SetSize(LOGO_SIZE, LOGO_SIZE)
--- Centred over the sidebar; the banner tips (about 0.92 of the texture down) end LOGO_BANNERS px below the
--- window's top edge, just over the sidebar's top (at 44).
-local LOGO_BANNERS = 52
-local LOGO_Y = LOGO_SIZE * 0.92 - LOGO_BANNERS - 31  -- the logo's top, above the window's top edge
-local LOGO_SIGN_BOTTOM = 1060 / 1254  -- the "Leisure Club" sign's bottom edge, share of the texture's height
-logo:SetPoint("TOPLEFT", frame, "TOPLEFT", SIDEBAR_LEFT + SIDEBAR_WIDTH / 2 - LOGO_SIZE / 2 - 5, LOGO_Y)
-logo:SetFrameLevel(frame:GetFrameLevel() + 50)
-logo.texture = logo:CreateTexture(nil, "OVERLAY")
-logo.texture:SetAllPoints()
-logo.texture:SetTexture("Interface\\AddOns\\SOLC\\Media\\Logo")
--- Keep the logo on screen too when the window is dragged to an edge.
-frame:SetClampRectInsets(-20, 0, LOGO_SIZE * 0.92 - LOGO_BANNERS, 0)
+-- Skeleton ------------------------------------------------------------------------------------------------
+-- The club logo on the top beam (the window's title), the two posts and the bottom beam, on every page; pages
+-- add beams of their own (ns.UI.Beam, further down). Media/Skeleton, from tools/convert-skeleton.js; drawn a
+-- little darker than painted, like the rest of the wood.
+local SKELETON_ART = "Interface\\AddOns\\SOLC\\Media\\Skeleton\\"
+local SKELETON_SHADE = 0.8
+ns.UI.FRAME_LEVEL = { crossBeam = 27, middleBeam = 28, wood = 30, header = 40 }  -- above the window's own level
+-- The posts and the bottom beam over the pages (and the pages' beams); the top beam and the logo over those.
+local woodFrame = CreateFrame("Frame", nil, frame)
+woodFrame:SetAllPoints()
+woodFrame:SetFrameLevel(frame:GetFrameLevel() + ns.UI.FRAME_LEVEL.wood)
+local woodHeader = CreateFrame("Frame", nil, frame)
+woodHeader:SetAllPoints()
+woodHeader:SetFrameLevel(frame:GetFrameLevel() + ns.UI.FRAME_LEVEL.header)
+local function Shade(texture, shade)
+    if type(shade) == "table" then texture:SetVertexColor(unpack(shade)) else texture:SetVertexColor(shade, shade, shade) end
+end
+local logo
+for i, piece in ipairs(SKELETON.pieces) do
+    local onTop = piece.file == "TopBeam" or piece.file == "Logo"
+    local texture = (onTop and woodHeader or woodFrame):CreateTexture(nil, "ARTWORK", nil, i - 8)
+    texture:SetTexture(SKELETON_ART .. piece.file)
+    texture:SetTexCoord(unpack(piece.coords))
+    texture:SetSize(piece.w, piece.h)
+    texture:SetPoint("TOPLEFT", frame, "TOPLEFT", piece.x, -piece.y)
+    Shade(texture, SKELETON_SHADE)
+    if piece.file == "Logo" then logo = texture end
+end
 
 -- Dragging the logo moves the window. A frame takes the mouse over its whole rectangle, so instead of the
--- logo frame, invisible handles cover only its visible parts (ns.LogoMask, one per run of opaque cells):
--- clicks on the transparent corners still reach whatever is behind them.
+-- logo, invisible handles cover only its visible parts (one per run of opaque cells): clicks on its
+-- transparent corners still reach whatever is behind them.
 do
-    local mask = ns.LogoMask
-    local cell = LOGO_SIZE / (mask and mask.cells or 1)
-    for row, runs in ipairs(mask and mask.rows or {}) do
+    local mask = SKELETON.logoMask
+    local cell = mask.cell
+    for row, runs in ipairs(mask.rows) do
         for _, run in ipairs(runs) do
-            local handle = CreateFrame("Frame", nil, logo)
-            handle:SetPoint("TOPLEFT", (run[1] - 1) * cell, -(row - 1) * cell)
+            local handle = CreateFrame("Frame", nil, woodHeader)
+            handle:SetPoint("TOPLEFT", frame, "TOPLEFT", (run[1] - 1) * cell, -(row - 1) * cell)
             handle:SetSize((run[2] - run[1] + 1) * cell, cell)
             handle:EnableMouse(true)
             handle:RegisterForDrag("LeftButton")
@@ -449,78 +457,88 @@ do
     end
 end
 
--- Frame ---------------------------------------------------------------------------------------------------
--- A wooden post down each side of the pages, broken planks along the bottom and grey squares on the corners,
--- on every page (OverviewLayout.lua, from tools/overview-layout.js; the textures in Media/Overview, from
--- tools/convert-overview.js). Over the pages, under the header.
-local OVERVIEW_ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\"
-local DRAW_LAYERS = { "BACKGROUND", "BORDER", "ARTWORK", "OVERLAY" }
--- Draws a layout piece on parent: { x, y (centre, from the window's top-left, y down), w, h, tilt (degrees
--- clockwise), texture, shade, flip, coords (the part of the texture to draw: left, right, top, bottom) }.
--- order: its place in its list; later pieces go on top (16 per draw layer).
-function ns.UI.WoodPiece(parent, piece, order)
-    local i = (order or 1) - 1
-    local texture = parent:CreateTexture(nil, DRAW_LAYERS[math.min(4, math.floor(i / 16) + 1)], nil, i % 16 - 8)
-    texture:SetTexture(OVERVIEW_ART .. piece.texture)
-    texture:SetSize(piece.w, piece.h)
-    texture:SetPoint("CENTER", frame, "TOPLEFT", piece.x, -piece.y)
-    if piece.coords then texture:SetTexCoord(unpack(piece.coords)) end
-    if piece.flip then texture:SetTexCoord(1, 0, 0, 1) end
-    if piece.tilt ~= 0 then texture:SetRotation(-math.rad(piece.tilt)) end  -- WoW turns anticlockwise
-    local shade = piece.shade or 1
-    texture:SetVertexColor(shade, shade, shade)
-    return texture
+ns.UI.window = frame  -- for pages that place things in window coordinates (ns.UI.Beam, ProfileHeader.lua)
+
+-- Beams ---------------------------------------------------------------------------------------------------
+-- A beam a page puts on itself (shown and hidden with it), in window pixels (from its top-left, y down):
+-- ns.UI.Beam(parent, kind, x, y, length, shade, thick, under). kind "middle" stands up (x, y: its top-left; length down), kind
+-- "cross" lies (x, y: its left end's top-left; length to the right). Its ends are as painted and its middle
+-- repeats (tools/convert-skeleton.js), the far end fading in over the repeat, so any length joins up. Drawn under
+-- the posts and the bottom beam, a middle beam over a cross beam: tuck their ends under one of those.
+-- shade: a number or { r, g, b } (default the skeleton's), to match a beam's tint to the others. thick: drawn this
+-- thick instead of as painted. under: drawn at parent's level, so the page's own things go over it (a plank behind them).
+-- ns.UI.MiddleBeam(parent, x) and ns.UI.CrossBeam(parent, left, right, y) place them from beam to beam.
+local BEAM_FADE = 24  -- how long the far end takes to fade in over the repeating middle
+function ns.UI.Beam(parent, kind, x, y, length, shade, thick, under)
+    local spec = SKELETON.beams[kind]
+    local up = spec.upright
+    length = math.max(length, 2 * spec.cap)
+    thick = thick or spec.thick
+    local holder = CreateFrame("Frame", nil, parent)
+    if not under then
+        holder:SetFrameLevel(frame:GetFrameLevel() + ns.UI.FRAME_LEVEL[up and "middleBeam" or "crossBeam"])
+        if holder.SetFixedFrameLevel then holder:SetFixedFrameLevel(true) end
+    end
+    holder:SetSize(up and thick or length, up and length or thick)
+    holder:SetPoint("TOPLEFT", frame, "TOPLEFT", x, -y)
+    shade = shade or SKELETON_SHADE
+    local r, g, b = shade, shade, shade
+    if type(shade) == "table" then r, g, b = unpack(shade) end
+    -- A part from along to along + size, from this stretch (a share) of its texture along the beam.
+    local function Part(file, coords, along, size, from, to, sublayer, wrap)
+        local texture = holder:CreateTexture(nil, "ARTWORK", nil, sublayer)
+        texture:SetTexture(SKELETON_ART .. file, up and "CLAMP" or wrap or "CLAMP", up and wrap or "CLAMP")
+        if up then
+            texture:SetTexCoord(coords[1], coords[2], from, to)
+            texture:SetSize(thick, size)
+            texture:SetPoint("TOPLEFT", 0, -along)
+        else
+            texture:SetTexCoord(from, to, coords[3], coords[4])
+            texture:SetSize(size, thick)
+            texture:SetPoint("TOPLEFT", along, 0)
+        end
+        texture:SetVertexColor(r, g, b)
+        return texture
+    end
+    local first, last, tile = spec.coords[1], spec.coords[2], spec.coords[3]
+    local capEnd = up and first[4] or first[2]  -- the cap's share of its texture
+    local middle = length - 2 * spec.cap + BEAM_FADE
+    Part(spec.files[3], tile, spec.cap, middle, 0, middle / spec.tile, 0, "REPEAT")
+    Part(spec.files[1], first, 0, spec.cap, 0, capEnd, 1)
+    local fadeShare = capEnd * BEAM_FADE / spec.cap
+    local fade = Part(spec.files[2], last, length - spec.cap, BEAM_FADE, 0, fadeShare, 1)
+    if up then  -- a vertical gradient runs from the bottom (min) to the top (max)
+        fade:SetGradient("VERTICAL", CreateColor(r, g, b, 1), CreateColor(r, g, b, 0))
+    else
+        fade:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0), CreateColor(r, g, b, 1))
+    end
+    Part(spec.files[2], last, length - spec.cap + BEAM_FADE, spec.cap - BEAM_FADE, fadeShare, capEnd, 1)
+    return holder
 end
-local woodFrame = CreateFrame("Frame", nil, frame)
-woodFrame:SetAllPoints()
-woodFrame:SetFrameLevel(frame:GetFrameLevel() + 30)
-for i, piece in ipairs(ns.OverviewLayout and ns.OverviewLayout.frame or {}) do ns.UI.WoodPiece(woodFrame, piece, i) end
-ns.UI.frame = frame  -- for pages that place things in window coordinates (OverviewCard.lua)
-ns.UI.FRAME_LEVEL = { wood = 30, header = 40 }  -- above the window's own level
+-- A middle beam from under the top beam to under the bottom beam, its left edge at x (default: the page area's
+-- middle).
+function ns.UI.MiddleBeam(parent, x, shade)
+    x = x or math.floor((INNER.left + INNER.right - SKELETON.beams.middle.thick) / 2)
+    return ns.UI.Beam(parent, "middle", x, INNER.top - 16, INNER.bottom - INNER.top + 56, shade), x
+end
+-- A cross beam between two uprights (the page area's left and right edges by default, or a middle beam's
+-- edges), its ends tucked under them, its top edge at y.
+function ns.UI.CrossBeam(parent, left, right, y, shade, thick, under)
+    left, right = left or INNER.left, right or INNER.right
+    return ns.UI.Beam(parent, "cross", left - 24, y, right - left + 48, shade, thick, under)
+end
 
 -- Header ------------------------------------------------------------------------------------------------
--- Wooden planks along the window's top edge, from the logo to the two square buttons (Settings and Close), as
--- laid out in HeaderLayout.lua (tools/header-layout.js, which also draws a preview). Every plank is one of two
--- small textures (Media/Wood, tools/convert-wood.js), stretched and tilted. Under the logo, over the window.
+-- The top beam (the skeleton's, above) moves the window, and the two square buttons (Settings and Close, sized
+-- in HeaderLayout.lua) sit on its right end.
 local WOOD = "Interface\\AddOns\\SOLC\\Media\\Wood\\"
 local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
-local HEADER_WOOD_SHADE = 0.81  -- a little darker than painted, like the frame (tools/convert-overview.js WOOD_SHADE)
-local woodHeader = CreateFrame("Frame", nil, frame)
-woodHeader:SetAllPoints()
-woodHeader:SetFrameLevel(frame:GetFrameLevel() + 40)
--- One tilted texture, centred on (x, y) from the window's top-left (y down).
-local function Board(layer, file, x, y, w, h, tilt, shade)
-    local texture = woodHeader:CreateTexture(nil, "ARTWORK", nil, layer)
-    texture:SetTexture(WOOD .. file)
-    texture:SetSize(w, h)
-    texture:SetPoint("CENTER", frame, "TOPLEFT", x, -y)
-    texture:SetRotation(-math.rad(tilt))  -- the layout's tilt is clockwise; WoW turns anticlockwise
-    shade = shade * HEADER_WOOD_SHADE
-    texture:SetVertexColor(shade, shade, shade)
-end
-local PLANK_END = ns.HeaderLayout and ns.HeaderLayout.plankEnd or 0.645
-for i, plank in ipairs(ns.HeaderLayout and ns.HeaderLayout.planks or {}) do
-    local layer = math.min(7, i - 8)  -- later planks on top
-    local shade = plank.shade or 1     -- the back row a little darker, for depth
-    if plank.texture == "Plank" then
-        -- In three parts, like the sidebar buttons: the ends (with the nails) at their own shape, the middle
-        -- stretched; each turned by the plank's tilt and placed along its line, so they stay joined.
-        local endWidth = math.min(plank.h * PLANK_END, plank.w / 2 - 1)
-        local angle = math.rad(plank.tilt)
-        local reach = (plank.w - endWidth) / 2
-        local dx, dy = math.cos(angle) * reach, math.sin(angle) * reach
-        Board(layer, "Plank", plank.x, plank.y, plank.w - 2 * endWidth + 2, plank.h, plank.tilt, shade)
-        Board(layer, "PlankLeft", plank.x - dx, plank.y - dy, endWidth, plank.h, plank.tilt, shade)
-        Board(layer, "PlankRight", plank.x + dx, plank.y + dy, endWidth, plank.h, plank.tilt, shade)
-    else
-        Board(layer, plank.texture, plank.x, plank.y, plank.w, plank.h, plank.tilt, shade)
-    end
-end
--- The plank strip moves the window too, like the logo (just the band the planks cover, so the pages under it
--- still take clicks).
+local TOP_BEAM = SKELETON.topBeam
+local BEAM_MIDDLE = (TOP_BEAM.top + TOP_BEAM.bottom) / 2
+local BUTTONS_RIGHT = TOP_BEAM.right - 22  -- clear of the beam's nails
 local headerGrip = CreateFrame("Frame", nil, woodHeader)
-headerGrip:SetPoint("TOPLEFT", frame, "TOPLEFT", 186, 8)
-headerGrip:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -110, -42)
+headerGrip:SetPoint("TOPLEFT", frame, "TOPLEFT", TOP_BEAM.left, -TOP_BEAM.top)
+headerGrip:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", BUTTONS_RIGHT - 140, -TOP_BEAM.bottom)
 headerGrip:EnableMouse(true)
 headerGrip:RegisterForDrag("LeftButton")
 headerGrip:SetScript("OnDragStart", function() frame:StartMoving() end)
@@ -610,8 +628,11 @@ end
 local settingsButton  -- lit while the Settings page is open (Refresh)
 local buttons = ns.HeaderLayout and ns.HeaderLayout.buttons
 if buttons then
-    settingsButton = HeaderButton(buttons.settings, "Settings", function() ns.OpenPage("settings") end)
-    HeaderButton(buttons.close, "Close", function() frame:Hide() end)
+    -- On the top beam's right end, centred on it: Close last, Settings just left of it.
+    local close = setmetatable({ x = BUTTONS_RIGHT - buttons.close.w, y = BEAM_MIDDLE - buttons.close.h / 2 }, { __index = buttons.close })
+    local settings = setmetatable({ x = close.x - buttons.settings.w + 4, y = BEAM_MIDDLE - buttons.settings.h / 2 }, { __index = buttons.settings })
+    settingsButton = HeaderButton(settings, "Settings", function() ns.OpenPage("settings") end)
+    HeaderButton(close, "Close", function() frame:Hide() end)
 end
 
 -- The menu column: no box of its own, the wooden planks hang straight on the window.
@@ -642,27 +663,22 @@ end
 
 local navButtons, sidebarBuilt = {}, false
 local navList = {}  -- the sidebar's buttons in their normal order
--- Under the sidebar: switches the Overview to the new one being built (OverviewCard.lua), lit while it's on.
-local wipButton
 -- The sidebar's page buttons (wooden, see ns.UI.SkinButton) keep the art's shape: their height follows the width.
 local NAV_WIDTH = 138
 local NAV_HEIGHT = math.floor(NAV_WIDTH * ns.ButtonArt.normal.height / ns.ButtonArt.normal.width + 0.5)
 local NAV_FONT, NAV_FONT_SIZE = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf", 18
 local NAV_TEXT_SHARE = 0.64  -- of the button's width, between the swirls: a longer label is drawn smaller
-local NAV_LABELS = { achievements = "Deeds", leaderboard = "Rankings" }  -- shorter names, in the sidebar only
+local NAV_LABELS = {}  -- shorter names, in the sidebar only
 local NAV_COLOR, NAV_CURRENT_COLOR = { 1, 0.93, 0.78 }, { 1, 0.82, 0 }  -- cream as in the logo; gold
 local NAV_OUTLINE = { 0.18, 0.09, 0.03 }  -- dark brown, like the wood's shadows (ns.UI.OutlineText)
 
 -- Ogre mode (/solc ogre, KillTrackerDB.ogreMode): the sidebar and the tabs in ogre words, 5 letters at most,
--- in an order that reads ME SMASH BIG LOOT, BRAG CAVE FRENZ, PIX THUNK (pages not listed come after).
+-- in an order that reads ME SMASH PIX, CAVE FRENZ, THUNK (pages not listed come after).
 local OGRE_LABELS = {
-    overview = "ME", kills = "SMASH", pvp = "BONK", achievements = "BRAG", collection = "LOOT",
-    home = "CAVE", members = "FRENZ", crafters = "MAKE", leaderboard = "BIG", bounties = "HUNTS",
-    gallery = "PIX", puzzle = "THUNK",
+    overview = "ME", kills = "SMASH", collection = "PIX", home = "CAVE", members = "FRENZ", puzzle = "THUNK",
 }
 local OGRE_ORDER = {}
-for i, key in ipairs({ "overview", "kills", "leaderboard", "collection", "achievements", "home", "members",
-    "gallery", "puzzle" }) do OGRE_ORDER[key] = i end
+for i, key in ipairs({ "overview", "kills", "collection", "home", "members", "puzzle" }) do OGRE_ORDER[key] = i end
 local function OgreMode() return KillTrackerDB and KillTrackerDB.ogreMode end
 local function OgreLabel(page) return OgreMode() and OGRE_LABELS[page.key] end
 local function NavLabel(page) return OgreLabel(page) or NAV_LABELS[page.key] or page.label end
@@ -802,7 +818,7 @@ local function LayoutSidebar()
     end
     -- The top button hangs TOP_GAP below the logo's sign (the sidebar's top is 44 below the window's), from
     -- rings centred between the two, drawn behind the logo.
-    local signBottom = LOGO_Y - LOGO_SIZE * LOGO_SIGN_BOTTOM
+    local signBottom = -SKELETON.logoSignBottom
     local y = signBottom + 44 - TOP_GAP
     for _, button in ipairs(navList) do button.rings = {} end
     for i, button in ipairs(order) do
@@ -829,10 +845,6 @@ local function LayoutSidebar()
         end
         if button.ogre then button.ogre:SetShown(OgreMode()) end
         y = y - NAV_HEIGHT
-    end
-    if wipButton and order[#order] then
-        wipButton:ClearAllPoints()
-        wipButton:SetPoint("TOP", order[#order], "BOTTOM", 0, -2)
     end
 end
 
@@ -889,27 +901,6 @@ local function BuildSidebar()
             navList[#navList + 1] = button
         end
     end
-    if pages.wipOverview then
-        wipButton = CreateFrame("Button", nil, sidebar)
-        wipButton:SetSize(math.floor(NAV_WIDTH * 0.55), math.floor(NAV_HEIGHT * 0.55))
-        wipButton.text = wipButton:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        wipButton.text:SetPoint("CENTER", 0, 1)
-        if not wipButton.text:SetFont(NAV_FONT, 13, "") then wipButton.text:SetFontObject("GameFontHighlightSmall") end
-        ns.UI.OutlineText(wipButton.text, NAV_OUTLINE)
-        wipButton.text:SetText("WIP")
-        wipButton:SetScript("OnClick", function()
-            KillTrackerDB.wipOverview = not KillTrackerDB.wipOverview or nil
-            ns.OpenPage("overview")
-        end)
-        wipButton:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine("Work in progress")
-            GameTooltip:AddLine("Shows the new Overview being built instead of the current one.", 1, 1, 1, true)
-            GameTooltip:Show()
-        end)
-        wipButton:SetScript("OnLeave", GameTooltip_Hide)
-        ns.UI.SkinButton(wipButton, { dimUnselected = true, steady = true })
-    end
     LayoutSidebarSoon()
 end
 
@@ -931,7 +922,7 @@ local function ShowTabs(current)
         if not tab then
             tab = CreateFrame("Button", nil, frame, "PanelTabButtonTemplate")
             if i == 1 then
-                tab:SetPoint("TOPLEFT", pageArea, "BOTTOMLEFT", 6, -26)  -- below the frame's bottom planks
+                tab:SetPoint("TOPLEFT", pageArea, "BOTTOMLEFT", 6, -42)  -- below the bottom beam
             else
                 tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 4, 0)  -- (the beta's tabs have no see-through edges to overlap)
             end
@@ -954,8 +945,16 @@ end
 local Refresh
 
 -- Shows a page (creating it on first use) and refreshes it.
+-- A page asked for by a key it covers (an older page folded into it: covers = { [key] = true }) opens instead.
+local function PageFor(key)
+    if pages[key] then return pages[key] end
+    for _, page in ipairs(pageOrder) do
+        if page.covers and page.covers[key] then return page end
+    end
+end
+
 function ns.OpenPage(key)
-    if not pages[key] then return end
+    if not PageFor(key) then return end
     state.page = key
     if not frame:IsShown() then ns.ToggleUI() else Refresh() end
 end
@@ -1182,17 +1181,9 @@ function ns.UI.CreateSection(parent, text, y)
     return heading
 end
 
--- List pages (Kills, PvP, Achievements, Collection) ------------------------------------------
+-- The lists (SMASH, PIX's shop: SmashPage.lua, PixPage.lua) ------------------------------------
 
-local list = CreateFrame("Frame", nil, pageArea)
-list:SetAllPoints()
-list:Hide()
-
-local listTitle, totals = ns.UI.CreateHeader(list)
-
--- Viewing: you, the combined stats, or a synced guildmate - the arrows step through them. Pages
--- without combined stats (Overview) step through you and guildmates only.
-local viewingLabel = list:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+-- Viewing: you or a synced guildmate (the profile header's arrows step through them).
 local function StepViewing(delta, withCombined)
     local keys = { false }  -- false = you
     if withCombined then keys[2] = COMBINED end
@@ -1206,68 +1197,6 @@ local function StepViewing(delta, withCombined)
     Refresh()
 end
 ns.UI.StepViewing = StepViewing  -- (delta): the next or previous of you and the synced guildmates
-local function CreateArrow(parent, direction, texture, withCombined)
-    local arrow = CreateFrame("Button", nil, parent)
-    arrow:SetSize(ARROW_SIZE, ARROW_SIZE)
-    arrow:SetNormalTexture(texture .. "-Up")
-    arrow:SetPushedTexture(texture .. "-Down")
-    arrow:SetDisabledTexture(texture .. "-Disabled")
-    arrow:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-    arrow:SetScript("OnClick", function() StepViewing(direction, withCombined) end)
-    arrow:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Whose stats")
-        GameTooltip:AddLine(withCombined and "Step through yours, everyone's combined, and each synced guildmate's."
-            or "Step through yours and each synced guildmate's.", 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    arrow:SetScript("OnLeave", GameTooltip_Hide)
-    return arrow
-end
-local nextArrow = CreateArrow(list, 1, "Interface\\Buttons\\UI-SpellbookIcon-NextPage", true)
-nextArrow:SetPoint("TOPRIGHT", -10, -7)
-viewingLabel:SetPoint("RIGHT", nextArrow, "LEFT", -2, 0)
-viewingLabel:SetWidth(VIEWING_WIDTH)
-viewingLabel:SetWordWrap(false)
-local prevArrow = CreateArrow(list, -1, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage", true)
-prevArrow:SetPoint("RIGHT", viewingLabel, "LEFT", -2, 0)
-
--- Kills: how to group them.
-local viewButtons = {}
-for i, key in ipairs({ "creatures", "rank", "mobs" }) do
-    local button = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
-    button:SetSize(100, 22)
-    button:SetPoint("TOPLEFT", 10 + (i - 1) * 104, -48)
-    button:SetText(VIEWS[key].label)
-    button:SetScript("OnClick", function()
-        state.view, state.path = key, {}
-        Refresh()
-    end)
-    viewButtons[key] = button
-end
-
--- Drill-down header (shown while inside a category)
-local back = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
-back:SetSize(60, 20)
-back:SetText("< Back")
--- Up one level, also past levels that were skipped automatically.
-back:SetScript("OnClick", function()
-    repeat
-        local step = table.remove(state.path)
-    until not step or not step.auto
-    Refresh()
-end)
-local header = list:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-header:SetPoint("LEFT", back, "RIGHT", 8, 0)
-header:SetPoint("RIGHT", list, "RIGHT", -20, 0)
-header:SetJustifyH("LEFT")
-header:SetWordWrap(false)
-
-local scroll = ns.UI.CreateScroll(list, 80)
-local content = scroll.content
-
-local empty = list:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-empty:SetPoint("CENTER", scroll, "CENTER")
 
 local function ShowMobTooltip(row)
     local mob = row.data.mob
@@ -1299,122 +1228,91 @@ local function ShowAchievementTooltip(row)
     GameTooltip:Show()
 end
 
-local rows = {}
-local function GetRow(i)
-    if rows[i] then return rows[i] end
-    local row = ns.UI.CreateRow(content, i)
-    row:SetScript("OnClick", function(self)
-        if self.data.category then
-            state.path[#state.path + 1] = { value = self.data.category, label = self.data.label }
-            Refresh()
-        elseif self.data.item and not self.data.owned and not state.viewing then
-            ns.ConfirmBuy(self.data.item)
-        elseif self.data.mintAction then
-            ns.ConfirmMint()
-        elseif self.data.extra then
-            if self.data.extra.onClick then self.data.extra.onClick() end
-        elseif self.data.mint then
-            if self.data.mint.duplicateOf and not state.viewing then
-                ns.ConfirmReroll(self.data.mint)
-            else
-                ns.ShowMint(self.data.mint)
-            end
+-- A list row's tooltip (row.data: a row from BuildRows).
+local function RowTooltip(self)
+    if self.data.mob then
+        ShowMobTooltip(self)
+    elseif self.data.achievement then
+        ShowAchievementTooltip(self)
+    elseif self.data.item then
+        local item = self.data.item
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(("|c%s%s|r"):format(ns.RARITY_COLORS[item.rarity] or "ffffffff", item.name))
+        if item.description then GameTooltip:AddLine(item.description, 1, 1, 1, true) end
+        AddValue("Cost", ("%d points"):format(item.cost))
+        GameTooltip:AddLine(self.data.owned and "In your collection" or "Click to buy", 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    elseif self.data.mint then
+        local mint = self.data.mint
+        local rarity = ns.MintRarity(mint.traits)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], self.data.label))
+        for _, trait in ipairs(ns.MintTraits(mint.traits)) do
+            GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
         end
-    end)
-    row:SetScript("OnEnter", function(self)
-        if self.data.mob then
-            ShowMobTooltip(self)
-        elseif self.data.achievement then
-            ShowAchievementTooltip(self)
-        elseif self.data.item then
-            local item = self.data.item
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(("|c%s%s|r"):format(ns.RARITY_COLORS[item.rarity] or "ffffffff", item.name))
-            if item.description then GameTooltip:AddLine(item.description, 1, 1, 1, true) end
-            AddValue("Cost", ("%d points"):format(item.cost))
-            GameTooltip:AddLine(self.data.owned and "In your collection" or "Click to buy", 0.6, 0.6, 0.6)
-            GameTooltip:Show()
-        elseif self.data.mint then
-            local mint = self.data.mint
-            local rarity = ns.MintRarity(mint.traits)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], self.data.label))
-            for _, trait in ipairs(ns.MintTraits(mint.traits)) do
-                GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
-            end
-            AddValue("Minted", date("%Y-%m-%d %H:%M", mint.time))
-            if mint.duplicateOf then
-                GameTooltip:AddLine(("Duplicate: %s minted this picture first."):format(mint.duplicateOf), 1, 0.4, 0.4, true)
-                GameTooltip:AddLine("Click to reroll it for free", 0.6, 0.6, 0.6)
-            else
-                GameTooltip:AddLine("Unique in your guild", 0.2, 1, 0.2)
-                GameTooltip:AddLine("Click to view", 0.6, 0.6, 0.6)
-            end
-            GameTooltip:Show()
-        elseif self.data.extra then
-            if self.data.extra.onEnter then self.data.extra.onEnter(self) end
-        elseif self.data.mintAction then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine("Mint a picture")
-            GameTooltip:AddLine("Rolls a random background, skin, outfit, expression, eyes, accessory and headwear. Rarer traits make a rarer picture.", 1, 1, 1, true)
-            GameTooltip:Show()
-        elseif self.data.pointsPart then
-            return
-        elseif self.data.player then
-            local p = self.data.player
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(p.realm and (p.name .. "-" .. p.realm) or p.name)
-            AddValue("Kills", p.count)
-            AddValue("Race", p.race or "?")
-            AddValue("Class", p.class or "?")
-            if p.level then AddValue("Level", p.level) end
-            if p.zone and p.zone ~= "" then AddValue("Last killed in", p.zone) end
-            if p.time then AddValue("Last killed", date("%Y-%m-%d %H:%M", p.time)) end
-            GameTooltip:Show()
-        elseif self.data.rare then
-            local rare = self.data.rare
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(rare.name)
-            GameTooltip:AddLine(rare.elite and "Rare elite" or "Rare", 0.75, 0.75, 0.85)
-            AddValue("Level", rare.level)
-            AddValue("Zone", rare.zone)
-            AddValue("Creature", rare.c.subtype)
-            if rare.c.faction ~= rare.c.subtype then AddValue("Faction", rare.c.faction) end
-            AddValue("Kills", rare.kills > 0 and rare.kills or "Not found yet")
-            GameTooltip:AddLine(ns.WOWHEAD_NPC_URL:format(rare.npcID), 0.6, 0.6, 0.6)
-            GameTooltip:Show()
-        elseif self.data.leader then
-            local leader = self.data.leader
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(leader.name)
-            GameTooltip:AddLine(LEADER_TITLES[leader.kind] or (state.view == "pvp" and "Ruler of this race")
-                or "Leader of this faction", 1, 0.82, 0)
-            AddValue("Kills", leader.kills > 0 and leader.kills or "Not killed yet")
-            GameTooltip:AddLine(ns.WOWHEAD_NPC_URL:format(leader.npcID), 0.6, 0.6, 0.6)
-            GameTooltip:Show()
+        AddValue("Minted", date("%Y-%m-%d %H:%M", mint.time))
+        if mint.duplicateOf then
+            GameTooltip:AddLine(("Duplicate: %s minted this picture first."):format(mint.duplicateOf), 1, 0.4, 0.4, true)
+            GameTooltip:AddLine("Click to reroll it for free", 0.6, 0.6, 0.6)
         else
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(self.data.label)
-            for _, leader in ipairs(self.data.leaders or {}) do
-                if leader.kills > 0 then
-                    GameTooltip:AddDoubleLine(LeaderTitle(leader) .. ": " .. leader.name, "Killed", 1, 0.82, 0, 0.2, 1, 0.2)
-                else
-                    GameTooltip:AddDoubleLine(LeaderTitle(leader) .. ": " .. leader.name, "Not killed yet", 1, 0.82, 0, 0.6, 0.6, 0.6)
-                end
-            end
-            GameTooltip:AddLine(self.data.hint, 1, 1, 1)
-            GameTooltip:Show()
+            GameTooltip:AddLine("Unique in your guild", 0.2, 1, 0.2)
+            GameTooltip:AddLine("Click to view", 0.6, 0.6, 0.6)
         end
-    end)
-    row:SetScript("OnLeave", GameTooltip_Hide)
-    rows[i] = row
-    return row
-end
-
-local function WhoIsViewed()
-    if state.viewing == COMBINED then return "|cffffd100Combined|r" end
-    if state.viewing then return ("|cff66ccff%s|r"):format(Ambiguate(state.viewing, "short")) end
-    return ns.MyName()
+        GameTooltip:Show()
+    elseif self.data.extra then
+        if self.data.extra.onEnter then self.data.extra.onEnter(self) end
+    elseif self.data.mintAction then
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Mint a picture")
+        GameTooltip:AddLine("Rolls a random background, skin, outfit, expression, eyes, accessory and headwear. Rarer traits make a rarer picture.", 1, 1, 1, true)
+        GameTooltip:Show()
+    elseif self.data.pointsPart then
+        return
+    elseif self.data.player then
+        local p = self.data.player
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(p.realm and (p.name .. "-" .. p.realm) or p.name)
+        AddValue("Kills", p.count)
+        AddValue("Race", p.race or "?")
+        AddValue("Class", p.class or "?")
+        if p.level then AddValue("Level", p.level) end
+        if p.zone and p.zone ~= "" then AddValue("Last killed in", p.zone) end
+        if p.time then AddValue("Last killed", date("%Y-%m-%d %H:%M", p.time)) end
+        GameTooltip:Show()
+    elseif self.data.rare then
+        local rare = self.data.rare
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(rare.name)
+        GameTooltip:AddLine(rare.elite and "Rare elite" or "Rare", 0.75, 0.75, 0.85)
+        AddValue("Level", rare.level)
+        AddValue("Zone", rare.zone)
+        AddValue("Creature", rare.c.subtype)
+        if rare.c.faction ~= rare.c.subtype then AddValue("Faction", rare.c.faction) end
+        AddValue("Kills", rare.kills > 0 and rare.kills or "Not found yet")
+        GameTooltip:AddLine(ns.WOWHEAD_NPC_URL:format(rare.npcID), 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    elseif self.data.leader then
+        local leader = self.data.leader
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(leader.name)
+        GameTooltip:AddLine(LEADER_TITLES[leader.kind] or (state.view == "pvp" and "Ruler of this race")
+            or "Leader of this faction", 1, 0.82, 0)
+        AddValue("Kills", leader.kills > 0 and leader.kills or "Not killed yet")
+        GameTooltip:AddLine(ns.WOWHEAD_NPC_URL:format(leader.npcID), 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    else
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(self.data.label)
+        for _, leader in ipairs(self.data.leaders or {}) do
+            if leader.kills > 0 then
+                GameTooltip:AddDoubleLine(LeaderTitle(leader) .. ": " .. leader.name, "Killed", 1, 0.82, 0, 0.2, 1, 0.2)
+            else
+                GameTooltip:AddDoubleLine(LeaderTitle(leader) .. ": " .. leader.name, "Not killed yet", 1, 0.82, 0, 0.6, 0.6, 0.6)
+            end
+        end
+        GameTooltip:AddLine(self.data.hint, 1, 1, 1)
+        GameTooltip:Show()
+    end
 end
 
 -- Whose page a page without combined stats shows: nil for you, or a key in KillTrackerFriends.
@@ -1423,305 +1321,92 @@ function ns.GetViewing()
     return state.viewing
 end
 
--- Arrows and a name at the top right of a page, stepping through you and each synced guildmate.
--- Call switcher:Update() when the page refreshes.
-function ns.UI.CreateViewSwitcher(parent)
-    local nextButton = CreateArrow(parent, 1, "Interface\\Buttons\\UI-SpellbookIcon-NextPage")
-    nextButton:SetPoint("TOPRIGHT", -10, -7)
-    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("RIGHT", nextButton, "LEFT", -2, 0)
-    label:SetWidth(VIEWING_WIDTH)
-    label:SetWordWrap(false)
-    local prevButton = CreateArrow(parent, -1, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage")
-    prevButton:SetPoint("RIGHT", label, "LEFT", -2, 0)
-    local switcher = {}
-    function switcher:Update()
-        local hasFriends = next(KillTrackerFriends) ~= nil
-        prevButton:SetShown(hasFriends)
-        nextButton:SetShown(hasFriends)
-        local key = ns.GetViewing()
-        label:SetText(not hasFriends and "" or key and ("|cff66ccff%s|r"):format(Ambiguate(key, "short")) or ns.MyName())
-    end
-    return switcher
-end
-
-local function RefreshList()
-    local hasFriends = next(KillTrackerFriends) ~= nil
-    if state.viewing == COMBINED then
-        if hasFriends then state.combined = ns.BuildCombined() else state.viewing = nil end
-    elseif state.viewing and not KillTrackerFriends[state.viewing] then
-        state.viewing = nil
-    end
-    prevArrow:SetShown(hasFriends)
-    nextArrow:SetShown(hasFriends)
-    viewingLabel:SetText(hasFriends and WhoIsViewed() or "")
-
-    local source = Source()
-    local page = state.page
-    listTitle:SetText(pages[page].label)
-    if page == "collection" then
-        if state.viewing == COMBINED then
-            totals:SetText("Points are per player.")
-        else
-            local p = ns.GetPoints(source)
-            totals:SetText(("|cffffd100%d points|r (%d earned, %d spent)"):format(p.balance, p.earned, p.spent))
-        end
-    elseif page == "pvp" then
-        local pvp = source.pvp or { total = 0 }
-        totals:SetText(state.viewing and ("%d PvP kills"):format(pvp.total)
-            or ("%d PvP kills (%d this session)"):format(pvp.total, ns.GetSessionPvPKills()))
-    elseif state.viewing == COMBINED then
-        totals:SetText(("%d players - %d kills - %d achievements"):format(source.members, source.total, ns.GetAchievementTotals(source)))
-    elseif state.viewing then
-        totals:SetText(("%d kills - %d achievements - updated %s"):format(source.total, ns.GetAchievementTotals(source),
-            ns.TimeAgo(source.received)))
-    else
-        totals:SetText(("%d kills (%d this session) - %d achievements"):format(source.total, ns.GetSessionKills(),
-            ns.GetAchievementTotals(source)))
-    end
-
-    local isKills = page == "kills"
-    for key, button in pairs(viewButtons) do
-        button:SetShown(isKills)
-        if key == state.view then button:LockHighlight() else button:UnlockHighlight() end
-    end
-
-    local data = BuildRows()
-    local total, max = 0, 0
-    for _, d in ipairs(data) do
-        if not d.leader and not d.rare then total = total + d.count end  -- leaders and rares listed from elsewhere don't add up
-        if d.count > max then max = d.count end
-    end
-
-    local top = isKills and 76 or 50
-    local inside = #state.path > 0
-    back:SetShown(inside)
-    header:SetShown(inside)
-    if inside then
-        local labels = {}
-        for _, step in ipairs(state.path) do
-            if step.label ~= labels[#labels] then labels[#labels + 1] = step.label end  -- "Kobold > Kobold"
-        end
-        header:SetText(("%s (%d)"):format(table.concat(labels, " > "), total))
-        back:ClearAllPoints()
-        back:SetPoint("TOPLEFT", 10, -top)
-        top = top + 24
-    end
-    scroll:SetPoint("TOPLEFT", 10, -top)
-
-    for i, d in ipairs(data) do
-        local row = GetRow(i)
-        row.data = d
+-- Writes a list row (row.label, row.count, row.bar, row:SetBar) for d, a row from BuildRows; total: the list's kills,
+-- max: its biggest count (the bars are shares of it).
+local function FillRow(row, d, total, max)
+    row.label:SetText(d.label)
+    local barFraction = max > 0 and d.count / max or 0
+    row.bar:SetVertexColor(0.8, 0.2, 0.2, 0.45)
+    if d.mintAction then
+        row.label:SetText("|cffffd100+ Mint a picture|r")
+        row.count:SetText(("%d points"):format(d.count))
+        barFraction = 0
+    elseif d.mint then
+        local rarity = ns.MintRarity(d.mint.traits)
+        row.label:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], d.label)
+            .. (d.mint.duplicateOf and "  |cffff6060Duplicate|r" or ""))
+        row.count:SetText(d.mint.duplicateOf and "|cffffd100Reroll free|r"
+            or ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
+        barFraction = 0
+    elseif d.extra then
+        row.count:SetText(d.extra.right or "")
+        barFraction = 0
+    elseif d.pointsPart then
         row.label:SetText(d.label)
-        local barFraction = max > 0 and d.count / max or 0
-        row.bar:SetVertexColor(0.8, 0.2, 0.2, 0.45)
-        if d.mintAction then
-            row.label:SetText("|cffffd100+ Mint a picture|r")
-            row.count:SetText(("%d points"):format(d.count))
-            barFraction = 0
-        elseif d.mint then
-            local rarity = ns.MintRarity(d.mint.traits)
-            row.label:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], d.label)
-                .. (d.mint.duplicateOf and "  |cffff6060Duplicate|r" or ""))
-            row.count:SetText(d.mint.duplicateOf and "|cffffd100Reroll free|r"
-                or ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
-            barFraction = 0
-        elseif d.extra then
-            row.count:SetText(d.extra.right or "")
-            barFraction = 0
-        elseif d.pointsPart then
-            row.label:SetText(d.label)
-            row.count:SetText((d.count < 0 and "|cffff6060%d|r" or "|cffffd100+%d|r"):format(d.count))
-            barFraction = 0
-        elseif d.item then
-            local color = ns.RARITY_COLORS[d.item.rarity] or "ffffffff"
-            row.label:SetText(("|T%s:14|t |c%s%s|r"):format(d.item.texture or "Interface\\Icons\\INV_Misc_QuestionMark", color, d.label))
-            row.count:SetText(d.owned and "|cff33ff33Owned|r" or ("%d points"):format(d.count))
-            barFraction = 0
-        elseif d.achievement then
-            local progress = d.achievement
-            row.label:SetText(progress.tribe and ("%s  |cff999999tribe|r"):format(progress.category)
-                or ("%s  |cff999999%d/%d|r"):format(progress.category, progress.earned, #progress.tiers))
-            if progress.next then
-                row.count:SetText(("%d/%d"):format(progress.kills, progress.next.kills))
-                barFraction = progress.kills / progress.next.kills
-            else
-                row.count:SetText("|cff33ff33Complete|r")
-                barFraction = 1
-            end
-            row.bar:SetVertexColor(1, 0.5, 0.1, 0.45)
-        elseif d.rare then
-            local killed = d.rare.kills > 0
-            row.label:SetText((killed and RARE_STAR or RARE_STAR_GREY) .. " " .. (killed and d.label or "|cff888888" .. d.label .. "|r")
-                .. ("  |cff999999%d%s|r"):format(d.rare.level, d.rare.elite and " elite" or ""))
-            row.count:SetText(killed and d.rare.kills or "|cff888888not found|r")
-            barFraction = 0
-        elseif d.rareZone then
-            row.label:SetText(d.count == d.rareAll and (d.label .. "  " .. RARE_STAR) or d.label)
-            row.count:SetText(("%d/%d"):format(d.count, d.rareAll))
-            barFraction = d.count / d.rareAll
-            row.bar:SetVertexColor(0.85, 0.85, 0.9, 0.35)
-        elseif d.leader then
-            local killed = d.leader.kills > 0
-            row.label:SetText((killed and CROWN or CROWN_GREY) .. " " .. (killed and d.label or "|cff888888" .. d.label .. "|r"))
-            row.count:SetText(killed and d.count or "|cff888888not killed|r")
-        elseif d.category then
-            local label = d.note and ("%s  |cff999999%s|r"):format(d.label, d.note) or d.label
-            if d.leaders then label = label .. "  " .. LeaderCrown(d.leaders) end
-            row.label:SetText(d.rares and label .. "  " .. d.rares or label)
-            row.count:SetText(("%d  |cff999999%d%%|r"):format(d.count, total > 0 and math.floor(d.count / total * 100 + 0.5) or 0))
+        row.count:SetText((d.count < 0 and "|cffff6060%d|r" or "|cffffd100+%d|r"):format(d.count))
+        barFraction = 0
+    elseif d.item then
+        local color = ns.RARITY_COLORS[d.item.rarity] or "ffffffff"
+        row.label:SetText(("|T%s:14|t |c%s%s|r"):format(d.item.texture or "Interface\\Icons\\INV_Misc_QuestionMark", color, d.label))
+        row.count:SetText(d.owned and "|cff33ff33Owned|r" or ("%d points"):format(d.count))
+        barFraction = 0
+    elseif d.achievement then
+        local progress = d.achievement
+        row.label:SetText(progress.tribe and ("%s  |cff999999tribe|r"):format(progress.category)
+            or ("%s  |cff999999%d/%d|r"):format(progress.category, progress.earned, #progress.tiers))
+        if progress.next then
+            row.count:SetText(("%d/%d"):format(progress.kills, progress.next.kills))
+            barFraction = progress.kills / progress.next.kills
         else
-            if d.leading then row.label:SetText(CROWN .. " " .. d.label)
-            elseif d.rareMob then row.label:SetText(RARE_STAR .. " " .. d.label) end
-            row.count:SetText(d.count)
+            row.count:SetText("|cff33ff33Complete|r")
+            barFraction = 1
         end
-        row:SetBar(barFraction)
-        row:Show()
+        row.bar:SetVertexColor(1, 0.5, 0.1, 0.45)
+    elseif d.rare then
+        local killed = d.rare.kills > 0
+        row.label:SetText((killed and RARE_STAR or RARE_STAR_GREY) .. " " .. (killed and d.label or "|cff888888" .. d.label .. "|r")
+            .. ("  |cff999999%d%s|r"):format(d.rare.level, d.rare.elite and " elite" or ""))
+        row.count:SetText(killed and d.rare.kills or "|cff888888not found|r")
+        barFraction = 0
+    elseif d.rareZone then
+        row.label:SetText(d.count == d.rareAll and (d.label .. "  " .. RARE_STAR) or d.label)
+        row.count:SetText(("%d/%d"):format(d.count, d.rareAll))
+        barFraction = d.count / d.rareAll
+        row.bar:SetVertexColor(0.85, 0.85, 0.9, 0.35)
+    elseif d.leader then
+        local killed = d.leader.kills > 0
+        row.label:SetText((killed and CROWN or CROWN_GREY) .. " " .. (killed and d.label or "|cff888888" .. d.label .. "|r"))
+        row.count:SetText(killed and d.count or "|cff888888not killed|r")
+    elseif d.category then
+        local label = d.note and ("%s  |cff999999%s|r"):format(d.label, d.note) or d.label
+        if d.leaders then label = label .. "  " .. LeaderCrown(d.leaders) end
+        row.label:SetText(d.rares and label .. "  " .. d.rares or label)
+        row.count:SetText(("%d  |cff999999%d%%|r"):format(d.count, total > 0 and math.floor(d.count / total * 100 + 0.5) or 0))
+    else
+        if d.leading then row.label:SetText(CROWN .. " " .. d.label)
+        elseif d.rareMob then row.label:SetText(RARE_STAR .. " " .. d.label) end
+        row.count:SetText(d.count)
     end
-    for i = #data + 1, #rows do
-        rows[i]:Hide()
-    end
-    content:SetHeight(math.max(1, #data * ROW_HEIGHT))
-    empty:SetText(state.viewing == COMBINED and page == "collection" and "" or EMPTY_TEXT[state.view] or "No kills recorded yet.")
-    empty:SetShown(#data == 0)
+    row:SetBar(barFraction)
 end
 
--- The list pages share one frame; each sets which list it shows.
-local function ListPage(key, label, order, view, tabOf)
-    ns.RegisterPage({
-        key = key, label = label, section = "me", order = order, tabOf = tabOf,
-        create = function() return list end,
-        refresh = function()
-            if state.listPage ~= key then state.path = {} end
-            state.listPage = key
-            if view then
-                state.view = view
-            elseif not viewButtons[state.view] then
-                state.view = "creatures"  -- Kills keeps its grouping between visits
-            end
-            RefreshList()
-        end,
-    })
-end
+-- The list's state and rows, for the pages (SmashPage.lua, PixPage.lua): state (view, path, viewing, page),
+-- BuildRows(), FillRow(row, d, total, max), RowTooltip(row) (row.data = d), Source().
+ns.UI.List = { state = state, BuildRows = BuildRows, FillRow = FillRow, RowTooltip = RowTooltip, Source = Source }
 
--- Picture viewer, next to the window --------------------------------------------
-
-local viewer = CreateFrame("Frame", "SOLCMintViewer", frame, "BackdropTemplate")
-viewer:SetSize(290, 492)  -- the picture, seven trait rows, two buttons
-viewer:SetPoint("TOPLEFT", frame, "TOPRIGHT", -6, 0)
-viewer:SetBackdrop(DIALOG_BACKDROP)
-viewer:SetBackdropColor(unpack(ns.WINDOW_COLOR))
-viewer:EnableMouse(true)
-viewer:Hide()
-
-viewer.title = viewer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-viewer.title:SetPoint("TOP", 0, -18)
-viewer.rarity = viewer:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-viewer.rarity:SetPoint("TOP", viewer.title, "BOTTOM", 0, -4)
-viewer.canvas = CreateFrame("Frame", nil, viewer)
-viewer.canvas:SetSize(256, 256)
-viewer.canvas:SetPoint("TOP", 0, -56)
--- The traits, one row per layer; on your own pictures with the crayon edition, click one to draw it in crayon.
-viewer.traitRows = {}
-for i = 1, 7 do
-    local row = CreateFrame("Button", nil, viewer)
-    row:SetSize(256, 14)
-    row:SetPoint("TOPLEFT", viewer.canvas, "BOTTOMLEFT", 0, -6 - (i - 1) * 14)
-    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.text:SetPoint("LEFT")
-    row.mark = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.mark:SetPoint("RIGHT")
-    row:SetScript("OnClick", function(self)
-        if not self.editable then return end
-        ns.SetLayerEdition(viewer.mint, self.layer, ns.NextEdition(ns.LayerEdition(ns.MintStyle(viewer.mint), self.layer)))
-        ns.ShowMint(viewer.mint, nil)
-    end)
-    row:SetScript("OnEnter", function(self)
-        if not self.editable then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Click to draw this one painted, in crayon or sketched, in turn", 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    row:SetScript("OnLeave", GameTooltip_Hide)
-    viewer.traitRows[i] = row
-end
-local viewerClose = CreateFrame("Button", nil, viewer, "UIPanelCloseButton")
-viewerClose:SetPoint("TOPRIGHT", -6, -6)
--- Your own pictures: put on / take off your Overview's showcase (Minting.lua).
-viewer.showcase = CreateFrame("Button", nil, viewer, "UIPanelButtonTemplate")
-viewer.showcase:SetSize(180, 22)
-viewer.showcase:SetPoint("BOTTOM", 0, 16)
-local function UpdateShowcaseButton()
-    viewer.showcase:SetText(ns.IsShowcased(viewer.mint.number) and "Take off your Overview" or "Show on your Overview")
-end
-viewer.showcase:SetScript("OnClick", function()
-    local ok, reason = ns.ToggleShowcase(viewer.mint)
-    if not ok then ns.Print(reason) end
-    UpdateShowcaseButton()
-end)
--- Your own pictures with the crayon edition unlocked (Minting.lua): switch it between painted and crayon.
-viewer.style = CreateFrame("Button", nil, viewer, "UIPanelButtonTemplate")
-viewer.style:SetSize(180, 22)
-viewer.style:SetPoint("BOTTOM", viewer.showcase, "TOP", 0, 4)
-local function UpdateStyleButton()
-    local style = ns.MintStyle(viewer.mint)
-    local nextStyle = type(style) == "table" and ns.EDITIONS[1] or ns.NextEdition(style)
-    viewer.style:SetText(nextStyle and ("Show it all in %s"):format(ns.EDITION_NAMES[nextStyle]) or "Show it all painted")
-end
-viewer.style:SetScript("OnClick", function()
-    local style = ns.MintStyle(viewer.mint)
-    ns.SetMintStyle(viewer.mint, type(style) == "table" and ns.EDITIONS[1] or ns.NextEdition(style))
-    ns.ShowMint(viewer.mint, nil)
-end)
-viewer.style:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:AddLine("Crayon and sketch editions")
-    GameTooltip:AddLine("Your picture redrawn in crayon or sketched. Click a trait to switch just that one. Guildmates see it the way you pick.", 1, 1, 1, true)
-    GameTooltip:Show()
-end)
-viewer.style:SetScript("OnLeave", GameTooltip_Hide)
-
--- Shows a picture next to the window. owner: whose it is, if not yours.
+-- Pictures open on the PIX page, picked (PixPage.lua). owner: whose it is, if not yours (a short name).
 function ns.ShowMint(mint, owner)
-    viewer.mint = mint
-    viewer.showcase:SetShown(owner == nil)
-    if owner == nil then UpdateShowcaseButton() end
-    viewer.style:SetShown(owner == nil and ns.CrayonUnlocked(mint))
-    if owner == nil then UpdateStyleButton() end
-    local rarity = ns.MintRarity(mint.traits)
-    viewer.title:SetText(owner and ("%s's #%d"):format(owner, mint.number) or ("Picture #%d"):format(mint.number))
-    viewer.rarity:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
-    ns.RenderMint(viewer.canvas, mint.traits, nil, ns.MintStyle(mint))
-    local traits, style = ns.MintTraits(mint.traits), ns.MintStyle(mint)
-    local editable = owner == nil and ns.CrayonUnlocked(mint)
-    for i, row in ipairs(viewer.traitRows) do
-        local trait = traits[i]
-        row:SetShown(trait ~= nil)
-        if trait then
-            row.layer, row.editable = trait[4], editable
-            row:EnableMouse(editable)
-            row.text:SetText(("|cffffd100%s:|r |c%s%s|r"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2]))
-            local edition = ns.LayerEdition(style, trait[4])
-            row.mark:SetText(edition and ("|cffff9a2a%s|r"):format(ns.EDITION_NAMES[edition]) or "")
-        end
-    end
-    if not frame:IsShown() then ns.ToggleUI() end
-    viewer:Show()
+    if ns.UI.PixShow then ns.UI.PixShow(mint, owner) end
 end
 
 -- Refresh -------------------------------------------------------------------
 
 function Refresh()
     BuildSidebar()
-    local current = pages[state.page] or pages.overview
-    state.page = current.key
+    -- state.page stays the key asked for when the page covers it, so the page can open the matching tab.
+    local current = PageFor(state.page) or pages.overview
+    if current.key ~= state.page and not (current.covers and current.covers[state.page]) then state.page = current.key end
     local navKey = current.tabOf or current.key  -- a tab lights its page's button
-    -- The new Overview being built (OverviewCard.lua) stands in for the Overview while the WIP button is on.
-    if current.key == "overview" and KillTrackerDB.wipOverview and pages.wipOverview then current = pages.wipOverview end
-    if wipButton then
-        if KillTrackerDB.wipOverview then wipButton:LockHighlight() else wipButton:UnlockHighlight() end
-    end
     body:SetShown(not current.bare)
     pageArea:SetBackdropColor(0, 0, 0, current.bare and 0 or 0.35)
     for key, page in pairs(pages) do
@@ -1739,6 +1424,8 @@ function Refresh()
     end
     current.frame:Show()
     current.refresh(current.frame)
+    -- A split page: the profile header over its left page, and the middle beam (ProfileHeader.lua).
+    if ns.UI.ShowHeader then ns.UI.ShowHeader(current.split, ns.GetViewing(), state.page) end
 end
 
 frame:SetScript("OnShow", Refresh)
@@ -1771,8 +1458,3 @@ function ns.OnKillsChanged()
 end
 ns.OnFriendsChanged = ns.OnKillsChanged
 
-ListPage("kills", "Kills", 2)
-ListPage("pvp", "PvP", 3, "pvp", "kills")
-ListPage("rares", "Rares", 6, "rares", "kills")
-ListPage("achievements", "Achievements", 4, "achievements")
-ListPage("collection", "Collection", 5, "collection")

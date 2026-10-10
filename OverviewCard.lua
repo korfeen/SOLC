@@ -1,37 +1,23 @@
--- The new Overview, being built: shown instead of the Overview while the WIP button under the sidebar is on
--- (KillTrackerDB.wipOverview). An open book of wooden boards. On its left page: plaques with their points,
--- achievements and kills, their showcase pictures on three small tilted polaroids, and what happened to them lately.
--- On its right page a character card, with a GEARZ button under it for their gear:
--- the name bar (arrows to step through you and your synced guildmates), a polaroid with the character's model
--- on the background they picked, icons for their race, gender, class and professions on the photo, and their
--- name written under it. The book and the card are the designer's own drawing (Media/Overview/Inside, from
--- tools/convert-overview.js); the live parts go on its spots, placed by OverviewLayout.lua
--- (tools/overview-layout.js) in window coordinates.
--- The gender icon follows the character unless they pick one (right-click it on your own card), and the photo can
--- show one of their pictures instead of their model (right-click your own photo); when there's no model of someone
--- to show (their character isn't synced), their chosen picture shows, else their first showcase picture, else their
--- newest.
--- KillTrackerDB.card = { gender = "MALE" | "FEMALE" | "NONBINARY", portrait = picture number, seq }, synced
--- (Sync.lua, the card section).
+-- The Overview (ME). A split page (ProfileHeader.lua: the profile header over the left page, the middle
+-- beam). In the left slot, under its tabs: ME (LEFT, from the designer's REFPIC_LEFT_SCREEN_OVERVIEW): their three
+-- showcase pictures and what happened to them lately; GEARZ: their gear; CRAFTS: their professions, and the recipes
+-- they know of one. On the right page (RIGHT, from REFPIC_RIGHT_SCREEN_OVERVIEW): their photo hung in a wooden frame,
+-- their first name on its plaque.
+-- The photo shows the character's model on the background they picked, or one of their pictures instead (right-click
+-- your own photo); when there's no model of someone to show (their character isn't synced), their chosen picture
+-- shows, else their first showcase picture, else their newest.
+-- KillTrackerDB.card = { gender = "MALE" | "FEMALE" | "NONBINARY" (no longer shown), portrait = picture number, seq },
+-- synced (Sync.lua, the card section).
 
 local _, ns = ...
 local UI = ns.UI
-local LAYOUT = ns.OverviewLayout
-if not LAYOUT then return end
+local Fit, SetTooltip = UI.FitText, UI.Tooltip
 
 local ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\"
-local ICONS = ART .. "Icons\\"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local SIGN_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\FingerPaint-Regular.ttf"
-local NAME_SIZE, SIGN_SIZE = 15, 40          -- at most; a longer name is written smaller to fit
-local NAME_COLOR = { 0.95, 0.92, 0.85 }
-local INK = { 0.16, 0.16, 0.18 }            -- the signature's crayon
-local ARROW_LIT, ARROW_GROW = 0.45, 1.05     -- the light over a hovered arrow: strength, size
-local EMPTY_SHAPE = 0.45                     -- an empty icon shape (nothing known yet) is drawn this faint
-local STAT_SIZE, GEAR_SIZE = 17, 26          -- the stat plaques' numbers, the GEARZ button's word (at most)
-local STAT_COLOR = { 1, 1, 1 }
-local FEED_COLOR, FEED_TIME_COLOR = { 0.93, 0.88, 0.78 }, { 0.72, 0.6, 0.36 }  -- cream, muted gold
-local FEED_STRIPE, FEED_HOVER = 0.035, 0.08  -- every other row a touch lighter; the row under the mouse lighter still
+local INK = { 0.16, 0.16, 0.18 }            -- the plaque's crayon
+local FEED_COLOR = { 0.93, 0.88, 0.78 }      -- cream
 -- The small icon at the start of a line, by the event's kind (Feed.lua); a picture's line shows the picture itself.
 local FEED_ICON = "Interface\\AddOns\\SOLC\\Media\\Icons\\Feed_"  -- the feed's own crayon icons (tools/make-role-icons.js)
 local FEED_ICONS = {
@@ -43,81 +29,40 @@ local FEED_ICONS = {
     B = "Bounty",
     D = "Boss",         -- a boss with the guild
 }
-local GEAR_COLOR = { 1, 0.78, 0.1 }
-local TEXT_OUTLINE = { 0.12, 0.07, 0.03 }    -- dark brown round the light text on the boards (ns.UI.OutlineText)
-local DATE_COLOR = { 0.3, 0.3, 0.32 }
-local RARITY_EDGE, EDGE_FILL = 1.5, 60 / 64  -- the rarity colour round a small polaroid's picture; Media/Overview/Edge's square
-local GEAR_PANEL = { left = 214, top = 56, width = 324, height = 522 }  -- the gear over the left page (window pixels)
--- The Ogre Rank badge (Ranks.lua): a sticker on the polaroid's top-left corner (window pixels), tilted; the badge art
--- per five ranks (Media/Icons/Rank_1..7, tools/make-role-icons.js). Clicking it shows the rank over the left page.
-local RANK_BADGE = { x = 638, y = 142, size = 46, tilt = -12 }
-local RANK_ICON = "Interface\\AddOns\\SOLC\\Media\\Icons\\Rank_"
-local RANK_LINES = 18  -- perk lines in the rank panel
-local function BadgeArt(rank) return RANK_ICON .. (rank >= 30 and 7 or math.floor(rank / 5) + 1) end
+local EDGE_FILL = 60 / 64                    -- Media/Overview/Edge's square
+local GEAR_PANEL = { left = 247, top = 327, width = 370, height = 397 }  -- GEARZ and CRAFTS, in the left slot (window pixels)
+local TABS = {  -- { panel (nil: ME), label, ogre word }
+    { nil, "ME", "ME" },
+    { "gear", "GEARZ", "GEARZ" },
+    { "crafts", "CRAFTS", "MAKE" },
+}
 
-local issecret = issecretvalue or function() return false end
-local function Readable(value) if not issecret(value) then return value end end
-local function IconKey(text) return text and (text:upper():gsub("[^A-Z]", "")) end
-
--- Icons there's art for (Media/Overview/Icons/<kind>_<key>).
-local RACES = { HUMAN = true, DWARF = true, NIGHTELF = true, GNOME = true, SKYBORNE = true }
-local CLASSES = { DRUID = true, HUNTER = true, MAGE = true, PALADIN = true, PRIEST = true, ROGUE = true, SHAMAN = true,
-    WARLOCK = true, WARRIOR = true }
-local PROFESSIONS = { [171] = "ALCHEMY", [164] = "BLACKSMITHING", [333] = "ENCHANTING", [202] = "ENGINEERING",
-    [182] = "HERBALISM", [165] = "LEATHERWORKING", [186] = "MINING", [393] = "SKINNING", [197] = "TAILORING" }
-local SECONDARY = { { line = 185, key = "COOKING" }, { line = 356, key = "FISHING" }, { line = 129, key = "FIRSTAID" } }
-local GENDERS = { MALE = "Male", FEMALE = "Female", NONBINARY = "Nonbinary" }
-local GENDER_ORDER = { "MALE", "FEMALE", "NONBINARY" }
-local SEX_GENDER = { [2] = "MALE", [3] = "FEMALE" }  -- UnitSex
-
--- What the card shows for someone: you (key nil) or a synced guildmate.
-local function Profile(key)
-    local p = { key = key }
-    if key then
-        local friend = KillTrackerFriends[key]
-        local gear = friend and friend.gear
-        p.name = key
-        if gear then
-            local info = gear.race and gear.race > 0 and C_CreatureInfo and C_CreatureInfo.GetRaceInfo(gear.race)
-            if info then p.raceName, p.raceFile = info.raceName, info.clientFileString end
-            p.classFile, p.sex, p.level = gear.class, gear.sex, gear.level
-        end
-        p.chosenGender = friend and friend.card and friend.card.gender
-        p.portrait = friend and friend.card and friend.card.portrait
-    else
-        p.name = ns.MyName()
-        p.raceName, p.raceFile = Readable(UnitRace("player")), Readable(select(2, UnitRace("player")))
-        p.classFile = Readable(select(2, UnitClass("player")))
-        p.sex, p.level = Readable(UnitSex("player")), Readable(UnitLevel("player"))
-        p.chosenGender = KillTrackerDB.card and KillTrackerDB.card.gender
-        p.portrait = KillTrackerDB.card and KillTrackerDB.card.portrait
-    end
-    p.gender = GENDERS[p.chosenGender or ""] and p.chosenGender or SEX_GENDER[p.sex]
-    p.race = RACES[IconKey(p.raceFile) or ""] and IconKey(p.raceFile) or RACES[IconKey(p.raceName) or ""] and IconKey(p.raceName)
-    p.className = p.classFile and LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[p.classFile] or p.classFile
-    -- Professions: the two main ones (highest skill first), and the secondary ones they know.
-    p.professions, p.secondary = {}, {}
-    for _, prof in ipairs(ns.GetProfessions(key).list) do
-        local icon = PROFESSIONS[prof.line]
-        if icon then
-            p.professions[#p.professions + 1] = { icon = icon, prof = prof }
-        else
-            for _, s in ipairs(SECONDARY) do
-                if s.line == prof.line then p.secondary[s.key] = prof end
-            end
-        end
-    end
-    table.sort(p.professions, function(a, b) return (a.prof.rank or 0) > (b.prof.rank or 0) end)
-    return p
-end
-
--- Your gender icon: chosen, or back to following your character (nil).
-local function ChooseGender(gender)
-    KillTrackerDB.card = KillTrackerDB.card or {}
-    KillTrackerDB.card.gender = gender
-    ns.Touch(KillTrackerDB.card)
-    ns.OpenPage("overview")
-end
+-- The left slot, in window pixels (from the window's top-left, y down): flat colours for now, the heading a cross beam.
+local LEFT = {
+    left = 237, right = 627, bottom = 730,
+    tabs = { top = 285, bottom = 319, size = 17 },
+    bands = {  -- top to bottom, from under the header's strip: { bottom, r, g, b }, or { bottom, beam = true }
+        { 319, 0.16, 0.11, 0.08, top = 280 },  -- the tabs
+        { 452, 0.03, 0.03, 0.03 },             -- the pictures
+        { 494, beam = true },                  -- the feed's heading
+        { 750, 0.1, 0.1, 0.1 },                -- the feed
+    },
+    pictures = { lefts = { 242, 371, 500 }, top = 325, size = 122, rim = 2 },
+    heading = { x = 247, y = 473, size = 22, text = "WHAT HAPPEN TO ME?" },
+    feed = { top = 494, rowHeight = 24, textSize = 13, iconSize = 18, colors = { 0.25, 0.18 } },
+}
+-- The right page, in window pixels: the board, the frame (its top-left; Media/Overview/HangingPicture at 1:1; in the
+-- page's middle), the photo in it, the plaque on it. Centres unless said.
+local RIGHT = {
+    color = { 0.094, 0.094, 0.094 },
+    frame = { x = 688, y = 214, w = 362, h = 447 },
+    photo = { x = 869, y = 447.5, w = 308, h = 329 },
+    plaque = { x = 874, y = 636, w = 170, size = 22 },
+}
+local CRAFT_ROW = { height = 24, size = 13, colors = { 0.25, 0.18 } }  -- CRAFTS' rows
+local HEADING_COLOR = { 1, 0.85, 0.1 }
+local FEED_AGO_COLOR = { 0.98, 0.64, 0.26 }
+local FEED_HOVER_COLOR = { 0.65, 0.53, 0.28 }  -- the row under the mouse
 
 -- The picture shown on your photo instead of your model: a picture number, or nil for your model.
 local function ChoosePortrait(number)
@@ -153,52 +98,14 @@ local function PhotoMenu(owner)
     end)
 end
 
--- Writes text as big as fits in width (from size down to smallest). The text is cleared first: a font string
--- whose text didn't change can report the width it had in an earlier font.
-local function Fit(fontString, font, size, smallest, text, width)
-    fontString:SetFont(font, size, "")
-    fontString:SetText("")
-    fontString:SetText(text)
-    while size > smallest and fontString:GetStringWidth() > width do
-        size = size - 1
-        fontString:SetFont(font, size, "")
-    end
-end
-
-local function SetTooltip(owner, lines)
-    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-    for i, line in ipairs(lines) do
-        if i == 1 then GameTooltip:AddLine(line) else GameTooltip:AddLine(line, 0.6, 0.6, 0.6, true) end
-    end
-    GameTooltip:Show()
-end
-
--- An icon on the photo at a layout spot: icon:Set(texture name or nil, empty shape, tooltip lines).
-local function CreateIcon(parent, spot)
-    local icon = CreateFrame("Button", nil, parent)
-    icon:SetSize(spot.size, spot.size)
-    icon:SetPoint("CENTER", UI.frame, "TOPLEFT", spot.x, -spot.y)
-    icon:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    icon.texture = icon:CreateTexture(nil, "ARTWORK")
-    icon.texture:SetAllPoints()
-    function icon:Set(name, empty, lines)
-        self.texture:SetTexture(ICONS .. (name or empty))
-        self.texture:SetAlpha(name and 1 or EMPTY_SHAPE)
-        self.lines = lines
-    end
-    icon:SetScript("OnEnter", function(self) if self.lines then SetTooltip(self, self.lines) end end)
-    icon:SetScript("OnLeave", GameTooltip_Hide)
-    return icon
-end
-
--- GEARZ: their gear over the left page, like a character sheet. Two columns of slots (icon with a rim in the item's
+-- GEARZ: their gear over the left slot, like a character sheet. Two columns of slots (icon with a rim in the item's
 -- quality colour, its name and item level beside it), the weapons in a row under them, the average item level at the
 -- top and the stats the gear adds up to at the bottom. Hover for the item, shift-click to link it. page: the Overview
 -- page; returns a frame with :SetPlayer(key).
 local GEAR_LEFT = { 1, 2, 3, 15, 5, 4, 19, 9 }
 local GEAR_RIGHT = { 10, 6, 7, 8, 11, 12, 13, 14 }
 local GEAR_WEAPONS = { 16, 17, 18 }
-local SLOT_SIZE, SLOT_ROW = 34, 40
+local SLOT_SIZE, SLOT_ROW = 28, 31
 local GEAR_STAT_LINES = 8
 local QUALITY_GREY = { 0.35, 0.35, 0.35 }
 local RIM = 1  -- the quality colour round a slot's icon, pixels
@@ -216,23 +123,17 @@ end
 
 local function GearPage(page)
     local gear = CreateFrame("Frame", nil, page)
-    gear:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
+    gear:SetPoint("TOPLEFT", UI.window, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
     gear:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
     local shade = gear:CreateTexture(nil, "BACKGROUND")
     shade:SetPoint("TOPLEFT", -8, 8)
     shade:SetPoint("BOTTOMRIGHT", 8, -8)
     shade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
 
-    local title = gear:CreateFontString(nil, "OVERLAY")
-    title:SetFont(NAME_FONT, 20, "")
-    title:SetTextColor(unpack(GEAR_COLOR))
-    title:SetPoint("TOPLEFT", 2, -2)
-    title:SetText("GEARZ")
-    UI.OutlineText(title, TEXT_OUTLINE)
     gear.average = gear:CreateFontString(nil, "OVERLAY")
     gear.average:SetFont(NAME_FONT, 13, "")
     gear.average:SetTextColor(unpack(FEED_COLOR))
-    gear.average:SetPoint("LEFT", title, "RIGHT", 10, -1)
+    gear.average:SetPoint("TOPLEFT", 4, -2)
     gear.empty = gear:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     gear.empty:SetPoint("TOP", 0, -80)
     gear.empty:SetWidth(GEAR_PANEL.width - 20)
@@ -287,14 +188,14 @@ local function GearPage(page)
         end)
         slots[#slots + 1] = cell
     end
-    for i, slot in ipairs(GEAR_LEFT) do Slot(slot, 2, 32 + (i - 1) * SLOT_ROW, "left") end
-    for i, slot in ipairs(GEAR_RIGHT) do Slot(slot, GEAR_PANEL.width - SLOT_SIZE - 2, 32 + (i - 1) * SLOT_ROW, "right") end
+    for i, slot in ipairs(GEAR_LEFT) do Slot(slot, 2, 22 + (i - 1) * SLOT_ROW, "left") end
+    for i, slot in ipairs(GEAR_RIGHT) do Slot(slot, GEAR_PANEL.width - SLOT_SIZE - 2, 22 + (i - 1) * SLOT_ROW, "right") end
     for i, slot in ipairs(GEAR_WEAPONS) do
-        Slot(slot, GEAR_PANEL.width / 2 - SLOT_SIZE / 2 + (i - 2) * (SLOT_SIZE + 14), 32 + #GEAR_LEFT * SLOT_ROW + 6)
+        Slot(slot, GEAR_PANEL.width / 2 - SLOT_SIZE / 2 + (i - 2) * (SLOT_SIZE + 14), 22 + #GEAR_LEFT * SLOT_ROW + 2)
     end
 
     -- The stats the gear adds up to, in two columns.
-    local statsTop = 32 + #GEAR_LEFT * SLOT_ROW + SLOT_SIZE + 22
+    local statsTop = 22 + #GEAR_LEFT * SLOT_ROW + SLOT_SIZE + 12
     local statsTitle = gear:CreateFontString(nil, "OVERLAY")
     statsTitle:SetFont(NAME_FONT, 14, "")
     statsTitle:SetTextColor(1, 0.82, 0.25)
@@ -305,7 +206,7 @@ local function GearPage(page)
         local line = gear:CreateFontString(nil, "OVERLAY")
         line:SetFont(NAME_FONT, 12, "")
         line:SetTextColor(unpack(FEED_COLOR))
-        line:SetPoint("TOPLEFT", 4 + ((i - 1) % 2) * (GEAR_PANEL.width / 2), -statsTop - 20 - math.floor((i - 1) / 2) * 16)
+        line:SetPoint("TOPLEFT", 4 + ((i - 1) % 2) * (GEAR_PANEL.width / 2), -statsTop - 18 - math.floor((i - 1) / 2) * 15)
         line:SetWidth(GEAR_PANEL.width / 2 - 8)
         line:SetJustifyH("LEFT")
         line:SetWordWrap(false)
@@ -370,70 +271,195 @@ local function GearPage(page)
     return gear
 end
 
+-- CRAFTS: their professions over the left slot, a row each with its skill; click one for the recipes they know of it
+-- (the first row goes back). page: the Overview page; returns a frame with :SetPlayer(key).
+local function CraftsPage(page)
+    local crafts = CreateFrame("Frame", nil, page)
+    crafts:SetPoint("TOPLEFT", UI.window, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
+    crafts:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
+    crafts:EnableMouseWheel(true)
+    local shade = crafts:CreateTexture(nil, "BACKGROUND")
+    shade:SetPoint("TOPLEFT", -8, 8)
+    shade:SetPoint("BOTTOMRIGHT", 8, -8)
+    shade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
+    crafts.offset = 0
+    crafts.rows = {}
+    for i = 1, math.floor(GEAR_PANEL.height / CRAFT_ROW.height) do
+        local row = CreateFrame("Button", nil, crafts)
+        row:SetSize(GEAR_PANEL.width, CRAFT_ROW.height)
+        row:SetPoint("TOPLEFT", 0, -(i - 1) * CRAFT_ROW.height)
+        local tone = CRAFT_ROW.colors[i % 2 == 1 and 1 or 2]
+        row.stripe = row:CreateTexture(nil, "BACKGROUND")
+        row.stripe:SetAllPoints()
+        row.bar = row:CreateTexture(nil, "BORDER")
+        row.bar:SetPoint("BOTTOMLEFT")
+        row.bar:SetHeight(3)
+        row.bar:SetColorTexture(0.3, 0.6, 1, 0.9)
+        row.icon = row:CreateTexture(nil, "ARTWORK")
+        row.icon:SetSize(18, 18)
+        row.icon:SetPoint("LEFT", 4, 0)
+        row.count = row:CreateFontString(nil, "OVERLAY")
+        row.count:SetFont(NAME_FONT, CRAFT_ROW.size, "")
+        row.count:SetTextColor(unpack(FEED_AGO_COLOR))
+        row.count:SetPoint("RIGHT", -6, 1)
+        row.label = row:CreateFontString(nil, "OVERLAY")
+        row.label:SetFont(NAME_FONT, CRAFT_ROW.size, "")
+        row.label:SetTextColor(0.94, 0.94, 0.94)
+        row.label:SetPoint("LEFT", 28, 1)
+        row.label:SetPoint("RIGHT", row.count, "LEFT", -8, 0)
+        row.label:SetJustifyH("LEFT")
+        row.label:SetWordWrap(false)
+        function row:Paint(hovered) self.stripe:SetColorTexture(unpack(hovered and FEED_HOVER_COLOR or { tone, tone, tone })) end
+        row:SetScript("OnEnter", function(self)
+            local d = self.d
+            if not d then return end
+            self:Paint(true)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if d.recipe then
+                GameTooltip:SetSpellByID(d.recipe)
+            elseif d.back then
+                GameTooltip:AddLine("Back to the professions")
+            else
+                GameTooltip:AddLine(d.prof.name)
+                GameTooltip:AddLine(("Skill %d / %d"):format(d.prof.rank or 0, d.prof.max or 0), 1, 1, 1)
+                GameTooltip:AddLine("Click for the recipes", 0.6, 0.6, 0.6)
+            end
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function(self) self:Paint(false) GameTooltip_Hide() end)
+        row:SetScript("OnClick", function(self)
+            local d = self.d
+            if not d then return end
+            if d.recipe then
+                if IsModifiedClick("CHATLINK") and C_Spell and C_Spell.GetSpellLink then
+                    local link = C_Spell.GetSpellLink(d.recipe)
+                    if link then ChatEdit_InsertLink(link) end
+                end
+                return
+            end
+            UI.ClickSound()
+            crafts.line = not d.back and d.prof.line or nil
+            crafts.offset = 0
+            crafts:Refresh()
+        end)
+        row:Paint(false)
+        crafts.rows[i] = row
+    end
+    crafts.empty = crafts:CreateFontString(nil, "OVERLAY")
+    crafts.empty:SetFont(NAME_FONT, 13, "")
+    crafts.empty:SetTextColor(0.62, 0.56, 0.48)
+    crafts.empty:SetPoint("TOP", 0, -60)
+    crafts.empty:SetWidth(GEAR_PANEL.width - 30)
+
+    function crafts:Refresh()
+        local professions = ns.GetProfessions(self.key)
+        local data = {}
+        if self.line then
+            local prof
+            for _, p in ipairs(professions.list) do if p.line == self.line then prof = p end end
+            data[1] = { back = true, label = ("|cffffd100<|r  %s"):format(prof and prof.name or "Back"),
+                count = prof and ("%d/%d"):format(prof.rank or 0, prof.max or 0) or "", icon = prof and prof.icon }
+            local recipes = {}
+            for _, id in ipairs(professions.recipes and professions.recipes[self.line] or {}) do
+                local name, icon = ns.RecipeInfo(id)
+                if not name and C_Spell and C_Spell.RequestLoadSpellData then C_Spell.RequestLoadSpellData(id) end
+                recipes[#recipes + 1] = { recipe = id, label = name or "...", icon = icon }
+            end
+            table.sort(recipes, function(a, b) return a.label < b.label end)
+            for _, r in ipairs(recipes) do data[#data + 1] = r end
+            self.empty:SetText(#recipes == 0 and "No recipes known yet. They show once that profession's window has been opened." or "")
+        else
+            for _, prof in ipairs(professions.list) do
+                data[#data + 1] = { prof = prof, label = prof.name, count = ("%d/%d"):format(prof.rank or 0, prof.max or 0),
+                    icon = prof.icon, share = (prof.rank or 0) / math.max(1, prof.max or 1) }
+            end
+            self.empty:SetText(#data == 0 and "No professions yet. They show once they log in with SOLC 0.37.0 or newer." or "")
+        end
+        self.data = data
+        self.offset = math.min(self.offset, math.max(0, #data - #self.rows))
+        for i, row in ipairs(self.rows) do
+            local d = data[self.offset + i]
+            row.d = d
+            row:SetShown(d ~= nil)
+            if d then
+                row.label:SetText(d.label)
+                row.count:SetText(d.count or "")
+                row.icon:SetShown(d.icon ~= nil)
+                if d.icon then row.icon:SetTexture(d.icon) end
+                row.bar:SetShown(d.share ~= nil)
+                if d.share then row.bar:SetWidth(math.max(1, GEAR_PANEL.width * math.min(1, d.share))) end
+            end
+        end
+    end
+    crafts:SetScript("OnMouseWheel", function(self, delta)
+        local most = math.max(0, #(self.data or {}) - #self.rows)
+        local offset = math.max(0, math.min(most, self.offset - delta * 3))
+        if offset ~= self.offset then
+            self.offset = offset
+            self:Refresh()
+        end
+    end)
+    function crafts:SetPlayer(key)
+        if key ~= self.key then self.line, self.offset = nil, 0 end
+        self.key = key
+        if self:IsShown() then self:Refresh() end
+    end
+    -- Recipe names load a moment later for spells this client hasn't seen yet.
+    local pending
+    crafts:RegisterEvent("SPELL_DATA_LOAD_RESULT")
+    crafts:SetScript("OnEvent", function(self)
+        if not self:IsVisible() or not self.line or pending then return end
+        pending = true
+        C_Timer.After(0.5, function()
+            pending = nil
+            if self:IsVisible() then self:Refresh() end
+        end)
+    end)
+    crafts:SetScript("OnShow", function(self) self:Refresh() end)
+    return crafts
+end
+
 ns.RegisterPage({
-    key = "wipOverview",
-    label = "Overview",
-    bare = true,  -- its own wood fills the frame (UI.lua)
+    key = "overview", label = "Overview", section = "me", order = 1,
+    bare = true,   -- its own boards fill the frame (UI.lua)
+    split = true,  -- the profile header over its left page (ProfileHeader.lua)
     create = function(parent)
         local page = CreateFrame("Frame", nil, parent)
         page:SetAllPoints()
-        local card = LAYOUT.card
+        local card = RIGHT
+        local W = UI.window
+        local under = UI.SPLIT.under
+        local function At(region, point, x, y) region:SetPoint(point, W, "TOPLEFT", x, -y) end
 
-        -- The book and the card as the designer drew them (one texture, under the frame), the spine's grey squares
-        -- again over the frame and the header.
+        -- The boards, under everything: the left slot's bands (the heading a cross beam), the right page's board.
+        -- They run on under the post and the beams round them.
         local book = CreateFrame("Frame", nil, page)
         book:SetAllPoints()
-        for i, piece in ipairs(LAYOUT.page) do UI.WoodPiece(book, piece, i) end
-        local spineCaps = CreateFrame("Frame", nil, page)
-        spineCaps:SetAllPoints()
-        spineCaps:SetFrameLevel(UI.frame:GetFrameLevel() + UI.FRAME_LEVEL.header + 1)
-        for i, piece in ipairs(LAYOUT.spineCaps) do UI.WoodPiece(spineCaps, piece, i) end
+        local bandTop
+        for _, band in ipairs(LEFT.bands) do
+            bandTop = band.top or bandTop
+            local fill = book:CreateTexture(nil, "BACKGROUND", nil, -8)
+            At(fill, "TOPLEFT", under.left, bandTop)
+            fill:SetSize(under.middle - under.left, band[1] - bandTop)
+            if band.beam then
+                fill:SetColorTexture(0.06, 0.04, 0.03)  -- behind the beam's ragged edges
+                UI.CrossBeam(book, LEFT.left, LEFT.right, bandTop, nil, band[1] - bandTop, true)
+            else
+                fill:SetColorTexture(band[2], band[3], band[4])
+            end
+            bandTop = band[1]
+        end
+        local board = book:CreateTexture(nil, "BACKGROUND")
+        At(board, "TOPLEFT", under.middle, under.top)
+        board:SetSize(under.right - under.middle + 20, under.bottom - under.top)
+        board:SetColorTexture(unpack(RIGHT.color))
 
-        -- The live parts go on the drawn card's spots (window pixels, from the window's top-left).
         local cardFrame = CreateFrame("Frame", nil, page)
         cardFrame:SetAllPoints()
         cardFrame:SetFrameLevel(book:GetFrameLevel() + 2)
-        local function Place(region, area)
+        local function Place(region, area)  -- area: { x, y (centre), w, h }
             region:SetSize(area.w, area.h)
-            region:SetPoint("CENTER", UI.frame, "TOPLEFT", area.x, -area.y)
-        end
-
-        local label = card.label
-        page.name = cardFrame:CreateFontString(nil, "OVERLAY")
-        page.name:SetPoint("CENTER", UI.frame, "TOPLEFT", label.x, -label.y)
-        page.name:SetFont(NAME_FONT, NAME_SIZE, "")
-        page.name:SetTextColor(unpack(NAME_COLOR))
-        page.name:SetShadowOffset(1, -1)
-        page.name:SetWordWrap(false)
-        page.nameWidth = label.w - 12
-
-        -- The arrows: buttons over the drawn end planks; a white arrow over the drawn one lights it while hovered.
-        page.arrows = {}
-        for i, delta in ipairs({ -1, 1 }) do
-            local arrow = CreateFrame("Button", nil, cardFrame)
-            Place(arrow, card.arrows[i])
-            local glyph = card.arrowGlyphs[i]
-            local lit = arrow:CreateTexture(nil, "OVERLAY")
-            lit:SetTexture(ART .. "Arrow")
-            lit:SetSize(glyph.w * ARROW_GROW, glyph.h * ARROW_GROW)
-            lit:SetPoint("CENTER", UI.frame, "TOPLEFT", glyph.x, -glyph.y)
-            if delta < 0 then lit:SetTexCoord(1, 0, 0, 1) end
-            lit:SetBlendMode("ADD")
-            lit:SetAlpha(ARROW_LIT)
-            lit:Hide()
-            arrow:SetScript("OnEnter", function(self)
-                lit:Show()
-                SetTooltip(self, { delta < 0 and "Previous" or "Next", "Step through you and each synced guildmate." })
-            end)
-            arrow:SetScript("OnLeave", function()
-                lit:Hide()
-                GameTooltip_Hide()
-            end)
-            arrow:SetScript("OnClick", function()
-                UI.ClickSound()
-                UI.StepViewing(delta)
-            end)
-            page.arrows[i] = arrow
+            At(region, "CENTER", area.x, area.y)
         end
 
         -- The photo: a picture (their chosen background, else an evening sky over grass) and the model on it.
@@ -510,100 +536,49 @@ ns.RegisterPage({
         page.empty:SetWidth(card.photo.w - 16)
         page.empty:SetText("No character synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
 
-        -- The icons, over the photo.
-        local overlay = CreateFrame("Frame", nil, photo)
-        overlay:SetAllPoints(page)
-        overlay:SetFrameLevel(model:GetFrameLevel() + 5)
-        local spots = card.icons
-        page.race = CreateIcon(overlay, spots.race)
-        page.gender = CreateIcon(overlay, spots.gender)
-        page.class = CreateIcon(overlay, spots.class)
-        page.professions, page.secondary = {}, {}
-        for i, spot in ipairs(spots.professions) do page.professions[i] = CreateIcon(overlay, spot) end
-        for i, spot in ipairs(spots.secondary) do page.secondary[i] = CreateIcon(overlay, spot) end
-        page.gender:SetScript("OnClick", function(self, button)
-            if button ~= "RightButton" or page.key or not MenuUtil then return end
-            MenuUtil.CreateContextMenu(self, function(_, root)
-                root:CreateTitle("Gender")
-                local chosen = KillTrackerDB.card and KillTrackerDB.card.gender
-                root:CreateRadio("As my character", function() return chosen == nil end, function() ChooseGender(nil) end)
-                for _, gender in ipairs(GENDER_ORDER) do
-                    root:CreateRadio(GENDERS[gender], function() return chosen == gender end, function() ChooseGender(gender) end)
-                end
-            end)
-        end)
-
-        -- The name under the photo, in crayon.
-        local sign = card.signature
-        page.signature = overlay:CreateFontString(nil, "OVERLAY")
-        page.signature:SetPoint("CENTER", UI.frame, "TOPLEFT", sign.x, -sign.y)
+        -- The frame over the photo's edges, and their first name on its plaque.
+        local hung = CreateFrame("Frame", nil, cardFrame)
+        hung:SetAllPoints()
+        hung:SetFrameLevel(photo:GetFrameLevel() + 10)  -- over the model
+        local frameArt = hung:CreateTexture(nil, "ARTWORK")
+        frameArt:SetTexture(ART .. "HangingPicture")
+        frameArt:SetTexCoord(0, RIGHT.frame.w / 512, 0, RIGHT.frame.h / 512)
+        frameArt:SetSize(RIGHT.frame.w, RIGHT.frame.h)
+        At(frameArt, "TOPLEFT", RIGHT.frame.x, RIGHT.frame.y)
+        page.signature = hung:CreateFontString(nil, "OVERLAY")
+        At(page.signature, "CENTER", RIGHT.plaque.x, RIGHT.plaque.y)
         page.signature:SetTextColor(unpack(INK))
         page.signature:SetShadowOffset(0, 0)
-        page.signatureWidth = sign.w
+        page.signatureWidth = RIGHT.plaque.w
 
-        -- The left page: the stat plaques' numbers, the showcase's polaroids, the activity list.
+        -- The left slot: the showcase's pictures, and what happened to them lately.
         local left = CreateFrame("Frame", nil, page)
         left:SetAllPoints()
         left:SetFrameLevel(book:GetFrameLevel() + 2)
         page.left = left
-        page.stats = {}
-        for i, board in ipairs(LAYOUT.stats.boards) do
-            local stat = CreateFrame("Frame", nil, left)
-            Place(stat, board)
-            stat:EnableMouse(true)
-            local number = LAYOUT.stats.numbers[i]
-            stat.value = left:CreateFontString(nil, "OVERLAY")
-            stat.value:SetPoint("CENTER", UI.frame, "TOPLEFT", number.x, -number.y)
-            stat.value:SetFont(NAME_FONT, STAT_SIZE, "")
-            stat.value:SetTextColor(unpack(STAT_COLOR))
-            UI.OutlineText(stat.value, TEXT_OUTLINE)
-            stat.width = number.w
-            stat:SetScript("OnEnter", function(self) if self.lines then SetTooltip(self, self.lines) end end)
-            stat:SetScript("OnLeave", GameTooltip_Hide)
-            page.stats[i] = stat
-        end
 
-        -- The showcase's polaroids, each turned by its tilt: the picture, its rarity's colour a pixel round it, the
-        -- date it was minted, the nail. Frames can't turn, so the textures do (the picture's layers round its centre:
-        -- ns.RenderMint's tilt); the date is written straight.
-        local small = LAYOUT.polaroid
+        -- The showcase's pictures, side by side, each in its rarity's colour.
+        local pictures = LEFT.pictures
         page.polaroids = {}
-        for i, spot in ipairs(LAYOUT.polaroids) do
+        for i, x in ipairs(pictures.lefts) do
             local holder = CreateFrame("Button", nil, left)
-            holder:SetFrameLevel(left:GetFrameLevel() + i * 3)  -- in the layout's order, each over the one before
-            holder:SetSize(small.w, small.h)
-            holder:SetPoint("CENTER", UI.frame, "TOPLEFT", spot.x, -spot.y)
-            holder.slot, holder.tilt = spot.slot, spot.tilt
-            local angle = math.rad(spot.tilt)
-            -- An offset from the polaroid's centre (y down), turned with it, in WoW's terms (y up).
-            local function Turned(dx, dy)
-                return dx * math.cos(angle) - dy * math.sin(angle), -(dx * math.sin(angle) + dy * math.cos(angle))
-            end
-            local base = holder:CreateTexture(nil, "BACKGROUND")
-            base:SetTexture(ART .. "PolaroidSmall")
-            base:SetAllPoints()
-            base:SetRotation(-angle)
-            holder.border = holder:CreateTexture(nil, "BORDER")
-            holder.border:SetTexture(ART .. "Edge")  -- a square with a soft rim: turned, its edges stay smooth
-            local edge = (small.photo.size + 2 * RARITY_EDGE) / EDGE_FILL
-            holder.border:SetSize(edge, edge)
-            holder.border:SetPoint("CENTER", Turned(small.photo.x, small.photo.y))
-            holder.border:SetRotation(-angle)
+            holder:SetSize(pictures.size, pictures.size)
+            At(holder, "TOPLEFT", x, pictures.top)
+            holder.slot = i
+            holder.border = holder:CreateTexture(nil, "BACKGROUND")
+            holder.border:SetAllPoints()
+            holder.border:SetColorTexture(1, 1, 1)
+            local inside = holder:CreateTexture(nil, "BORDER")
+            inside:SetPoint("TOPLEFT", pictures.rim, -pictures.rim)
+            inside:SetPoint("BOTTOMRIGHT", -pictures.rim, pictures.rim)
+            inside:SetColorTexture(0.06, 0.06, 0.06)
             holder.canvas = CreateFrame("Frame", nil, holder)
-            holder.canvas:SetSize(small.photo.size, small.photo.size)
-            holder.canvas:SetPoint("CENTER", Turned(small.photo.x, small.photo.y))
+            holder.canvas:SetPoint("TOPLEFT", pictures.rim, -pictures.rim)
+            holder.canvas:SetPoint("BOTTOMRIGHT", -pictures.rim, pictures.rim)
             holder.empty = holder:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-            holder.empty:SetPoint("CENTER", Turned(small.photo.x, small.photo.y))
+            holder.empty:SetPoint("CENTER")
             holder.empty:SetText("+")
             holder.empty:SetTextColor(0.5, 0.5, 0.5)
-            holder.date = holder:CreateFontString(nil, "OVERLAY")
-            holder.date:SetFont(NAME_FONT, 9, "")
-            holder.date:SetTextColor(unpack(DATE_COLOR))
-            holder.date:SetPoint("RIGHT", holder, "CENTER", Turned(small.date.x, small.date.y))
-            local nail = holder:CreateTexture(nil, "OVERLAY")
-            nail:SetTexture(ART .. "Nail")
-            nail:SetSize(small.nail, small.nail)
-            nail:SetPoint("CENTER", UI.frame, "TOPLEFT", spot.nail.x, -spot.nail.y)
             holder:SetScript("OnClick", function(self)
                 UI.ClickSound()
                 if self.mint then
@@ -621,6 +596,7 @@ ns.RegisterPage({
                     for _, trait in ipairs(ns.MintTraits(self.mint.traits)) do
                         GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
                     end
+                    if self.mint.time then GameTooltip:AddLine(date("Minted %Y-%m-%d", self.mint.time), 0.6, 0.6, 0.6) end
                     GameTooltip:AddLine("Click to view", 0.6, 0.6, 0.6)
                 else
                     GameTooltip:AddLine("Showcase")
@@ -634,37 +610,39 @@ ns.RegisterPage({
             page.polaroids[i] = holder
         end
 
-        -- What happened to them lately, on the flat panel: a row per event, its kind's icon, the line, its time at the
-        -- right end; every other row a touch lighter, the one under the mouse lighter still. The rows run on under the
-        -- frame's post and the spine (the spine drawn again over them, below the polaroids).
-        local feed = LAYOUT.feed
-        local inset, outset = feed.left - feed.rowLeft, feed.rowRight - (feed.left + feed.width)  -- the text inside the row
+        -- What happened to them lately: the heading, then a row per event (its kind's icon, the line, how long ago),
+        -- every other row lighter, the one under the mouse gold. The rows run on under the post and the middle beam.
+        local heading = left:CreateFontString(nil, "OVERLAY")
+        At(heading, "LEFT", LEFT.heading.x, LEFT.heading.y)
+        heading:SetFont(NAME_FONT, LEFT.heading.size, "")
+        heading:SetTextColor(unpack(HEADING_COLOR))
+        UI.OutlineText(heading, { 0, 0, 0 })
+        page.heading = heading
+        local feed = LEFT.feed
+        local under = 20  -- how far the rows run on under the post and the beam
         page.feed = {}
-        for i = 1, feed.rows do
+        for i = 1, math.floor((LEFT.bottom - feed.top) / feed.rowHeight) do
             local row = CreateFrame("Button", nil, left)
-            row:SetSize(feed.rowRight - feed.rowLeft, feed.rowHeight)
-            row:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", feed.rowLeft, -(feed.top + (i - 1) * feed.rowHeight))
-            local stripe = row:CreateTexture(nil, "BACKGROUND")
-            stripe:SetAllPoints()
-            stripe:SetColorTexture(1, 1, 1, i % 2 == 0 and FEED_STRIPE or 0)
-            local hover = row:CreateTexture(nil, "HIGHLIGHT")
-            hover:SetAllPoints()
-            hover:SetColorTexture(1, 1, 1, FEED_HOVER)
-            local iconSize = feed.textSize + 4
+            row:SetSize(LEFT.right - LEFT.left + 2 * under, feed.rowHeight)
+            At(row, "TOPLEFT", LEFT.left - under, feed.top + (i - 1) * feed.rowHeight)
+            local shade = feed.colors[i % 2 == 1 and 1 or 2]
+            row.stripe = row:CreateTexture(nil, "BACKGROUND")
+            row.stripe:SetAllPoints()
+            row.stripe:SetColorTexture(shade, shade, shade)
             row.icon = row:CreateTexture(nil, "ARTWORK")
-            row.icon:SetSize(iconSize, iconSize)
-            row.icon:SetPoint("LEFT", inset + 4, 0)
+            row.icon:SetSize(feed.iconSize, feed.iconSize)
+            row.icon:SetPoint("LEFT", under + 4, 0)
             row.picture = CreateFrame("Frame", nil, row)  -- a picture's line: the picture, small
-            row.picture:SetSize(iconSize, iconSize)
-            row.picture:SetPoint("LEFT", inset + 4, 0)
+            row.picture:SetSize(feed.iconSize, feed.iconSize)
+            row.picture:SetPoint("LEFT", under + 4, 0)
             row.time = row:CreateFontString(nil, "OVERLAY")
-            row.time:SetFont(NAME_FONT, feed.timeSize, "")
-            row.time:SetTextColor(unpack(FEED_TIME_COLOR))
+            row.time:SetFont(NAME_FONT, feed.textSize, "")
+            row.time:SetTextColor(unpack(FEED_AGO_COLOR))
             row.time:SetShadowOffset(1, -1)
-            row.time:SetPoint("RIGHT", -(outset + 6), 0)
+            row.time:SetPoint("RIGHT", -(under + 6), 0)
             row.text = row:CreateFontString(nil, "OVERLAY")
             row.text:SetFont(NAME_FONT, feed.textSize, "")
-            row.text:SetTextColor(unpack(FEED_COLOR))
+            row.text:SetTextColor(0.94, 0.94, 0.94)
             row.text:SetShadowOffset(1, -1)
             row.text:SetShadowColor(0, 0, 0, 0.8)
             row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
@@ -672,160 +650,47 @@ ns.RegisterPage({
             row.text:SetJustifyH("LEFT")
             row.text:SetWordWrap(false)
             row:SetScript("OnClick", function(self) if self.item then UI.ShowFeedPicture(self.item) end end)
-            row:SetScript("OnEnter", function(self) if self.item then UI.FeedTooltip(self, self.item) end end)
-            row:SetScript("OnLeave", GameTooltip_Hide)
+            row:SetScript("OnEnter", function(self)
+                if not self.item then return end
+                self.stripe:SetColorTexture(unpack(FEED_HOVER_COLOR))
+                UI.FeedTooltip(self, self.item)
+            end)
+            row:SetScript("OnLeave", function(self)
+                self.stripe:SetColorTexture(shade, shade, shade)
+                GameTooltip_Hide()
+            end)
             page.feed[i] = row
         end
-        local spine = CreateFrame("Frame", nil, left)
-        spine:SetAllPoints()
-        spine:SetFrameLevel(left:GetFrameLevel() + 2)  -- over the rows (level + 1), under the polaroids (+ 3 and up)
-        UI.WoodPiece(spine, feed.spine)
 
-        -- GEARZ: the wooden button under the card (its art per state: Media/Overview/Button_*), showing their gear
-        -- over the left page while selected.
-        -- Like the window's Settings and Close buttons: dimmed at rest, lit while hovered or pressed, shrinking a little
-        -- when pressed (the word with it, dipping). It says where it goes: GEARZ on the overview, OVERVIEW (ME in ogre
-        -- mode) while the gear or the rank covers the left page.
-        local gearButton = CreateFrame("Button", nil, cardFrame)
-        Place(gearButton, card.gear)
-        local art = gearButton:CreateTexture(nil, "ARTWORK")
-        art:SetPoint("CENTER")
-        local word = gearButton:CreateFontString(nil, "OVERLAY")
-        word:SetFont(NAME_FONT, GEAR_SIZE, "")
-        word:SetTextColor(unpack(GEAR_COLOR))
-        UI.OutlineText(word, TEXT_OUTLINE)
-        local hovered, pressed = false, false
-        local function Redraw()
-            local lit = hovered or pressed
-            local shade = lit and 1 or UI.HEADER_DIMMED
-            art:SetTexture(ART .. "Button_NORMAL")
-            art:SetVertexColor(shade, shade, shade)
-            local scale = pressed and UI.HEADER_PUSHED or 1
-            art:SetSize(card.gear.w * scale, card.gear.h * scale)
-            local glow = lit and 1 or 0.85  -- the word a little dimmer at rest, like the header buttons' icons
-            word:SetTextColor(GEAR_COLOR[1] * glow, GEAR_COLOR[2] * glow, GEAR_COLOR[3] * glow)
-            local ogre = KillTrackerDB and KillTrackerDB.ogreMode
-            local label = page.panel and (ogre and "ME" or "OVERVIEW") or "GEARZ"
-            Fit(word, NAME_FONT, GEAR_SIZE * scale, 10, label, card.gear.w * 0.62 * scale)  -- shrinks with the plank, and dips
-            word:SetPoint("CENTER", pressed and 1 or 0, pressed and -2 or 0)
-        end
-        gearButton:SetScript("OnEnter", function() hovered = true Redraw() end)
-        gearButton:SetScript("OnLeave", function() hovered, pressed = false, false Redraw() end)
-        gearButton:SetScript("OnMouseDown", function() pressed = true Redraw() end)
-        gearButton:SetScript("OnMouseUp", function() pressed = false Redraw() end)
         page.gearPanel = GearPage(page)
         page.gearPanel:SetFrameLevel(left:GetFrameLevel() + 20)
-        -- The Ogre Rank over the left page: rank, title, points to the next, every perk (unlocked ones lit).
-        local rankPanel = CreateFrame("Frame", nil, page)
-        rankPanel:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", GEAR_PANEL.left, -GEAR_PANEL.top)
-        rankPanel:SetSize(GEAR_PANEL.width, GEAR_PANEL.height)
-        rankPanel:SetFrameLevel(left:GetFrameLevel() + 20)
-        local rankShade = rankPanel:CreateTexture(nil, "BACKGROUND")
-        rankShade:SetPoint("TOPLEFT", -8, 8)
-        rankShade:SetPoint("BOTTOMRIGHT", 8, -8)
-        rankShade:SetColorTexture(0.05, 0.03, 0.02, 0.92)
-        rankPanel.badge = rankPanel:CreateTexture(nil, "ARTWORK")
-        rankPanel.badge:SetSize(64, 64)
-        rankPanel.badge:SetPoint("TOPLEFT", 4, -4)
-        rankPanel.number = rankPanel:CreateFontString(nil, "OVERLAY")
-        rankPanel.number:SetFont(NAME_FONT, 20, "")
-        rankPanel.number:SetPoint("CENTER", rankPanel.badge, "CENTER", 0, 9)
-        UI.OutlineText(rankPanel.number, TEXT_OUTLINE)
-        rankPanel.title = rankPanel:CreateFontString(nil, "OVERLAY")
-        rankPanel.title:SetFont(NAME_FONT, 18, "")
-        rankPanel.title:SetTextColor(1, 0.82, 0.25)
-        rankPanel.title:SetPoint("TOPLEFT", rankPanel.badge, "TOPRIGHT", 8, -6)
-        rankPanel.points = rankPanel:CreateFontString(nil, "OVERLAY")
-        rankPanel.points:SetFont(NAME_FONT, 12, "")
-        rankPanel.points:SetTextColor(unpack(FEED_COLOR))
-        rankPanel.points:SetPoint("TOPLEFT", rankPanel.title, "BOTTOMLEFT", 0, -4)
-        local barBack = rankPanel:CreateTexture(nil, "ARTWORK")
-        barBack:SetColorTexture(1, 1, 1, 0.08)
-        barBack:SetPoint("TOPLEFT", rankPanel.points, "BOTTOMLEFT", 0, -6)
-        barBack:SetSize(GEAR_PANEL.width - 84, 8)
-        rankPanel.bar = rankPanel:CreateTexture(nil, "OVERLAY")
-        rankPanel.bar:SetColorTexture(1, 0.7, 0.2, 0.85)
-        rankPanel.bar:SetPoint("TOPLEFT", barBack)
-        rankPanel.bar:SetHeight(8)
-        rankPanel.barWidth = GEAR_PANEL.width - 84
-        local perksHeading = rankPanel:CreateFontString(nil, "OVERLAY")
-        perksHeading:SetFont(NAME_FONT, 14, "")
-        perksHeading:SetTextColor(1, 0.82, 0.25)
-        perksHeading:SetPoint("TOPLEFT", 4, -84)
-        perksHeading:SetText("Rank perks")
-        rankPanel.lines = {}
-        for i = 1, RANK_LINES do
-            local line = rankPanel:CreateFontString(nil, "OVERLAY")
-            line:SetFont(NAME_FONT, 12, "")
-            line:SetPoint("TOPLEFT", 4, -84 - i * 22)
-            line:SetWidth(GEAR_PANEL.width - 8)
-            line:SetJustifyH("LEFT")
-            line:SetWordWrap(false)
-            rankPanel.lines[i] = line
-        end
-        function rankPanel:SetPlayer(key)
-            local current, nextRank, points = ns.GetRank(key)
-            self.badge:SetTexture(BadgeArt(current.rank))
-            self.number:SetText(current.rank)
-            self.title:SetText(current.title)
-            if nextRank then
-                self.points:SetText(("%d points - %d more to %s"):format(points, nextRank.points - points, nextRank.title))
-                local share = (points - current.points) / math.max(1, nextRank.points - current.points)
-                self.bar:SetWidth(math.max(1, self.barWidth * math.min(1, share)))
-            else
-                self.points:SetText(("%d points - the top rank"):format(points))
-                self.bar:SetWidth(self.barWidth)
-            end
-            for i, line in ipairs(self.lines) do
-                local perk = ns.RANK_PERKS[i]
-                if perk then
-                    local unlocked = perk.rank <= current.rank
-                    line:SetText(("%s|cff999999rank %d|r  %s"):format(unlocked and "|cff55dd55+|r " or "   ", perk.rank,
-                        unlocked and perk.text or "|cff888888" .. perk.text .. "|r"))
-                end
-                line:SetShown(perk ~= nil)
-            end
-        end
+        page.craftsPanel = CraftsPage(page)
+        page.craftsPanel:SetFrameLevel(left:GetFrameLevel() + 20)
 
-        -- One panel at a time over the left page: the gear, the rank, or neither.
+        -- The tabs: ME (the pictures and the feed), GEARZ, CRAFTS.
+        local tabs = CreateFrame("Frame", nil, page)
+        tabs:SetAllPoints()
+        tabs:SetFrameLevel(left:GetFrameLevel() + 25)
+        page.tabs = {}
         local function ShowPanel(which)
-            page.gearShown = which == "gear"
             page.panel = which
             page.gearPanel:SetShown(which == "gear")
-            rankPanel:SetShown(which == "rank")
+            page.craftsPanel:SetShown(which == "crafts")
             left:SetShown(which == nil)
-            Redraw()
+            for _, tab in ipairs(page.tabs) do tab:Redraw() end
         end
-        gearButton:SetScript("OnClick", function()
-            UI.ClickSound()
-            ShowPanel(not page.panel and "gear" or nil)
-        end)
-        page.rankPanel = rankPanel
-
-        -- The rank badge, a sticker on the polaroid's corner.
-        local badge = CreateFrame("Button", nil, cardFrame)
-        badge:SetFrameLevel(cardFrame:GetFrameLevel() + 12)
-        badge:SetSize(RANK_BADGE.size, RANK_BADGE.size)
-        badge:SetPoint("CENTER", UI.frame, "TOPLEFT", RANK_BADGE.x, -RANK_BADGE.y)
-        badge.art = badge:CreateTexture(nil, "ARTWORK")
-        badge.art:SetAllPoints()
-        badge.art:SetRotation(math.rad(-RANK_BADGE.tilt))
-        badge.number = badge:CreateFontString(nil, "OVERLAY")
-        badge.number:SetFont(NAME_FONT, 15, "")
-        badge.number:SetPoint("CENTER", 0, 7)
-        UI.OutlineText(badge.number, TEXT_OUTLINE)
-        badge:SetScript("OnClick", function()
-            UI.ClickSound()
-            ShowPanel(page.panel ~= "rank" and "rank" or nil)
-        end)
-        badge:SetScript("OnEnter", function(self)
-            local current, nextRank, points = ns.GetRank(page.key)
-            SetTooltip(self, { ("Ogre Rank %d: %s"):format(current.rank, current.title),
-                nextRank and ("%d points, %d more to rank %d"):format(points, nextRank.points - points, nextRank.rank)
-                    or ("%d points - the top rank"):format(points), "Click to see the perks" })
-        end)
-        badge:SetScript("OnLeave", GameTooltip_Hide)
-        page.badge = badge
+        local tabWidth = (LEFT.right - LEFT.left) / #TABS
+        for i, spec in ipairs(TABS) do
+            local tab = UI.TabButton(tabs, LEFT.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
+            function tab:Redraw()
+                self:SetTab(KillTrackerDB and KillTrackerDB.ogreMode and spec[3] or spec[2], page.panel == spec[1])
+            end
+            tab:SetScript("OnClick", function()
+                UI.ClickSound()
+                ShowPanel(spec[1])
+            end)
+            page.tabs[i] = tab
+        end
         ShowPanel(nil)
 
         -- The page is usually created while already showing, so the model may not have its size at the first
@@ -851,18 +716,7 @@ ns.RegisterPage({
 
     refresh = function(page)
         local key = ns.GetViewing()
-        local p = Profile(key)
-        local hasFriends = next(KillTrackerFriends) ~= nil
-        for _, arrow in ipairs(page.arrows) do arrow:SetShown(hasFriends) end
-
-        -- The full name, as big as fits on the label.
-        Fit(page.name, NAME_FONT, NAME_SIZE, 8, (p.name or ""):upper(), page.nameWidth)
-        -- Their rank: the badge, and their name in their rank's colour (Ranks.lua).
-        local rank = ns.GetRank(key)
-        page.badge.art:SetTexture(BadgeArt(rank.rank))
-        page.badge.number:SetText(rank.rank)
-        page.name:SetTextColor(unpack(ns.RankPerk("nameColor", rank.rank) or NAME_COLOR))
-        page.rankPanel:SetPlayer(key)
+        local p = UI.Profile(key)
 
         -- The photo: their chosen picture, or (no model of them to show) their first showcase picture or else their
         -- newest picture, or the model.
@@ -885,43 +739,7 @@ ns.RegisterPage({
         if option then page.backdrop:SetTexture(ns.MintTexture(option, {})) end
         page.backdrop:SetShown(option ~= nil and option ~= false)
 
-        -- The icons.
-        local color = p.classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[p.classFile]
-        local classLine = p.className and ((p.level and ("Level %d "):format(p.level) or "")
-            .. (color and color:WrapTextInColorCode(p.className) or p.className))
-        page.class:Set(CLASSES[p.classFile or ""] and "Class_" .. p.classFile, "Base_CLASS", { classLine or "Class unknown" })
-        page.race:Set(p.race and "Race_" .. p.race, "Base_RACE", { p.raceName or "Race unknown" })
-        page.gender:Set(p.gender and "Gender_" .. p.gender, "Base_GENDER",
-            { p.gender and GENDERS[p.gender] or "Gender unknown", not key and "Right-click to choose" or nil })
-        for i, icon in ipairs(page.professions) do
-            local entry = p.professions[i]
-            icon:Set(entry and "Prof_" .. entry.icon, "Base_PROFESSION",
-                entry and { entry.prof.name, ("%d / %d"):format(entry.prof.rank or 0, entry.prof.max or 0) } or { "No profession" })
-        end
-        for i, icon in ipairs(page.secondary) do
-            local s = SECONDARY[i]
-            local prof = p.secondary[s.key]
-            icon:Set(prof and "Prof_" .. s.key, "Base_SECONDARY",
-                prof and { prof.name, ("%d / %d"):format(prof.rank or 0, prof.max or 0) } or { "Not learned" })
-        end
-
-        -- The plaques: points, achievements (earned of those in the kinds of creature they've killed), kills.
-        local source = key and KillTrackerFriends[key] or KillTrackerDB
-        local earned, possible = 0, 0
-        for _, row in ipairs(ns.GetAchievementProgress(source)) do
-            earned, possible = earned + row.earned, possible + #row.tiers
-        end
-        local stats = {
-            { key and (source.earned or 0) or ns.GetPoints().balance, { "Points", key and "Earned in all" or "To spend on minting pictures" } },
-            { ("%d/%d"):format(earned, possible), { "Achievements", "Earned, of those for the kinds of creature killed so far" } },
-            { source.total or 0, { "Kills" } },
-        }
-        for i, stat in ipairs(page.stats) do
-            Fit(stat.value, NAME_FONT, STAT_SIZE, 9, tostring(stats[i][1]), stat.width)
-            stat.lines = stats[i][2]
-        end
-
-        -- The showcase's pictures on the polaroids (your empty ones show a +; someone else's empty ones aren't there).
+        -- The showcase's pictures (your empty ones show a +; someone else's empty ones aren't there).
         local pictures = ns.GetShowcase(key)
         for _, holder in ipairs(page.polaroids) do
             local mint = pictures[holder.slot]
@@ -930,17 +748,16 @@ ns.RegisterPage({
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
             if mint then
-                ns.DrawMint(holder.canvas, mint, holder.tilt)
+                ns.DrawMint(holder.canvas, mint)
                 holder.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
-                holder.date:SetText(mint.time and date("%Y-%m-%d", mint.time) or "")
             else
                 holder.border:SetVertexColor(0.35, 0.35, 0.35)
-                holder.date:SetText("")
             end
         end
 
-        -- What happened to them lately: the lines without their name in front (it's on the card), calm colours.
+        -- What happened to them lately (WHAT HAPPEN TO ME? on yours, their first name on someone else's).
         local who = key and Ambiguate(key, "short") or ns.MyName()
+        page.heading:SetText(key and ("WHAT HAPPEN TO %s?"):format(((p.name or ""):match("^(%S+)") or ""):upper()) or LEFT.heading.text)
         local items = {}
         for _, item in ipairs(ns.GetFeed(true)) do
             if item.who == who then items[#items + 1] = item end
@@ -949,8 +766,8 @@ ns.RegisterPage({
         for i, row in ipairs(page.feed) do
             local item = items[i]
             row.item = item
-            local line = item and item.text:gsub("^" .. who:gsub("%p", "%%%0") .. " ", "", 1):gsub("^%l", string.upper)
-            row.text:SetText(line or (i == 1 and "Nothing yet - go smash something." or ""))
+            row.stripe:SetShown(item ~= nil)
+            row.text:SetText(item and item.text or (i == 1 and "Nothing yet - go smash something." or ""))
             row.time:SetText(item and ns.TimeAgo(item.time) or "")
             local thumbnail = item and item.kind == "M" and item.mint
             local icon = item and not thumbnail and FEED_ICONS[item.kind]
@@ -958,16 +775,19 @@ ns.RegisterPage({
             if icon then row.icon:SetTexture(FEED_ICON .. icon) end
             if item and item.kind == "K" then  -- a rank reached: that rank's badge
                 local reached = tonumber(item.text:match("rank (%d+)")) or 1
-                row.icon:SetTexture(BadgeArt(reached))
+                row.icon:SetTexture(UI.BadgeArt(reached))
                 row.icon:Show()
             end
             row.picture:SetShown(thumbnail and true or false)
             if thumbnail then ns.DrawMint(row.picture, item.mint) end
         end
-        page.gearPanel:SetPlayer(key)
 
-        -- The first name under the photo, as big as fits.
+        page.gearPanel:SetPlayer(key)
+        page.craftsPanel:SetPlayer(key)
+        for _, tab in ipairs(page.tabs) do tab:Redraw() end
+
+        -- The first name on the frame's plaque, as big as fits.
         local first = (p.name or ""):match("^(%S+)") or ""
-        Fit(page.signature, SIGN_FONT, SIGN_SIZE, 10, first:upper(), page.signatureWidth)
+        Fit(page.signature, SIGN_FONT, RIGHT.plaque.size, 8, first:upper(), page.signatureWidth)
     end,
 })
