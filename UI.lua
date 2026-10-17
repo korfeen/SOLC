@@ -189,7 +189,7 @@ local function BuildRows()
         local p = ns.GetPoints(Source())
         for _, part in ipairs({ { "Kills", p.kills }, { "New mob types", p.newMobs }, { "Leaders", p.leaders },
             { "Achievements", p.achievements }, { "PvP", p.pvp }, { "Guild groups", p.guildGroup },
-            { "Guild dungeons", p.dungeons }, { "Guild bounty", p.bounty }, { "Spent", -p.spent } }) do
+            { "Guild dungeons", p.dungeons }, { "Guild bounty", p.bounty }, { "Dungeon chests", p.chests }, { "Spent", -p.spent } }) do
             rows[#rows + 1] = { label = part[1], count = part[2], pointsPart = true }
         end
         if not state.viewing then
@@ -395,6 +395,7 @@ body:SetPoint("BOTTOMRIGHT", BODY.right - WIDTH, HEIGHT - BODY.bottom)
 body:SetFrameLevel(frame:GetFrameLevel())
 body:SetBackdrop({ bgFile = ns.WINDOW_BACKGROUND })
 body:SetBackdropColor(unpack(ns.WINDOW_COLOR))
+ns.UI.pageBody = body  -- (the pages' whole background, to the wood: the minting kitchen's scenery fills it, MintPot.lua)
 frame:SetHitRectInsets(BODY.left, WIDTH - BODY.right, SKELETON.topBeam.top, HEIGHT - BODY.bottom)
 frame:SetClampedToScreen(true)
 frame:SetMovable(true)
@@ -1153,13 +1154,25 @@ function ns.UI.OutlineText(text, color)
             copy:SetJustifyH(text:GetJustifyH())
             copy:SetJustifyV(text:GetJustifyV())
             copy:SetWordWrap(text:CanWordWrap())
+            copy:SetSpacing(text:GetSpacing())
             copy:SetText(plain)
+        end
+    end
+    -- The copies show, hide and fade with the text (else an outline stays behind a hidden or faded one).
+    local function Visibility()
+        local shown, alpha = text:IsShown(), text:GetAlpha()
+        for _, copy in ipairs(copies) do
+            copy:SetShown(shown)
+            copy:SetAlpha(alpha)
         end
     end
     hooksecurefunc(text, "SetText", Sync)
     hooksecurefunc(text, "SetFont", Sync)
     hooksecurefunc(text, "SetFontObject", Sync)
+    hooksecurefunc(text, "SetSpacing", Sync)
+    for _, method in ipairs({ "Show", "Hide", "SetShown", "SetAlpha" }) do hooksecurefunc(text, method, Visibility) end
     Sync()
+    Visibility()
 end
 
 -- A page title and a line under it, at the top of a page.
@@ -1399,6 +1412,107 @@ function ns.ShowMint(mint, owner)
     if ns.UI.PixShow then ns.UI.PixShow(mint, owner) end
 end
 
+-- The title, on the top beam ------------------------------------------------------------------------------------
+
+-- Where you are: the page (its sidebar page, then its tab: "Pictures · Gear", then a tab inside it), whose it is if not yours ("Lance's
+-- Kills"), and a screen over it if one is open (the minting kitchen, a chest: ns.UI.SetScreen). On the beam's left, by
+-- the logo, lettered like the sidebar's planks (cream, the screen gold, outlined dark brown); in ogre mode, ogre words.
+-- Clicking the page's part while a screen is open closes the screen (a way back). The beam still drags the window.
+local TITLE_COLOR, TITLE_HOVER, TITLE_SUB = NAV_COLOR, { 1, 1, 1 }, NAV_CURRENT_COLOR
+local TITLE_SIZE, TITLE_MAX = 26, 560
+local SEPARATOR = "  ·  "
+local title = CreateFrame("Button", nil, woodHeader)
+title:SetFrameLevel(headerGrip:GetFrameLevel() + 1)
+title:SetHeight(TOP_BEAM.bottom - TOP_BEAM.top)
+title:RegisterForDrag("LeftButton")  -- (still the beam: dragging it moves the window)
+title:SetScript("OnDragStart", function() frame:StartMoving() end)
+title:SetScript("OnDragStop", function() frame:GetScript("OnDragStop")(frame) end)
+local function TitleText(parent, color)
+    local text = parent:CreateFontString(nil, "OVERLAY")
+    text:SetFont(NAV_FONT, TITLE_SIZE, "")
+    text:SetTextColor(unpack(color))
+    text:SetJustifyH("LEFT")  -- (and its outline's copies: they keep to the left while it resizes, so nothing jumps)
+    text:SetWordWrap(false)
+    ns.UI.OutlineText(text, NAV_OUTLINE)
+    return text
+end
+title.main = TitleText(title, TITLE_COLOR)
+title.main:SetPoint("LEFT")
+title.sub = TitleText(title, TITLE_SUB)
+title.sub:SetPoint("LEFT", title.main, "RIGHT")
+title:SetScript("OnClick", function(self)
+    if self.screen and self.screen.onBack then
+        ns.UI.ClickSound()
+        self.screen.onBack()
+    end
+end)
+title:SetScript("OnEnter", function(self)
+    if self.screen and self.screen.onBack then self.main:SetTextColor(unpack(TITLE_HOVER)) end
+end)
+title:SetScript("OnLeave", function(self) self.main:SetTextColor(unpack(TITLE_COLOR)) end)
+title:SetScript("OnUpdate", function(self, elapsed)  -- a soft fade in when it changes
+    if self.fade then
+        self.fade = math.min(1, self.fade + elapsed * 5)
+        self:SetAlpha(self.fade)
+        if self.fade >= 1 then self.fade = nil end
+    end
+end)
+
+local function UpdateTitle(current)
+    current = current or PageFor(state.page) or pages.overview
+    if not current then return end
+    local ogre = OgreMode()
+    local group = pages[current.tabOf or current.key] or current
+    local function Label(page) return ogre and OGRE_LABELS[page.key] or page.label end
+    local text = Label(group)
+    if current ~= group then text = text .. SEPARATOR .. Label(current) end
+    local tab = title.tab  -- a tab inside the page (ns.UI.SetTab)
+    if tab and tab.page == current.key then text = text .. SEPARATOR .. (ogre and tab.ogre or tab.name) end
+    -- Whose: a guildmate's (their name, first part), or the whole guild's.
+    if state.viewing == COMBINED then
+        text = (ogre and "GUILD " or "The Guild's ") .. text
+    elseif state.viewing then
+        local name = tostring(state.viewing):match("^[^-]+") or tostring(state.viewing)
+        text = ogre and (name:upper() .. " " .. text) or (name .. "'s " .. text)
+    end
+    local screen = title.screen
+    local sub = screen and SEPARATOR .. (ogre and screen.ogre or screen.name) or ""
+    local font = ogre and OGRE_FONT or NAV_FONT
+    if title.font ~= font then  -- (only when ogre mode changes: setting it redraws the outline)
+        title.font = font
+        for _, part in ipairs({ title.main, title.sub }) do part:SetFont(font, ogre and TITLE_SIZE - 2 or TITLE_SIZE, "") end
+    end
+    -- Fades in only for another page or someone else's (a tab or a screen changing just changes the words).
+    local where = group.key .. "|" .. tostring(state.viewing)
+    if title.where ~= where then title.fade, title.where = 0, where end
+    title.main:SetText(text)
+    title.sub:SetText(sub)
+    local width = math.min(TITLE_MAX, (title.main:GetStringWidth() or 0) + (title.sub:GetStringWidth() or 0))
+    title:SetWidth(math.max(1, width))
+    title:ClearAllPoints()
+    title:SetPoint("LEFT", pageArea, "TOPLEFT", 14, -BEAM_MIDDLE + INNER.top - 3)
+end
+
+-- A tab inside a page (the Overview's GEARZ, the Members' MAKE): its name after the page's in the title, while that
+-- page (pageKey) is the one shown. name nil: the page's first tab, nothing added.
+function ns.UI.SetTab(pageKey, name, ogreName)
+    title.tab = name and { page = pageKey, name = name, ogre = ogreName or name:upper() } or nil
+    UpdateTitle()
+end
+
+-- A screen over the page (the minting kitchen, a chest, a reroll): its name after the page's in the title (ogre: its
+-- ogre word); onBack, if given, closes it (clicking the page's part of the title). ns.UI.ClearScreen(name) when it closes.
+function ns.UI.SetScreen(name, ogreName, onBack)
+    title.screen = { name = name, ogre = ogreName or name:upper(), onBack = onBack }
+    UpdateTitle()
+end
+function ns.UI.ClearScreen(name)
+    if title.screen and (not name or title.screen.name == name) then
+        title.screen = nil
+        UpdateTitle()
+    end
+end
+
 -- Refresh -------------------------------------------------------------------
 
 function Refresh()
@@ -1417,6 +1531,7 @@ function Refresh()
         end
     end
     ShowTabs(current)
+    UpdateTitle(current)
     if settingsButton then settingsButton:SetSelected(current.key == "settings") end
     if not current.frame then
         current.frame = current.create(pageArea)

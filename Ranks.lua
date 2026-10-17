@@ -39,6 +39,31 @@ ns.RANK_PERKS = {
     { rank = 30, kind = "nameColor", id = "pink", name = "Grand Sleepy Pink", value = { 1, 0.4, 0.75 }, text = "Grand Sleepy Ogre pink name on your card" },
 }
 
+-- The minting pot's cauldrons (MintPot.lua), bigger with your rank: how many ingredients fit in it (slots) and how big
+-- it's drawn (size). Their perks are in RANK_PERKS too.
+ns.CAULDRONS = {
+    { rank = 1, name = "Tin Pot", slots = 4, size = 0.78 },
+    { rank = 6, name = "Iron Kettle", slots = 6, size = 0.86 },
+    { rank = 12, name = "Witch's Cauldron", slots = 8, size = 0.94 },
+    { rank = 20, name = "Ogre Stewpot", slots = 10, size = 1.02 },
+    { rank = 28, name = "Grand Sleepy Cauldron", slots = 12, size = 1.1 },
+}
+for i, cauldron in ipairs(ns.CAULDRONS) do
+    if i > 1 then
+        ns.RANK_PERKS[#ns.RANK_PERKS + 1] = { rank = cauldron.rank, kind = "cauldron", value = i,
+            text = ("%s: %d ingredients in the minting pot"):format(cauldron.name, cauldron.slots) }
+    end
+end
+table.sort(ns.RANK_PERKS, function(a, b) return a.rank < b.rank end)
+-- Your cauldron (key nil) or a guildmate's, by rank.
+function ns.Cauldron(key)
+    local rank, best = ns.GetRank(key).rank, ns.CAULDRONS[1]
+    for _, cauldron in ipairs(ns.CAULDRONS) do
+        if rank >= cauldron.rank then best = cauldron end
+    end
+    return best
+end
+
 -- Someone's rank: you (key nil) or a synced guildmate. Returns the rank's entry, the next one's (nil at the top)
 -- and their lifetime points.
 function ns.GetRank(key)

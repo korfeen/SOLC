@@ -49,7 +49,8 @@ function SOLC.RarityText(rarity)                                            -- "
     return ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", SOLC.RarityName(rarity))
 end
 function SOLC.PictureTraits(traits) return ns.MintTraits(traits) end       -- { { layer, option, rarity } }
-function SOLC.PictureLayers(traits) return ns.MintDrawOrder(traits) end    -- { { key, id, perSkin } }, back to front
+function SOLC.PictureLayers(traits) return ns.MintDrawOrder(traits) end
+function SOLC.FaceSkin(skin) return ns.FaceSkin(skin) end  -- the skin whose per-skin art a skin wears (boss skins)    -- { { key, id, perSkin } }, back to front
 
 -- Traits as short text for addon messages and back: option IDs in layer order, "spa_steam_room;mud_brown;...".
 -- Under 255 characters with room to spare.

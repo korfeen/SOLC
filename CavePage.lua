@@ -20,6 +20,15 @@ local FEED_ICONS = { L = "Leader", R = "Rare", A = "Achievement", M = "Mint", W 
 local MEDALS = { { 1, 0.82, 0.1 }, { 0.78, 0.78, 0.82 }, { 0.8, 0.5, 0.2 } }  -- gold, silver, bronze
 
 local TABS = { { "news", "NEWS", "NEWS" }, { "hunts", "HUNTS", "HUNTS" } }
+-- The news' chips: { group (ns.FEED_GROUPS), label, ogre word, what it is }; each player hides what they like
+-- (KillTrackerDB.feedHidden).
+local CHIPS = {
+    { "deeds", "DEEDS", "BRAG", "Deeds earned and Ogre Ranks reached" },
+    { "kills", "KILLS", "SMASH", "Leaders slain and dungeons cleared with the guild" },
+    { "pix", "PIX", "PIX", "Pictures minted and won" },
+    { "hunts", "HUNTS", "HUNTS", "Bounties completed" },
+}
+local CHIP_ON, CHIP_OFF = { 0.3, 0.22, 0.12 }, { 0.16, 0.14, 0.12 }
 local TAB_FOR_PAGE = { bounties = "hunts" }
 local METRICS = {  -- { Members() field, label, ogre word, what it is }
     { "points", "POINTS", "GOLD", "Points earned, before spending" },
@@ -33,7 +42,8 @@ local METRICS = {  -- { Members() field, label, ogre word, what it is }
 local LEFT = {
     tabs = { top = 285, bottom = 319, size = 17, color = { 0.16, 0.11, 0.08 } },
     bounty = { top = 319, bottom = 393, color = { 0.14, 0.1, 0.07 } },  -- this week's bounty, on NEWS
-    rows = { top = 393, height = 24, size = 13, colors = { 0.25, 0.18 }, empty = { 0.1, 0.1, 0.1 }, icon = 18 },
+    chips = { top = 393, bottom = 417, size = 12, color = { 0.12, 0.12, 0.12 } },  -- what the news shows, on NEWS
+    rows = { top = 417, height = 24, size = 13, colors = { 0.25, 0.18 }, empty = { 0.1, 0.1, 0.1 }, icon = 18 },
     hunts = { top = 319 },  -- the Bounty Board, from here to the slot's bottom
 }
 local RIGHT = {
@@ -135,7 +145,12 @@ local function DrawNews()
     end
 
     -- The guild's activity.
-    local feed = ns.GetFeed()
+    local hidden = KillTrackerDB.feedHidden or {}
+    for _, chip in ipairs(page.chips) do chip:Redraw(false) end
+    local feed = {}
+    for _, item in ipairs(ns.GetFeed(false, true)) do
+        if not hidden[ns.FEED_GROUPS[item.kind] or ""] then feed[#feed + 1] = item end
+    end
     for i, row in ipairs(page.newsRows) do
         local item = feed[i]
         row.item = item
@@ -225,7 +240,8 @@ ns.RegisterPage({
         end
         Band(LEFT.tabs.top - 5, LEFT.tabs.bottom, LEFT.tabs.color)
         page.bountyBand = Band(LEFT.bounty.top, LEFT.bounty.bottom, LEFT.bounty.color)
-        Band(LEFT.bounty.bottom, under.bottom, LEFT.rows.empty)
+        page.chipsBand = Band(LEFT.chips.top, LEFT.chips.bottom, LEFT.chips.color)
+        Band(LEFT.chips.bottom, under.bottom, LEFT.rows.empty)
         page.huntsBand = Band(LEFT.hunts.top, under.bottom, { 0.08, 0.07, 0.06 })
         Band(under.top, RIGHT.tabs.bottom, RIGHT.tabs.color, under.middle, under.right + 20)
         Band(RIGHT.tabs.bottom, under.bottom, RIGHT.color, under.middle, under.right + 20)
@@ -294,6 +310,38 @@ ns.RegisterPage({
         end)
         box:SetScript("OnLeave", GameTooltip_Hide)
         page.bountyBox = box
+        -- The chips: click one to show or hide that kind of news.
+        page.chips = {}
+        local chipWidth = (slot.right - slot.left - 4) / #CHIPS
+        for i, spec in ipairs(CHIPS) do
+            local chip = CreateFrame("Button", nil, news)
+            chip:SetSize(chipWidth - 6, LEFT.chips.bottom - LEFT.chips.top - 6)
+            At(chip, "LEFT", slot.left + 2 + (i - 1) * chipWidth + 3, (LEFT.chips.top + LEFT.chips.bottom) / 2)
+            local plate = chip:CreateTexture(nil, "BACKGROUND")
+            plate:SetAllPoints()
+            chip.text = chip:CreateFontString(nil, "OVERLAY")
+            chip.text:SetFont(NAME_FONT, LEFT.chips.size, "")
+            chip.text:SetPoint("CENTER", 0, 1)
+            function chip:Redraw(hovered)
+                local on = not (KillTrackerDB.feedHidden or {})[spec[1]]
+                self.text:SetText((on and "|cff60ff60+|r " or "|cff808080-|r ") .. (Ogre() and spec[3] or spec[2]))
+                self.text:SetTextColor(unpack(hovered and { 1, 1, 1 } or on and CREAM or DIM))
+                plate:SetColorTexture(unpack(hovered and HOVER_COLOR or on and CHIP_ON or CHIP_OFF))
+            end
+            chip:SetScript("OnEnter", function(self)
+                self:Redraw(true)
+                Tooltip(self, { spec[4], "Click to " .. ((KillTrackerDB.feedHidden or {})[spec[1]] and "show" or "hide") .. " them" })
+            end)
+            chip:SetScript("OnLeave", function(self) self:Redraw(false) GameTooltip_Hide() end)
+            chip:SetScript("OnClick", function(self)
+                UI.ClickSound()
+                KillTrackerDB.feedHidden = KillTrackerDB.feedHidden or {}
+                KillTrackerDB.feedHidden[spec[1]] = not KillTrackerDB.feedHidden[spec[1]] or nil
+                DrawNews()
+                self:Redraw(true)
+            end)
+            page.chips[i] = chip
+        end
         page.newsRows = Rows(news, slot.left, slot.right, LEFT.rows, slot.bottom, 20)
         for _, row in ipairs(page.newsRows) do
             row:SetScript("OnEnter", function(self)
@@ -385,6 +433,7 @@ ns.RegisterPage({
         local hunts = p.tab == "hunts"
         p.news:SetShown(not hunts)
         p.bountyBand:SetShown(not hunts)
+        p.chipsBand:SetShown(not hunts)
         p.huntsBand:SetShown(hunts)
         p.hunts:SetShown(hunts)
         if hunts then

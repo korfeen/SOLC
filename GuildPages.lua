@@ -42,11 +42,16 @@ local function ShowFeedPicture(item)
     if item.mint then ns.ShowMint(item.mint, item.owner) end
 end
 UI.ShowFeedPicture = ShowFeedPicture
-local function FeedTooltip(row, item)
+-- hint: what a click does, if not opening the picture (the Overview's details).
+local function FeedTooltip(row, item, hint)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:AddLine(item.text, 1, 1, 1, true)
     GameTooltip:AddLine(date("%Y-%m-%d %H:%M", item.time), 0.6, 0.6, 0.6)
-    if item.mint then GameTooltip:AddLine("Click to see the picture", 0.4, 0.8, 1) end
+    if hint then
+        GameTooltip:AddLine(hint, 0.4, 0.8, 1)
+    elseif item.mint then
+        GameTooltip:AddLine("Click to see the picture", 0.4, 0.8, 1)
+    end
     GameTooltip:Show()
 end
 UI.FeedTooltip = FeedTooltip
@@ -237,48 +242,59 @@ local function Rank(professions, line)
     end
 end
 
--- With no search: each profession and who has it. With a search: matching recipes and who knows them.
+-- A profession's name from its skill line, when a player's list doesn't have it (recipes saved under the profession
+-- window's own ID by older versions, e.g. cooking's): asked of the game, if it knows.
+local function ProfessionName(line)
+    local T = C_TradeSkillUI
+    local ok, info = pcall(function() return T and T.GetProfessionInfoBySkillLineID and T.GetProfessionInfoBySkillLineID(line) end)
+    local name = ok and info and info.professionName
+    if name and not issecret(name) and name ~= "" then return name end
+end
+
+-- The recipes known in the guild and who knows them, matching query (part of a recipe's name; "" for all), under a
+-- header row per profession: { header = true, name, icon, count } then its recipes { id, name, icon, people }, both by
+-- name. A recipe's name loads a moment later for spells this client hasn't seen yet (asked for here).
 local function CraftersRows(query)
-    local rows = {}
-    local crafters = Crafters()
-    if query == "" then
-        local byLine = {}
-        for _, person in ipairs(crafters) do
-            for _, prof in ipairs(person.professions.list) do
-                local entry = byLine[prof.line]
-                if not entry then
-                    entry = { name = prof.name, icon = prof.icon, people = {} }
-                    byLine[prof.line] = entry
-                    rows[#rows + 1] = entry
-                end
-                entry.people[#entry.people + 1] = { name = person.name, rank = prof.rank, max = prof.max }
-            end
-        end
-        table.sort(rows, function(a, b) return a.name < b.name end)
-    else
-        local byRecipe = {}
-        for _, person in ipairs(crafters) do
-            for line, recipes in pairs(person.professions.recipes) do
-                local prof = Rank(person.professions, line)
-                for _, id in ipairs(recipes) do
-                    local name, icon = ns.RecipeInfo(id)
-                    if not name and C_Spell and C_Spell.RequestLoadSpellData then C_Spell.RequestLoadSpellData(id) end
-                    if name and name:lower():find(query, 1, true) then
-                        local entry = byRecipe[id]
-                        if not entry then
-                            entry = { id = id, name = name, icon = icon, people = {} }
-                            byRecipe[id] = entry
-                            rows[#rows + 1] = entry
-                        end
-                        entry.people[#entry.people + 1] = { name = person.name, rank = prof and prof.rank, max = prof and prof.max }
+    local groups, byRecipe = {}, {}
+    for _, person in ipairs(Crafters()) do
+        for line, recipes in pairs(person.professions.recipes or {}) do
+            local prof = Rank(person.professions, line)
+            for _, id in ipairs(recipes) do
+                local name, icon = ns.RecipeInfo(id)
+                if not name and C_Spell and C_Spell.RequestLoadSpellData then C_Spell.RequestLoadSpellData(id) end
+                if name and (query == "" or name:lower():find(query, 1, true)) then
+                    -- Grouped by the profession's name, so the same profession under two IDs is one group.
+                    local profName = prof and prof.name or ProfessionName(line) or "Other"
+                    local group = groups[profName]
+                    if not group then
+                        group = { header = true, name = profName, icon = prof and prof.icon, recipes = {} }
+                        groups[profName] = group
                     end
+                    group.icon = group.icon or (prof and prof.icon)
+                    local entry = byRecipe[id]
+                    if not entry then
+                        entry = { id = id, name = name, icon = icon, people = {} }
+                        byRecipe[id] = entry
+                        group.recipes[#group.recipes + 1] = entry
+                    end
+                    entry.people[#entry.people + 1] = { name = person.name, rank = prof and prof.rank, max = prof and prof.max }
                 end
             end
         end
-        table.sort(rows, function(a, b) return a.name < b.name end)
     end
-    for _, row in ipairs(rows) do
-        table.sort(row.people, function(a, b) return (a.rank or 0) > (b.rank or 0) end)
+    local sorted = {}
+    for _, group in pairs(groups) do sorted[#sorted + 1] = group end
+    table.sort(sorted, function(a, b) return a.name < b.name end)
+    local rows = {}
+    for _, group in ipairs(sorted) do
+        table.sort(group.recipes, function(a, b) return a.name < b.name end)
+        group.count = #group.recipes
+        rows[#rows + 1] = group
+        for _, entry in ipairs(group.recipes) do
+            table.sort(entry.people, function(a, b) return (a.rank or 0) > (b.rank or 0) end)
+            rows[#rows + 1] = entry
+        end
+        group.recipes = nil
     end
     return rows
 end

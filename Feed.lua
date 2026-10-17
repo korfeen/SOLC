@@ -2,23 +2,42 @@
 -- the Guild home page. KillTrackerDB.events = { { t = time, k = kind, a, b, seq } }, oldest first, the
 -- last MAX_EVENTS kept. Kinds:
 --   L  killed a leader for the first time      a = npcID
---   R  killed a rare for the first time        a = npcID
+--   R  killed a rare for the first time        a = npcID (not in the guild's news: ns.FeedWorthy)
 --   A  earned an achievement                   a = achievement id ("subtype:Gnoll:100")
 --   M  minted a picture                        a = picture number
 --   W  won a picture in a puzzle race          a = picture number, b = who it was won from
 --   B  did their share of a completed bounty   a = bounty id
---   D  killed a boss in a guild group          a = boss name, b = 1 for a final boss
+--   D  killed a boss in a guild group          a = boss name, b = 1 for a final boss (only clears in the guild's news),
+--                                              c = the instance map, d = the guildmates there ("Name,Name"; from 0.41.0)
 --   K  reached an Ogre Rank (Ranks.lua)         a = rank
+--   U  unlocked a picture layer (Unlocks.lua)   a = its option key ("skin:boss_dm") (from 0.41.0)
+--   G  got a gift from an officer (Dev.lua)     a = who gave it, b = what ("chest:<dungeon>") (from 0.41.0)
 
 local _, ns = ...
 
-local MAX_EVENTS = 40
+local MAX_EVENTS = 60
 local MAX_FEED = 60
 
-function ns.AddEvent(kind, a, b)
+-- What's worth the guild's news (the Guild page): not rares, not single bosses on the way (a guild clear is), not the
+-- small creature deeds (under BIG_DEED kills). Those still show on the player's own feed (their Overview).
+local BIG_DEED = 100
+function ns.FeedWorthy(kind, a, b)
+    if kind == "R" then return false end
+    if kind == "D" then return tonumber(b) == 1 end
+    if kind == "A" then
+        local dimension, kills = tostring(a):match("^(%a+):.*:(%d+)$")
+        if dimension == "subtype" and tonumber(kills) < BIG_DEED then return false end
+    end
+    return true
+end
+
+-- The groups each player can hide on the Guild page's news (KillTrackerDB.feedHidden = { [group] = true }).
+ns.FEED_GROUPS = { A = "deeds", K = "deeds", L = "kills", R = "kills", D = "kills", M = "pix", W = "pix", U = "pix", G = "pix", B = "hunts" }
+
+function ns.AddEvent(kind, a, b, c, d)
     local db = KillTrackerDB
     db.events = db.events or {}
-    local event = { t = time(), k = kind, a = a, b = b }
+    local event = { t = time(), k = kind, a = a, b = b, c = c, d = d ~= "" and d or nil }
     db.events[#db.events + 1] = event
     while #db.events > MAX_EVENTS do table.remove(db.events, 1) end
     ns.Touch(event)
@@ -96,6 +115,14 @@ local function Describe(e, who, source, calm)
     elseif e.k == "B" then
         local bounty = ns.ResolveBounty and ns.ResolveBounty(e.a)
         return ("%s helped complete the bounty |c%s%s|r"):format(who, c.bounty, bounty and bounty.name or tostring(e.a))
+    elseif e.k == "G" then
+        local dungeon = ns.DungeonByKey and ns.DungeonByKey(tostring(e.b):match("^chest:(%w+)$") or "")
+        return ("%s got |c%s%s chest|r from %s"):format(who, c.achievement, dungeon and dungeon.name or "a", tostring(e.a))
+    elseif e.k == "U" then
+        local unlocked = ns.OptionByKey and ns.OptionByKey(e.a)
+        if not unlocked then return nil end  -- (art this SOLC doesn't have yet)
+        return ("%s unlocked |c%s%s|r for minting"):format(who, calm and c.achievement or ns.RARITY_COLORS[unlocked.option.rarity] or "ffffffff",
+            unlocked.option.name)
     elseif e.k == "K" then
         local rank = ns.RANKS and ns.RANKS[tonumber(e.a)]
         return ("%s reached rank %s: |c%s%s|r"):format(who, tostring(e.a), c.rank, rank and rank.title or "?")
@@ -104,22 +131,26 @@ local function Describe(e, who, source, calm)
     end
 end
 
--- The guild feed, newest first: { { time, text, who, kind, mint, owner } }, from you and everyone synced. kind: the
+-- The guild feed, newest first: { { time, text, who, kind, mint, owner, event, source } }, from you and everyone synced
+-- (event: the event itself; source: its player's stats, KillTrackerDB for yours). kind: the
 -- event's kind (above); mint: the picture a minted/won event is about (click to view); owner: whose it is (nil for
--- yours). calm: the calm colours (Describe).
-function ns.GetFeed(calm)
+-- yours). calm: the calm colours (Describe); guild: only what's worth the guild's news (ns.FeedWorthy); player: only one
+-- player's ("me", or a key in KillTrackerFriends; a player's own feed isn't cut short by everyone else's).
+function ns.GetFeed(calm, guild, player)
     local feed = {}
     local function Add(who, source)
         for _, e in ipairs(source.events or {}) do
-            local text = Describe(e, who, source, calm)
+            local text = (not guild or ns.FeedWorthy(e.k, e.a, e.b)) and Describe(e, who, source, calm)
             if text then
                 feed[#feed + 1] = { time = e.t, text = text, who = who, kind = e.k, mint = EventMint(e, source),
-                    owner = source ~= KillTrackerDB and who or nil }
+                    owner = source ~= KillTrackerDB and who or nil, event = e, source = source }
             end
         end
     end
-    Add(ns.MyName(), KillTrackerDB)
-    for _, friend in ipairs(ns.GetFriends()) do Add(friend.name, friend.stats) end
+    if not player or player == "me" then Add(ns.MyName(), KillTrackerDB) end
+    for _, friend in ipairs(ns.GetFriends()) do
+        if not player or player == friend.key then Add(friend.name, friend.stats) end
+    end
     table.sort(feed, function(x, y) return x.time > y.time end)
     while #feed > MAX_FEED do table.remove(feed) end
     return feed

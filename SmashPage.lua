@@ -3,7 +3,7 @@
 -- Left: tabs (CREATURES, RARES, PVP, DEEDS), the way into the list (back, the categories clicked into), and the list
 -- itself: the same rows as the Kills, PvP, Rares and Achievements lists (UI.lua's BuildRows), in the Overview feed's
 -- style. A category opens it; anything else is picked.
--- Right: the pick hung in the Overview's frame: a creature's model (drag to turn, scroll to zoom), or for a deed its
+-- Right: the pick as the page's photo: a creature's model (drag to turn, scroll to zoom), or for a deed its
 -- tiers, for a player what's known of them; its name on the plaque, and under the frame its kills and its deeds'
 -- progress. Inside a category with nothing picked: the category, with its most-killed creature; at the top: the deeds
 -- closest to their next tier.
@@ -18,7 +18,6 @@ local Fit, Tooltip = UI.FitText, UI.Tooltip
 local ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local SIGN_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\FingerPaint-Regular.ttf"
-local INK = { 0.16, 0.16, 0.18 }
 local CREAM, DIM = { 0.93, 0.88, 0.78 }, { 0.62, 0.56, 0.48 }
 local GOLD = { 1, 0.85, 0.1 }
 local HOVER_COLOR, PICKED_COLOR = { 0.65, 0.53, 0.28 }, { 0.45, 0.36, 0.18 }
@@ -38,14 +37,15 @@ local LEFT = {
     crumb = { top = 319, bottom = 343, size = 13, color = { 0.12, 0.12, 0.12 } },
     rows = { top = 343, height = 24, size = 13, colors = { 0.25, 0.18 }, bar = 3, empty = { 0.1, 0.1, 0.1 } },
 }
--- The right page: the frame (as the Overview's), the photo opening, the plaque, and the lines and bar under the frame.
+-- The right page: the photo (filling it from the top beam, its sides under the middle beam and the post), the cross
+-- beam under it with the name on (UI.PhotoBeam), and under that the lines and the deed bars.
 local RIGHT = {
     color = { 0.094, 0.094, 0.094 },
-    frame = { x = 688, y = 156, w = 362, h = 447 },
-    photo = { x = 869, y = 389.5, w = 308, h = 329 },
-    plaque = { x = 874, y = 578, w = 170, size = 22 },
-    info = { x = 700, top = 614, width = 340, line = 18, lines = 3, size = 13 },
-    bar = { top = 666, height = 16, gap = 20 },  -- up to three deed bars, one under the other
+    photo = { x = 869, y = 344, w = 396, h = 396 },
+    beam = 536,
+    plaque = { w = UI.PHOTO_NAME_WIDTH, size = 22 },
+    info = { x = 690, top = 590, width = 360, line = 18, lines = 3, size = 13 },
+    bar = { top = 650, height = 16, gap = 20 },  -- up to three deed bars, one under the other
 }
 local BACK_WIDTH = 62  -- the BACK button, at the start of the way in
 local PANEL_LINES = 15  -- text lines in the photo opening (a deed's tiers, a player)
@@ -448,15 +448,7 @@ ns.RegisterPage({
         local hung = CreateFrame("Frame", nil, card)
         hung:SetAllPoints()
         hung:SetFrameLevel(photo:GetFrameLevel() + 10)  -- over the model
-        local frameArt = hung:CreateTexture(nil, "ARTWORK")
-        frameArt:SetTexture(ART .. "HangingPicture")
-        frameArt:SetTexCoord(0, RIGHT.frame.w / 512, 0, RIGHT.frame.h / 512)
-        frameArt:SetSize(RIGHT.frame.w, RIGHT.frame.h)
-        At(frameArt, "TOPLEFT", RIGHT.frame.x, RIGHT.frame.y)
-        page.plaque = hung:CreateFontString(nil, "OVERLAY")
-        At(page.plaque, "CENTER", RIGHT.plaque.x, RIGHT.plaque.y)
-        page.plaque:SetTextColor(unpack(INK))
-        page.plaque:SetShadowOffset(0, 0)
+        page.plaque = select(2, UI.PhotoBeam(hung, RIGHT.beam))  -- the photo's bottom edge, the name on it
 
         local info = RIGHT.info
         page.info = {}

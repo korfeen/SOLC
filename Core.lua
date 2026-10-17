@@ -116,8 +116,12 @@ local function Categorize(npcID, entry)
     local info = ns.NPCs[npcID]
     local c = {}
 
-    if ns.Overrides[npcID] then
-        c.faction = ns.Overrides[npcID]
+    -- An override: a faction's name, or { faction, subtype } for a mob Data.lua doesn't have at all (Overrides.lua).
+    local override = ns.Overrides[npcID]
+    local extra = type(override) == "table" and override or nil
+    local overrideFaction = extra and extra.faction or (not extra and override) or nil
+    if overrideFaction then
+        c.faction = overrideFaction
     elseif info and info[1] ~= 0 then
         c.faction = ns.Factions[info[1]]
     else
@@ -130,7 +134,7 @@ local function Categorize(npcID, entry)
         c.type, c.rank, c.subtype, c.size = CREATURE_TYPES[info[2]], RANKS[info[3]], ns.Subtypes[info[4]], info[5]
     else
         c.type, c.rank, c.size = entry.type, entry.rank, 1
-        c.subtype = entry.subtype or entry.family
+        c.subtype = extra and extra.subtype or entry.subtype or entry.family
         if not c.subtype then
             c.subtype = ns.Subtypes[GuessFromName(entry.name, ns.NameSubtypes, ns.WordSubtypes)]
             c.subtypeGuess = c.subtype ~= nil
@@ -229,6 +233,22 @@ local function Migrate(db)
     for _, entry in pairs(db.kills) do
         entry.subtype, entry.race = entry.subtype or entry.race, nil
     end
+    -- A boss whose encounter wasn't in Encounters.lua yet was counted as 9000000 + its encounter ID (Guild.lua); once
+    -- the encounter is known, those kills move to its boss creature.
+    for encounterID, bosses in pairs(ns.EncounterNPCs or {}) do
+        local old = db.kills[9000000 + encounterID]
+        if old and #bosses == 1 and bosses[1][1] ~= 9000000 + encounterID then  -- (still unknown: it stays)
+            local npcID = bosses[1][1]
+            local entry = db.kills[npcID] or { count = 0, name = bosses[1][2] }
+            entry.count = entry.count + old.count
+            entry.rank = entry.rank or old.rank
+            db.kills[npcID], db.kills[9000000 + encounterID] = entry, nil
+            Touch(entry)
+            for _, logged in ipairs(db.groupLog or {}) do
+                if logged.n == 9000000 + encounterID then logged.n = npcID end
+            end
+        end
+    end
     -- 0.11.0: weights are now based on real model heights; records from the old model are dropped.
     -- A new syncID makes friends fetch everything again, so their copies lose the old records too.
     if (db.weightModel or 1) < 2 then
@@ -283,7 +303,7 @@ end
 
 -- Kills made in a group are logged by spawn key too, so the combined total of several players can count
 -- a mob they killed together only once (solo kills can't be shared: others see the mob as tapped).
--- unit and guid: the mob (nil for a boss counted from its encounter: then name, rank and the group log's key are
+-- unit and guid: the mob (unit nil for a boss counted from its encounter: then name, rank and the group log's key are
 -- given in boss = { name, key }, see ns.RecordBossKill).
 local function RecordKill(npcID, unit, guid, boss)
     local db = KillTrackerDB
@@ -546,6 +566,8 @@ SlashCmdList.SOLC = function(input)
         Print("Kill announcements " .. (db.announce and "on." or "off."))
     elseif msg == "probe" then
         ns.ToggleProbe()
+    elseif msg == "dev" then
+        ns.ToggleDev()  -- the dev window: chests and picture art to try out (Dev.lua)
     elseif msg == "debug" then
         ns.debugKills = not ns.debugKills
         Print("Kill debugging " .. (ns.debugKills and "on: kills are announced, and mobs that aren't counted say why." or "off."))

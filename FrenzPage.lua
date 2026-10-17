@@ -1,8 +1,9 @@
 -- The guild's members (FRENZ), with the crafters as the MAKE tab (the key crafters opens it). A split page (ProfileHeader.lua: the profile header over the left page, the middle beam).
 -- Left: tabs. FRENZ: everyone using SOLC, you first; clicking someone views them (the header, the right page, every
--- page), the one viewed lit. MAKE: a search box, then each profession and who has it, or the recipes matching the
--- search and who knows them; picking one lists them on the right.
--- Right: whoever is viewed, hung in the Overview's frame: their character (their chosen background behind) or, with
+-- page), the one viewed lit. MAKE: a search box, then a heading per profession (click to open it: every recipe known in
+-- the guild under it, and who knows it; a search opens them all, showing only the matching recipes); picking a recipe
+-- lists them on the right.
+-- Right: whoever is viewed, filling the page down to a cross beam with their name on: their character (their chosen background behind) or, with
 -- no character of them synced, their picture; their name on the plaque; under the frame their rank, numbers, last
 -- update and SOLC version, and buttons: their Overview, whisper them, sync with your target (outside the guild).
 -- On MAKE with a profession or recipe picked, the frame lists who has it instead.
@@ -13,13 +14,12 @@ if not UI.Members or not UI.CraftersRows or not UI.List then return end
 local state = UI.List.state
 local Fit, Tooltip = UI.FitText, UI.Tooltip
 
-local ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local SIGN_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\FingerPaint-Regular.ttf"
-local INK = { 0.16, 0.16, 0.18 }
 local CREAM, DIM = { 0.93, 0.88, 0.78 }, { 0.62, 0.56, 0.48 }
 local GOLD = { 1, 0.85, 0.1 }
 local HOVER_COLOR, PICKED_COLOR = { 0.65, 0.53, 0.28 }, { 0.45, 0.36, 0.18 }
+local HEADING_COLOR, HEADING_HOVER = { 0.12, 0.09, 0.06 }, { 0.3, 0.22, 0.12 }  -- a profession's heading on MAKE
 local PLATE, PLATE_LIT = { 0.3, 0.22, 0.12 }, { 0.65, 0.53, 0.28 }
 local AGO_COLOR = { 0.98, 0.64, 0.26 }
 local OFFICER = "|TInterface\\GroupFrame\\UI-Group-AssistantIcon:12|t"
@@ -33,13 +33,15 @@ local LEFT = {
     line = { top = 319, bottom = 343, size = 13, color = { 0.12, 0.12, 0.12 } },  -- a line about the tab; MAKE: the search
     rows = { top = 343, height = 24, size = 13, colors = { 0.25, 0.18 }, empty = { 0.1, 0.1, 0.1 } },
 }
+-- The right page: the photo (filling it from the top beam, its sides under the middle beam and the post), the cross
+-- beam under it with the name on (UI.PhotoBeam), and under that the lines (left) and the buttons (right).
 local RIGHT = {
     color = { 0.094, 0.094, 0.094 },
-    frame = { x = 688, y = 156, w = 362, h = 447 },
-    photo = { x = 869, y = 389.5, w = 308, h = 329 },
-    plaque = { x = 874, y = 578, w = 170, size = 22 },
-    info = { x = 700, top = 612, width = 222, line = 18, lines = 4, size = 13 },
-    buttons = { x = 930, top = 612, w = 128, h = 24, gap = 4 },
+    photo = { x = 869, y = 344, w = 396, h = 396 },
+    beam = 536,
+    plaque = { w = UI.PHOTO_NAME_WIDTH, size = 22 },
+    info = { x = 690, top = 590, width = 232, line = 18, lines = 4, size = 13 },
+    buttons = { x = 930, top = 590, w = 128, h = 24, gap = 4 },
 }
 local PANEL_LINES = 15
 
@@ -83,6 +85,12 @@ local function DrawRows()
                     .. ("  |cff999999%d %s|r"):format(rank.rank, rank.title))
                 row.count:SetText(("%d  |cff999999%s|r"):format(d.kills or 0, d.me and "now" or ns.TimeAgo(d.updated or 0)))
                 row.picked = (d.me and viewed == nil) or (not d.me and d.key == viewed)
+            elseif d.header then
+                -- A profession's heading: not something to make, just where its recipes start.
+                row.label:SetText(("|cffffd100%s|r  %s|cffffd100%s|r"):format(d.open and "-" or "+",
+                    d.icon and ("|T%s:14|t "):format(d.icon) or "", d.name:upper()))
+                row.count:SetText(("|cff999999%d recipe%s|r"):format(d.count, d.count == 1 and "" or "s"))
+                row.picked = false
             else
                 local names = {}
                 for n, person in ipairs(d.people) do
@@ -300,11 +308,18 @@ ns.RegisterPage({
             row.label:SetJustifyH("LEFT")
             row.label:SetWordWrap(false)
             function row:Paint(hovered)
-                self.stripe:SetColorTexture(unpack(hovered and HOVER_COLOR or self.picked and PICKED_COLOR or { shade, shade, shade }))
+                local heading = self.d and self.d.header
+                self.stripe:SetColorTexture(unpack(heading and (hovered and HEADING_HOVER or HEADING_COLOR) or hovered and HOVER_COLOR
+                    or self.picked and PICKED_COLOR or { shade, shade, shade }))
             end
             row:SetScript("OnEnter", function(self)
                 local d = self.d
                 if not d then return end
+                if d.header then
+                    self:Paint(true)
+                    return Tooltip(self, { d.name, ("%d recipe%s - click to %s"):format(d.count, d.count == 1 and "" or "s",
+                        d.open and "close" or "open") })
+                end
                 self:Paint(true)
                 if page.tab == "make" then
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -321,6 +336,12 @@ ns.RegisterPage({
             row:SetScript("OnClick", function(self)
                 local d = self.d
                 if not d then return end
+                if d.header then  -- open or close the profession (while searching, all are open)
+                    UI.ClickSound()
+                    page.openProfessions[d.name] = not page.openProfessions[d.name] or nil
+                    ns.OpenPage(state.page)
+                    return
+                end
                 UI.ClickSound()
                 if page.tab == "make" then
                     page.pick = page.pick ~= d and d or nil
@@ -407,15 +428,7 @@ ns.RegisterPage({
         local hung = CreateFrame("Frame", nil, card)
         hung:SetAllPoints()
         hung:SetFrameLevel(panelHolder:GetFrameLevel() + 10)
-        local frameArt = hung:CreateTexture(nil, "ARTWORK")
-        frameArt:SetTexture(ART .. "HangingPicture")
-        frameArt:SetTexCoord(0, RIGHT.frame.w / 512, 0, RIGHT.frame.h / 512)
-        frameArt:SetSize(RIGHT.frame.w, RIGHT.frame.h)
-        At(frameArt, "TOPLEFT", RIGHT.frame.x, RIGHT.frame.y)
-        page.plaque = hung:CreateFontString(nil, "OVERLAY")
-        At(page.plaque, "CENTER", RIGHT.plaque.x, RIGHT.plaque.y)
-        page.plaque:SetTextColor(unpack(INK))
-        page.plaque:SetShadowOffset(0, 0)
+        page.plaque = select(2, UI.PhotoBeam(hung, RIGHT.beam))  -- the photo's bottom edge, the name on it
 
         local info = RIGHT.info
         page.info = {}
@@ -448,12 +461,24 @@ ns.RegisterPage({
         end
         for _, tab in ipairs(p.tabs) do tab:Redraw(false) end
         local make = p.tab == "make"
+        if UI.SetTab then UI.SetTab("members", make and "Crafters" or nil, "MAKE") end  -- (the top beam)
         p.search:SetShown(make)
         p.line:SetShown(not make)
         if make then
             local query = strtrim(p.search:GetText() or ""):lower()
-            p.data = UI.CraftersRows(query)
-            p.empty:SetText(query == "" and "No professions yet. They show once guildmates log in with SOLC 0.37.0 or newer."
+            p.data = {}
+            p.openProfessions = p.openProfessions or {}
+            local open
+            for _, row in ipairs(UI.CraftersRows(query)) do
+                if row.header then
+                    open = query ~= "" or p.openProfessions[row.name]
+                    row.open = open
+                    p.data[#p.data + 1] = row
+                elseif open then
+                    p.data[#p.data + 1] = row
+                end
+            end
+            p.empty:SetText(query == "" and "No recipes known yet. They show once their owner has opened that profession's window."
                 or "Nobody knows a recipe by that name yet. Recipes show once their owner has opened that profession's window.")
         else
             p.data = UI.Members()

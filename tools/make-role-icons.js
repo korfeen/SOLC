@@ -283,6 +283,88 @@ const ICONS = {
     crayonShape(c, circle(128, 160, 18), OUTLINE, random, { outline: null, hatch: 5 });  // the keyhole
     crayonShape(c, [[120, 166], [136, 166], [140, 204], [116, 204]], OUTLINE, random, { outline: null, hatch: 5 });
   },
+  // A treasure chest, shut (a dungeon's chest waiting to be opened, Chests.lua).
+  chest(c, random) {
+    const o = { line: 14, hatch: 8 };
+    crayonShape(c, [[34, 124], [222, 124], [214, 226], [42, 226]], C.brown, random, o);  // the box
+    crayonShape(c, [...quad([34, 124], [128, 40], [222, 124], 16)], hex("#a06a38"), random, o);  // the lid
+    for (const x of [70, 186]) crayonShape(c, [[x - 12, 82], [x + 12, 82], [x + 12, 226], [x - 12, 226]], C.steel, random, { line: 10, hatch: 6 });
+    crayonShape(c, [[106, 112], [150, 112], [150, 162], [106, 162]], C.gold, random, { line: 12, hatch: 6 });  // the lock
+    crayonShape(c, circle(128, 132, 7), OUTLINE, random, { outline: null, hatch: 4 });
+  },
+  // The same chest, open: the lid back, gold glowing inside, a sparkle.
+  chestOpen(c, random) {
+    const o = { line: 14, hatch: 8 };
+    crayonShape(c, [[56, 24], [200, 24], [222, 112], [34, 112]], hex("#5a3a1e"), random, o);  // the lid thrown back: its inside
+    crayonShape(c, [...quad([40, 140], [128, 30], [216, 140], 18)], C.gold, random, { line: 12, hatch: 6 });  // a heap of gold
+    for (const [x, y] of [[96, 96], [150, 88], [124, 120], [176, 120], [76, 124]]) crayonShape(c, circle(x, y, 13), hex("#ffe680"), random, { line: 8, hatch: 5 });
+    crayonShape(c, [[34, 132], [222, 132], [214, 226], [42, 226]], C.brown, random, o);  // the box
+    for (const x of [70, 186]) crayonShape(c, [[x - 12, 132], [x + 12, 132], [x + 12, 226], [x - 12, 226]], C.steel, random, { line: 10, hatch: 6 });
+    crayonShape(c, star(200, 52, 26, 10), C.white, random, { line: 9, hatch: 6 });  // sparkles
+    crayonShape(c, star(58, 64, 18, 7), C.white, random, { line: 8, hatch: 6 });
+  },
+  // The chest window's crayon effects (Chests.lua), drawn white so the game tints them (a rarity's colour): rays of
+  // light, a soft glow, a sparkle, a comic burst; and a gold coin, as it is.
+  fxRays(c, random) {
+    for (let i = 0; i < 16; i += 2) {
+      const a0 = (i / 16) * 2 * Math.PI, a1 = ((i + 0.8) / 16) * 2 * Math.PI;
+      crayonShape(c, [[128, 128], [128 + Math.cos(a0) * 126, 128 + Math.sin(a0) * 126], [128 + Math.cos(a1) * 126, 128 + Math.sin(a1) * 126]],
+        hex("#ffffff"), random, { outline: null, hatch: 7, fit: true });
+    }
+  },
+  fxGlow(c, random) { crayonShape(c, circle(128, 128, 112), hex("#ffffff"), random, { outline: null, hatch: 10, fit: true }); },
+  fxStar(c, random) {
+    const pts = [];
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * 2 * Math.PI - Math.PI / 2, r = i % 2 ? 30 : 110; pts.push([128 + Math.cos(a) * r, 128 + Math.sin(a) * r]); }
+    crayonShape(c, pts, hex("#ffffff"), random, { line: 14, hatch: 6, fit: true });
+  },
+  fxBurst(c, random) {
+    const pts = [];
+    for (let i = 0; i < 24; i++) { const a = (i / 24) * 2 * Math.PI, r = i % 2 ? 72 + random() * 14 : 116 + random() * 8; pts.push([128 + Math.cos(a) * r, 128 + Math.sin(a) * r]); }
+    crayonShape(c, pts, hex("#ffffff"), random, { line: 14, hatch: 8, fit: true });
+  },
+  fxCoin(c, random) {
+    crayonShape(c, circle(128, 128, 100), C.gold, random, { line: 16, hatch: 8 });
+    crayonShape(c, circle(128, 128, 62), hex("#ffe680"), random, { line: 10, hatch: 6 });
+    crayonShape(c, [[96, 92], [112, 84], [100, 128]], hex("#ffffff"), random, { outline: null, hatch: 5 });
+  },
+  // More of the chest window's effects: a shockwave ring and a confetti scrap (white, tinted), a crayon rainbow, a card's
+  // back (a "?"), and an ogre popping up to cheer.
+  fxRing(c, random) { crayonShape(c, circle(128, 128, 116), hex("#ffffff"), random, { outline: null, hatch: 8, fit: true, holes: [circle(128, 128, 92)] }); },
+  fxConfetti(c, random) { crayonShape(c, [[78, 104], [178, 92], [182, 150], [82, 164]], hex("#ffffff"), random, { line: 12, hatch: 6, fit: true }); },
+  fxRainbow(c, random) {
+    const bands = ["#ff4a3a", "#ff9a2a", "#ffd23f", "#5bd24a", "#4f86e8", "#9a6ad8"];
+    bands.forEach((col, i) => {
+      const r0 = 124 - i * 13, r1 = r0 - 14;
+      const arc = (r) => Array.from({ length: 25 }, (_, k) => { const a = Math.PI + (k / 24) * Math.PI; return [128 + Math.cos(a) * r, 200 + Math.sin(a) * r]; });
+      crayonShape(c, [...arc(r0), ...arc(r1).reverse()], hex(col), random, { outline: null, hatch: 6, fit: true });
+    });
+  },
+  fxCardBack(c, random) {
+    crayonShape(c, [[24, 24], [232, 24], [232, 232], [24, 232]], hex("#6a3a9a"), random, { line: 16, hatch: 8 });
+    crayonShape(c, [[48, 48], [208, 48], [208, 208], [48, 208]], hex("#8a5ab8"), random, { line: 8, hatch: 8 });
+    const q = [...quad([92, 100], [96, 50], [128, 50], 8), ...quad([128, 50], [170, 52], [164, 100], 8).slice(1),
+      ...quad([164, 100], [140, 124], [134, 148], 8).slice(1)];
+    for (let i = 1; i < q.length; i++) crayonShape(c, [[q[i - 1][0] - 9, q[i - 1][1]], [q[i][0] - 9, q[i][1]], [q[i][0] + 9, q[i][1]], [q[i - 1][0] + 9, q[i - 1][1]]], hex("#ffd23f"), random, { outline: null, hatch: 4, fit: true });
+    crayonShape(c, circle(133, 184, 13), hex("#ffd23f"), random, { line: 8, hatch: 5 });
+  },
+  fxOgre(c, random) {
+    const green = hex("#86c64e");
+    for (const s of [-1, 1]) crayonShape(c, [[128 + s * 70, 200], [128 + s * 112, 70], [128 + s * 92, 64], [128 + s * 50, 196]], green, random, { line: 12, hatch: 7 });  // arms up
+    for (const s of [-1, 1]) crayonShape(c, circle(128 + s * 104, 58, 22), green, random, { line: 10, hatch: 6 });
+    crayonShape(c, ellipse(128, 176, 78, 70), green, random, { line: 14, hatch: 8 });  // the head
+    for (const s of [-1, 1]) crayonShape(c, [[128 + s * 70, 160], [128 + s * 100, 130], [128 + s * 76, 186]], green, random, { line: 10, hatch: 6 });
+    for (const x of [104, 152]) { crayonShape(c, circle(x, 156, 13), hex("#ffffff"), random, { line: 8, hatch: 5 }); crayonShape(c, circle(x, 158, 5), OUTLINE, random, { outline: null, hatch: 3 }); }
+    crayonShape(c, ellipse(128, 206, 30, 22), hex("#5a1a1a"), random, { line: 10, hatch: 5 });  // a cheering mouth
+    for (const x of [108, 148]) crayonShape(c, [[x - 6, 196], [x, 176], [x + 6, 196]], hex("#fff6dc"), random, { line: 6, hatch: 4 });
+  },
+  // A dungeon token (Unlocks.lua, the minting pot): a silver medallion with a little gold dungeon door on it.
+  token(c, random) {
+    crayonShape(c, circle(128, 128, 104), C.steel, random, { line: 16, hatch: 8 });
+    crayonShape(c, circle(128, 128, 76), hex("#dde3ea"), random, { line: 8, hatch: 6 });
+    crayonShape(c, [...quad([92, 178], [92, 72], [128, 66], 10), ...quad([128, 66], [164, 72], [164, 178], 10).slice(1)], C.gold, random, { line: 10, hatch: 6 });
+    crayonShape(c, [...quad([108, 178], [108, 104], [128, 98], 8), ...quad([128, 98], [148, 104], [148, 178], 8).slice(1)], OUTLINE, random, { outline: null, hatch: 5 });
+  },
 
   // --- The activity feed's icons: drawn to be read at about 17 pixels (few big shapes, a thick outline) ---
 
@@ -676,7 +758,7 @@ const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "ro
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
   "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary", "feedLeader",
   "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss", "rank1", "rank2", "rank3", "rank4", "rank5",
-  "rank6", "rank7", "edit", "lock"];
+  "rank6", "rank7", "edit", "lock", "chest", "chestOpen", "fxRays", "fxGlow", "fxStar", "fxBurst", "fxCoin", "fxRing", "fxConfetti", "fxRainbow", "fxCardBack", "fxOgre", "token"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
@@ -687,7 +769,9 @@ const seedOf = (name) => {
 const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP", close: "Close", settings: "Settings",
   feedLeader: "Feed_Leader", feedRare: "Feed_Rare", feedAchievement: "Feed_Achievement", feedMint: "Feed_Mint", feedWon: "Feed_Won",
   feedBounty: "Feed_Bounty", feedBoss: "Feed_Boss", rank1: "Rank_1", rank2: "Rank_2", rank3: "Rank_3", rank4: "Rank_4",
-  rank5: "Rank_5", rank6: "Rank_6", rank7: "Rank_7", edit: "Edit", lock: "Lock" };
+  rank5: "Rank_5", rank6: "Rank_6", rank7: "Rank_7", edit: "Edit", lock: "Lock", chest: "Chest", chestOpen: "ChestOpen", fxRays: "Fx_Rays", fxGlow: "Fx_Glow",
+  fxStar: "Fx_Star", fxBurst: "Fx_Burst", fxCoin: "Fx_Coin", fxRing: "Fx_Ring", fxConfetti: "Fx_Confetti", fxRainbow: "Fx_Rainbow",
+  fxCardBack: "Fx_CardBack", fxOgre: "Fx_Ogre", token: "Token" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.

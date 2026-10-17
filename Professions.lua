@@ -65,6 +65,12 @@ local function UpdateRecipes()
     end
     local base = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
     local line = base and Readable(base.professionID)
+    -- The window's profession ID isn't always the skill line the profession list has (cooking's isn't): the profession
+    -- of that name in the list wins, so the recipes file under it (and aren't dropped as a profession you don't have).
+    local baseName = base and Readable(base.professionName)
+    for _, prof in ipairs(Professions().list) do
+        if baseName and prof.name == baseName then line = prof.line end
+    end
     if not line or line == 0 then return end
     local known = {}
     for _, recipeID in ipairs(T.GetAllRecipeIDs() or {}) do

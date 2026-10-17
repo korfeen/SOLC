@@ -44,6 +44,23 @@ local issecret = issecretvalue or function() return false end
 local function Short(name) return Ambiguate and Ambiguate(name, "short") or name end
 
 local Duel = {}
+
+-- Names come in several forms (the guild roster's, an addon whisper's sender; with or without a realm, a last name),
+-- so two are the same player if they match without realm and case, or by first name. Messages also carry the duel's
+-- id, so a loose match can't mix two duels up. Replies go to the name the game delivered their messages from
+-- (duel.address), the one form sure to reach them.
+local function Plain(name) return (name or ""):gsub("%-.*$", ""):lower() end
+local function SameName(a, b)
+    local pa, pb = Plain(a), Plain(b)
+    return pa == pb or pa:match("^(%S+)") == pb:match("^(%S+)")
+end
+local lastSender  -- the raw sender of the message being handled
+
+-- /solcpuzzle debug: every duel message sent (with what the game said) and received, with the time.
+local function Debug(text, ...)
+    if Duel.debug then SOLC.Print(("|cffff9a2aduel %.1f|r "):format(GetTime()) .. text:format(...)) end
+end
+
 ns.Duel = Duel
 local duel  -- the current duel, or nil (see Duel.Get)
 
@@ -64,6 +81,9 @@ local function Pump()
     end
     local ok, result = pcall(C_ChatInfo.SendAddonMessage, PREFIX, item.message, "WHISPER", item.target)
     local results = Enum and Enum.SendAddonMessageResult
+    local resultName = tostring(result)
+    for name, value in pairs(results or {}) do if value == result then resultName = name end end
+    Debug("send %s to %s: %s", item.message:match("^[^|]*"), item.target, ok and resultName or ("error " .. tostring(result)))
     if ok and results and result == results.AddonMessageThrottle then
         C_Timer.After(SEND_RETRY, Pump)  -- try the same message again
         return
@@ -138,7 +158,7 @@ local function Finish(won, reason)
         -- Hand our picture over: give it away first, then tell the winner, so it can't end up with both.
         local traits = SOLC.GivePicture(duel.mine.number)
         if traits then
-            Send(duel.opponent, "G", duel.id, duel.mine.minted or 0, SOLC.TraitsToText(traits))
+            Send(duel.address or duel.opponent, "G", duel.id, duel.mine.minted or 0, SOLC.TraitsToText(traits))
             duel.result.prize = duel.mine
         end
     end
@@ -188,7 +208,7 @@ local function MaybeStart()
     if duel.role ~= "challenger" or duel.phase ~= "table" then return end
     if not (duel.myReady and duel.theirReady and duel.mine and duel.theirs) then return end
     duel.phase, duel.seed = "starting", math.random(1, 2 ^ 30)
-    Send(duel.opponent, "S", duel.id, duel.seed, duel.mine.number, duel.theirs.number)
+    Send(duel.address or duel.opponent, "S", duel.id, duel.seed, duel.mine.number, duel.theirs.number)
     Changed()
     local id = duel.id
     C_Timer.After(START_TIMEOUT, function()
@@ -225,7 +245,7 @@ end
 function Duel.Accept()
     if not duel or duel.phase ~= "invited" then return end
     duel.phase = "table"
-    Send(duel.opponent, "A", duel.id)
+    Send(duel.address or duel.opponent, "A", duel.id)
     Changed()
 end
 
@@ -235,7 +255,7 @@ function Duel.Cancel()
     local p = duel.phase
     if p == "invited" or p == "inviting" or p == "table" or p == "starting" then
         if p == "invited" then declinedAt[duel.opponent] = GetTime() end
-        Send(duel.opponent, "D", duel.id, p == "table" and "left" or "declined")
+        Send(duel.address or duel.opponent, "D", duel.id, p == "table" and "left" or "declined")
         duel = nil
         Changed()
     end
@@ -250,7 +270,7 @@ local offerPending, offerChangedAt = false, 0
 local function FlushOffer()
     if not offerPending or not duel then return end
     offerPending = false
-    Send(duel.opponent, "O", duel.id, OfferFields(duel.mine))
+    Send(duel.address or duel.opponent, "O", duel.id, OfferFields(duel.mine))
 end
 
 function Duel.Offer(picture)
@@ -276,7 +296,7 @@ function Duel.SetReady(ready)
     if not duel or duel.phase ~= "table" or (ready and not duel.mine) then return end
     FlushOffer()  -- the other side must have our current offer before our Ready
     duel.myReady = ready
-    Send(duel.opponent, "R", duel.id, ready and 1 or 0)
+    Send(duel.address or duel.opponent, "R", duel.id, ready and 1 or 0)
     Changed()
     MaybeStart()
 end
@@ -285,7 +305,7 @@ end
 function Duel.React(key)
     if not duel or not REACTION_TEXT[key] or duel.phase == "done" then return end
     duel.reactions.mine = { key = key, at = GetTime() }
-    Send(duel.opponent, "E", duel.id, key)
+    Send(duel.address or duel.opponent, "E", duel.id, key)
     Changed()
 end
 
@@ -293,7 +313,7 @@ end
 -- page calls this once a second with whatever is new, so it stays within the game's message budget.
 function Duel.SendLive(text)
     if not duel or (duel.phase ~= "racing" and duel.phase ~= "waiting") or text == "" then return end
-    Send(duel.opponent, "V", duel.id, text)
+    Send(duel.address or duel.opponent, "V", duel.id, text)
 end
 
 -- After a puzzle race: sends your moves (ns.EncodeMoves text) so both can watch the duel back side by side.
@@ -303,14 +323,14 @@ function Duel.ShareMoves(text)
     duel.myMoves = text
     local parts = math.max(1, math.ceil(#text / MOVES_CHUNK))
     for part = 1, parts do
-        Send(duel.opponent, "M", duel.id, part, parts, text:sub((part - 1) * MOVES_CHUNK + 1, part * MOVES_CHUNK))
+        Send(duel.address or duel.opponent, "M", duel.id, part, parts, text:sub((part - 1) * MOVES_CHUNK + 1, part * MOVES_CHUNK))
     end
 end
 
 -- Gives up during the countdown or race: counts as a loss.
 function Duel.GiveUp()
     if not duel or (duel.phase ~= "countdown" and duel.phase ~= "racing") then return end
-    Send(duel.opponent, "L", duel.id)
+    Send(duel.address or duel.opponent, "L", duel.id)
     Finish(false, "gave up")
 end
 
@@ -319,7 +339,7 @@ function Duel.Solved(moves)
     if not duel or duel.phase ~= "racing" then return end
     duel.myTime, duel.myMoves = Duel.Elapsed(), moves
     duel.phase = "waiting"
-    Send(duel.opponent, "F", duel.id, ("%.2f"):format(duel.myTime), moves)
+    Send(duel.address or duel.opponent, "F", duel.id, ("%.2f"):format(duel.myTime), moves)
     Changed()
     Decide()
 end
@@ -329,7 +349,7 @@ function Duel.Painted(score)
     if not duel or duel.phase ~= "racing" then return end
     duel.myScore = score
     duel.phase = "waiting"
-    Send(duel.opponent, "P", duel.id, ("%.2f"):format(score))
+    Send(duel.address or duel.opponent, "P", duel.id, ("%.2f"):format(score))
     Changed()
     Decide()
 end
@@ -346,7 +366,7 @@ function Duel.Tick()
     end
     if duel.phase == "racing" and elapsed then
         if elapsed >= MAX_TIME or (duel.theirTime and elapsed > duel.theirTime) then
-            Send(duel.opponent, "L", duel.id)
+            Send(duel.address or duel.opponent, "L", duel.id)
             Finish(false, duel.theirTime and "slower" or "time limit")
         end
     elseif duel.phase == "waiting" and elapsed and elapsed >= MAX_TIME + 30 then
@@ -359,7 +379,9 @@ end
 local handlers = {}
 
 local function Mine(sender, id)
-    return duel and duel.id == id and sender == duel.opponent
+    if not (duel and duel.id == id and SameName(sender, duel.opponent)) then return false end
+    duel.address = lastSender or duel.address  -- answer them the way they reach us
+    return true
 end
 
 -- Turning duels off (SOLCPuzzleDB.acceptDuels = false): challenges are declined without asking. And after you
@@ -372,16 +394,17 @@ function Duel.SetAcceptDuels(accept)
 end
 
 function handlers.C(sender, id, mode, size, seconds)
+    local address = lastSender or sender
     if not Duel.AcceptsDuels() then
-        Send(sender, "D", id, "off")
+        Send(address, "D", id, "off")
         return
     end
     if declinedAt[sender] and GetTime() - declinedAt[sender] < DECLINE_COOLDOWN then
-        Send(sender, "D", id, "declined")
+        Send(address, "D", id, "declined")
         return
     end
     if duel and duel.phase ~= "done" then
-        Send(sender, "D", id, "busy")
+        Send(address, "D", id, "busy")
         return
     end
     size = tonumber(size)
@@ -389,8 +412,8 @@ function handlers.C(sender, id, mode, size, seconds)
         or mode == "paint" and (size == 16 or size == 24)
     if not valid then return end
     seconds = math.max(10, math.min(600, tonumber(seconds) or ns.DEFAULT_PAINT_TIME))
-    duel = { id = id, role = "opponent", opponent = sender, mode = mode, size = size, seconds = seconds, phase = "invited",
-        invitedAt = GetTime(), reactions = {} }
+    duel = { id = id, role = "opponent", opponent = sender, address = address, mode = mode, size = size, seconds = seconds,
+        phase = "invited", invitedAt = GetTime(), reactions = {} }
     if Duel.OnInvited then Duel.OnInvited(duel) end
     Changed()
     -- Unanswered: let it go (the challenger gives up after as long), so it doesn't block later challenges.
@@ -453,11 +476,11 @@ function handlers.S(sender, id, seed, challengerNumber, opponentNumber)
         and tonumber(opponentNumber) == duel.mine.number
     if not ok then
         duel.myReady = false
-        Send(sender, "R", id, 0)
+        Send(duel.address or sender, "R", id, 0)
         Changed()
         return
     end
-    Send(sender, "GO", id)
+    Send(duel.address or sender, "GO", id)
     Begin(tonumber(seed) or 1)
 end
 
@@ -519,11 +542,17 @@ local frame = CreateFrame("Frame")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:SetScript("OnEvent", function(_, _, prefix, message, _, sender)
     if prefix ~= PREFIX or issecret(message) or issecret(sender) then return end
+    local raw = sender
     sender = Short(sender)
-    if sender == SOLC.MyName() then return end
+    if SameName(sender, SOLC.MyName()) and not (duel and SameName(sender, duel.opponent)) then return end
     local fields = { strsplit("|", message) }
+    Debug("got %s from %s (%s)%s", fields[1] or "?", raw, sender,
+        duel and fields[2] and (duel.id == fields[2] and (SameName(sender, duel.opponent) and ", this duel" or ", this duel's id but not its player")
+            or ", another duel") or "")
     local handler = handlers[fields[1]]
+    lastSender = raw
     if handler then handler(sender, select(2, unpack(fields))) end
+    lastSender = nil
 end)
 C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
 

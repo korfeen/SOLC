@@ -1,10 +1,13 @@
-// Crayon backgrounds for the professions, behind a profession's info on the Overview's CRAFTS (OverviewCard.lua): one
-// scene per profession in the fridge-drawing style (tools/make-crayon-backgrounds.js), 2:1, the main thing on the right
-// (the icon, name and skill bar go over the left and middle, on a darkening). The game crops them to the info's strip,
-// so only about the middle two thirds of the height show: keep what matters between y 100 and 410.
-// Writes Media/Overview/Professions/<KEY>.blp (512x256; the keys are the profession icons') and a preview sheet,
-// %USERPROFILE%\killtracker-art-extra\Professions\preview.png (the shown strip outlined).
-// Usage: node tools/make-profession-backgrounds.js [filter]   No dependencies.
+// Crayon art for the Overview (OverviewCard.lua, FeedDetail.lua), in the fridge-drawing style
+// (tools/make-crayon-backgrounds.js); every scene 2:1, cropped by the game:
+// - Professions: behind a profession's info on CRAFTS. The main thing on the right (the icon, name and skill bar go over
+//   the left and middle, on a darkening); only about the middle two thirds of the height show: keep what matters
+//   between y 100 and 410.
+// - Feed and Dungeons (tools/overview-dungeons.js): behind a feed event's details on the right page (a creature's model or a rank's badge goes over the middle).
+//   The full height shows but only about the middle 72% of the width: keep what matters between x 150 and 870.
+// Writes Media/Overview/<set>/<KEY>.blp (512x256) and a preview sheet per set,
+// %USERPROFILE%\killtracker-art-extra\Overview\<set>.png (the shown part outlined).
+// Usage: node tools/make-overview-art.js [filter]   No dependencies.
 
 const fs = require("fs");
 const os = require("os");
@@ -15,8 +18,8 @@ const { resample, writeBlp } = require("./convert-art");
 const W = 1024, H = 512;  // drawn on the top half of a square canvas
 crayon.setSize(W);
 const { canvas, dab, stroke, crayonShape, circle, ellipse, star, quad, rotate, hex, OUTLINE, rng, writePng } = crayon;
-const OUT = path.join(__dirname, "..", "Media", "Overview", "Professions");
-const PREVIEW = path.join(os.homedir(), "killtracker-art-extra", "Professions");
+const MEDIA = path.join(__dirname, "..", "Media", "Overview");
+const PREVIEW = path.join(os.homedir(), "killtracker-art-extra", "Overview");
 const filter = (process.argv[2] || "").toUpperCase();
 
 const LINE = 14, HATCH = 22;
@@ -57,7 +60,7 @@ function flame(c, r, x, y, w, h) {
   fill(c, curve([[x - w * 0.5, y], [x - w * 0.4, y - h * 0.35], [x, y - h * 0.6], [x + w * 0.4, y - h * 0.35], [x + w * 0.5, y]], 8), "#ffd23f", r, { outline: null });
 }
 
-const SCENES = {
+const PROFESSIONS = {
   ALCHEMY(c, r) {
     wall(c, r, "#3b2a4a");
     fill(c, rect(-20, 210, 560, 232), "#7a4a26", r);  // the shelf
@@ -221,32 +224,142 @@ const SCENES = {
   },
 };
 
-fs.mkdirSync(OUT, { recursive: true });
-fs.mkdirSync(PREVIEW, { recursive: true });
-const keys = Object.keys(SCENES).filter((k) => k.includes(filter));
-const PW = 512, PH = 256, shown = [];
-keys.forEach((key, n) => {
-  const c = canvas();
-  SCENES[key](c, rng(9001 + Object.keys(SCENES).indexOf(key) * 7919));
-  const full = crayon.toRgba(c);
-  const band = { width: W, height: H, rgba: Buffer.from(full.subarray(0, W * H * 4)) };
-  const small = Buffer.from(resample(band, 0, 0, W, H, PW, PH));
-  writeBlp(path.join(OUT, key + ".blp"), PW, PH, small);
-  shown.push(small);
-  process.stdout.write(`\r${n + 1}/${keys.length} ${key}`.padEnd(40));
-});
-console.log();
-// The preview: each one with the strip the game shows (the middle 65%) outlined.
-const cols = 3, rows = Math.ceil(shown.length / cols), sheet = Buffer.alloc(PW * cols * PH * rows * 4);
-const stripTop = Math.round(PH * 0.173), stripBottom = Math.round(PH * 0.827);
-shown.forEach((pic, k) => {
-  const ox = (k % cols) * PW, oy = Math.floor(k / cols) * PH;
-  for (let y = 0; y < PH; y++) {
-    pic.copy(sheet, ((oy + y) * PW * cols + ox) * 4, y * PW * 4, (y + 1) * PW * 4);
-    if (y === stripTop || y === stripBottom) {
-      for (let x = 0; x < PW; x++) sheet.set([255, 255, 255, 255], ((oy + y) * PW * cols + ox + x) * 4);
-    }
+// A stone arch round a dark doorway (the dungeon entrance): blocks along the half-ellipse.
+function arch(c, r, cx, base, rx, ry) {
+  const n = 9;
+  for (let i = 0; i < n; i++) {
+    const a0 = Math.PI + (i / n) * Math.PI, a1 = Math.PI + ((i + 1) / n) * Math.PI;
+    const at = (a, k) => [cx + Math.cos(a) * rx * k, base + Math.sin(a) * ry * k];
+    fill(c, [at(a0, 1), at(a1, 1), at(a1, 1.28), at(a0, 1.28)], i % 2 ? "#8a8078" : "#a09890", r, { line: 10 });
   }
-});
-writePng(path.join(PREVIEW, "preview.png"), PW * cols, PH * rows, sheet);
-console.log(`Wrote ${keys.length} profession backgrounds to ${OUT} and the preview to ${PREVIEW}`);
+}
+// Sun rays from a point, every other wedge in a lighter colour.
+function rays(c, r, cx, cy, n, col) {
+  for (let i = 0; i < n; i += 2) {
+    const a0 = (i / n) * 2 * Math.PI, a1 = ((i + 1) / n) * 2 * Math.PI;
+    soft(c, [[cx, cy], [cx + Math.cos(a0) * 1400, cy + Math.sin(a0) * 1400], [cx + Math.cos(a1) * 1400, cy + Math.sin(a1) * 1400]], col, r);
+  }
+}
+const FEED = {
+  DUNGEON(c, r) {
+    wall(c, r, "#2a2430");
+    fill(c, [[-20, 460], [120, 180], [300, 90], [512, 40], [720, 100], [900, 170], [W + 20, 440]], "#4a4040", r, { hatch: 26 });
+    fill(c, ellipse(512, 470, 150, 300).filter(([, y]) => y <= 470), "#120c10", r, { outline: null });
+    arch(c, r, 512, 470, 150, 300);
+    dab(c, 488, 300, 9, hex("#ffd23f"), 0.95);  // something looking out
+    dab(c, 536, 300, 9, hex("#ffd23f"), 0.95);
+    floor(c, r, 460, "#3a3030");
+    for (const x of [300, 724]) {
+      line(c, [[x, 470], [x, 330]], 18, "#6a4020", r);
+      flame(c, r, x, 335, 34, 70);
+    }
+    dots(c, r, 18, "#5a5050", 9, [40, 380, 980, 500]);
+  },
+  ACHIEVEMENT(c, r) {
+    wall(c, r, "#3a2a4a");
+    rays(c, r, 512, 230, 24, "#4e3a64");
+    fill(c, rect(420, 400, 604, 470), "#8a6a4a", r);  // the pedestal
+    fill(c, rect(380, 466, 644, 520), "#6a4a2a", r);
+    for (const x of [380, 644]) fill(c, circle(x, 170, 46), "#ffd23f", r, { holes: [circle(x, 170, 26)] });  // the handles
+    fill(c, rect(470, 360, 554, 404), "#ffd23f", r);  // the base, the stem, the bowl
+    fill(c, rect(496, 290, 528, 362), "#ffd23f", r);
+    fill(c, curve([[400, 110], [420, 260], [512, 300], [604, 260], [624, 110]], 12), "#ffd23f", r);
+    soft(c, curve([[440, 130], [452, 220], [490, 262]], 8).concat([[470, 130]]), "#fff2a8", r);
+    const colours = ["#ff4a3a", "#4f86e8", "#5bd24a", "#ff9a2a", "#e07ad8", "#3ad8c8"];
+    for (let i = 0; i < 40; i++) {
+      const x = 150 + r() * 720, y = 20 + r() * 330;
+      if (Math.abs(x - 512) < 170 && y > 80) continue;
+      fill(c, rotate(rect(x - 10, y - 5, x + 10, y + 5), r() * 3, x, y), colours[i % colours.length], r, { line: 6 });
+    }
+  },
+  RANK(c, r) {
+    wall(c, r, "#5a3a1a");
+    rays(c, r, 512, 250, 28, "#7a5226");
+    fill(c, [[-20, H + 20], ...curve([[-20, 420], [300, 380], [700, 400], [W + 20, 370]], 12), [W + 20, H + 20]], "#4a7a2a", r);
+    fill(c, rect(400, 430, 624, 520), "#8a5a2e", r);  // the podium
+    fill(c, rect(250, 465, 400, 520), "#7a4e28", r);
+    fill(c, rect(624, 475, 774, 520), "#7a4e28", r);
+    for (let i = 0; i < 10; i++) sparkle(c, r, 180 + r() * 660, 40 + r() * 120, 10 + r() * 10, "#ffd23f");
+  },
+  BOUNTY(c, r) {
+    wall(c, r, "#6b4a2a");
+    for (let y = 60; y < H; y += 90) line(c, [[-20, y], [W + 20, y + 6]], 6, "#4a3018", r);  // planks
+    fill(c, rect(240, 60, 784, 460), "#8a5a30", r);  // the board
+    for (const [x, y, a] of [[360, 250, -0.06], [520, 230, 0.04], [670, 260, 0.08]]) {
+      fill(c, rotate(rect(x - 70, y - 120, x + 70, y + 120), a, x, y), "#f0e0b0", r);  // a wanted poster
+      const at = (dx, dy) => rotate([[x + dx, y + dy]], a, x, y)[0];
+      line(c, [at(-44, -90), at(44, -90)], 10, "#8a2a1a", r);
+      const [fx, fy] = at(0, -20);
+      fill(c, circle(fx, fy, 40), "#5bd24a", r, { line: 8 });  // a scribbled face
+      for (const dx of [-14, 14]) { const [ex, ey] = at(dx, -28); dab(c, ex, ey, 6, OUTLINE, 0.9); }
+      line(c, [at(-16, -2), at(16, -2)], 6, OUTLINE, r);
+      for (const dy of [50, 74]) line(c, [at(-44, dy), at(44, dy)], 6, "#8a7050", r);
+      const [nx, ny] = at(0, -112);
+      dab(c, nx, ny, 9, hex("#9aa0a8"), 0.95);  // its nail
+    }
+    line(c, [[540, 120], [600, 60]], 14, "#c0c8d0", r);  // a knife stuck in the board
+    line(c, [[600, 60], [624, 36]], 20, "#6a4020", r);
+  },
+  CREATURE(c, r) {
+    ["#232344", "#352c4c", "#4a3450", "#5e3c4c"].forEach((col, i) => soft(c, rect(-20, i * 100 - 10, W + 20, (i + 1) * 100 + 10), col, r));
+    fill(c, circle(820, 90, 40), "#fff2a8", r);
+    dots(c, r, 30, "#fff2a8", 3, [0, 0, W, 200]);
+    fill(c, [[-20, H + 20], ...curve([[-20, 330], [260, 280], [520, 320], [780, 270], [W + 20, 320]], 12), [W + 20, H + 20]], "#2a2a3a", r);
+    floor(c, r, 400, "#2f3a26");
+    for (const [x, h] of [[90, 300], [190, 220], [860, 260], [950, 320]]) {
+      line(c, [[x, 420], [x, 420 - h * 0.4]], 18, "#3a2414", r);
+      fill(c, [[x - 70, 420 - h * 0.3], [x, 420 - h], [x + 70, 420 - h * 0.3]], "#1f3a2a", r);
+    }
+    for (let i = 0; i < 8; i++) {
+      const x = 260 + i * 70 + r() * 20;
+      line(c, curve([[x, 470], [x - 10, 440], [x + 4, 415]], 6), 7, "#4a6a3a", r);
+    }
+  },
+};
+
+// The dungeons' scenes (tools/overview-dungeons.js), drawn with the pieces here.
+const { DUNGEONS } = require("./overview-dungeons")({ W, H, fill, soft, line, curve, rect, wall, floor, dots, sparkle, gear,
+  flame, arch, rays, circle, ellipse, star, rotate, hex, dab, OUTLINE });
+
+// The sets: their scenes, folder and the part the game shows (as shares of the width and height, for the preview).
+const SETS = [
+  { name: "Professions", scenes: PROFESSIONS, seed: 9001, shown: [0, 0.173, 1, 0.827] },
+  { name: "Feed", scenes: FEED, seed: 4242, shown: [0.138, 0, 0.862, 1] },
+  { name: "Dungeons", scenes: DUNGEONS, seed: 7331, shown: [0.138, 0, 0.862, 1] },
+];
+// Also a library: the dungeon scenes for the minting backdrops (tools/make-unlock-art.js).
+module.exports = { W, H, DUNGEONS, toRgba: crayon.toRgba, canvas, rng };
+if (require.main === module) {
+const PW = 512, PH = 256;
+fs.mkdirSync(PREVIEW, { recursive: true });
+for (const set of SETS) {
+  const all = Object.keys(set.scenes), keys = all.filter((k) => k.includes(filter)), shown = [];
+  if (keys.length === 0) continue;
+  keys.forEach((key, n) => {
+    const c = canvas();
+    set.scenes[key](c, rng(set.seed + all.indexOf(key) * 7919));
+    const full = crayon.toRgba(c);
+    const band = { width: W, height: H, rgba: Buffer.from(full.subarray(0, W * H * 4)) };
+    const small = Buffer.from(resample(band, 0, 0, W, H, PW, PH));
+    writeBlp(path.join(MEDIA, set.name, key + ".blp"), PW, PH, small);
+    shown.push(small);
+    process.stdout.write(`\r${set.name} ${n + 1}/${keys.length} ${key}`.padEnd(50));
+  });
+  console.log();
+  // The preview: each one with the part the game shows outlined.
+  const cols = 3, rows = Math.ceil(shown.length / cols), sheet = Buffer.alloc(PW * cols * PH * rows * 4);
+  const [x0, y0, x1, y1] = set.shown.map((v, i) => Math.min((i % 2 ? PH : PW) - 1, Math.round(v * (i % 2 ? PH : PW))));
+  shown.forEach((pic, k) => {
+    const ox = (k % cols) * PW, oy = Math.floor(k / cols) * PH;
+    for (let y = 0; y < PH; y++) {
+      pic.copy(sheet, ((oy + y) * PW * cols + ox) * 4, y * PW * 4, (y + 1) * PW * 4);
+      for (let x = 0; x < PW; x++) {
+        const edge = ((y === y0 || y === y1) && x >= x0 && x <= x1) || ((x === x0 || x === x1) && y >= y0 && y <= y1);
+        if (edge) sheet.set([255, 255, 255, 255], ((oy + y) * PW * cols + ox + x) * 4);
+      }
+    }
+  });
+  writePng(path.join(PREVIEW, set.name + ".png"), PW * cols, PH * rows, sheet);
+  console.log(`Wrote ${keys.length} ${set.name} scenes to ${path.join(MEDIA, set.name)}`);
+}
+}

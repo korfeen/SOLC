@@ -26,7 +26,7 @@
 --                every layer in crayon / sketch, layer=c,layer=s for a mix)
 --   bounty     = week^bounty id^kills            (this week's guild bounty kills, see Guild.lua; at most one)
 --   summary    = earned points^PvP kills         (always sent, for the Members and Leaderboard pages)
---   event      = time^kind^a^b                   (guild activity feed, see Feed.lua)
+--   event      = time^kind^a^b[^c^d]             (guild activity feed, see Feed.lua; c and d from 0.41.0 on)
 --   gear       = race^sex^class^level^guid^slot:itemID[:enchant:suffix];...   (character and equipment, see
 --                Gear.lua; only when changed, empty otherwise; enchant and suffix in decimal)
 --   professions = P^line:rank:max:icon:name;...^line=recipeID,recipeID...^line=...   (see Professions.lua;
@@ -245,7 +245,7 @@ local function Serialize(db, baseSeq)
     local events = {}
     for _, e in ipairs(db.events or {}) do
         if (e.seq or 0) > baseSeq then
-            events[#events + 1] = table.concat({ Base36(e.t), Clean(e.k), Clean(e.a), Clean(e.b) }, FIELD)
+            events[#events + 1] = table.concat({ Base36(e.t), Clean(e.k), Clean(e.a), Clean(e.b), Clean(e.c), Clean(e.d) }, FIELD)
         end
     end
     return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
@@ -308,7 +308,10 @@ local function Deserialize(payload)
     for _, item in ipairs(Split(s[13], ITEM)) do
         local e = Split(item, FIELD)
         local t, kind = FromBase36(e[1]), Optional(e[2])
-        if t and kind then update.events[#update.events + 1] = { t = t, k = kind, a = Optional(e[3]), b = Optional(e[4]) } end
+        if t and kind then
+            update.events[#update.events + 1] = { t = t, k = kind, a = Optional(e[3]), b = Optional(e[4]),
+                c = Optional(e[5]), d = Optional(e[6]) }  -- c and d from 0.41.0 on (Feed.lua)
+        end
     end
     f = Split(s[14] or "", FIELD)  -- from 0.37.0 on
     if f[6] then

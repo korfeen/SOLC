@@ -21,7 +21,7 @@ local TITLE_COLOR = { 0.94, 0.69, 0.38 }
 local BAR_COLOR, BAR_TRACK = { 1, 0.85, 0.01 }, { 0.16, 0.12, 0.11 }
 local PANEL_TEXT = { 0.93, 0.88, 0.78 }
 local ARROW_DIM = { 0.75, 0.7, 0.62 }
-local RANK_LINES = 18                        -- perk lines in the rank panel
+local RANK_LINES = 20                        -- perk lines in the rank panel
 -- A title earned (to come): nothing earns one yet, so everyone wears this test one.
 local TEST_TITLE = "the Big Napper"
 
@@ -484,7 +484,7 @@ local function Build()
     for i = 1, RANK_LINES do
         local line = rank:CreateFontString(nil, "OVERLAY")
         line:SetFont(NAME_FONT, 12, "")
-        line:SetPoint("TOPLEFT", 4, -68 - i * 18)
+        line:SetPoint("TOPLEFT", 4, -68 - i * 16)
         line:SetWidth(slot.right - slot.left - 28)
         line:SetJustifyH("LEFT")
         line:SetWordWrap(false)

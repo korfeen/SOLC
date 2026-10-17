@@ -4,7 +4,7 @@
 -- Left: tabs. MINE (THEIRS on a guildmate's): their pictures, newest first, yours led by a tile to mint a new one.
 -- GUILD: everyone's, newest first, with whose. SHOP: the Collection's rows (minting, the collectibles, the points and
 -- where they came from, saved paintings), in the Overview feed's style.
--- Right: the picked picture hung in the Overview's frame, its rarity under it, its owner on the plaque; under the frame
+-- Right: the picked picture filling the page, its owner on the cross beam under it, its rarity under that; then
 -- its traits (on your own with the crayon edition: click one to draw it painted, in crayon or sketched), and buttons:
 -- show it on your Overview, switch the whole picture's edition, use it as your Overview photo, reroll a duplicate.
 
@@ -15,10 +15,8 @@ if not List then return end
 local state = List.state
 local Fit, Tooltip = UI.FitText, UI.Tooltip
 
-local ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local SIGN_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\FingerPaint-Regular.ttf"
-local INK = { 0.16, 0.16, 0.18 }
 local CREAM, DIM = { 0.93, 0.88, 0.78 }, { 0.62, 0.56, 0.48 }
 local GOLD = { 1, 0.85, 0.1 }
 local HOVER_COLOR = { 0.65, 0.53, 0.28 }
@@ -39,17 +37,18 @@ local LEFT = {
     tiles = { lefts = { 242, 371, 500 }, top = 349, size = 122, step = 128, rim = 2, color = { 0.03, 0.03, 0.03 } },
     rows = { top = 343, height = 24, size = 13, colors = { 0.25, 0.18 }, bar = 3, empty = { 0.1, 0.1, 0.1 } },
 }
--- The right page: the frame (as the Overview's), the picture in its opening and the rarity under it, the plaque, and
--- under the frame the traits (left) and the buttons (right).
+-- The right page: the picture (filling it from the top beam, its sides under the middle beam and the post), the cross
+-- beam under it with the owner's name on (UI.PhotoBeam), the rarity under that, then the traits (left) and the buttons
+-- (right).
 local RIGHT = {
     color = { 0.094, 0.094, 0.094 },
-    frame = { x = 688, y = 156, w = 362, h = 447 },
-    photo = { x = 869, y = 389.5, w = 308, h = 329 },
-    picture = { x = 869, y = 381, size = 296 },
-    rarity = { x = 869, y = 541 },
-    plaque = { x = 874, y = 578, w = 170, size = 22 },
-    traits = { x = 700, top = 612, width = 222, line = 15, size = 12 },
-    buttons = { x = 930, top = 612, w = 128, h = 24, gap = 4 },
+    photo = { x = 869, y = 344, w = 396, h = 396 },
+    picture = { x = 869, y = 344, size = 396 },
+    beam = 536,
+    rarity = { x = 869, y = 594 },
+    plaque = { w = UI.PHOTO_NAME_WIDTH, size = 22 },
+    traits = { x = 690, top = 608, width = 232, line = 15, size = 12 },
+    buttons = { x = 930, top = 604, w = 128, h = 24, gap = 4 },
 }
 
 local function Capitalize(text) return (text:gsub("^%l", string.upper)) end
@@ -117,7 +116,17 @@ local function DrawTiles()
         tile.picture = picture
         tile:SetShown(picture ~= nil)
         if picture then
-            if picture.mintAction then
+            tile.chest:SetShown(picture.chest ~= nil)
+            if picture.chest then  -- a dungeon chest to open (Chests.lua)
+                local dungeon = ns.DungeonByKey and ns.DungeonByKey(picture.chest)
+                tile.canvas:Hide()
+                tile.plus:Hide()
+                tile.border:SetVertexColor(1, 0.82, 0.25)
+                tile.caption:SetText("|cffffd100OPEN|r")
+                tile.band:Show()
+                tile.tag:SetText(picture.count > 1 and ("|cffffd100x%d|r"):format(picture.count) or "")
+                tile.dungeonName = dungeon and dungeon.name or "A dungeon"
+            elseif picture.mintAction then
                 tile.canvas:Hide()
                 tile.plus:Show()
                 tile.border:SetVertexColor(0.5, 0.4, 0.2)
@@ -378,6 +387,11 @@ ns.RegisterPage({
                 tile.caption:SetPoint("BOTTOM", 0, spec.rim + 3)
                 tile.caption:SetWidth(spec.size - 8)
                 tile.caption:SetWordWrap(false)
+                tile.chest = over:CreateTexture(nil, "ARTWORK")
+                tile.chest:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Chest")
+                tile.chest:SetSize(spec.size - 30, spec.size - 30)
+                tile.chest:SetPoint("CENTER", 0, 8)
+                tile.chest:Hide()
                 tile.tag = over:CreateFontString(nil, "OVERLAY")
                 tile.tag:SetFont(NAME_FONT, 14, "")
                 tile.tag:SetPoint("TOPRIGHT", -6, -4)
@@ -385,10 +399,15 @@ ns.RegisterPage({
                 tile:SetScript("OnClick", function(self)
                     UI.ClickSound()
                     if self.picture.mintAction then return ns.ConfirmMint() end
+                    if self.picture.chest then return ns.ShowChest(self.picture.chest) end
                     Pick(self.picture)
                 end)
                 tile:SetScript("OnEnter", function(self)
                     local picture = self.picture
+                    if picture.chest then
+                        return Tooltip(self, { self.dungeonName .. (picture.count > 1 and (" chests (%d)"):format(picture.count) or " chest"),
+                            "Coins, and things for your pictures to roll. Click to open.", picture.count > 1 and "Open them one after another." or nil })
+                    end
                     if picture.mintAction then
                         return Tooltip(self, { "Mint a picture", ("%d points. Rolls a random background, skin, outfit, expression, eyes, accessory and headwear. Rarer traits make a rarer picture."):format(ns.MintCost()) })
                     end
@@ -498,19 +517,11 @@ ns.RegisterPage({
         local hung = CreateFrame("Frame", nil, card)
         hung:SetAllPoints()
         hung:SetFrameLevel(page.canvas:GetFrameLevel() + 10)
-        local frameArt = hung:CreateTexture(nil, "ARTWORK")
-        frameArt:SetTexture(ART .. "HangingPicture")
-        frameArt:SetTexCoord(0, RIGHT.frame.w / 512, 0, RIGHT.frame.h / 512)
-        frameArt:SetSize(RIGHT.frame.w, RIGHT.frame.h)
-        At(frameArt, "TOPLEFT", RIGHT.frame.x, RIGHT.frame.y)
         page.rarity = hung:CreateFontString(nil, "OVERLAY")
         page.rarity:SetFont(NAME_FONT, 13, "")
         At(page.rarity, "CENTER", RIGHT.rarity.x, RIGHT.rarity.y)
         UI.OutlineText(page.rarity, { 0, 0, 0 })
-        page.plaque = hung:CreateFontString(nil, "OVERLAY")
-        At(page.plaque, "CENTER", RIGHT.plaque.x, RIGHT.plaque.y)
-        page.plaque:SetTextColor(unpack(INK))
-        page.plaque:SetShadowOffset(0, 0)
+        page.plaque = select(2, UI.PhotoBeam(hung, RIGHT.beam))  -- the photo's bottom edge, the name on it
 
         local traits = RIGHT.traits
         page.traitRows = {}
@@ -598,7 +609,11 @@ ns.RegisterPage({
             local guild = p.tab == "guild"
             p.pictures = guild and GuildPictures() or PicturesOf(state.viewing)
             local count = #p.pictures
-            if not guild and not state.viewing then table.insert(p.pictures, 1, { mintAction = true }) end
+            if not guild and not state.viewing then
+                table.insert(p.pictures, 1, { mintAction = true })
+                local counts, order = ns.ChestCounts()  -- a tile per dungeon's chests (Chests.lua)
+                for i = #order, 1, -1 do table.insert(p.pictures, 2, { chest = order[i], count = counts[order[i]] }) end
+            end
             p.line:SetText(guild and ("|cffffbf66%d|r pictures in the guild, newest first"):format(count)
                 or ("|cffffbf66%d|r picture%s%s"):format(count, count == 1 and "" or "s",
                     state.viewing and "" or ("  |cff999999- %d points|r"):format(ns.GetPoints().balance)))

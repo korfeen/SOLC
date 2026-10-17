@@ -17,6 +17,12 @@
 // part; MintArt.lua gives such an option <edition> (texture) and <edition>Rect. Crayon: hand-drawn
 // (tools/make-crayon-*.js); sketch: the paintings through a crayon filter (tools/crayonize-art.js). A picture's
 // layers show in an edition once unlocked (Minting.lua).
+// Unlockables (UNLOCKS, tools/make-unlock-art.js): options made here rather than painted, unlocked in game (Unlocks.lua):
+// UNLOCKS/painted/<Layer>/<Rarity>/<option>.png, twins in UNLOCKS/crayon and UNLOCKS/sketch where they have them (else
+// every edition shows the one texture; they're never sketched automatically), and UNLOCKS/unlocks.json:
+// { "<layer key>/<option id>": { unlock, faceSkin, name, dropChance } }. unlock: what unlocks it (dropChance: a chase
+// item's chance in its dungeon's chest, Unlocks.lua); faceSkin: for a skin, the skin
+// whose eyes and mouths it wears (a boss skin is a skin with things drawn on, so the per-skin art fits it as is).
 // Usage: node tools/convert-art.js [density]   (default 512). No dependencies.
 
 const fs = require("fs");
@@ -33,6 +39,7 @@ const EDITIONS = [
     { key: "sketch", source: path.join(os.homedir(), "killtracker-art-extra", "CrayonArt"), folder: "Sketch" },
 ];
 for (const edition of EDITIONS) edition.target = path.join(__dirname, "..", "Media", edition.folder);
+const UNLOCKS = path.join(os.homedir(), "killtracker-art-extra", "Unlocks");
 const RARITIES = ["uncommon", "rare", "epic", "legendary"];  // no common: uncommon is the everyday tier
 const SKIN_LAYER = "skin";  // per-skin options are drawn once per option of this layer
 
@@ -438,8 +445,32 @@ for (const folder of subdirs(SOURCE)) {
     if (options.size) layers[key] = { key, folder, options: [...options.values()] };
 }
 
+// The unlockables, added to their layers.
+{
+    const painted = path.join(UNLOCKS, "painted");
+    const infoFile = path.join(UNLOCKS, "unlocks.json");
+    const info = fs.existsSync(infoFile) ? JSON.parse(fs.readFileSync(infoFile, "utf8")) : {};
+    for (const folder of fs.existsSync(painted) ? subdirs(painted) : []) {
+        const key = toId(folder);
+        const layer = layers[key] || (layers[key] = { key, folder, options: [] });
+        for (const rarityFolder of subdirs(path.join(painted, folder))) {
+            const rarity = rarityFolder.toLowerCase();
+            if (!RARITIES.includes(rarity)) continue;
+            for (const file of pngs(path.join(painted, folder, rarityFolder)).filter((f) => !/\.front\.png$/i.test(f))) {
+                const id = toId(file), meta = info[key + "/" + id] || {};
+                if (layer.options.some((o) => o.id === id)) throw new Error(`Unlockable ${folder}/${id} has the id of an option already there`);
+                // <option>.front.png beside it: drawn in front of the whole picture (a boss's mask), one for every edition.
+                const front = path.join(painted, folder, rarityFolder, file.replace(/\.png$/i, ".front.png"));
+                layer.options.push({ id, name: meta.name || toName(file), rarity, unlock: meta.unlock, faceSkin: meta.faceSkin, dropChance: meta.dropChance,
+                    root: painted, files: [{ skin: null, file: path.join(painted, folder, rarityFolder, file) }],
+                    frontFile: fs.existsSync(front) ? front : null });
+            }
+        }
+    }
+}
+
 // Sanity checks: per-skin options need a file for every skin, and nothing else.
-const skins = (layers[SKIN_LAYER] ? layers[SKIN_LAYER].options : []).map((o) => o.id);
+const skins = (layers[SKIN_LAYER] ? layers[SKIN_LAYER].options : []).filter((o) => !o.faceSkin).map((o) => o.id);  // (boss skins wear another's)
 let problems = 0;
 for (const layer of Object.values(layers)) {
     for (const option of layer.options) {
@@ -496,7 +527,7 @@ function convertOption(layer, option, images, target) {
 // still without a crayon twin are listed (those are drawn by hand: tools/make-crayon-*.js).
 {
     const sketch = EDITIONS.find((e) => e.key === "sketch"), crayon = EDITIONS.find((e) => e.key === "crayon");
-    const files = Object.values(layers).flatMap((layer) => layer.options.flatMap((o) => o.files.map((f) => path.relative(SOURCE, f.file))));
+    const files = Object.values(layers).flatMap((layer) => layer.options.filter((o) => !o.root).flatMap((o) => o.files.map((f) => path.relative(SOURCE, f.file))));
     for (const rel of files.filter((f) => !fs.existsSync(path.join(sketch.source, f)))) {
         console.log(`Sketching ${rel}`);
         require("child_process").execFileSync(process.execPath, [path.join(__dirname, "crayonize-art.js"), rel], { stdio: "ignore" });
@@ -517,10 +548,15 @@ for (const layer of Object.values(layers)) {
         const painted = convertOption(layer, option, images, TARGET);
         option.full = painted.full;
         option.rect = painted.rect;
+        if (option.frontFile) {
+            option.front = convertOption(layer, { id: option.id + "_front" }, [{ skin: null, file: option.frontFile, image: decodePng(option.frontFile) }], TARGET);
+        }
         // Its twins in the editions, where every one of its files has one.
         option.editions = {};
         for (const edition of EDITIONS) {
-            const twins = option.files.map((f) => path.join(edition.source, path.relative(SOURCE, f.file)));
+            const twins = option.files.map((f) => option.root
+                ? path.join(UNLOCKS, edition.key, path.relative(option.root, f.file))
+                : path.join(edition.source, path.relative(SOURCE, f.file)));
             if (!twins.every((t) => fs.existsSync(t))) continue;
             option.editions[edition.key] = convertOption(layer, option, option.files.map((f, i) => ({ ...f, image: decodePng(twins[i]) })), edition.target);
             twinCounts[edition.key] = (twinCounts[edition.key] || 0) + 1;
@@ -536,7 +572,9 @@ const lines = [
     "-- Generated by tools/convert-art.js from the source art; don't edit, rerun the script instead.",
     "-- [layer key] = options { id, name, rarity, texture, rect = { x, y, width, height } as fractions of the",
     "-- picture, perSkin = texture has a %s for the skin id, crayon / sketch = its twin's texture in that edition",
-    "-- (crayonRect / sketchRect its rect) }.",
+    "-- (crayonRect / sketchRect its rect), unlock = what unlocks it (Unlocks.lua; not rolled until then), faceSkin = for",
+    "-- a skin, the skin whose per-skin art (eyes, mouths) it wears, front = a texture drawn in front of the whole picture",
+    "-- (frontRect its rect) }.",
     "-- Layer order and names are in Minting.lua.",
     "",
     "local _, ns = ...",
@@ -557,7 +595,11 @@ for (const layer of Object.values(layers)) {
             crayon += `, ${key} = ${key.toUpperCase()} .. "${layer.folder}\\\\${o.perSkin ? "%s\\\\" : ""}${o.id}"`;
             if (!e.full) crayon += `, ${key}Rect = { ${e.rect.map(num).join(", ")} }`;
         }
-        lines.push(`        { id = "${o.id}", name = "${o.name}", rarity = "${o.rarity}", texture = ${texture}${rect}${o.perSkin ? ", perSkin = true" : ""}${crayon} },`);
+        let unlock = (o.unlock ? `, unlock = "${o.unlock}"` : "") + (o.faceSkin ? `, faceSkin = "${o.faceSkin}"` : "") +
+            (o.dropChance ? `, dropChance = ${o.dropChance}` : "");
+        if (o.front) unlock += `, front = MEDIA .. "${layer.folder}\\\\${o.id}_front"` + (o.front.full ? "" : `, frontRect = { ${o.front.rect.map(num).join(", ")} }`);
+        const name = o.name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        lines.push(`        { id = "${o.id}", name = "${name}", rarity = "${o.rarity}", texture = ${texture}${rect}${o.perSkin ? ", perSkin = true" : ""}${crayon}${unlock} },`);
     }
     lines.push("    },");
 }

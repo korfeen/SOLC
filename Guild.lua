@@ -268,6 +268,33 @@ local function IsGuildmate(unit)
     return names[name] or (realm and realm ~= "" and names[name .. "-" .. realm]) or false
 end
 
+-- The group's units to look through: party1-4, or raid1-40.
+local function GroupUnits()
+    if IsInRaid() then return "raid", 40 end
+    return "party", 4
+end
+
+-- The guildmates in your party or raid (not you), by name (first names on the beta; see the Overview's feed details).
+local function GuildmateNames()
+    local names = {}
+    if not IsInGuild() or not IsInGroup() then return names end
+    local prefix, size = GroupUnits()
+    for i = 1, size do
+        local unit = prefix .. i
+        local name = IsGuildmate(unit) and UnitName(unit)
+        if name and not issecret(name) then names[#names + 1] = name end
+    end
+    return names
+end
+
+-- The instance map a boss fight was in: the encounter's (Encounters.lua), else where you are.
+local function InstanceMap(encounterID)
+    local map = ns.EncounterMaps and ns.EncounterMaps[encounterID]
+    if map then return map end
+    local here = select(8, GetInstanceInfo())
+    if here and not issecret(here) then return here end
+end
+
 -- Number of guildmates in your party or raid (not counting you).
 function ns.GuildmatesInGroup()
     if not IsInGuild() or not IsInGroup() then return 0 end
@@ -467,6 +494,9 @@ local function OnEncounterEnd(encounterID, encounterName, _, _, success)
         ns.RecordBossKill(boss[1], boss[2], key)
     end
     local guildmates = ns.GuildmatesInGroup()
+    -- An end boss down: a chance to unlock the dungeon for minting, better the more guildmates there are (Unlocks.lua).
+    local cleared = ns.DungeonForEncounter and ns.DungeonForEncounter(encounterID, bossName)
+    if cleared and ns.OnDungeonClear then ns.OnDungeonClear(cleared, guildmates) end
     if guildmates < ns.Config("dungeonGuildmates") then return end
     local db = KillTrackerDB
     db.guildBosses = db.guildBosses or {}  -- [encounterID] = day it last paid
@@ -481,7 +511,7 @@ local function OnEncounterEnd(encounterID, encounterName, _, _, success)
     local name = (encounterName and not issecret(encounterName)) and encounterName or "Boss"
     ns.ShowToast(final and "achievement" or "record", final and "Guild clear!" or "Guild boss down!", name,
         ("+%d points (%d guildmates)"):format(points, guildmates))
-    ns.AddEvent("D", name, final and 1 or 0)
+    ns.AddEvent("D", name, final and 1 or 0, InstanceMap(encounterID), table.concat(GuildmateNames(), ","))
     ns.OnBountyEvent("dungeon")
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end

@@ -70,7 +70,7 @@ end
 ns.AchievementPoints = AchievementPoints
 
 -- Points of KillTrackerDB or a friend's stats: { kills, newMobs, leaders, achievements, pvp, guildGroup, dungeons,
--- bounty, earned, spent, balance }.
+-- bounty, chests, earned, spent, balance }.
 -- Friends' kill points aren't synced, so they're estimated at 1 per kill.
 function ns.GetPoints(source)
     source = source or KillTrackerDB
@@ -96,7 +96,8 @@ function ns.GetPoints(source)
     p.guildGroup = math.floor(source.points and source.points.guildGroup or 0)
     p.dungeons = source.points and source.points.dungeons or 0
     p.bounty = source.points and source.points.bounty or 0
-    p.earned = p.kills + p.newMobs + p.leaders + p.achievements + p.pvp + p.guildGroup + p.dungeons + p.bounty
+    p.chests = source.points and source.points.chests or 0  -- coins from dungeon chests (Unlocks.lua)
+    p.earned = p.kills + p.newMobs + p.leaders + p.achievements + p.pvp + p.guildGroup + p.dungeons + p.bounty + p.chests
     p.balance = p.earned - p.spent
     return p
 end

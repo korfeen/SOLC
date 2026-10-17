@@ -50,6 +50,8 @@ local FIELDS = {
     { key = "dungeonGuildmates", label = "Guildmates needed", default = 3, min = 1, max = 39 },
     { key = "dungeonBoss", label = "Boss", default = 10, min = 0, max = 10000 },
     { key = "dungeonFinalBoss", label = "Final boss", default = 50, min = 0, max = 10000 },
+    { key = "chestChance", label = "Chest % per player in the group", default = 25, min = 0, max = 100 },
+    { key = "chestCoins", label = "Chest coins", default = 20, min = 0, max = 10000 },
     { heading = "Weekly bounty" },
     { key = "bountyGoalPercent", label = "Goal size % (100 = normal)", default = 100, min = 1, max = 10000 },
     { key = "bountyMinPercent", label = "Reward share % of goal", default = 4, min = 0, max = 100 },

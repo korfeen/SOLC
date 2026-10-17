@@ -114,6 +114,167 @@ for index, zone in ipairs(ns.RareZones or {}) do
             tiers = { { count, ZONE_RARE_NAMES[zone] or (zone .. "'s Most Wanted"), 10 + 5 * count } } }
     end
 end
+-- Dungeon deeds: a dungeon (or a wing of one) is cleared when its last boss dies, so its clears are the kills of that
+-- boss (bosses count from their encounters, Guild.lua; the same last bosses pay the guild clear points there). That
+-- makes them known for guildmates too, and back to when bosses started counting. Each: cleared 1, 3 and 10 times, and
+-- (for more than one boss) every boss in it killed at least once; then clears in all, and how many different
+-- dungeons. last: its last boss's encounter(s) (two when the game has two versions); bosses: the encounters that are
+-- its bosses (default: every encounter in map, Encounters.lua). A boss no creature data knows yet counts under
+-- 9000000 + its encounter (Guild.lua), so it's looked for there too. Raids not in the game data yet go by their
+-- bosses' names instead (lastNames, bossNames: the encounter names the game reports, the names their kills keep).
+local DUNGEONS = {
+    { key = "rfc", name = "Ragefire Chasm", map = 389, last = { 2735 },
+        tiers = { "Fire Drill", "Hot Footed", "Chasm Spelunker" }, full = "Ragefire Extinguished" },
+    { key = "wc", name = "Wailing Caverns", map = 43, last = { 592 },
+        tiers = { "Wake-Up Call", "Bad Dreams", "Professional Dreamer" }, full = "Nightmare's End" },
+    { key = "dm", name = "The Deadmines", map = 36, last = { 2747 },
+        tiers = { "Shift's Over, VanCleef", "Union Busting", "Mine Inspector" }, full = "Nobody Left In The Mines" },
+    { key = "sfk", name = "Shadowfang Keep", map = 33, last = { 2755 },
+        tiers = { "Worgen Wrangler", "Arugal's Landlord", "Keep The Change" }, full = "Lights Out At The Keep" },
+    { key = "bfd", name = "Blackfathom Deeps", map = 48, last = { 2910, 2767, 2891 },
+        tiers = { "Deep Dive", "Aku'mai Tamer", "Gills Optional" }, full = "Bottom Of The Deeps" },
+    { key = "stocks", name = "The Stockade", map = 34, last = { 2760 },
+        tiers = { "Prison Break", "Repeat Offender", "Lifer" }, full = "Cell Block Cleared" },
+    { key = "gnomer", name = "Gnomeregan", map = 90, last = { 2772, 2940 },
+        tiers = { "Mekgineer's Bane", "Reboot Required", "Radiation Resistant" }, full = "Every Gnome Accounted For" },
+    { key = "rfk", name = "Razorfen Kraul", map = 47, last = { 2778 },
+        tiers = { "Charlga's Last Charge", "Quill Pusher", "Kraul Regular" }, full = "Bramble Cleared" },
+    { key = "smgy", name = "Scarlet Monastery: Graveyard", bosses = { 444, 2779 }, last = { 2779 },
+        tiers = { "Grave Robber", "Thalnos Unbound", "Tomb Raider" }, full = "Restless No More" },
+    { key = "smlib", name = "Scarlet Monastery: Library", bosses = { 446, 447 }, last = { 447 },
+        tiers = { "Book Burner", "Overdue Fines", "Library Card" }, full = "Silent Library" },
+    { key = "smarm", name = "Scarlet Monastery: Armory", bosses = { 448 }, last = { 448 },
+        tiers = { "Herod's Last Whirlwind", "Blades Of Light", "Armory Raider" } },
+    { key = "smcath", name = "Scarlet Monastery: Cathedral", bosses = { 449, 450 }, last = { 450 },
+        tiers = { "Mograine Who?", "Whitemane's Woe", "Crusade's End" }, full = "Scarlet Letter" },
+    { key = "rfd", name = "Razorfen Downs", map = 129, last = { 2785 },
+        tiers = { "Coldbringer's Chill", "Bone Collector", "Downs And Out" }, full = "Downs Cleared" },
+    { key = "ulda", name = "Uldaman", map = 70, last = { 554 },
+        tiers = { "Titan Tamper", "Disc Jockey", "Archaeologist" }, full = "Stone Cold" },
+    { key = "zf", name = "Zul'Farrak", map = 209, last = { 600 },
+        tiers = { "Sandscalp Scalper", "Troll Toll", "Sand Blasted" }, full = "Sandstorm Over" },
+    { key = "mara", name = "Maraudon", map = 349, last = { 429 },
+        tiers = { "Princess Problems", "Theradras Who?", "Purple Haze" }, full = "Violet Spring Cleaning" },
+    { key = "st", name = "Sunken Temple", map = 109, last = { 493, 2959 },
+        tiers = { "Dream Breaker", "Eranikus Awakened", "Temple Run" }, full = "Sunk And Done" },
+    { key = "brd", name = "Blackrock Depths", map = 230, last = { 2790 },
+        tiers = { "Emperor's New Clothes", "Dark Iron Breaker", "Grim Guzzler Regular" }, full = "Depths Plumbed" },
+    { key = "lbrs", name = "Lower Blackrock Spire", bosses = { 267, 268, 269, 270, 271, 272, 273, 274, 275 }, last = { 275 },
+        tiers = { "Wyrmthalak Wrangler", "Spire Climber", "Lower Management" }, full = "Ground Floor Cleared" },
+    { key = "ubrs", name = "Upper Blackrock Spire", bosses = { 3062, 3063, 3068, 3069 }, last = { 3069 },
+        tiers = { "Drakkisath Down", "Dragon Lord's Lair", "Upper Management" }, full = "Top Floor Cleared" },
+    { key = "dme", name = "Dire Maul: East", bosses = { 343, 344, 345, 346 }, last = { 346 },
+        tiers = { "Wildshaper Tamed", "Warpwood Lumberjack", "East Wing Regular" }, full = "Gardener's Gone" },
+    { key = "dmw", name = "Dire Maul: West", bosses = { 347, 348, 349, 350, 361 }, last = { 361 },
+        tiers = { "Prince Of Nothing", "Highborne Humbled", "West Wing Regular" }, full = "Library Of Shadows" },
+    { key = "dmn", name = "Dire Maul: North", bosses = { 362, 363, 364, 365, 366, 367, 368 }, last = { 368 },
+        tiers = { "King For A Day", "Tribute Collector", "Gordok Royalty" }, full = "Ogre Coup" },
+    { key = "scholo", name = "Scholomance", map = 289, last = { 2801 },
+        tiers = { "Class Dismissed", "Detention", "Tenured" }, full = "Expelled Them All" },
+    { key = "stratl", name = "Stratholme: Live", bosses = { 472, 473, 474, 475, 476, 477, 478 }, last = { 478 },
+        tiers = { "Balnazzar Unmasked", "Crusader Crusher", "Live Side Regular" }, full = "Burnt Bridges" },
+    { key = "stratu", name = "Stratholme: Undead", bosses = { 479, 480, 481, 482, 483, 484 }, last = { 484 },
+        tiers = { "Baron Run", "Rivendare's Rest", "Undead Side Regular" }, full = "Ziggurat Toppled" },
+    -- WoW Forever's own.
+    { key = "thanes", name = "The Hall of Thanes", map = 3065, last = { 3496 },
+        tiers = { "Thane Slayer", "Hall Monitor", "Thane Of Thanes" }, full = "Thanes Laid To Rest" },
+    { key = "ruins", name = "Ruins of Lordaeron", map = 2999, last = { 3354 },
+        tiers = { "Ruined Plans", "Rath'mael's Bane", "Ruin Raider" }, full = "Lordaeron Liberated" },
+    { key = "excav", name = "Excavation Site: Wetlands", map = 2998, last = { 3482 },
+        tiers = { "Dig Deep", "Relic Recycler", "Head Archaeologist" }, full = "Site Cleared" },
+    -- Raids (the ones coming to WoW Forever).
+    { key = "ony", name = "Onyxia's Lair", map = 249, last = { 1084 }, raid = true,
+        tiers = { "Deep Breaths", "Many Whelps!", "Lair Landlord" } },
+    { key = "barrow", name = "Barrow Deeps", raid = true, lastNames = { "Sonya Darkhallow" },
+        bossNames = { "Chillhowl", "Elder Tangleclaw", "Khalith the Dreadspinner", "Well of Sorrow", "Amethrax",
+            "Del'lynar Songwood", "Ravus and Darlissa", "Sonya Darkhallow" },
+        tiers = { "Grave Matters", "Barrow Regular", "Lord Of The Barrows" }, full = "Barrows Emptied" },
+    { key = "hyjal", name = "Hyjal Summit", raid = true, lastNames = { "The Wild King" },
+        bossNames = { "Bandalar", "Ancient of Decay", "Time-Lost Battalion", "Sylvestris Dusksong", "Old Gloomlurker",
+            "Gharalis the Abyssal", "Kathris the Haunted", "Anara Chillwind", "Elder Minderel", "Tracker Stillwind",
+            "Council of Thorns", "Nythus the Dreambound", "The Wild King" },
+        tiers = { "Wild King Dethroned", "Summit Regular", "Hyjal Hiker" }, full = "Summit Swept" },
+}
+local CLEAR_TIERS = { 1, 3, 10 }
+local CLEAR_POINTS, RAID_POINTS, FULL_POINTS = { 10, 15, 25 }, { 30, 45, 75 }, 30
+local TOTAL_CLEARS = { { 1, "First Delve", 10 }, { 10, "Dungeon Regular", 20 }, { 25, "Loot Goblin", 30 },
+    { 50, "Instance Addict", 50 }, { 100, "Lives In There", 80 }, { 250, "Rent Is Due", 120 } }
+local dungeonCount = 0  -- five-player ones (the totals and the variety leave raids out)
+for _, d in ipairs(DUNGEONS) do if not d.raid then dungeonCount = dungeonCount + 1 end end
+local VARIETY = { { 3, "Tourist", 15 }, { 8, "Sightseer", 30 }, { 15, "Seasoned Delver", 50 },
+    { dungeonCount, "Been Everywhere, Smashed Everything", 100 } }
+
+-- Each dungeon's last boss creature(s) (lastNPCs, a set) and its distinct boss creatures (bossNPCs).
+local ENCOUNTER_KILL_ID = 9000000
+local function EncounterBosses(id)
+    local list = {}
+    for _, boss in ipairs(ns.EncounterNPCs and ns.EncounterNPCs[id] or {}) do list[#list + 1] = boss[1] end
+    if #list == 0 then list[1] = ENCOUNTER_KILL_ID + id end
+    return list
+end
+for _, d in ipairs(DUNGEONS) do
+    d.lastNPCs = {}
+    for _, id in ipairs(d.last or {}) do
+        for _, npcID in ipairs(EncounterBosses(id)) do d.lastNPCs[npcID] = true end
+    end
+    local encounters = d.bosses
+    if not encounters and d.map then
+        encounters = {}
+        for id, map in pairs(ns.EncounterMaps or {}) do
+            if map == d.map then encounters[#encounters + 1] = id end
+        end
+    end
+    local seen = {}
+    d.bossNPCs = {}
+    for _, id in ipairs(encounters or {}) do
+        for _, npcID in ipairs(EncounterBosses(id)) do
+            if not seen[npcID] then seen[npcID] = true d.bossNPCs[#d.bossNPCs + 1] = npcID end
+        end
+    end
+end
+
+-- The deeds.
+for _, d in ipairs(DUNGEONS) do
+    local points = d.raid and RAID_POINTS or CLEAR_POINTS
+    local tiers = {}
+    for i, target in ipairs(CLEAR_TIERS) do tiers[i] = { target, d.tiers[i], points[i] } end
+    FEATS[#FEATS + 1] = { key = "clear:" .. d.key, label = d.name .. " clears", unit = "clears", dungeon = true,
+        count = function(_, f) return f.clears[d.key] end, tiers = tiers }
+    local bossCount = d.bossNames and #d.bossNames or #d.bossNPCs
+    if d.full and bossCount > 1 then
+        FEATS[#FEATS + 1] = { key = "full:" .. d.key, label = d.name .. ": every boss", unit = "bosses", dungeon = true,
+            count = function(_, f) return f.fullBosses[d.key] end,
+            tiers = { { bossCount, d.full, d.raid and 2 * FULL_POINTS or FULL_POINTS } } }
+    end
+end
+FEATS[#FEATS + 1] = { key = "clears", label = "Dungeon clears", unit = "clears", dungeon = true,
+    count = function(_, f) return f.totalClears end, tiers = TOTAL_CLEARS }
+FEATS[#FEATS + 1] = { key = "dungeons", label = "Dungeons cleared", unit = "dungeons", dungeon = true,
+    count = function(_, f) return f.dungeonsCleared end, tiers = VARIETY }
+
+-- The dungeon facts from a player's kills ([npcID] = count; byName: [lowercased name] = count): clears per dungeon,
+-- bosses killed per dungeon, and (raids left out) clears in all and dungeons cleared.
+local function DungeonFacts(facts, killed, byName)
+    facts.clears, facts.fullBosses, facts.totalClears, facts.dungeonsCleared = {}, {}, 0, 0
+    for _, d in ipairs(DUNGEONS) do
+        local clears = 0
+        for npcID in pairs(d.lastNPCs) do clears = math.max(clears, killed[npcID] or 0) end
+        for _, name in ipairs(d.lastNames or {}) do clears = math.max(clears, byName[name:lower()] or 0) end
+        local bosses = 0
+        for _, npcID in ipairs(d.bossNPCs) do
+            if (killed[npcID] or 0) > 0 then bosses = bosses + 1 end
+        end
+        for _, name in ipairs(d.bossNames or {}) do
+            if (byName[name:lower()] or 0) > 0 then bosses = bosses + 1 end
+        end
+        facts.clears[d.key], facts.fullBosses[d.key] = clears, bosses
+        if not d.raid then
+            facts.totalClears = facts.totalClears + clears
+            if clears > 0 then facts.dungeonsCleared = facts.dungeonsCleared + 1 end
+        end
+    end
+end
+
 -- A target of 0 means all of them: every rare.
 local rareTotal = 0
 for _ in pairs(ns.Rares or {}) do rareTotal = rareTotal + 1 end
@@ -133,6 +294,105 @@ for _, feat in ipairs(FEATS) do
     for _, tier in ipairs(feat.tiers) do FEAT_NAMES[AchievementID("feat", feat.key, tier[1])] = tier[2] end
 end
 function ns.FeatName(id) return FEAT_NAMES[id] end
+local FEAT_DETAILS = {}  -- [id] = what it took ("Dungeon clears: 10")
+for _, feat in ipairs(FEATS) do
+    for _, tier in ipairs(feat.tiers) do FEAT_DETAILS[AchievementID("feat", feat.key, tier[1])] = ("%s: %d"):format(feat.label, tier[1]) end
+end
+
+-- An achievement for the Overview's feed details: its name, what it took and the points it gives.
+function ns.AchievementInfo(id)
+    local name, detail = ns.AchievementTitle(id)
+    return name, detail or FEAT_DETAILS[id], ns.AchievementPoints and ns.AchievementPoints(id)
+end
+
+-- A dungeon or raid by its instance map ({ key, name, map, raid, ... }), or nil.
+function ns.DungeonByMap(map)
+    map = tonumber(map)
+    for _, d in ipairs(DUNGEONS) do
+        if d.map == map then return d end
+    end
+end
+
+-- The bosses of an instance map, in the game's encounter order: { { npcID, name }, ... }.
+function ns.DungeonBosses(map)
+    map = tonumber(map)
+    local ids = {}
+    for id, m in pairs(ns.EncounterMaps or {}) do
+        if m == map then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    local bosses = {}
+    for _, id in ipairs(ids) do
+        for _, boss in ipairs(ns.EncounterNPCs[id] or {}) do bosses[#bosses + 1] = boss end
+    end
+    return bosses
+end
+
+-- The dungeon (or wing, or raid) a boss belongs to, by the name its kill keeps and the instance map if known; nil if
+-- none. Wings sharing a map (Scarlet Monastery, Blackrock Spire, Dire Maul, Stratholme) go by their bosses.
+function ns.DungeonForBoss(name, map)
+    local encounters = {}
+    for id, bosses in pairs(ns.EncounterNPCs or {}) do
+        for _, boss in ipairs(bosses) do
+            if boss[2] == name then encounters[id] = true end
+        end
+    end
+    for _, d in ipairs(DUNGEONS) do
+        for _, id in ipairs(d.bosses or {}) do if encounters[id] then return d end end
+        for _, id in ipairs(d.last or {}) do if encounters[id] then return d end end
+        for _, n in ipairs(d.bossNames or {}) do if n == name then return d end end
+    end
+    map = tonumber(map)
+    for _, d in ipairs(DUNGEONS) do
+        if d.map and d.map == map then return d end
+    end
+    for id in pairs(encounters) do
+        local m = ns.EncounterMaps and ns.EncounterMaps[id]
+        for _, d in ipairs(DUNGEONS) do
+            if d.map and d.map == m then return d end
+        end
+    end
+end
+
+-- Every dungeon, wing and raid, in order ({ key, name, ... }; the dev window, Dev.lua).
+function ns.Dungeons() return DUNGEONS end
+
+-- A dungeon by its key ("dm"), or nil.
+function ns.DungeonByKey(key)
+    for _, d in ipairs(DUNGEONS) do
+        if d.key == key then return d end
+    end
+end
+
+-- The dungeon (or wing, or raid) whose end boss an encounter is (by its id, or for raids not in the game data yet its
+-- name), or nil: the boss fight itself, as it ends.
+function ns.DungeonForEncounter(id, name)
+    for _, d in ipairs(DUNGEONS) do
+        for _, last in ipairs(d.last or {}) do
+            if last == id then return d end
+        end
+        for _, last in ipairs(d.lastNames or {}) do
+            if last == name then return d end
+        end
+    end
+end
+
+-- The dungeon a dungeon deed (an achievement id, "feat:clear:rfc:1" or "feat:full:rfc:8") is about, or nil.
+function ns.DungeonForAchievement(id)
+    local key = tostring(id):match("^feat:clear:(%w+):") or tostring(id):match("^feat:full:(%w+):")
+    for _, d in ipairs(DUNGEONS) do
+        if d.key == key then return d end
+    end
+end
+
+-- The instance map a boss is in, by its name (the feed's boss events before they kept the map), or nil.
+function ns.BossMap(name)
+    for id, bosses in pairs(ns.EncounterNPCs or {}) do
+        for _, boss in ipairs(bosses) do
+            if boss[2] == name then return ns.EncounterMaps and ns.EncounterMaps[id] end
+        end
+    end
+end
 
 -- An earned achievement for the activity feed: its name and what it took ("Kennel Closed", "100 Gnoll kills").
 function ns.AchievementTitle(id)
@@ -156,7 +416,13 @@ local function CountKills(source)
     local counts = {}
     for _, dim in ipairs(DIMENSIONS) do counts[dim.key] = {} end
     local facts = { leaders = 0, rares = 0, elites = 0, kinds = 0, creatures = 0, zoneRares = {} }
+    local killed, byName = {}, {}  -- [npcID] = kills; [lowercased name] = kills (the most of any with that name)
     ns.ForEachKill(function(npcID, entry)
+        killed[npcID] = entry.count
+        if entry.name then
+            local name = entry.name:lower()
+            byName[name] = math.max(byName[name] or 0, entry.count)
+        end
         local c = ns.Categorize(npcID, entry)
         for _, dim in ipairs(DIMENSIONS) do
             local category = c[dim.key]
@@ -174,6 +440,7 @@ local function CountKills(source)
         if ELITE_RANKS[c.rank] then facts.elites = facts.elites + entry.count end
     end, source)
     for _ in pairs(counts.subtype) do facts.kinds = facts.kinds + 1 end
+    DungeonFacts(facts, killed, byName)
     -- Pictures: yours are a list, a friend's are keyed by number. Won ones are known only for yours.
     local mine = source == KillTrackerDB
     facts.pictures, facts.epic, facts.legendary = 0, 0, 0
@@ -223,6 +490,7 @@ local function CheckAchievements(silent)
             awarded = awarded + Award(AchievementID("feat", feat.key, tier[1]), tier[2], ("%d %s"):format(tier[1], feat.unit), silent)
         end
     end
+    if ns.CheckUnlocks then ns.CheckUnlocks(facts.clears) end  -- a dungeon's first clear, a clear's drops (Unlocks.lua)
     return awarded
 end
 -- For things that change outside kills (pictures, PvP, the showcase): check, with the usual popup.

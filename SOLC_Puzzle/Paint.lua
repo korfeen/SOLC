@@ -52,7 +52,7 @@ function ns.PaintTarget(traits, size, style)
         local editionGrids = edition and ns.PaintEditionGrids and ns.PaintEditionGrids[edition] and ns.PaintEditionGrids[edition][size]
         local entry = editionGrids and editionGrids[layer.key] and editionGrids[layer.key][layer.id]
         if not entry then entry = grids[layer.key] and grids[layer.key][layer.id] end
-        if type(entry) == "table" then entry = entry[traits.skin or ""] end
+        if type(entry) == "table" then entry = entry[(SOLC.FaceSkin and SOLC.FaceSkin(traits.skin)) or traits.skin or ""] end
         if type(entry) == "string" then
             for i, cell in ipairs(Decode(entry, cells)) do
                 if cell then

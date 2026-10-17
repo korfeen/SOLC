@@ -10,10 +10,14 @@
 local _, ns = ...
 
 -- The price of a mint is a guild setting (Config.lua); each picture remembers what it cost.
--- A picture's price: the guild's setting, less your rank's discount (Ranks.lua).
-function ns.MintCost()
+-- A picture's price: the guild's setting, less your rank's discount (Ranks.lua); and POT_PRICE_STEP of that more for
+-- each ingredient in the minting pot (tokens: { [ingredient key] = n }, MintPot.lua; fuels too).
+local POT_PRICE_STEP = 0.1
+function ns.MintCost(tokens)
     local discount = ns.RankPerk and ns.RankPerk("discount") or 0
-    return math.max(1, math.floor(ns.Config("mintCost") * (1 - discount) + 0.5))
+    local count = 0
+    for _, n in pairs(tokens or {}) do count = count + n end
+    return math.max(1, math.floor(ns.Config("mintCost") * (1 - discount) * (1 + count * POT_PRICE_STEP) + 0.5))
 end
 
 -- Four rarities; there is no common (uncommon is the everyday tier).
@@ -40,14 +44,35 @@ for _, layer in ipairs({
     { key = "headwear", name = "Headwear" },
 }) do
     layer.options = ns.MintArt and ns.MintArt[layer.key] or {}
+    for _, option in ipairs(layer.options) do option.layerKey = layer.key end  -- (an unlockable's own unlock key)
     if #layer.options > 0 then ns.MintLayers[#ns.MintLayers + 1] = layer end
+end
+
+-- Unlockable options (option.unlock, Unlocks.lua: a dungeon's backdrop, a boss's skin or gear, an epic's layer) are
+-- only rolled once you've unlocked them, and left out of the odds that grade a picture's rarity (so adding them never
+-- changes the rarity of pictures already minted).
+function ns.MintAllowed(option)
+    return not option.unlock or (ns.IsUnlocked ~= nil and ns.IsUnlocked((option.layerKey or "") .. ":" .. option.id))
+end
+
+-- The skin whose per-skin art (eyes, mouths) a picture's skin wears: its own, or for a boss skin the skin it's drawn
+-- on (option.faceSkin).
+local skinFaces
+function ns.FaceSkin(skin)
+    if not skinFaces then
+        skinFaces = {}
+        for _, option in ipairs(ns.MintArt and ns.MintArt.skin or {}) do
+            if option.faceSkin then skinFaces[option.id] = option.faceSkin end
+        end
+    end
+    return skinFaces[skin] or skin
 end
 
 -- The texture path of an option in a picture with these traits; edition ("crayon", "sketch"): its twin in that
 -- edition, if it has one.
 function ns.MintTexture(option, traits, edition)
     local texture = edition and option[edition] or option.texture
-    if option.perSkin then return texture:format(traits.skin or "") end
+    if option.perSkin then return texture:format(ns.FaceSkin(traits.skin) or "") end
     return texture
 end
 
@@ -132,20 +157,145 @@ end
 -- officer's mint battle rolls without it).
 local luck = 1
 local LUCKY = { epic = true, legendary = true }
-local function Weight(option)
+-- boost (optional): the pot's rarity boost on this layer ({ [rarity] = this much more weight }).
+local function Weight(option, boost)
     local weight = option.weight or RARITY_WEIGHTS[option.rarity]
-    return LUCKY[option.rarity] and weight * luck or weight
+    if LUCKY[option.rarity] then weight = weight * luck end
+    if boost and boost[option.rarity] then weight = weight * boost[option.rarity] end
+    return weight
 end
 
-local function Roll(layer)
+-- The minting pot (MintPot.lua; its ingredients, Unlocks.lua): what's thrown in while a mint rolls, { [ingredient] = n }.
+-- - dungeon ingredients make each layer likelier to roll from those dungeons' pieces you've unlocked (a dungeon picked by
+--   its share of them);
+-- - a layer's ingredient (ns.LAYER_INGREDIENTS) aims at that layer: it counts POT_LAYER_POWER times there, so a dungeon's
+--   plus a layer's point at one piece; and it makes that layer's own rolls rarer;
+-- - fuels in the fire under it (ns.FUELS, at most FIRE_SLOTS) make their rarity and up likelier (on the layers aimed
+--   at, or every layer if none is): Frostwood rare and up, Shimmer Dust epic and up, Sunwood legendary.
+-- A layer's chance to roll from the pot climbs by less with each ingredient and never gets past POT_CEILING, however
+-- full the pot (how much fits in it: your cauldron's slots, Ranks.lua): it skews, it never guarantees.
+local POT_CEILING, POT_DECAY, POT_LAYER_POWER = 0.6, 0.85, 2
+local RARITY_STEP, RARITY_MAX, LAYER_RARITY = 0.25, 3, 0.5
+local FIRE_SLOTS = 3
+ns.POT_CEILING, ns.FIRE_SLOTS = POT_CEILING, FIRE_SLOTS
+-- A layer's chance to roll from the pot, for this much pull on it.
+local function Pull(power) return power > 0 and POT_CEILING * (1 - POT_DECAY ^ power) or 0 end
+-- What a pot does to each layer: { [layer key] = { chance (from the pot), dungeons = { [key] = n } (those with a piece
+-- for it), total (of those), boost ({ [rarity] = it weighs this much more }), boosted (any of it more than 1) } }.
+function ns.PotPlan(ingredients)
+    ingredients = ingredients or {}
+    local aimed, fire = false, { rare = 0, epic = 0, legendary = 0 }
+    for _, fuel in ipairs(ns.FUELS or {}) do fire[fuel.rarity] = fire[fuel.rarity] + (ingredients[fuel.key] or 0) end
+    fire.epic = fire.epic + fire.rare
+    fire.legendary = fire.legendary + fire.epic  -- (each fuel: its rarity and up)
+    for _, layer in ipairs(ns.MintLayers) do
+        if (ingredients["l_" .. layer.key] or 0) > 0 then aimed = true end
+    end
+    local plan = {}
+    for _, layer in ipairs(ns.MintLayers) do
+        local aim = ingredients["l_" .. layer.key] or 0
+        local dungeons, total = {}, 0
+        for key, n in pairs(ingredients) do
+            if n > 0 and ns.IngredientKind and ns.IngredientKind(key) == "dungeon" then
+                for _, option in ipairs(layer.options) do
+                    if option.unlock == "clear:" .. key and ns.MintAllowed(option) then
+                        dungeons[key], total = n, total + n
+                        break
+                    end
+                end
+            end
+        end
+        local fed = not aimed or aim > 0
+        local boost, boosted = {}, false
+        for _, rarity in ipairs({ "rare", "epic", "legendary" }) do
+            boost[rarity] = math.min(RARITY_MAX, 1 + ((fed and fire[rarity] or 0) + aim * LAYER_RARITY) * RARITY_STEP)
+            if boost[rarity] > 1 then boosted = true end
+        end
+        local chance = total > 0 and Pull(total + aim * POT_LAYER_POWER) or 0
+        if chance > 0 then
+            -- The pot's pieces can roll the usual way too: keep the likeliest of them, both ways together, at the ceiling.
+            local all, top = 0, 0
+            for _, option in ipairs(layer.options) do
+                if ns.MintAllowed(option) then
+                    local weight = Weight(option, boost)
+                    all = all + weight
+                    local dungeon = option.unlock and option.unlock:match("^clear:(.+)")
+                    if dungeon and dungeons[dungeon] then top = math.max(top, weight) end
+                end
+            end
+            local base = all > 0 and top / all or 0
+            chance = math.max(0, math.min(chance, (POT_CEILING - base) / (1 - base)))
+        end
+        plan[layer.key] = { chance = chance, dungeons = dungeons, total = total, boost = boost, boosted = boosted }
+    end
+    return plan
+end
+local function FromPot(layer, entry)
+    if entry.total <= 0 or math.random() >= entry.chance then return end
+    local pick, chosen = math.random() * entry.total, nil
+    for key, n in pairs(entry.dungeons) do
+        pick = pick - n
+        if not chosen and pick <= 0 then chosen = key end
+    end
+    chosen = chosen or next(entry.dungeons)
+    local list, sum = {}, 0
+    for _, option in ipairs(layer.options) do
+        if option.unlock == "clear:" .. chosen and ns.MintAllowed(option) then
+            list[#list + 1] = option
+            sum = sum + Weight(option, entry.boost)
+        end
+    end
+    local at = math.random() * sum
+    for _, option in ipairs(list) do
+        at = at - Weight(option, entry.boost)
+        if at <= 0 then return option end
+    end
+    return list[#list]
+end
+-- Each option's chance to roll on a layer with this pot (ns.PotPlan's entry for it; nil: as usual): { [option] = chance }.
+function ns.LayerOdds(layer, entry)
+    local odds, boost = {}, entry and entry.boost
     local total = 0
-    for _, option in ipairs(layer.options) do total = total + Weight(option) end
+    for _, option in ipairs(layer.options) do
+        if ns.MintAllowed(option) then total = total + Weight(option, boost) end
+    end
+    local fromPot = entry and entry.total > 0 and entry.chance or 0
+    for _, option in ipairs(layer.options) do
+        if ns.MintAllowed(option) then
+            local p = (1 - fromPot) * Weight(option, boost) / total
+            local dungeon = option.unlock and option.unlock:match("^clear:(.+)")
+            local n = dungeon and entry and entry.dungeons[dungeon]
+            if n and fromPot > 0 then
+                local sum = 0
+                for _, other in ipairs(layer.options) do
+                    if other.unlock == option.unlock and ns.MintAllowed(other) then sum = sum + Weight(other, boost) end
+                end
+                p = p + fromPot * n / entry.total * Weight(option, boost) / sum
+            end
+            odds[option] = p
+        end
+    end
+    return odds
+end
+
+local plan
+local function Roll(layer)
+    local entry = plan and plan[layer.key]
+    local potted = entry and FromPot(layer, entry)
+    if potted then return potted end
+    local boost = entry and entry.boost
+    local total, last = 0, nil
+    for _, option in ipairs(layer.options) do
+        if ns.MintAllowed(option) then total, last = total + Weight(option, boost), option end
+    end
     local pick = math.random() * total
     for _, option in ipairs(layer.options) do
-        pick = pick - Weight(option)
-        if pick <= 0 then return option end
+        if ns.MintAllowed(option) then
+            pick = pick - Weight(option, boost)
+            if pick <= 0 then return option end
+        end
     end
-    return layer.options[#layer.options]
+    return last
 end
 
 local function TraitKey(traits)
@@ -169,8 +319,10 @@ local function PickUnowned(owned)
             return
         end
         for _, option in ipairs(layer.options) do
-            traits[layer.key] = option.id
-            Walk(i + 1, traits, weight * (option.weight or RARITY_WEIGHTS[option.rarity]))
+            if ns.MintAllowed(option) then
+                traits[layer.key] = option.id
+                Walk(i + 1, traits, weight * (option.weight or RARITY_WEIGHTS[option.rarity]))
+            end
         end
     end
     Walk(1, {}, 1)
@@ -189,12 +341,16 @@ local function ScoreOdds()
     local chance = { [0] = 1 }  -- [score] = chance of exactly that score so far
     for _, layer in ipairs(ns.MintLayers) do
         local total = 0
-        for _, option in ipairs(layer.options) do total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
+        for _, option in ipairs(layer.options) do
+            if not option.unlock then total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
+        end
         local nextChance = {}
         for score, p in pairs(chance) do
             for _, option in ipairs(layer.options) do
-                local s = score + RARITY_SCORE[option.rarity]
-                nextChance[s] = (nextChance[s] or 0) + p * (option.weight or RARITY_WEIGHTS[option.rarity]) / total
+                if not option.unlock then  -- (the everyday options only, see ns.MintAllowed)
+                    local s = score + RARITY_SCORE[option.rarity]
+                    nextChance[s] = (nextChance[s] or 0) + p * (option.weight or RARITY_WEIGHTS[option.rarity]) / total
+                end
             end
         end
         chance = nextChance
@@ -256,7 +412,11 @@ end
 local function RollFree(taken)
     local count, possible = 0, 1
     for _ in pairs(taken) do count = count + 1 end
-    for _, layer in ipairs(ns.MintLayers) do possible = possible * #layer.options end
+    for _, layer in ipairs(ns.MintLayers) do
+        local allowed = 0
+        for _, option in ipairs(layer.options) do if ns.MintAllowed(option) then allowed = allowed + 1 end end
+        possible = possible * allowed
+    end
     if count >= possible then return end
     for _ = 1, 200 do
         local traits = {}
@@ -269,16 +429,26 @@ local function RollFree(taken)
 end
 
 -- Rolls and saves a new picture nobody in your guild owns yet. Returns the mint, or nil and why not.
-function ns.Mint()
+-- tokens (optional): the ingredients thrown into the pot, { [ingredient key] = n }; spent with the mint.
+function ns.Mint(tokens)
     local db = KillTrackerDB
-    local balance, cost = ns.GetPoints().balance, ns.MintCost()
+    local balance, cost = ns.GetPoints().balance, ns.MintCost(tokens)
     if balance < cost then
         return nil, ("Not enough points (%d of %d)."):format(balance, cost)
     end
+    local inPot, inFire = 0, 0
+    for key, n in pairs(tokens or {}) do
+        if n > (ns.Tokens and ns.Tokens(key) or 0) then return nil, "You don't have those ingredients any more." end
+        if ns.IngredientKind and ns.IngredientKind(key) == "fuel" then inFire = inFire + n else inPot = inPot + n end
+    end
+    if ns.Cauldron and inPot > ns.Cauldron().slots then return nil, "That doesn't fit in your cauldron." end
+    if inFire > FIRE_SLOTS then return nil, "That's too much for the fire." end
     luck = ns.RankPerk and ns.RankPerk("luck") or 1
+    plan = tokens and next(tokens) and ns.PotPlan(tokens) or nil
     local traits = RollFree(TakenPictures())
-    luck = 1
+    luck, plan = 1, nil
     if not traits then return nil, "Every possible picture is already taken." end
+    if tokens and ns.SpendTokens then ns.SpendTokens(tokens) end
     db.points.spent = db.points.spent + cost
     local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost, crayon = true }
     db.mints[#db.mints + 1] = mint
@@ -375,16 +545,37 @@ end
 local IN_FRONT = { eye_mask_pushed_up = true, monocle = true }
 ns.MINT_IN_FRONT = IN_FRONT
 local FRONT_SUBLEVEL = 7  -- the top of the ARTWORK draw layer
+-- The layers' sublevels, two apart from the bottom (-6, -4, ... 6), leaving room between them: a skin's front (a boss's
+-- mask) goes just over the eyes, so it covers the face but not the accessory or the hat.
+local function Sublevel(i) return (i - 1) * 2 - 6 end
+local function SkinFrontSublevel()
+    for i, layer in ipairs(ns.MintLayers) do
+        if layer.key == "eyes" then return Sublevel(i) + 1 end
+    end
+    return FRONT_SUBLEVEL - 1
+end
+
+local function SkinLayer()
+    for _, layer in ipairs(ns.MintLayers) do
+        if layer.key == "skin" then return layer end
+    end
+    return { options = {} }
+end
 
 -- A picture's layers in drawing order, back to front: { { layer key, option id } }, with IN_FRONT options
--- last, as RenderMint stacks them (the paint game builds its colours the same way).
+-- last and a skin's front (a boss's mask) right after the eyes, as RenderMint stacks them (the paint game builds its
+-- colours the same way).
 function ns.MintDrawOrder(traits)
     local order, front = {}, {}
+    local skin = FindOption(SkinLayer(), traits.skin)
     for _, layer in ipairs(ns.MintLayers) do
         local option = FindOption(layer, traits[layer.key])
         if option then
             local list = IN_FRONT[option.id] and front or order
             list[#list + 1] = { key = layer.key, id = option.id, perSkin = option.perSkin }
+        end
+        if layer.key == "eyes" and skin and skin.front then  -- a skin's front, over the face (its paint grid's id)
+            order[#order + 1] = { key = "skin", id = skin.id .. "_front" }
         end
     end
     for _, entry in ipairs(front) do order[#order + 1] = entry end
@@ -394,22 +585,39 @@ end
 -- Draws a picture into canvas (a frame), creating one texture per layer on first use.
 -- tilt (degrees clockwise, optional): the whole picture turned round its centre, as on the new Overview's tilted
 -- polaroids (each layer turned and moved round the centre with it). style: which layers in crayon (ns.MintStyle).
+-- Puts a layer's texture where its rect (fractions of the picture; nil: the whole picture) says, the picture turned
+-- by angle (radians, clockwise) round its centre.
+local function Place(tex, canvas, rect, angle)
+    local size = canvas:GetWidth()
+    if rect and angle ~= 0 then
+        -- Its centre from the canvas's centre (y up), turned clockwise by the tilt.
+        local cos, sin = math.cos(angle), math.sin(angle)
+        local dx, dy = (rect[1] + rect[3] / 2 - 0.5) * size, (0.5 - rect[2] - rect[4] / 2) * size
+        tex:SetPoint("CENTER", canvas, "CENTER", dx * cos + dy * sin, dy * cos - dx * sin)
+        tex:SetSize(rect[3] * size, rect[4] * size)
+    elseif rect then
+        tex:SetPoint("TOPLEFT", canvas, "TOPLEFT", rect[1] * size, -rect[2] * size)
+        tex:SetSize(rect[3] * size, rect[4] * size)
+    else
+        tex:SetAllPoints(canvas)
+    end
+    tex:SetRotation(-angle)  -- WoW turns anticlockwise
+end
+
 function ns.RenderMint(canvas, traits, tilt, style)
     canvas.layers = canvas.layers or {}
-    local size = canvas:GetWidth()
     local angle = math.rad(tilt or 0)
-    local cos, sin = math.cos(angle), math.sin(angle)
     for i, layer in ipairs(ns.MintLayers) do
         local tex = canvas.layers[i]
         if not tex then
-            tex = canvas:CreateTexture(nil, "ARTWORK", nil, i - 1)  -- sublevel = stacking order
+            tex = canvas:CreateTexture(nil, "ARTWORK", nil, Sublevel(i))  -- sublevel = stacking order
             canvas.layers[i] = tex
         end
         local option = FindOption(layer, traits[layer.key])
         local edition = ns.LayerEdition(style, layer.key)
         if edition and option and not option[edition] then edition = nil end  -- no twin: painted
         local texture = option and option.texture and ns.MintTexture(option, traits, edition)
-        tex:SetDrawLayer("ARTWORK", option and IN_FRONT[option.id] and FRONT_SUBLEVEL or i - 1)
+        tex:SetDrawLayer("ARTWORK", option and IN_FRONT[option.id] and FRONT_SUBLEVEL or Sublevel(i))
         tex:ClearAllPoints()
         tex:SetVertexColor(1, 1, 1)
         if not option or (not texture and not option.color) then
@@ -417,18 +625,7 @@ function ns.RenderMint(canvas, traits, tilt, style)
         else
             local rect = option.rect
             if edition then rect = option[edition .. "Rect"] end  -- its own crop (none: the whole picture)
-            if rect and angle ~= 0 then
-                -- Its centre from the canvas's centre (y up), turned clockwise by the tilt.
-                local dx, dy = (rect[1] + rect[3] / 2 - 0.5) * size, (0.5 - rect[2] - rect[4] / 2) * size
-                tex:SetPoint("CENTER", canvas, "CENTER", dx * cos + dy * sin, dy * cos - dx * sin)
-                tex:SetSize(rect[3] * size, rect[4] * size)
-            elseif rect then
-                tex:SetPoint("TOPLEFT", canvas, "TOPLEFT", rect[1] * size, -rect[2] * size)
-                tex:SetSize(rect[3] * size, rect[4] * size)
-            else
-                tex:SetAllPoints(canvas)
-            end
-            tex:SetRotation(-angle)  -- WoW turns anticlockwise
+            Place(tex, canvas, rect, angle)
             if texture then
                 tex:SetTexture(texture)
                 if option.color then tex:SetVertexColor(unpack(option.color)) end
@@ -437,6 +634,20 @@ function ns.RenderMint(canvas, traits, tilt, style)
             end
             tex:Show()
         end
+    end
+    -- A skin's front (a boss's mask, option.front): over the face, under the accessory and the hat.
+    local skin
+    for _, layer in ipairs(ns.MintLayers) do
+        if layer.key == "skin" then skin = FindOption(layer, traits.skin) end
+    end
+    if skin and skin.front then
+        canvas.front = canvas.front or canvas:CreateTexture(nil, "ARTWORK", nil, SkinFrontSublevel())
+        canvas.front:ClearAllPoints()
+        Place(canvas.front, canvas, skin.frontRect, angle)
+        canvas.front:SetTexture(skin.front)
+        canvas.front:Show()
+    elseif canvas.front then
+        canvas.front:Hide()
     end
 end
 
@@ -498,22 +709,32 @@ StaticPopupDialogs["SOLC_MINT"] = {
     text = "Mint a new picture for %d points?",
     button1 = YES or "Yes",
     button2 = NO or "No",
-    OnAccept = function()
-        local mint, reason = ns.Mint()
-        if not mint then
-            ns.Print(reason)
-            return
-        end
-        -- Already saved; the reel show (MintReel.lua) reveals it layer by layer and announces it.
-        if ns.OnKillsChanged then ns.OnKillsChanged() end
-        ns.PlayMintReel(mint)
-    end,
+    OnAccept = function() ns.DoMint() end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
 }
 
+-- Mints (with tokens in the pot, if any) and plays the reel (MintReel.lua: it reveals the picture layer by layer and
+-- announces it). Returns the mint, or nil (and says why).
+function ns.DoMint(tokens)
+    local mint, reason = ns.Mint(tokens)
+    if not mint then
+        ns.Print(reason)
+        return
+    end
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    ns.PlayMintReel(mint)
+    return mint
+end
+
+-- Minting happens in the minting pot's kitchen (MintPot.lua); a popup asks if it isn't there.
 function ns.ConfirmMint()
+    if ns.ShowMintPot then
+        local ok, err = pcall(ns.ShowMintPot)
+        if ok then return end
+        ns.Print("|cffff5555The minting pot broke:|r " .. tostring(err))  -- (say so, rather than skip it quietly)
+    end
     StaticPopup_Show("SOLC_MINT", ns.MintCost())
 end
 

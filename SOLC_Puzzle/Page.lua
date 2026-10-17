@@ -550,6 +550,10 @@ SlashCmdList.SOLCPUZZLE = function(input)
         if arg == "on" then accept = true elseif arg == "off" then accept = false end
         ns.Duel.SetAcceptDuels(accept)
         SOLC.Print(accept and "You accept duel challenges again." or "Duel challenges are now declined without asking you.")
+    elseif command == "debug" then
+        ns.Duel.debug = not ns.Duel.debug
+        SOLC.Print(ns.Duel.debug and "Duel debug on: every duel message sent and received shows in chat, with the time. /solcpuzzle debug again to stop."
+            or "Duel debug off.")
     elseif command == "scramble" then
         -- /solcpuzzle scramble <seed> [size] [swap|sliding]: the scramble a seed gives, piece per slot, to check
         -- the Discord Activity shuffles exactly the same way.
@@ -564,5 +568,6 @@ SlashCmdList.SOLCPUZZLE = function(input)
             table.concat(ns.Scramble(mode, seed, size), " ")))
     else
         SOLC.Print("/solcpuzzle duels [on|off] - accept duel challenges, or decline them without asking")
+        SOLC.Print("/solcpuzzle debug - show every duel message sent and received")
     end
 end

@@ -35,6 +35,8 @@ local TABS = {  -- { panel (nil: ME), label, ogre word }
     { "gear", "GEARZ", "GEARZ" },
     { "crafts", "CRAFTS", "MAKE" },
 }
+-- The tabs' names on the top beam (ns.UI.SetTab; ME: nothing added) and in ogre mode.
+local TAB_TITLES, TABS_OGRE = { gear = "Gear", crafts = "Crafts" }, { gear = "GEARZ", crafts = "MAKE" }
 -- The ME tab on someone else's Overview: their pronoun, by the gender on their card (UI.Profile), THEY if unknown.
 local PRONOUNS = { MALE = "HE", FEMALE = "SHE", NONBINARY = "THEY" }
 
@@ -64,6 +66,7 @@ local CRAFT_ROW = { height = 24, size = 13, colors = { 0.25, 0.18 } }  -- CRAFTS
 local HEADING_COLOR = { 1, 0.85, 0.1 }
 local FEED_AGO_COLOR = { 0.98, 0.64, 0.26 }
 local FEED_HOVER_COLOR = { 0.65, 0.53, 0.28 }  -- the row under the mouse
+local FEED_OPEN_COLOR = { 0.42, 0.3, 0.12 }    -- the row whose details are open
 
 -- The picture shown on your photo instead of your model: a picture number, or nil for your model.
 local function ChoosePortrait(number)
@@ -797,17 +800,45 @@ OVERVIEW = {
             row.text:SetPoint("RIGHT", row.time, "LEFT", -8, 0)
             row.text:SetJustifyH("LEFT")
             row.text:SetWordWrap(false)
-            row:SetScript("OnClick", function(self) if self.item then UI.ShowFeedPicture(self.item) end end)
+            -- Click for its details on the right page (FeedDetail.lua), again to close them; the open one stays lit.
+            function row:Paint()
+                local open = self.item and page.detail:IsShown() and page.detail.event == self.item.event
+                self.stripe:SetColorTexture(unpack(self.hovered and FEED_HOVER_COLOR or open and FEED_OPEN_COLOR or { shade, shade, shade }))
+            end
+            row:SetScript("OnClick", function(self)
+                if not self.item then return end
+                UI.ClickSound()
+                if page.detail:IsShown() and page.detail.event == self.item.event then page.CloseDetail() else page.OpenDetail(self.item) end
+            end)
             row:SetScript("OnEnter", function(self)
                 if not self.item then return end
-                self.stripe:SetColorTexture(unpack(FEED_HOVER_COLOR))
-                UI.FeedTooltip(self, self.item)
+                self.hovered = true
+                self:Paint()
+                UI.FeedTooltip(self, self.item, "Click for the details")
             end)
             row:SetScript("OnLeave", function(self)
-                self.stripe:SetColorTexture(shade, shade, shade)
+                self.hovered = false
+                self:Paint()
                 GameTooltip_Hide()
             end)
             page.feed[i] = row
+        end
+
+        -- An event's details over the right page instead of the photo.
+        page.detail = UI.FeedDetail(page)
+        local function PaintFeed() for _, row in ipairs(page.feed) do row:Paint() end end
+        function page.OpenDetail(item)
+            page.detail:ShowItem(item)
+            page.photo:Hide()
+            page.hung:Hide()
+            PaintFeed()
+        end
+        function page.CloseDetail()
+            if not page.detail:IsShown() then return end
+            page.detail:Hide()
+            page.photo:SetShown(page.panel ~= "crafts")
+            page.hung:SetShown(page.panel ~= "crafts")
+            PaintFeed()
         end
 
         page.gearPanel = GearPage(page)
@@ -822,6 +853,7 @@ OVERVIEW = {
         page.tabs = {}
         local function ShowPanel(which)
             page.panel = which
+            page.detail:Hide()
             page.gearPanel:SetShown(which == "gear")
             page.craftsPanel:SetShown(which == "crafts")
             left:SetShown(which == nil)
@@ -868,6 +900,7 @@ OVERVIEW = {
     end,
 
     refresh = function(page)
+        if UI.SetTab then UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end  -- (the top beam)
         local key = ns.GetViewing()
         local p = UI.Profile(key)
 
@@ -885,6 +918,7 @@ OVERVIEW = {
         if portrait then ns.DrawMint(page.portrait, portrait) end
         -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
         -- refreshes.
+        if key ~= page.key then page.CloseDetail() end  -- someone else's feed
         if not page.loaded or switched or key ~= page.key or (key and gear ~= page.model.shownGear) then
             page.loaded, page.key = true, key
             page.Load()
@@ -916,6 +950,7 @@ OVERVIEW = {
             local item = items[i]
             row.item = item
             row.stripe:SetShown(item ~= nil)
+            row:Paint()
             row.text:SetText(item and item.text or (i == 1 and "Nothing yet - go smash something." or ""))
             row.time:SetText(item and ns.TimeAgo(item.time) or "")
             local thumbnail = item and item.kind == "M" and item.mint

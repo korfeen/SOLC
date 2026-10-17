@@ -39,6 +39,12 @@
         "PanelTemplates_DeselectTab",
         "PanelTemplates_SelectTab",
         "ITEM_QUALITY_COLORS",
-        "ChatEdit_InsertLink"
+        "ChatEdit_InsertLink",
+        "ChatFrame_SendTell",
+        "ChatFrameUtil",
+        "LOOT_ITEM_SELF",
+        "LOOT_ITEM_SELF_MULTIPLE",
+        "LOOT_ITEM_PUSHED_SELF",
+        "LOOT_ITEM_PUSHED_SELF_MULTIPLE"
     ]
 }
