@@ -591,7 +591,12 @@ end
 -- it) or a synced guildmate's. nil for none.
 function ns.GetModelBackdrop(key)
     local source = key and KillTrackerFriends[key] or KillTrackerDB
-    local id = source and source.showcase and source.showcase.backdrop
+    return ns.BackgroundOption(key, source and source.showcase and source.showcase.backdrop)
+end
+
+-- A background option by its id for someone: yours (key nil; only while you still own a picture with it) or a
+-- synced guildmate's. nil for none.
+function ns.BackgroundOption(key, id)
     if not id then return nil end
     if key then
         for _, l in ipairs(ns.MintLayers) do

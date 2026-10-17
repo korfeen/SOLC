@@ -265,6 +265,24 @@ const ICONS = {
     crayonShape(c, cog, PAINT, random);
     crayonShape(c, circle(128, 128, 34), OUTLINE, random, { outline: null, hatch: 6 });
   },
+  // A pencil, tip down-left (the profile header's edit button; read at about 14 pixels, so chunky).
+  edit(c, random) {
+    const tilt = (poly) => rotate(poly, Math.PI / 4);
+    const o = { line: 13, hatch: 8 };
+    crayonShape(c, tilt([[86, 18], [170, 18], [170, 56], [86, 56]]), hex("#ff8aa8"), random, o);  // the rubber
+    crayonShape(c, tilt([[86, 56], [170, 56], [170, 82], [86, 82]]), C.steel, random, o);
+    crayonShape(c, tilt([[86, 82], [170, 82], [170, 180], [86, 180]]), C.gold, random, o);
+    crayonShape(c, tilt([[86, 180], [170, 180], [128, 244]]), hex("#f0c890"), random, o);  // the sharpened wood
+    crayonShape(c, tilt([[110, 216], [146, 216], [128, 244]]), OUTLINE, random, { outline: null, hatch: 5 });
+  },
+  // A padlock (locked things, e.g. a name colour your rank hasn't reached; read at about 14 pixels).
+  lock(c, random) {
+    crayonShape(c, arcBand(128, 112, 52, 26, Math.PI, 2 * Math.PI), C.steel, random, { line: 13, hatch: 7 });
+    crayonShape(c, [[58, 106], [198, 106], [198, 116], [58, 116]], C.steel, random, { line: 13, hatch: 7 });  // the shackle's legs
+    crayonShape(c, [[44, 110], [212, 110], [212, 236], [44, 236]], C.gold, random, { line: 13, hatch: 8 });
+    crayonShape(c, circle(128, 160, 18), OUTLINE, random, { outline: null, hatch: 5 });  // the keyhole
+    crayonShape(c, [[120, 166], [136, 166], [140, 204], [116, 204]], OUTLINE, random, { outline: null, hatch: 5 });
+  },
 
   // --- The activity feed's icons: drawn to be read at about 17 pixels (few big shapes, a thick outline) ---
 
@@ -658,7 +676,7 @@ const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "ro
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
   "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary", "feedLeader",
   "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss", "rank1", "rank2", "rank3", "rank4", "rank5",
-  "rank6", "rank7"];
+  "rank6", "rank7", "edit", "lock"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
@@ -669,7 +687,7 @@ const seedOf = (name) => {
 const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achievements", pvp: "PvP", close: "Close", settings: "Settings",
   feedLeader: "Feed_Leader", feedRare: "Feed_Rare", feedAchievement: "Feed_Achievement", feedMint: "Feed_Mint", feedWon: "Feed_Won",
   feedBounty: "Feed_Bounty", feedBoss: "Feed_Boss", rank1: "Rank_1", rank2: "Rank_2", rank3: "Rank_3", rank4: "Rank_4",
-  rank5: "Rank_5", rank6: "Rank_6", rank7: "Rank_7" };
+  rank5: "Rank_5", rank6: "Rank_6", rank7: "Rank_7", edit: "Edit", lock: "Lock" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.

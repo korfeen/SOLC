@@ -35,8 +35,10 @@
 --                behind their model, see Minting.lua; only when changed, empty otherwise; the "S" tells
 --                "none" from "unchanged")
 --   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
---   card       = C^gender^portrait                  (their character card's choices: gender icon, the picture shown
---                instead of their model; see OverviewCard.lua; only when changed, empty otherwise)
+--   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor   (their character card's choices:
+--                gender icon, the picture shown instead of their model (OverviewCard.lua), their profile header's
+--                background, its crop (thousandths; zoom in hundredths) and their name colour (ProfileHeader.lua,
+--                from 0.41.0 on); only when changed, empty otherwise)
 
 local addonName, ns = ...
 
@@ -174,7 +176,9 @@ end
 local function SerializeCard(db, baseSeq)
     local card = db.card
     if not card or (card.seq or 0) <= baseSeq then return "" end
-    return "C" .. FIELD .. Clean(card.gender) .. FIELD .. (card.portrait and Base36(card.portrait) or "")
+    local function Scaled(value, scale) return value and Base36(math.floor(value * scale + 0.5)) or "" end
+    return table.concat({ "C", Clean(card.gender), card.portrait and Base36(card.portrait) or "", Clean(card.headerBg),
+        Scaled(card.cropX, 1000), Scaled(card.cropY, 1000), Scaled(card.cropZoom, 100), Clean(card.nameColor) }, FIELD)
 end
 
 -- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
@@ -352,7 +356,12 @@ local function Deserialize(payload)
     update.removed = {}  -- from 0.38.0 on
     for number in (s[17] or ""):gmatch("[^,]+") do update.removed[#update.removed + 1] = FromBase36(number) end
     f = Split(s[18] or "", FIELD)  -- from 0.40.0 on
-    if f[1] == "C" then update.card = { gender = Optional(f[2]), portrait = f[3] and f[3] ~= "" and FromBase36(f[3]) or nil } end
+    if f[1] == "C" then
+        local function Scaled(text, scale) local n = text and text ~= "" and FromBase36(text) return n and n / scale end
+        update.card = { gender = Optional(f[2]), portrait = f[3] and f[3] ~= "" and FromBase36(f[3]) or nil,
+            headerBg = Optional(f[4]), cropX = Scaled(f[5], 1000), cropY = Scaled(f[6], 1000), cropZoom = Scaled(f[7], 100),
+            nameColor = Optional(f[8]) }  -- the header's from 0.41.0 on
+    end
     return update
 end
 
