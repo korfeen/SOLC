@@ -1,0 +1,30 @@
+[
+ {
+  "layer": "accessory",
+  "id": "chase_bfd_strike_of_the_hydra",
+  "dungeon": "bfd",
+  "rarity": "epic",
+  "flags": [
+   "--fit",
+   "wear",
+   "--hold",
+   "right",
+   "--tall"
+  ],
+  "desc": "Strike of the Hydra: Aku'mai's famous two-handed sword from World of Warcraft: a long two-handed sword with a wavy deep teal-blue blade patterned like hydra scales and a serpent-head crossguard"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_rfk_heart_of_agamaggan",
+  "dungeon": "rfk",
+  "rarity": "epic",
+  "flags": [
+   "--fit",
+   "wear",
+   "--hold",
+   "left",
+   "--offhand"
+  ],
+  "desc": "Heart of Agamaggan: Charlga Razorflank's famous shield from World of Warcraft: a round shield made of a great boar's hide stretched over wood, with a boar skull and tusks in the middle and thorny bristles round the rim"
+ }
+]

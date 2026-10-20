@@ -28,8 +28,8 @@ MintReel.lua
 Sync.lua
 Feed.lua
 Guild.lua
+Posters.lua
 Unlocks.lua
-BountyBoard.lua
 Combined.lua
 SkeletonLayout.lua
 HeaderLayout.lua
@@ -39,11 +39,14 @@ ProfileHeader.lua
 GuildPages.lua
 OverviewCard.lua
 FeedDetail.lua
+Gallery.lua
 SmashPage.lua
 PixPage.lua
 Chests.lua
 Dev.lua
 MintPot.lua
+Plinko.lua
+HuntsBoard.lua
 CavePage.lua
 FrenzPage.lua
 Minimap.lua

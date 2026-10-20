@@ -12,7 +12,9 @@
 // - Gear: each end boss's set (tools/unlock-gear.js): an outfit, a headwear and a charm (an accessory); in the dungeon's
 //   chest. The set's pieces are at the dungeon's rarity, a step rarer and two steps rarer, which is which shuffled per
 //   dungeon (pieceSteps).
-// Usage: node tools/make-unlock-art.js [backgrounds|skins|gear]   (default: all). No dependencies.
+// - Creatures: a creature's hat and onesie (tools/gen-art-creatures.json), unlocked by its kill deeds; worn together,
+//   its hooded onesie.
+// Usage: node tools/make-unlock-art.js [backgrounds|skins|gear|chase|creatures]   (default: all). No dependencies.
 
 const fs = require("fs");
 const os = require("os");
@@ -112,7 +114,9 @@ function backdrop(key, seed) {
   for (let i = 3; i < out.length; i += 4) out[i] = 255;  // a backdrop is opaque
   return out;
 }
-if (!only || only === "backgrounds") {
+// (Retired 2026-10-20 with the boss skins: crayon scenes, no painted version. Made only when asked for by name;
+// otherwise any made before are taken out, below.)
+if (only === "backgrounds") {
   const sceneOrder = Object.keys(overview.DUNGEONS);
   for (const [rarity, dungeons] of Object.entries(DUNGEONS)) {
     for (const [key, name] of Object.entries(dungeons)) {
@@ -156,7 +160,9 @@ function skinFile(edition, base) {
   }
   throw new Error(`No ${edition} skin "${base}"`);
 }
-if (!only || only === "skins") {
+// (Retired 2026-10-20: the boss skins are crayon drawings in every edition, with no painted version; the dungeon sets
+// carry the bosses' looks now. Made only when asked for by name; otherwise any made before are taken out, below.)
+if (only === "skins") {
   let n = 0;
   for (const [rarity, dungeons] of Object.entries(DUNGEONS)) {
     for (const key of Object.keys(dungeons)) {
@@ -253,6 +259,142 @@ function Enlarge(rgba, scale) {
   }
   return out;
 }
+// The headwear is drawn wider than the original hats (unlock-gear.js: a brow of x 456..808, the head's about 470..740):
+// every hat is scaled down this much round the brow's middle (HAT_PIVOT), so it sits on the head like the others.
+const HAT_SCALE = 0.8, HAT_PIVOT = [632, 236];
+function Shrink(rgba, scale, [px, py]) {
+  let x0 = SIZE, y0 = SIZE, x1 = -1, y1 = -1;
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    if (rgba[(y * SIZE + x) * 4 + 3] > 0) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  }
+  if (x1 < 0) return rgba;
+  const w = x1 - x0 + 1, ht = y1 - y0 + 1, sw = Math.max(1, Math.round(w * scale)), sh = Math.max(1, Math.round(ht * scale));
+  const small = resample({ width: SIZE, height: SIZE, rgba }, x0, y0, w, ht, sw, sh);
+  const out = Buffer.alloc(SIZE * SIZE * 4);
+  const left = Math.round(px + (x0 - px) * scale), top = Math.round(py + (y0 - py) * scale);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    const tx = left + x, ty = top + y;
+    if (tx < 0 || ty < 0 || tx >= SIZE || ty >= SIZE) continue;
+    for (let k = 0; k < 4; k++) out[(ty * SIZE + tx) * 4 + k] = small[(y * sw + x) * 4 + k];
+  }
+  return out;
+}
+// The head (the plain ogre's: its skin within an oval from the cheeks down to the chin, and the skull and ears above):
+// an outfit is cut away there, so a high collar sits behind the head and never crosses the face. And the fists (at the
+// bottom corners, below the cuffs): never hidden in a sleeve, so a held weapon always has a fist to grip.
+let HEAD = null;
+function headMask() {
+  if (HEAD) return HEAD;
+  // Clean lines, no fade: HEAD.cut = how much of a pixel is head, 0..1 - the skin's own edge along the head's outline
+  // (its anti-aliasing, so no specks), and inside the skin smooth curves (head, wide at the jaw, and a chin cap for the
+  // mouths) measured on 4x4 points per pixel, crisp. The collar goes behind the whole head: no front.
+  const skin = decodePng(path.join(ART, "Skin", "Uncommon", "moss.png"));
+  const rgba = skin.width === SIZE ? skin.rgba : resample(skin, 0, 0, skin.width, skin.height, SIZE, SIZE);
+  const cut = new Float32Array(SIZE * SIZE);
+  const inHead = (x, y) => {
+    const ex = (x - 630) / 190, ey = (y - 285) / 128, cx = (x - 630) / 150, cy = (y - 380) / 48;
+    return (y < 375 && (ex * ex + ey * ey <= 1 || (y < 330 && Math.abs(x - 630) < 240))) || cx * cx + cy * cy <= 1;
+  };
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    const i = y * SIZE + x, skinA = rgba[i * 4 + 3] / 255;
+    if (!skinA) continue;
+    if (y >= 1165 && (x < 280 || x > 990)) { cut[i] = skinA; continue; }  // (the fists)
+    if (y >= 440) continue;
+    let n = 0;
+    for (let sy = 0; sy < 4; sy++) for (let sx = 0; sx < 4; sx++) if (inHead(x + (sx + 0.5) / 4, y + (sy + 0.5) / 4)) n++;
+    cut[i] = skinA * n / 16;
+  }
+  HEAD = { cut, front: new Float32Array(SIZE * SIZE) };
+  return HEAD;
+}
+function blur(m, r) {  // a box blur, twice (soft edges)
+  let a = m;
+  for (let pass = 0; pass < 2; pass++) {
+    const h = new Float32Array(a.length), v = new Float32Array(a.length), n = 2 * r + 1;
+    for (let y = 0; y < SIZE; y++) { let sum = 0; for (let x = -r; x < SIZE + r; x++) {
+      sum += a[y * SIZE + Math.min(SIZE - 1, Math.max(0, x + r))] - (x - r - 1 >= 0 ? a[y * SIZE + x - r - 1] : a[y * SIZE]);
+      if (x >= 0 && x < SIZE) h[y * SIZE + x] = sum / n; } }
+    for (let x = 0; x < SIZE; x++) { let sum = 0; for (let y = -r; y < SIZE + r; y++) {
+      sum += h[Math.min(SIZE - 1, Math.max(0, y + r)) * SIZE + x] - (y - r - 1 >= 0 ? h[(y - r - 1) * SIZE + x] : h[x]);
+      if (y >= 0 && y < SIZE) v[y * SIZE + x] = sum / n; } }
+    a = v;
+  }
+  return a;
+}
+// The green screen's fringe: at a piece's edge (a see-through neighbour) green pulled down to its other channels.
+function defringe(rgba) {
+  const al = (x, y) => (x < 0 || y < 0 || x >= SIZE || y >= SIZE ? 0 : rgba[(y * SIZE + x) * 4 + 3]);
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    const i = (y * SIZE + x) * 4;
+    if (!rgba[i + 3]) continue;
+    let edge = false;
+    for (let d = 1; d <= 2 && !edge; d++) if (al(x - d, y) < 30 || al(x + d, y) < 30 || al(x, y - d) < 30 || al(x, y + d) < 30) edge = true;
+    if (!edge) continue;
+    const m = Math.max(rgba[i], rgba[i + 2]);
+    if (rgba[i + 1] > m) rgba[i + 1] = m;
+    if (rgba[i + 3] < 255) rgba[i + 3] = Math.round(rgba[i + 3] * 0.7);
+  }
+  return rgba;
+}
+// An outfit split at the head: what's inside the head's outline (the skull, ears, cheeks and jaw, down to the jaw: smooth
+// curves, measured on 4x4 points a pixel) goes BEHIND the ogre (<option>.back.png, under the skin: Minting.lua), so a high
+// collar stands behind the head and ears and the head covers it; the rest stays in front, so a collar still wraps round
+// the neck. And the fists (at the bottom corners) are never covered.
+// The head's outline: drawn by hand if there's a mask (killtracker-art\head-mask.png, 1254 square: white = the head),
+// else smooth curves (InHead). HEAD_MASK[i] = how much of a pixel is head, 0..1.
+let HEAD_MASK = null;
+function HeadMask() {
+  if (HEAD_MASK !== null) return HEAD_MASK;
+  const file = path.join(ART, "head-mask.png");
+  HEAD_MASK = false;
+  if (fs.existsSync(file)) {
+    const img = decodePng(file);
+    const px = img.width === SIZE ? img.rgba : resample(img, 0, 0, img.width, img.height, SIZE, SIZE);
+    HEAD_MASK = new Float32Array(SIZE * SIZE);
+    for (let i = 0; i < HEAD_MASK.length; i++) HEAD_MASK[i] = (px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 765 * (px[i * 4 + 3] / 255);
+    console.log("Head outline: " + file);
+  }
+  return HEAD_MASK;
+}
+function InHead(x, y) {
+  const ex = (x - 630) / 190, ey = (y - 285) / 128;
+  return (y < 330 && Math.abs(x - 630) < 240) || ex * ex + ey * ey <= 1;
+}
+function splitOutfit(rgba) {
+  const { cut } = headMask(), back = Buffer.alloc(SIZE * SIZE * 4);
+  let n = 0;
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    const i = y * SIZE + x, a = rgba[i * 4 + 3];
+    if (!a) continue;
+    if (y >= 1165 && cut[i]) { rgba[i * 4 + 3] = Math.round(a * (1 - cut[i])); continue; }  // (the fists)
+    let toBack;
+    const drawn = HeadMask();
+    if (drawn) toBack = drawn[i];
+    else {
+      if (y >= 440) continue;
+      let k = 0;
+      for (let sy = 0; sy < 4; sy++) for (let sx = 0; sx < 4; sx++) if (InHead(x + (sx + 0.5) / 4, y + (sy + 0.5) / 4)) k++;
+      toBack = k / 16;
+    }
+    if (!toBack) continue;
+    rgba.copy(back, i * 4, i * 4, i * 4 + 3);
+    back[i * 4 + 3] = Math.round(a * toBack);
+    rgba[i * 4 + 3] = Math.round(a * (1 - toBack));
+    n++;
+  }
+  return { rgba, back: n > 100 ? back : null };
+}
+function cutHead(rgba) {
+  const { cut, front: f } = headMask(), front = Buffer.alloc(SIZE * SIZE * 4);
+  let n = 0;
+  for (let i = 0; i < cut.length; i++) {
+    if (!cut[i]) continue;
+    const a = rgba[i * 4 + 3];
+    if (f[i] > 0 && a) { rgba.copy(front, i * 4, i * 4, i * 4 + 3); front[i * 4 + 3] = Math.round(a * Math.min(f[i], cut[i])); n++; }
+    rgba[i * 4 + 3] = Math.round(a * (1 - cut[i]));
+  }
+  return { rgba, front: n > 200 ? front : null };
+}
 // A set's pieces: their layer (and its folder); their rarity steps are the dungeon's (pieceSteps).
 const SET_PIECES = [
   { slot: "body", layer: "outfit", folder: "Outfit" },
@@ -281,8 +423,25 @@ if (!only || only === "gear") {
         const file = path.join(UNLOCKS, "painted", piece.folder, FOLDER[pieceRarity], id.replace(/_/g, "-") + ".png");
         let rgba = Buffer.from(crayon.toRgba(c));
         if (gear.enlarge) rgba = Enlarge(rgba, ACCESSORY_SCALE);  // (only the charms that float free)
-        if (piece.layer === "headwear") rgba = Lift(rgba, HAT_LIFT);
+        if (piece.layer === "headwear") rgba = Lift(Shrink(rgba, HAT_SCALE, HAT_PIVOT), HAT_LIFT);
+        // A generated piece (tools/gen-art.js: painted in the originals' style) instead, where there is one; its crayon
+        // and sketch twins into those editions' folders.
+        const generated = (edition) => path.join(UNLOCKS, "generated", edition, id + ".png");
+        if (fs.existsSync(generated("painted"))) rgba = defringe(Buffer.from(decodePng(generated("painted")).rgba));
+        for (const edition of ["crayon", "sketch"]) {
+          const dir = path.join(UNLOCKS, edition, piece.folder);
+          for (const r of Object.values(FOLDER)) {  // (a twin from before, maybe in another rarity's folder)
+            const old = path.join(dir, r, id.replace(/_/g, "-") + ".png");
+            if (fs.existsSync(old)) fs.rmSync(old);
+          }
+          if (fs.existsSync(generated(edition))) write(path.join(dir, FOLDER[pieceRarity], id.replace(/_/g, "-") + ".png"), Buffer.from(decodePng(generated(edition)).rgba));
+        }
+        // (only painted pieces: the code-drawn crayon ones are retired - one not painted yet isn't in the game)
+        if (!fs.existsSync(generated("painted"))) { n++; continue; }
+        let back = null;
+        if (piece.layer === "outfit") ({ rgba, back } = splitOutfit(rgba));
         write(file, rgba);
+        if (back) write(file.replace(/\.png$/i, ".back.png"), back);
         info[piece.layer + "/" + id] = { unlock: "clear:" + key.toLowerCase(), name: gear.name };
         made.push({ layer: piece.folder, file });
         n++;
@@ -291,6 +450,93 @@ if (!only || only === "gear") {
     }
   }
   console.log();
+}
+
+// - Chase items: each end boss's famous drop (tools/gen-art-chase.json, painted by tools/gen-art.js), in whatever layer
+//   it is: in the dungeon's chest by luck ("chase:<dungeon>:<id>", Unlocks.lua), or made from others ("combine:...":
+//   unlocked once all its parts are in your wardrobe). Only the ones painted so far.
+if (!only || only === "gear" || only === "chase") {
+  const chase = JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-chase.json"), "utf8"));
+  const LAYER_FOLDER = { headwear: "Headwear", accessory: "Accessory", outfit: "Outfit" };
+  for (const edition of ["painted", "crayon", "sketch"]) {
+    for (const folder of Object.values(LAYER_FOLDER)) for (const rarity of Object.values(FOLDER)) {
+      const dir = path.join(UNLOCKS, edition, folder, rarity);
+      for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^chase-/.test(f)) fs.rmSync(path.join(dir, f));
+    }
+  }
+  for (const key of Object.keys(info)) if (key.includes("/chase_")) delete info[key];
+  let n = 0;
+  for (const item of chase) {
+    const base = item.id.replace(/_/g, "-") + ".png";
+    for (const edition of ["painted", "crayon", "sketch"]) {
+      const src = path.join(UNLOCKS, "generated", edition, item.id + ".png");
+      if (fs.existsSync(src)) write(path.join(UNLOCKS, edition, LAYER_FOLDER[item.layer], FOLDER[item.rarity], base), Buffer.from(decodePng(src).rgba));
+    }
+    if (!fs.existsSync(path.join(UNLOCKS, "generated", "painted", item.id + ".png"))) continue;
+    info[item.layer + "/" + item.id] = { unlock: item.unlock || `chase:${item.dungeon}:${item.id}`, name: item.desc.split(":")[0],
+      ...(item.dropChance ? { dropChance: item.dropChance } : {}) };
+    made.push({ layer: LAYER_FOLDER[item.layer], file: path.join(UNLOCKS, "painted", LAYER_FOLDER[item.layer], FOLDER[item.rarity], base) });
+    n++;
+  }
+  console.log(`Chase items: ${n} painted of ${chase.length}`);
+}
+
+// - Creatures: each creature's hat and onesie (tools/gen-art-creatures.json, painted by tools/gen-art.js), unlocked by its
+//   kill deeds ("deed:subtype:<Kind>:<kills>", Unlocks.lua). Worn together they're one hooded onesie, its suit
+//   (crit_<kind>_suit, painted from the two): <onesie>.suit.png beside the onesie, and the onesie's suitHead the hat it
+//   goes with (convert-art.js; drawn in the hat's place, Minting.lua). Only the ones painted so far.
+if (!only || only === "gear" || only === "creatures") {
+  const creatures = JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-creatures.json"), "utf8"));
+  const LAYER_FOLDER = { headwear: "Headwear", outfit: "Outfit" };
+  for (const edition of ["painted", "crayon", "sketch"]) {
+    for (const folder of Object.values(LAYER_FOLDER)) for (const rarity of Object.values(FOLDER)) {
+      const dir = path.join(UNLOCKS, edition, folder, rarity);
+      for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^crit-/.test(f)) fs.rmSync(path.join(dir, f));
+    }
+  }
+  for (const key of Object.keys(info)) if (key.includes("/crit_")) delete info[key];
+  const generated = (edition, id) => path.join(UNLOCKS, "generated", edition, id + ".png");
+  let n = 0, suits = 0;
+  for (const item of creatures) {
+    if (!LAYER_FOLDER[item.layer] || !fs.existsSync(generated("painted", item.id))) continue;
+    const base = item.id.replace(/_/g, "-") + ".png";
+    const file = path.join(UNLOCKS, "painted", LAYER_FOLDER[item.layer], FOLDER[item.rarity], base);
+    let rgba = defringe(Buffer.from(decodePng(generated("painted", item.id)).rgba)), back = null;
+    if (item.layer === "outfit") ({ rgba, back } = splitOutfit(rgba));
+    write(file, rgba);
+    if (back) write(file.replace(/.png$/i, ".back.png"), back);
+    for (const edition of ["crayon", "sketch"]) {
+      if (fs.existsSync(generated(edition, item.id))) write(path.join(UNLOCKS, edition, LAYER_FOLDER[item.layer], FOLDER[item.rarity], base), Buffer.from(decodePng(generated(edition, item.id)).rgba));
+    }
+    const entry = { unlock: item.unlock, name: item.desc.split(":")[0] };
+    const suit = item.id.replace(/_body$/, "_suit");
+    if (item.layer === "outfit" && fs.existsSync(generated("painted", suit))) {
+      write(file.replace(/.png$/i, ".suit.png"), defringe(Buffer.from(decodePng(generated("painted", suit)).rgba)));
+      entry.suitHead = item.id.replace(/_body$/, "_head");
+      suits++;
+    }
+    info[item.layer + "/" + item.id] = entry;
+    made.push({ layer: LAYER_FOLDER[item.layer], file });
+    n++;
+  }
+  console.log(`Creatures: ${n} pieces painted, ${suits} hooded onesies`);
+}
+
+// (the retired backdrops out, unless they were just made on purpose)
+if (only !== "backgrounds") {
+  for (const edition of ["painted", "crayon", "sketch"]) for (const rarity of Object.values(FOLDER)) {
+    const dir = path.join(UNLOCKS, edition, "Background", rarity);
+    for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^dungeon-/.test(f)) fs.rmSync(path.join(dir, f));
+  }
+  for (const key of Object.keys(info)) if (key.startsWith("background/dungeon_")) delete info[key];
+}
+// (the retired boss skins out, unless they were just made on purpose)
+if (only !== "skins") {
+  for (const edition of ["painted", "crayon", "sketch"]) for (const rarity of Object.values(FOLDER)) {
+    const dir = path.join(UNLOCKS, edition, "Skin", rarity);
+    for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^boss-/.test(f)) fs.rmSync(path.join(dir, f));
+  }
+  for (const key of Object.keys(info)) if (key.startsWith("skin/boss_")) delete info[key];
 }
 
 fs.mkdirSync(UNLOCKS, { recursive: true });
@@ -320,7 +566,7 @@ for (const { layer, file, base, over: front } of made) {
     pics.push(pic);
   } else {
     const crayonPic = Buffer.alloc(T * T * 4), paintedPic = Buffer.alloc(T * T * 4);
-    const mask = front ? [small(file.replace(/.png$/, ".front.png"))] : [];  // over the face, under the hat
+    const mask = front ? [small(file.replace(/\.png$/, ".front.png"))] : [];  // over the face, under the hat
     for (const l of [BG, small(file.replace(path.join(UNLOCKS, "painted"), path.join(UNLOCKS, "crayon"))),
       hand(`Expression/Uncommon/${base}/smug-smile.png`), hand(`Eyes/Uncommon/${base}/heavy-bags.png`), ...mask]) over(crayonPic, l);
     for (const l of [BG, small(file), painted("Outfit/Rare/onesie.png"), painted(`Expression/Uncommon/${base}/mouth-hanging-open.png`),
@@ -346,9 +592,10 @@ if (!only || only === "gear") {
   };
   const sets = [];
   for (const key of Object.values(DUNGEONS).flatMap((d) => Object.keys(d))) {
-    const k = key.toLowerCase(), skin = find(path.join("crayon", "Skin"), "boss-" + k);
-    if (!skin) continue;
-    const base = info["skin/boss_" + k].faceSkin.replace(/_/g, "-");
+    // (on its boss skin if there is one - retired; else the plain crayon ogre)
+    const k = key.toLowerCase(), bossSkin = find(path.join("crayon", "Skin"), "boss-" + k);
+    const base = bossSkin && info["skin/boss_" + k] ? info["skin/boss_" + k].faceSkin.replace(/_/g, "-") : "moss";
+    const skin = bossSkin || path.join(EDITION_ART.crayon, "Skin", "Uncommon", "moss.png");
     const front = find(path.join("painted", "Skin"), "boss-" + k + ".front");
     const pic = Buffer.alloc(T * T * 4);
     for (const file of [find(path.join("painted", "Background"), "dungeon-" + k), skin, find(path.join("painted", "Outfit"), `gear-${k}-body`),

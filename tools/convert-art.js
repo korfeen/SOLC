@@ -31,14 +31,27 @@ const path = require("path");
 const zlib = require("zlib");
 
 const DENSITY = Number(process.argv[2]) || 512;
+// Options that no longer roll ("<layer key>/<option id>"), kept so the pictures that have them still show them: the
+// pirate eyepatch was an eyes option, it's an accessory now (its art in Accessory too, over any eyes).
+const RETIRED = new Set(["eyes/pirate_eyepatch"]);
+// Pieces that cover other layers ("<layer key>/<option id>": the layers they hide): those aren't drawn under them (still
+// rolled and kept: take the piece off and they're back).
+const COVERS = { "headwear/gear_dm_head": ["expression"], "headwear/gear_brd_head": ["expression"],
+  "headwear/gear_thanes_head": ["expression"], "headwear/gear_sfk_head": ["expression"] };
 const SOURCE = process.env.KILLTRACKER_ART || path.join(os.homedir(), "killtracker-art");
-const TARGET = path.join(__dirname, "..", "Media", "Collectible");
+// (each Media folder built beside it as <folder>.new and swapped in at the end: WoW, if it's running, never finds the
+// folder half empty - textures it looked for mid-build showed as green squares)
+const FINAL = path.join(__dirname, "..", "Media", "Collectible");
+const TARGET = FINAL + ".new";
 const LUA_FILE = path.join(__dirname, "..", "MintArt.lua");
 const EDITIONS = [
     { key: "crayon", source: path.join(os.homedir(), "killtracker-art-extra", "CrayonHand"), folder: "Crayon" },
     { key: "sketch", source: path.join(os.homedir(), "killtracker-art-extra", "CrayonArt"), folder: "Sketch" },
 ];
-for (const edition of EDITIONS) edition.target = path.join(__dirname, "..", "Media", edition.folder);
+for (const edition of EDITIONS) {
+    edition.final = path.join(__dirname, "..", "Media", edition.folder);
+    edition.target = edition.final + ".new";
+}
 const UNLOCKS = path.join(os.homedir(), "killtracker-art-extra", "Unlocks");
 const RARITIES = ["uncommon", "rare", "epic", "legendary"];  // no common: uncommon is the everyday tier
 const SKIN_LAYER = "skin";  // per-skin options are drawn once per option of this layer
@@ -456,14 +469,24 @@ for (const folder of subdirs(SOURCE)) {
         for (const rarityFolder of subdirs(path.join(painted, folder))) {
             const rarity = rarityFolder.toLowerCase();
             if (!RARITIES.includes(rarity)) continue;
-            for (const file of pngs(path.join(painted, folder, rarityFolder)).filter((f) => !/\.front\.png$/i.test(f))) {
+            for (const file of pngs(path.join(painted, folder, rarityFolder)).filter((f) => !/\.(front|back|suit)\.png$/i.test(f))) {
                 const id = toId(file), meta = info[key + "/" + id] || {};
                 if (layer.options.some((o) => o.id === id)) throw new Error(`Unlockable ${folder}/${id} has the id of an option already there`);
                 // <option>.front.png beside it: drawn in front of the whole picture (a boss's mask), one for every edition.
                 const front = path.join(painted, folder, rarityFolder, file.replace(/\.png$/i, ".front.png"));
+                // <option>.back.png: an outfit's part drawn behind the ogre (above the back line, make-unlock-art.js).
+                const back = path.join(painted, folder, rarityFolder, file.replace(/\.png$/i, ".back.png"));
+                // <option>.suit.png: a creature's onesie with its hat (meta.suitHead) as one hooded onesie (make-unlock-art.js).
+                const suit = path.join(painted, folder, rarityFolder, file.replace(/\.png$/i, ".suit.png"));
+                // Where the ogre vanishes under it (painted in tools/item-fitter.js, Hide ogre): generated\fits\<id>.hide.png,
+                // and its hooded onesie's (<id>_suit's).
+                const hide = path.join(UNLOCKS, "generated", "fits", id + ".hide.png");
+                const suitHide = path.join(UNLOCKS, "generated", "fits", id.replace(/_body$/, "_suit") + ".hide.png");
                 layer.options.push({ id, name: meta.name || toName(file), rarity, unlock: meta.unlock, faceSkin: meta.faceSkin, dropChance: meta.dropChance,
                     root: painted, files: [{ skin: null, file: path.join(painted, folder, rarityFolder, file) }],
-                    frontFile: fs.existsSync(front) ? front : null });
+                    frontFile: fs.existsSync(front) ? front : null, backFile: fs.existsSync(back) ? back : null,
+                    suitFile: fs.existsSync(suit) && meta.suitHead ? suit : null, suitHead: meta.suitHead,
+                    hideFile: fs.existsSync(hide) ? hide : null, suitHideFile: fs.existsSync(suitHide) && /_body$/.test(id) ? suitHide : null });
             }
         }
     }
@@ -536,6 +559,20 @@ function convertOption(layer, option, images, target) {
     if (noCrayon.length) console.log(`No crayon version yet (shown painted until drawn): ${noCrayon.join(", ")}`);
 }
 
+// A piece's hide (white where the ogre goes, painted in the fitter) as a mask: white everywhere, see-through where it
+// hides; null if nothing of it is painted.
+function HideMask(file) {
+    const img = decodePng(file), rgba = Buffer.alloc(img.width * img.height * 4);
+    let any = false;
+    for (let i = 0; i < rgba.length; i += 4) {
+        const a = img.rgba[i + 3];
+        if (a > 16) any = true;
+        rgba[i] = rgba[i + 1] = rgba[i + 2] = 255;
+        rgba[i + 3] = 255 - a;
+    }
+    return any ? { width: img.width, height: img.height, rgba } : null;
+}
+
 // Convert.
 fs.rmSync(TARGET, { recursive: true, force: true });
 for (const edition of EDITIONS) fs.rmSync(edition.target, { recursive: true, force: true });
@@ -548,8 +585,20 @@ for (const layer of Object.values(layers)) {
         const painted = convertOption(layer, option, images, TARGET);
         option.full = painted.full;
         option.rect = painted.rect;
+        if (option.backFile) {
+            option.back = convertOption(layer, { id: option.id + "_back" }, [{ skin: null, file: option.backFile, image: decodePng(option.backFile) }], TARGET);
+        }
         if (option.frontFile) {
             option.front = convertOption(layer, { id: option.id + "_front" }, [{ skin: null, file: option.frontFile, image: decodePng(option.frontFile) }], TARGET);
+        }
+        if (option.suitFile) {
+            option.suit = convertOption(layer, { id: option.id + "_suit" }, [{ skin: null, file: option.suitFile, image: decodePng(option.suitFile) }], TARGET);
+        }
+        // (where it hides the ogre: a mask for the skin, white where the ogre shows - the whole picture, as a mask hides
+        // everything outside itself; none if nothing's painted)
+        for (const [file, key] of [[option.hideFile, "hide"], [option.suitHideFile, "suitHide"]]) {
+            const mask = file && HideMask(file);
+            if (mask) option[key] = convertOption(layer, { id: option.id + (key === "hide" ? "_hide" : "_suit_hide") }, [{ skin: null, file, image: mask }], TARGET);
         }
         // Its twins in the editions, where every one of its files has one.
         option.editions = {};
@@ -572,9 +621,9 @@ const lines = [
     "-- Generated by tools/convert-art.js from the source art; don't edit, rerun the script instead.",
     "-- [layer key] = options { id, name, rarity, texture, rect = { x, y, width, height } as fractions of the",
     "-- picture, perSkin = texture has a %s for the skin id, crayon / sketch = its twin's texture in that edition",
-    "-- (crayonRect / sketchRect its rect), unlock = what unlocks it (Unlocks.lua; not rolled until then), faceSkin = for",
-    "-- a skin, the skin whose per-skin art (eyes, mouths) it wears, front = a texture drawn in front of the whole picture",
-    "-- (frontRect its rect) }.",
+    "-- (crayonRect / sketchRect its rect), unlock = what unlocks it (Unlocks.lua; not rolled until then), retired = never rolled (only shown), covers = the layers it hides, faceSkin = for",
+    "-- a skin, the skin whose per-skin art (eyes, mouths) it wears, front = a texture drawn in front of the whole picture, back = an outfit's part drawn behind the ogre",
+    "-- (frontRect its rect), suit = a creature's onesie worn with its hat (suitHead) as one hooded onesie, drawn in the hat's place (suitRect its rect), hide / suitHide = a mask for the skin where the piece (its hooded onesie) hides the ogre }.",
     "-- Layer order and names are in Minting.lua.",
     "",
     "local _, ns = ...",
@@ -597,12 +646,43 @@ for (const layer of Object.values(layers)) {
         }
         let unlock = (o.unlock ? `, unlock = "${o.unlock}"` : "") + (o.faceSkin ? `, faceSkin = "${o.faceSkin}"` : "") +
             (o.dropChance ? `, dropChance = ${o.dropChance}` : "");
+        if (o.back) unlock += `, back = MEDIA .. "${layer.folder}\\\\${o.id}_back"` + (o.back.full ? "" : `, backRect = { ${o.back.rect.map(num).join(", ")} }`);
         if (o.front) unlock += `, front = MEDIA .. "${layer.folder}\\\\${o.id}_front"` + (o.front.full ? "" : `, frontRect = { ${o.front.rect.map(num).join(", ")} }`);
+        if (o.hide) unlock += `, hide = MEDIA .. "${layer.folder}\\\\${o.id}_hide"`;
+        if (o.suitHide) unlock += `, suitHide = MEDIA .. "${layer.folder}\\\\${o.id}_suit_hide"`;
+        if (o.suit) unlock += `, suit = MEDIA .. "${layer.folder}\\\\${o.id}_suit"` + (o.suit.full ? "" : `, suitRect = { ${o.suit.rect.map(num).join(", ")} }`) + `, suitHead = "${o.suitHead}"`;
         const name = o.name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        if (RETIRED.has(layer.key + "/" + o.id)) unlock += ", retired = true";
+        const covers = COVERS[layer.key + "/" + o.id];
+        if (covers) unlock += `, covers = { ${covers.map((k) => k + " = true").join(", ")} }`;
         lines.push(`        { id = "${o.id}", name = "${name}", rarity = "${o.rarity}", texture = ${texture}${rect}${o.perSkin ? ", perSkin = true" : ""}${crayon}${unlock} },`);
     }
     lines.push("    },");
 }
 lines.push("}", "");
 fs.writeFileSync(LUA_FILE, lines.join("\n"));
+// The new folders in place of the old: renamed (a moment), the old ones deleted after. A rename WoW blocks (a texture
+// file open just then) is tried again; failing that, the old folder is deleted first, as before.
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+for (const [final, built] of [[FINAL, TARGET], ...EDITIONS.map((e) => [e.final, e.target])]) {
+    if (!fs.existsSync(built)) continue;
+    const old = final + ".old";
+    fs.rmSync(old, { recursive: true, force: true });
+    let swapped = false;
+    for (let tries = 0; tries < 5 && !swapped; tries++) {
+        try {
+            if (fs.existsSync(final)) fs.renameSync(final, old);
+            fs.renameSync(built, final);
+            swapped = true;
+        } catch (e) {
+            pause(400);
+        }
+    }
+    if (!swapped) {
+        console.log(`Couldn't swap ${path.basename(final)} in (in use?): replacing it the slow way.`);
+        fs.rmSync(final, { recursive: true, force: true });
+        fs.renameSync(built, final);
+    }
+    fs.rmSync(old, { recursive: true, force: true });
+}
 console.log(`Converted ${count} file(s) (twins: ${Object.entries(twinCounts).map(([k, n]) => n + " " + k).join(", ")}), ${(bytes / 1048576).toFixed(1)} MB, and wrote MintArt.lua. Restart WoW (not just /reload) to load new textures.`);

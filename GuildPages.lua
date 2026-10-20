@@ -9,17 +9,19 @@ local UI = ns.UI
 local WIDTH = UI.PAGE_WIDTH
 
 -- Everyone on the guild pages: you first, then synced guildmates, as
--- { key (nil = you), name, kills, points, pvp, pictures, bounty (this week's), updated, officer, stats }.
+-- { key (nil = you), name, kills, points, pvp, pictures, bounty (posters claimed this week), updated, officer, stats }.
 local function Members()
-    local bounty = ns.GetBounty()
-    local function BountyKills(record)
-        if not bounty or not record or record.week ~= bounty.week or record.target ~= bounty.bounty.id then return 0 end
-        return record.kills
+    local week = ns.CurrentWeek and ns.CurrentWeek()
+    local function Claimed(record)
+        if not record or record.week ~= week then return 0 end
+        local n = 0
+        for _ in pairs(record.claimed or {}) do n = n + 1 end
+        return n
     end
     local db = KillTrackerDB
     local list = { {
         name = ns.MyName(), kills = db.total, points = ns.GetPoints().earned, pvp = db.pvp and db.pvp.total or 0,
-        pictures = #(db.mints or {}), bounty = BountyKills(db.bounty), updated = time(), me = true,
+        pictures = #(db.mints or {}), bounty = Claimed(db.posters), updated = time(), me = true,
         officer = IsInGuild() and ns.CanEditConfig(), stats = db, version = ns.ADDON_VERSION,
     } }
     for _, friend in ipairs(ns.GetFriends()) do
@@ -28,7 +30,7 @@ local function Members()
         for _ in pairs(stats.mints or {}) do pictures = pictures + 1 end
         list[#list + 1] = {
             key = friend.key, name = friend.name, kills = stats.total or 0, points = stats.earned, pvp = stats.pvpTotal,
-            pictures = pictures, bounty = BountyKills(stats.bounty), updated = stats.received,
+            pictures = pictures, bounty = Claimed(stats.posters), updated = stats.received,
             officer = ns.IsGuildOfficer(friend.key), stats = stats, version = stats.version,
         }
     end

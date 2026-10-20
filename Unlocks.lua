@@ -7,6 +7,9 @@
 --   chase:<dungeon>:<name>  a chase item: in the dungeon's chests by luck (its option's dropChance, CHASE_CHANCE),
 --                           likelier in a better chest
 --   loot:<item>             looting that epic item (its name in lower case, letters and digits only)
+--   (a chase, combined or loot piece also unlocks by wearing that item: equipping the real Ironfoe, on this character)
+--   deed:<achievement id>   earning that achievement, e.g. "deed:subtype:Murloc:100": a creature's hat and onesie
+--                           (make-unlock-art.js's creatures; worn together they're one hooded onesie, Minting.lua)
 -- Chests: each clear (its end boss down, Guild.lua) finds the dungeon's chest by chance: the guild's chestChance (25%)
 -- for you and as much again for each guildmate with you. A chest rolls its quality as it's found (ns.CHEST_TIERS:
 -- common to legendary), which is how many items are in it; the first chest of a dungeon you've had nothing from is at
@@ -154,10 +157,22 @@ function ns.ChestPool(dungeonKey)
     return list
 end
 
+-- Each dungeon's tier (make-unlock-art.js's DUNGEONS; it was its backdrop's rarity, before the crayon backdrops were
+-- retired): the levelling ones uncommon, then rare, the high-level ones epic, the raids legendary.
+local DUNGEON_RARITY = {}
+for rarity, keys in pairs({
+    uncommon = { "rfc", "wc", "dm", "sfk", "bfd", "stocks", "gnomer", "rfk" },
+    rare = { "smgy", "smlib", "smarm", "smcath", "rfd", "ulda", "zf", "mara", "thanes", "ruins", "excav" },
+    epic = { "st", "brd", "lbrs", "ubrs", "dme", "dmw", "dmn", "scholo", "stratl", "stratu" },
+    legendary = { "ony", "barrow", "hyjal" },
+}) do
+    for _, key in ipairs(keys) do DUNGEON_RARITY[key] = rarity end
+end
+function ns.DungeonRarity(key) return DUNGEON_RARITY[key] or "uncommon" end
+
 -- The coins for a dungeon's chest of a tier: the dungeon's part times the chest's, times 50%..150%.
 local function Coins(dungeonKey, tier)
-    local backdrop = ns.UnlockOptions("clear:" .. dungeonKey)[1]
-    local dungeonTier = DUNGEON_COINS[backdrop and backdrop.option.rarity] or 1
+    local dungeonTier = DUNGEON_COINS[ns.DungeonRarity(dungeonKey)] or 1
     return math.floor(ns.Config("chestCoins") * dungeonTier * (TIERS[tier] or TIERS[1]).coins * (0.5 + math.random()) + 0.5)
 end
 
@@ -219,6 +234,14 @@ end
 function ns.CheckUnlocks(clears)
     local db = KillTrackerDB
     if not db or not clears then return end
+    -- (deeds earned before their pieces were made: theirs now, quietly)
+    local earned = db.achievements or {}
+    for _, layer in ipairs(ns.MintLayers) do
+        for _, option in ipairs(layer.options) do
+            local deed = option.unlock and option.unlock:match("^deed:(.+)$")
+            if deed and earned[deed] then ns.UnlockOption(ns.OptionKey(layer.key, option), true) end
+        end
+    end
     for key in pairs(db.unlocks or {}) do
         if key:match("^clear:") then
             db.unlocks[key] = nil
@@ -409,6 +432,52 @@ table.insert(ns.KillHandlers, function(_, _, c)
     if rare then ns.AddIngredient(c.rank == "Rare Elite" and "shimmer" or "frostwood") end
 end)
 
+-- Wearing a famous drop unlocks its piece on this character (KillTrackerDB is per character): equip the real Ironfoe
+-- and the Ironfoe picture piece is yours - any chase, combined (Sul'thraze) or loot piece, matched by the item's name (simplified, as LootKey).
+-- Checked at login and whenever the gear changes; a name WoW hasn't loaded yet is checked again once it has.
+local function Simple(name) return (name:lower():gsub("[^%w]", "")) end
+local wearable  -- ([simplified name] = option key: the chase, combined and loot pieces, made once the layers are known)
+local waiting = {}  -- ([itemID] = true: worn, its name not loaded yet)
+local function CheckWorn()
+    if not KillTrackerDB or not ns.MintLayers or not ns.IsMember() then return end
+    if not wearable then
+        wearable = {}
+        for _, layer in ipairs(ns.MintLayers) do
+            for _, option in ipairs(layer.options) do
+                if option.unlock and (option.unlock:find("^chase:") or option.unlock:find("^loot:") or option.unlock:find("^combine:")) then
+                    wearable[Simple(option.name)] = ns.OptionKey(layer.key, option)
+                end
+            end
+        end
+    end
+    local new = false
+    for slot = 1, 19 do
+        local itemID = GetInventoryItemID("player", slot)
+        if itemID and not issecret(itemID) then
+            local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID) or GetItemInfo(itemID)
+            if not name then
+                waiting[itemID] = true
+            else
+                waiting[itemID] = nil
+                local key = wearable[Simple(name)]
+                if key and ns.UnlockOption(key) then
+                    new = true
+                    ns.ShowToast("achievement", "Unlocked for minting!", name, "Worn: it can roll in your pictures now")
+                end
+            end
+        end
+    end
+    if new and ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+local worn = CreateFrame("Frame")
+worn:RegisterEvent("PLAYER_LOGIN")
+worn:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+worn:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+worn:SetScript("OnEvent", function(_, event, itemID)
+    if event == "GET_ITEM_INFO_RECEIVED" and not waiting[itemID] then return end
+    CheckWorn()
+end)
+
 -- Epic loot: an item you loot unlocks its layer, if there is one ("loot:" .. its name, simplified).
 local function LootKey(name) return "loot:" .. name:lower():gsub("[^%w]", "") end
 local SELF_PATTERNS = {}
@@ -422,7 +491,7 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("CHAT_MSG_LOOT")
 frame:SetScript("OnEvent", function(_, _, message)
-    if not KillTrackerDB or not message or issecret(message) then return end
+    if not KillTrackerDB or not message or issecret(message) or not ns.IsMember() then return end
     for _, pattern in ipairs(SELF_PATTERNS) do
         local link = message:match(pattern)
         if link then

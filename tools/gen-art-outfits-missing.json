@@ -1,0 +1,37 @@
+[
+ {
+  "layer": "outfit",
+  "id": "gear_ubrs_body",
+  "desc": "Drakkisath's Scale Mail: black dragonscale armour with dark red scales and red glowing seams, General Drakkisath's"
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_dmn_body",
+  "desc": "Ogre King's Furs: the Gordok ogre king's purple royal cloak with a thick fur collar, crude gold chains and a big gold belt buckle, King Gordok's"
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_scholo_body",
+  "desc": "Necromancer Robes: black necromancer robes with dark purple trim, bone clasps and glowing purple runes, Darkmaster Gandling's"
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_stratu_body",
+  "desc": "Death Knight Plate: Baron Rivendare's dark grey death knight plate with skull pauldrons and pale blue glowing trim"
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_barrow_body",
+  "desc": "Barrowmoon Robe: a deep violet druid of the moon robe with pale lavender moon and leaf patterns and silver trim"
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_hyjal_body",
+  "desc": "Wild Bark Armor: armour of living tree bark with green leaves and moss growing on it, a vine belt"
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_thanes_body",
+  "desc": "Dirgehammer's Harness: Durgen Dirgehammer's dark grey iron armour: a heavy harness of big iron rings and chain links over the bare chest, studded leather straps, a wide iron belt with a big ring buckle, and chunky oversized dark iron bracers wrapping the whole forearms"
+ }
+]

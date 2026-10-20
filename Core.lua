@@ -306,6 +306,7 @@ end
 -- unit and guid: the mob (unit nil for a boss counted from its encounter: then name, rank and the group log's key are
 -- given in boss = { name, key }, see ns.RecordBossKill).
 local function RecordKill(npcID, unit, guid, boss)
+    if not ns.IsMember() then return end  -- (outside the guild nothing counts: Config.lua)
     local db = KillTrackerDB
     db.total = db.total + 1
     sessionKills = sessionKills + 1
@@ -525,14 +526,15 @@ local function ShowHelp()
     Print("/solc sync <name> - swap kill stats with a player outside your guild (guildmates sync automatically)")
     Print("/solc forget <name> - remove a player's synced stats")
     Print("/solc sharing - turn sharing your kill stats on/off")
-    Print("/solc bounty - this week's guild bounty and how far the guild is")
-    Print("/solc bounties - the Bounty Board: pick this or next week's bounty (officers)")
+    Print("/solc bounty - this week's bounty posters and how far you are")
+    Print("/solc bounties - the bounty board (officers pick next week's there)")
     Print("/solc config - point values and guild settings (officers can change them)")
     Print("/solc unknown - mobs with a guessed or unknown faction, with Wowhead links")
     Print("/solc announce - toggle per-kill chat messages")
     Print("/solc minimap - show/hide the minimap button")
     Print("/solc ogre - ogre mode: the menu in ogre words")
     Print("/solc sounds - turn the wooden buttons' click sounds on/off")
+    Print("/solc tooltips - tooltips beside the window, or where you point")
     Print("/solc debug - announce kills and say why a mob wasn't counted")
     Print("/solc probe - test what the game hides from addons (for dungeons)")
     Print("/solc reset - clear all data for this character")
@@ -542,6 +544,11 @@ SLASH_SOLC1 = "/solc"
 SLASH_SOLC2 = "/kt"
 SlashCmdList.SOLC = function(input)
     local msg, arg = strtrim(input or ""):match("^(%S*)%s*(.-)$")
+    if msg == "letmein" then  -- (testing outside the guild: the lock off for this character, or on again)
+        KillTrackerDB.letMeIn = not KillTrackerDB.letMeIn or nil
+        return Print(KillTrackerDB.letMeIn and "SOLC unlocked on this character for testing (/solc letmein again to lock it)." or "SOLC locked again: only for Sleepy Ogre Leisure Club members.")
+    end
+    if not ns.IsMember() then return ns.ShowTeaser() end  -- (outside the guild: only the teaser, UI.lua)
     msg = msg:lower()
     local db = KillTrackerDB
     if msg == "" then
@@ -558,7 +565,13 @@ SlashCmdList.SOLC = function(input)
     elseif msg == "bounties" or msg == "board" then
         ns.ToggleBountyBoard()
     elseif msg == "bounty" then
-        ns.PrintBounty()
+        ns.PrintPosters()
+    elseif msg == "plinko" then
+        ns.ShowPlinko()  -- (Plinko.lua; a place in the window later)
+    elseif msg == "claimtest" then
+        ns.ToggleClaimTest(arg)  -- TEMPORARY: a poster drawn as claimed (HuntsBoard.lua)
+    elseif msg == "burn" then
+        ns.ToggleBountyBurn()
     elseif msg == "unknown" then
         ShowUnknown()
     elseif msg == "announce" then
@@ -574,6 +587,9 @@ SlashCmdList.SOLC = function(input)
     elseif msg == "sounds" then
         db.clickSounds = db.clickSounds == false
         Print("Button click sounds " .. (db.clickSounds and "on." or "off."))
+    elseif msg == "tooltips" then
+        db.fixedTooltips = db.fixedTooltips == false
+        Print("Tooltips " .. (db.fixedTooltips and "beside the window." or "where you point."))
     elseif msg == "ogre" then
         ns.UI.SetOgreMode(not db.ogreMode)
         Print(db.ogreMode and "Ogre mode: ON. Me smash buttons." or "Ogre mode off.")
@@ -581,6 +597,18 @@ SlashCmdList.SOLC = function(input)
         db.minimap.hide = not db.minimap.hide
         ns.UpdateMinimapButton()
         Print("Minimap button " .. (db.minimap.hide and "hidden." or "shown."))
+    elseif msg == "clearmints" then
+        -- Every picture of this character gone, as if given away (Minting.lua's RemoveMint): guildmates drop their
+        -- copies at their next sync; the numbers aren't used again. Points spent stay spent; the wardrobe stays.
+        if arg ~= "yes" then
+            Print(("This removes all %d of your pictures, here and (at their next sync) on your guildmates' addons. Type |cffffd100/solc clearmints yes|r to do it."):format(#db.mints))
+        else
+            local numbers = {}
+            for _, mint in ipairs(db.mints) do numbers[#numbers + 1] = mint.number end
+            for _, number in ipairs(numbers) do ns.RemoveMint(number) end
+            Print(("Removed %d pictures."):format(#numbers))
+            NotifyChanged()
+        end
     elseif msg == "reset" then
         wipe(db.kills)
         wipe(db.records)
@@ -588,7 +616,7 @@ SlashCmdList.SOLC = function(input)
         wipe(db.groupLog)
         db.pvp = { total = 0, unknown = 0, players = {} }
         db.points = { kills = 0, spent = 0 }
-        db.bounty, db.guildBosses = nil, nil
+        db.posters, db.guildBosses = nil, nil
         wipe(db.collection)
         wipe(db.mints)
         db.total, sessionKills = 0, 0

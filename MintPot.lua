@@ -15,7 +15,6 @@ local _, ns = ...
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local KITCHEN = "Interface\\AddOns\\SOLC\\Media\\Icons\\Kitchen\\"
 local FX = "Interface\\AddOns\\SOLC\\Media\\Icons\\Fx_"
-local BUTTON_WORD = { 1, 0.93, 0.78 }
 -- The page's layout (positions from the window's top middle, sizes in pixels): the drying line, the stations, the
 -- cauldron, the chef and the reveal; and how many stirs it takes. One table, not locals: Lua 5.1 lets a function see at
 -- most 60 of them.
@@ -44,11 +43,36 @@ local LAYOUT = {
     CHEF_X = -318,
     CHEF_Y = -478,
     CHEF_SIZE = 210,
+    PAPER_W = 244, PAPER_H = 374, PAPER_Y = -204,  -- the recipe card (its top, from the page's top)
     BIG = 280, BIG_Y = -190, REEL_Y = -432,  -- the reveal: the photo's picture size, its middle, the reel's middle
     STIRS = 3,
 }
 local MASK = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"  -- (a round mask: the splash spreading)
-local OGRE_RARITY = { uncommon = "OK!", rare = "NICE!", epic = "WOW!", legendary = "WOAH!" }
+-- What the chef says, by when (ogre words: ALL CAPS, at most 5 letters each); one picked at random each time.
+local LINES = {
+    open = { "COOK!", "STEW!", "HUNGY", "ME COOK!", "WHAT WE MAKE?", "POT HOT!", "CHEF TIME!", "YOU BRING STUFF?", "SNIFF SNIFF" },
+    land = { "YUM!", "MMM!", "GOOD!", "TASTY", "PLOP!", "OOH!", "IN IT GO!", "SMELL GOOD", "NICE BIT!", "MORE!" },
+    fuel = { "HOT!", "FIRE!", "OOH!", "BURN!", "WARM!", "BIG FIRE!", "ZAP!", "FIRE GO WOOSH" },
+    potFull = { "POT FULL! BIG POT LATER", "NO MORE ROOM!", "POT TOO FULL!" },
+    fireFull = { "FIRE FULL!", "TOO MUCH WOOD!", "FIRE HAPPY NOW" },
+    miss = { "NO?", "MISS!", "HUH?", "OOPS", "POT IS HERE!" },
+    undo = { "OKAY", "FINE!", "NO WANT?", "BACK IT GO", "HMPF" },
+    noCoin = { "NEED MORE COIN", "NO COIN, NO STEW", "GO SMASH, GET COIN" },
+    stir = { "STIR!", "ROUND!", "MORE!", "FAST!", "AGAIN!", "ALMST!" },
+    poof = { "BOOM!", "POOF!", "WHOA!", "KABOM!" },
+    look = { "LOOK!", "WAIT...", "OOOH...", "PIX!" },
+    oops = { "HUH?", "UH OH", "NOT WORK?" },
+    more = { "MORE?", "AGAIN?", "COOK MORE?", "ME LIKE IT", "GOOD PIX!" },
+    nudge = { "READY? STIR!", "SPOON IS THERE", "ME WAIT...", "STIR WHEN READY" },
+    uncommon = { "OK!", "FINE.", "MEH", "IS PIX" },
+    rare = { "NICE!", "COOL!", "OOH!", "GOOD!" },
+    epic = { "WOW!", "WOWIE", "SHINY!", "BIG WOW!" },
+    legendary = { "WOAH!", "BEST!", "CHEF KISS", "ME CRY!", "GOLD!!" },
+}
+local function Line(kind)
+    local list = LINES[kind] or LINES.uncommon
+    return list[math.random(#list)]
+end
 local MURKY = { 0.45, 0.55, 0.4 }  -- an empty brew
 -- Each ingredient's colour in the brew.
 local COLORS = {
@@ -66,6 +90,7 @@ local COLORS = {
 
 local window
 local pot, page = {}, 0  -- what's in the pot ({ [ingredient key] = n }); the shelf's page
+local added = {}  -- what went in, in order (the last first out: right-click the cauldron)
 local tweens, bubbles, live, bits = {}, {}, {}, {}
 local stirs, stirring, drag = 0, false, nil
 local potSize, bubbleTimer, clock, swirl = LAYOUT.POT_SIZE, 0, 0, 0  -- (swirl: how far stirring has turned the brew)
@@ -273,8 +298,16 @@ local function EffectWord(key, ink)
         local layer = ns.MintLayerByKey and ns.MintLayerByKey(key:sub(3))
         return layer and layer.name or key, ink and LAYER_INK or LAYER_WORD
     end
+    -- A dungeon's name, short: no "The"; a wing's ("Scarlet Monastery: Graveyard") as its place's initials or, one word,
+    -- its first five letters, and the wing ("SM Graveyard", "Strat Live").
     local d = ns.DungeonByKey and ns.DungeonByKey(key)
-    return ((d and d.name or key):gsub("^The ", "")), ink and DUNGEON_INK or DUNGEON_WORD
+    local name = (d and d.name or key):gsub("^The ", "")
+    local place, wing = name:match("^(.-):%s*(.+)$")
+    if place then
+        local initials = place:gsub("(%a)%a*%s*", "%1")
+        name = (place:find(" ") and initials or place:sub(1, 5)) .. " " .. wing
+    end
+    return name, ink and DUNGEON_INK or DUNGEON_WORD
 end
 
 -- Built once -----------------------------------------------------------------------------------------------------
@@ -361,9 +394,19 @@ local function Build()
         slot.used:SetPoint("TOPLEFT", -4, 4)
         slot:SetScript("OnEnter", function(self)
             if not self.key or drag then return end
-            local how = self.kind == "fuel" and "Drag it onto the fire (or click)." or "Drag it into the cauldron (or click)."
-            ns.UI.Tooltip(self, { ns.IngredientName(self.key), ns.IngredientSource(self.key) .. (" You have %d."):format(ns.Tokens(self.key)),
-                how .. (self.kind == "dungeon" and " Right-click: take one out, or buy a piece." or " Right-click: take one out.") })
+            -- Just what it does ("More Deadmines pieces", "Aims at the headwear", "Epic+ likelier").
+            local word = EffectWord(self.key)
+            local does
+            if self.kind == "fuel" then
+                does = (word == "Legendary" and word or word .. "+") .. " likelier"
+            elseif self.kind == "layer" then
+                does = "Aims at the " .. word:lower()
+            else
+                does = "More " .. word .. " pieces"
+            end
+            local lines = { ns.IngredientName(self.key), does }
+            if self.kind == "dungeon" then lines[3] = "|cff808080Right-click: buy a piece|r" end
+            ns.UI.Tooltip(self, lines)
             self.icon:SetVertexColor(1.2, 1.2, 1.2)
         end)
         slot:SetScript("OnLeave", function(self) self.icon:SetVertexColor(1, 1, 1) GameTooltip_Hide() end)
@@ -446,6 +489,13 @@ local function Build()
     window.dragIcon = window.over:CreateTexture(nil, "OVERLAY", nil, 7)
     window.dragIcon:SetSize(LAYOUT.SLOT * 1.15, LAYOUT.SLOT * 1.15)
     window.dragIcon:Hide()
+    window.potHit = CreateFrame("Button", nil, window)
+    window.potHit:RegisterForClicks("RightButtonUp")
+    window.potHit:SetScript("OnClick", function() window:Undo() end)
+    window.potHit:SetScript("OnEnter", function(self)
+        if #added > 0 then ns.UI.Tooltip(self, { "The cauldron", "|cff808080Right-click: take the last one out|r" }) end
+    end)
+    window.potHit:SetScript("OnLeave", GameTooltip_Hide)
     window.spoon = CreateFrame("Button", nil, window)
     window.spoon:SetSize(160, 160)
     window.spoon.art = window.spoon:CreateTexture(nil, "ARTWORK")
@@ -458,73 +508,77 @@ local function Build()
     window.spoon.glow:SetPoint("CENTER")
     window.spoon.glow:SetSize(220, 220)
     window.spoon.glow:SetAlpha(0)
-    window.spoon:SetScript("OnEnter", function(self) ns.UI.Tooltip(self, { "Stir it!", ("Stir %d times and it's done."):format(LAYOUT.STIRS) }) end)
+    window.spoon:SetScript("OnEnter", function(self) ns.UI.Tooltip(self, { "Stir it!", ("%d stirs and it's done"):format(LAYOUT.STIRS) }) end)
     window.spoon:SetScript("OnLeave", GameTooltip_Hide)
     window.spoon:SetScript("OnClick", function() window:Stir() end)
 
-    -- The recipe card, with the price at its foot (right; the chef's on the left), the way back (a plank, like the
-    -- chest show's).
-    -- The recipe: a page from a cookbook, pinned to the wall, written in ink (no outline); it grows with what's on it.
-    window.recipe = window:CreateFontString(nil, "OVERLAY")
-    window.recipe:SetFont(NAME_FONT, 16, "")
-    window.recipe:SetTextColor(0.24, 0.14, 0.07)
-    window.recipe:SetPoint("TOPRIGHT", -40, -262)
-    window.recipe:SetWidth(214)
-    window.recipe:SetJustifyH("LEFT")
-    window.recipe:SetSpacing(3)
-    local heading = window:CreateFontString(nil, "OVERLAY")
-    heading:SetFont(NAME_FONT, 21, "")
-    heading:SetTextColor(0.5, 0.14, 0.08)
-    heading:SetPoint("BOTTOMLEFT", window.recipe, "TOPLEFT", 0, 6)
-    heading:SetText("Recipe")
+    -- The recipe card (right; the chef's on the left): a page from a cookbook pinned to the wall, one size always, written
+    -- in ink (no outline): what's in at the top, the price at its foot. (The way out: the top beam's title, or Escape.)
     local paper = window:CreateTexture(nil, "BORDER")
     paper:SetTexture(KITCHEN .. "Paper")
-    paper:SetPoint("TOPLEFT", heading, "TOPLEFT", -36, 16)  -- (the text right of the page's red margin)
-    paper:SetPoint("BOTTOMRIGHT", window.recipe, "BOTTOMRIGHT", 26, -34)
+    paper:SetSize(LAYOUT.PAPER_W, LAYOUT.PAPER_H)
+    paper:SetPoint("TOPRIGHT", window, "TOPRIGHT", -14, LAYOUT.PAPER_Y)
+    local MARGIN = LAYOUT.PAPER_W * 46 / 256  -- (right of the page's red margin)
+    local function Ink(size, r, g, b)
+        local text = window:CreateFontString(nil, "OVERLAY")
+        text:SetFont(NAME_FONT, size, "")
+        text:SetTextColor(r, g, b)
+        text:SetJustifyH("LEFT")
+        text:SetWidth(LAYOUT.PAPER_W - MARGIN - 18)
+        text:SetSpacing(3)
+        ns.UI.OutlineText(text, { 1, 0.97, 0.88, 0.85 })  -- (a light edge: the ink reads over the paper's grain and stains)
+        return text
+    end
+    local heading = Ink(21, 0.5, 0.14, 0.08)
+    heading:SetPoint("TOPLEFT", paper, "TOPLEFT", MARGIN, -32)
+    heading:SetText("Recipe")
+    -- How full: the cauldron's places and the fire's, a row of rings each under its name, each holding the icon of what's
+    -- in it.
+    window.potLabel = Ink(16, 0.48, 0.16, 0.06)
+    window.potLabel:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -6)
+    window.fireLabel = Ink(16, 0.48, 0.16, 0.06)
+    window.fireLabel:SetPoint("TOPLEFT", window.potLabel, "BOTTOMLEFT", 0, -30)
+    window.recipe = Ink(16, 0.24, 0.14, 0.07)
+    window.recipe:SetPoint("TOPLEFT", window.fireLabel, "BOTTOMLEFT", 0, -34)
+    window.paper = paper
+    window.price = Ink(16, 0.24, 0.14, 0.07)
+    window.price:SetPoint("BOTTOMLEFT", paper, "BOTTOMLEFT", MARGIN, 44)  -- (clear of the torn edge)
     -- Over the card: its exact odds, in a tooltip (window.odds, from Refresh).
     local oddsHit = CreateFrame("Frame", nil, window)
-    oddsHit:SetPoint("TOPLEFT", window.recipe, "TOPLEFT", -4, 4)
-    oddsHit:SetPoint("BOTTOMRIGHT", window.recipe, "BOTTOMRIGHT", 4, -4)
+    oddsHit:SetAllPoints(paper)
     oddsHit:EnableMouse(true)
     oddsHit:SetScript("OnEnter", function(self) if window.odds then ns.UI.Tooltip(self, window.odds) end end)
     oddsHit:SetScript("OnLeave", GameTooltip_Hide)
-    -- How full the cauldron and the fire are: a dot a place, filled as it fills (on the cauldron's belly; over the
-    -- woodpile).
     local function Pips(count)
         local list = {}
         for i = 1, count do
-            local ring = window.over:CreateTexture(nil, "OVERLAY", nil, 1)
+            local ring = window:CreateTexture(nil, "OVERLAY", nil, 1)
             ring:SetTexture(KITCHEN .. "Bubble")
-            ring.icon = window.over:CreateTexture(nil, "OVERLAY", nil, 2)
+            ring.icon = window:CreateTexture(nil, "OVERLAY", nil, 2)
             list[i] = ring
         end
         return list
     end
-    -- A place: at x, y, size big, holding key's icon (nil: empty, a pale ring).
-    function window:FillPip(ring, x, y, size, key)
+    -- A place, i of a row under label, size big, holding key's icon (nil: empty, a faint ring), in ink.
+    function window:FillPip(ring, label, i, size, key)
         ring:SetSize(size, size)
-        Place(ring, x, y)
-        ring:SetVertexColor(1, 0.93, 0.78)
-        ring:SetAlpha(key and 1 or 0.45)
+        ring:ClearAllPoints()
+        ring:SetPoint("TOPLEFT", label, "BOTTOMLEFT", (i - 1) * (size + 2), -4)
+        ring:SetVertexColor(0.3, 0.18, 0.08)
+        ring:SetAlpha(key and 0.9 or 0.35)
         ring:Show()
         ring.icon:SetShown(key ~= nil)
         if key then
             ring.icon:SetTexture(ns.IngredientIcon(key))
-            ring.icon:SetSize(size * 0.78, size * 0.78)
-            Place(ring.icon, x, y)
+            ring.icon:SetSize(size * 0.86, size * 0.86)
+            ring.icon:ClearAllPoints()
+            ring.icon:SetPoint("CENTER", ring)
         end
     end
     window.potPips, window.firePips = Pips(12), Pips(3)
     -- The words an ingredient says as it goes in ("Deadmines+"), rising and fading.
     window.words = {}
-    local back = CreateFrame("Button", nil, window)
-    back:SetSize(150, 34)
-    back.word = Text(back, 17, unpack(BUTTON_WORD))
-    back.word:SetPoint("CENTER", 0, 1)
-    back.word:SetText("Not now")
-    ns.UI.SkinButton(back, { steady = true })
-    back:SetPoint("BOTTOMRIGHT", -20, 18)
-    back:SetScript("OnClick", function() ns.UI.ClickSound() window:Hide() end)
+    tinsert(UISpecialFrames, "SOLCMintPot")  -- (Escape closes it)
 
     -- The reveal's stage, over the kitchen (dimmed): the new photo, big, blank, its layers dripped on one by one as the
     -- reel under it lands on each.
@@ -639,7 +693,7 @@ local function Build()
         end
         if not stirring then  -- the spoon, resting in the pot, swaying a little
             self.spoon:ClearAllPoints()
-            self.spoon:SetPoint("CENTER", self, "TOP", potSize * 0.32, surface + 58 + math.sin(clock * 1.2) * 3)
+            self.spoon:SetPoint("CENTER", self, "TOP", potSize * 0.26, surface + 58 + math.sin(clock * 1.2) * 3)
         end
         -- The chef, breathing (and hopping when it speaks), its words fading; the photos swaying on their pegs.
         self.hop = math.max(0, (self.hop or 0) - dt)
@@ -647,6 +701,7 @@ local function Build()
         Place(self.chef, LAYOUT.CHEF_X, LAYOUT.CHEF_Y + math.sin(clock * 1.6) * 3 + hop)
         self.saying = math.max(0, (self.saying or 0) - dt)
         self.nag = (self.nag or 2) - dt
+        self.idle = (self.idle or 0) + dt
         if self.nag <= 0 then self:Nag() end
         -- The spoon: glowing and wiggling once there's something in to stir.
         local ready = not stirring and not self.reveal and InPot() + InPot(true) > 0
@@ -665,27 +720,35 @@ local function Build()
 
     -- The chef says something (ogre words: ALL CAPS, at most 5 letters each), for seconds (default 1.5), and hops. The
     -- bubble fits the words.
+    -- (The bubble's art: its oval fills about 0.62 of its width and 0.45 of its height, a little right of the middle and
+    -- above it; the words go in the oval.)
     function window:Say(words, seconds)
         local word = self.speech.word
-        word:SetWidth(150)
+        word:SetWidth(132)
         word:SetText(words)
-        local w = math.min(150, word:GetStringWidth() or 60)
-        word:SetWidth(w + 4)
-        self.speech:SetSize(math.max(96, w + 56), math.max(80, (word:GetStringHeight() or 24) + 58))
+        local w = math.min(132, word:GetStringWidth() or 60)
+        word:SetWidth(w + 6)
+        local h = word:GetStringHeight() or 24
+        local bw, bh = math.max(110, (w + 6) / 0.62), math.max(86, h / 0.45)
+        self.speech:SetSize(bw, bh)
+        word:ClearAllPoints()
+        word:SetPoint("CENTER", self.speech, "CENTER", bw * 0.04, bh * 0.09)
         self.saying, self.hop = seconds or 1.5, 0.3
         self.nag = math.max(self.nag or 0, (seconds or 1.5) + 1)
     end
     -- What the chef says when nothing's happening: how it's done while the pot's empty, else to stir.
-    local HOWTO = { "DRAG STUFF IN POT!", "WOOD IN FIRE!", "THEN STIR!" }
+    local HOWTO = { "DRAG STUFF IN POT!", "WOOD IN FIRE!", "STIR WHEN READY!" }
     function window:Nag()
         if stirring or self.reveal or drag then self.nag = 2 return end
         if InPot() + InPot(true) == 0 then
             self.howto = (self.howto or 0) % #HOWTO + 1
             self:Say(HOWTO[self.howto], 2.4)
             self.nag = self.howto == #HOWTO and 7 or 2.8
+        elseif (self.idle or 0) > 12 then  -- (you can stir any time: only a nudge after a while with nothing added)
+            self:Say(Line("nudge"), 2)
+            self.nag, self.idle = 14, 0
         else
-            self:Say("STIR IT!", 2)
-            self.nag = 9
+            self.nag = 2
         end
     end
     -- The rope's height at x (it sags in the middle).
@@ -712,12 +775,17 @@ local function Build()
         end
         return count > 0 and self.photos[1] or nil
     end
-    -- Dresses the chef: your Overview photo's ogre (else your newest picture's, else a plain one), its own hat off.
+    -- Dresses the chef: the ogre you built (else your Overview photo's, else your newest picture's, else a plain one), its
+    -- own hat off.
     function window:DressChef()
         local card = KillTrackerDB.card
         local mint = card and card.portrait and ns.FindMint(nil, card.portrait) or ns.NewestMint()
         local traits = {}
-        if mint then
+        local style = mint and mint.style
+        if card and card.ogre then  -- the ogre you built (Minting.lua), first, in its editions
+            for key, id in pairs(card.ogre) do traits[key] = id end
+            mint, style = nil, card.ogreStyle
+        elseif mint then
             for key, id in pairs(mint.traits) do traits[key] = id end
         else
             for _, layer in ipairs(ns.MintLayers) do
@@ -727,7 +795,7 @@ local function Build()
             end
         end
         traits.background, traits.headwear = nil, nil
-        ns.DrawMint(self.chef, { traits = traits, style = mint and mint.style })
+        ns.DrawMint(self.chef, { traits = traits, style = style })
     end
 
     -- An ingredient going into the brew, at x: it sinks under the surface (cut off at it, taking on the brew's colour),
@@ -737,7 +805,7 @@ local function Build()
         x = math.max(-potSize * 0.24, math.min(potSize * 0.24, x))
         Sound("LOOT_WINDOW_COIN_SOUND")
         local col = COLORS[key] or MURKY
-        self:Say(({ "YUM!", "MMM!", "GOOD!", "TASTY" })[math.random(4)])
+        self:Say(Line("land"))
         self:Float(key, x, surface + 40)
         brewShown[1], brewShown[2], brewShown[3] = col[1], col[2], col[3]
         for _ = 1, 7 do Bubble(x + (math.random() - 0.5) * 60, surface, 12 + math.random() * 14, 0.45, COLORS[key] or MURKY) end
@@ -761,6 +829,9 @@ local function Build()
             tex:Hide()
             tex:SetTexCoord(0, 1, 0, 1)
             tex:SetVertexColor(1, 1, 1)
+            local have = 0  -- (it may have been taken back out while it fell: then it doesn't float)
+            for _, b in ipairs(bits) do if b.key == key then have = have + 1 end end
+            if have >= (pot[key] or 0) then return self:Refresh() end
             local bit = self.over:CreateTexture(nil, "OVERLAY", nil, 4)
             bit:SetTexture(ns.IngredientIcon(key))
             bit:SetTexCoord(0, 1, 0, 0.6)
@@ -775,6 +846,7 @@ local function Build()
     end
     -- What it does, in a word rising out of where it went in ("Deadmines+", "Headwear+", "Epic+").
     function window:Float(key, x, y)
+        self.idle = 0
         local word, color = EffectWord(key)
         local text = table.remove(self.words) or Text(self.over, 24, 1, 1, 1)
         text:SetText(word .. "+")
@@ -793,7 +865,7 @@ local function Build()
         local fuel = ns.Fuel(key)
         x = math.max(-60, math.min(60, x))
         Sound("LOOT_WINDOW_COIN_SOUND")
-        self:Say(({ "HOT!", "FIRE!", "OOH!" })[math.random(3)])
+        self:Say(Line("fuel"))
         local from = FireY() + 10
         Tween(0.45, function(p)
             local size = LAYOUT.SLOT * 0.8 * (1 - p)
@@ -812,13 +884,13 @@ local function Build()
         local cauldron = ns.Cauldron()
         if IsFuel(key) then
             if InPot(true) >= ns.FIRE_SLOTS then
-                self:Say("FIRE FULL!", 2)
+                self:Say(Line("fireFull"), 2)
                 return false
             end
             return (pot[key] or 0) < ns.Tokens(key)
         end
         if InPot() >= cauldron.slots then
-            self:Say("POT FULL! BIG POT LATER", 2.5)  -- (a bigger cauldron comes with your Ogre Rank)
+            self:Say(Line("potFull"), 2.5)  -- (a bigger cauldron comes with your Ogre Rank)
             return false
         end
         return (pot[key] or 0) < ns.Tokens(key)
@@ -828,6 +900,7 @@ local function Build()
         local key = slot.key
         if not self:CanAdd(key) then return end
         pot[key] = (pot[key] or 0) + 1
+        added[#added + 1] = key
         ns.UI.ClickSound()
         local fly = self.over:CreateTexture(nil, "OVERLAY", nil, 5)
         fly:SetTexture(ns.IngredientIcon(key))
@@ -869,6 +942,7 @@ local function Build()
         local fuel = slot.kind == "fuel"
         if (OverPot(x, y) or (fuel and OverFire(x, y))) and self:CanAdd(key) then
             pot[key] = (pot[key] or 0) + 1
+            added[#added + 1] = key
             self:Refresh()
             local toY = fuel and FireY() + 10 or Surface() + 30
             Tween(0.18, function(p)  -- drops in from where you let go
@@ -877,7 +951,7 @@ local function Build()
                 if fuel then self:Burn(key, fly, x) else self:Sink(key, fly, x) end
             end)
         else  -- back onto the shelf
-            self:Say("NO?")
+            self:Say(Line("miss"))
             Tween(0.25, function(p)
                 local e = EaseOut(p)
                 Place(fly, x + (slot.x - x) * e, y + (slot.y - y) * e)
@@ -889,6 +963,9 @@ local function Build()
         if (pot[key] or 0) == 0 then return end
         pot[key] = pot[key] - 1
         if pot[key] == 0 then pot[key] = nil end
+        for i = #added, 1, -1 do
+            if added[i] == key then table.remove(added, i) break end
+        end
         for i = #bits, 1, -1 do
             if bits[i].key == key then
                 bits[i]:Hide()
@@ -897,6 +974,30 @@ local function Build()
             end
         end
         self:Refresh()
+    end
+    -- Right-click the cauldron: the last thing in comes back out, up out of the brew (or the fire) onto its shelf.
+    function window:Undo()
+        local key = added[#added]
+        if not key or stirring or self.reveal then return end
+        local slot
+        for _, list in ipairs({ self.slots, self.rack, self.wood }) do
+            for _, s in ipairs(list) do
+                if s.key == key and s:IsShown() then slot = s end
+            end
+        end
+        local fromY = IsFuel(key) and FireY() + 20 or Surface()
+        local toX, toY = slot and slot.x or 0, slot and slot.y or LAYOUT.SHELF_Y
+        local fly = self.over:CreateTexture(nil, "OVERLAY", nil, 5)
+        fly:SetTexture(ns.IngredientIcon(key))
+        fly:SetSize(LAYOUT.SLOT * 0.8, LAYOUT.SLOT * 0.8)
+        self:TakeOut(key)
+        ns.UI.ClickSound()
+        self:Say(Line("undo"), 1.2)
+        for _ = 1, 4 do Bubble((math.random() - 0.5) * 40, fromY, 10 + math.random() * 10, 0.4, COLORS[key] or MURKY) end
+        Tween(0.45, function(p)
+            local e = EaseOut(p)
+            Place(fly, toX * e, fromY + (toY - fromY) * e + math.sin(p * math.pi) * 90)
+        end, function() fly:Hide() end)
     end
     function window:SlotMenu(slot)
         local key = slot.key
@@ -926,7 +1027,7 @@ local function Build()
         if stirring then return end
         local points, cost = ns.GetPoints().balance, ns.MintCost(pot)
         if points < cost then
-            self:Say("NEED MORE COIN", 2.5)
+            self:Say(Line("noCoin"), 2.5)
             return
         end
         stirs = stirs + 1
@@ -938,7 +1039,7 @@ local function Build()
             -- leaning the way it goes; the bits floating in the brew swirl along.
             local a = (p * p * (3 - 2 * p)) * 2 * math.pi
             self.spoon:ClearAllPoints()
-            self.spoon:SetPoint("CENTER", self, "TOP", potSize * 0.32 * math.cos(a), surface + 58 + math.sin(a) * 5)
+            self.spoon:SetPoint("CENTER", self, "TOP", potSize * 0.26 * math.cos(a), surface + 58 + math.sin(a) * 5)
             self.spoon.art:SetRotation(-math.sin(a) * 0.25)
             swirl = swirl + (a - (self.lastA or 0))
             self.lastA = p >= 1 and 0 or a
@@ -946,14 +1047,14 @@ local function Build()
         end, function()
             if stirs < LAYOUT.STIRS then
                 stirring = false
-                self:Say(({ "STIR!", "MORE!" })[stirs] or "STIR!")
+                self:Say(Line("stir"))
                 return
             end
             self:Poof()
         end)
     end
     function window:Poof()
-        self:Say("BOOM!")
+        self:Say(Line("poof"))
         self.puff:SetVertexColor(unpack(BrewColor()))
         self.puff:Show()
         Sound("LOOT_WINDOW_COIN_SOUND")
@@ -973,15 +1074,16 @@ local function Build()
         self.puff:Hide()
         if not mint then
             ns.Print(reason)
-            self:Say("HUH?")
+            self:Say(Line("oops"))
             stirs, stirring = 0, false
             return
         end
         wipe(pot)
+        wipe(added)
         for _, bit in ipairs(bits) do bit:Hide() end
         wipe(bits)
         self:Refresh()
-        self:Say("LOOK!")
+        self:Say(Line("look"))
         local photo = self:HangPhotos()
         if not photo then
             stirring = false
@@ -1014,16 +1116,12 @@ local function Build()
     -- the brew, its rarity's colour, falls on the photo and splashes it on.
     function window:Reveal(mint, photo)
         local stage = self.stage
-        local reveal = { mint = mint, photo = photo, order = ns.MintRevealOrder(), step = 0, shown = {} }
+        -- (traits: the layers dropped so far; the picture is drawn from them alone at each drop, so it looks at every
+        -- step as it would with only those - a face shows until the mask or hood over it lands, a onesie is a onesie
+        -- until its hat makes it a hooded one, and a hat's hiding of the ears comes with the hat)
+        local reveal = { mint = mint, photo = photo, order = ns.MintRevealOrder(), step = 0, traits = {} }
         self.reveal = reveal
-        -- The whole picture drawn, every layer hidden until its drop.
-        ns.RenderMint(stage.canvas, mint.traits, nil, mint.style)
-        for i, tex in ipairs(stage.canvas.layers or {}) do
-            reveal.shown[i] = tex:IsShown()
-            tex:Hide()
-        end
-        reveal.front = stage.canvas.front and stage.canvas.front:IsShown()
-        if stage.canvas.front then stage.canvas.front:Hide() end
+        ns.RenderMint(stage.canvas, reveal.traits, nil, mint.style)  -- (a blank photo)
         stage.title:SetText("")
         stage.result:SetText("")
         stage.hint:SetText("Click to skip")
@@ -1079,7 +1177,7 @@ local function Build()
         end, function()
             drop:Hide()
             Sound(({ uncommon = "LOOT_WINDOW_COIN_SOUND", rare = "UI_EPICLOOT_TOAST", epic = "UI_EPICLOOT_TOAST", legendary = "UI_LEGENDARY_LOOT_TOAST" })[option.rarity] or "LOOT_WINDOW_COIN_SOUND")
-            self:Say(OGRE_RARITY[option.rarity] or "OK!")
+            self:Say(Line(option.rarity))
             -- The splat.
             local splat = stage.fx.splat or stage.fx:CreateTexture(nil, "OVERLAY", nil, 4)
             stage.fx.splat = splat
@@ -1109,12 +1207,18 @@ local function Build()
                     table.insert(stage.fx.drips, drip)
                 end)
             end
-            -- The layer, spreading out from the splash.
+            -- The layer, spreading out from the splash: the picture drawn again with it, then its textures (those it shows
+            -- as: a hat worn with its onesie is the hooded onesie) masked down to the splash, growing.
+            reveal.traits[layer.key] = reveal.mint.traits[layer.key]
+            ns.RenderMint(stage.canvas, reveal.traits, nil, reveal.mint.style)
             local index
             for i, l in ipairs(ns.MintLayers) do if l == layer then index = i end end
             local textures = {}
-            if index and reveal.shown[index] then textures[#textures + 1] = stage.canvas.layers[index] end
-            if layer.key == "skin" and reveal.front then textures[#textures + 1] = stage.canvas.front end
+            local own = index and stage.canvas.layers[index]
+            if own and own:IsShown() then textures[#textures + 1] = own end
+            local function Also(tex) if tex and tex:IsShown() then textures[#textures + 1] = tex end end
+            if layer.key == "skin" then Also(stage.canvas.front) end
+            if layer.key == "outfit" then Also(stage.canvas.outfitFront) Also(stage.canvas.outfitBack) end
             local mask = stage.masks[index or 0] or stage.canvas:CreateMaskTexture()
             stage.masks[index or 0] = mask
             mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -1154,7 +1258,7 @@ local function Build()
         self.stage.title:SetText(("Picture #%d"):format(mint.number))
         self.stage.result:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", Rarity))
         self.stage.hint:SetText("Click to hang it on the line")
-        self:Say(OGRE_RARITY[rarity] or "PIX!")
+        self:Say(Line(rarity), 2)
         if ns.OnKillsChanged then ns.OnKillsChanged() end
     end
     -- Skip: every layer on at once. Done: back onto the line, and the kitchen's ready for another.
@@ -1167,12 +1271,15 @@ local function Build()
             stage.reel:Stop()
             if stage.fx.drop then stage.fx.drop:Hide() end
             if stage.fx.splat then stage.fx.splat:Hide() end
-            for i, tex in ipairs(stage.canvas.layers or {}) do
-                if stage.masks[i] then tex:RemoveMaskTexture(stage.masks[i]) end
-                tex:SetShown(reveal.shown[i])
+            -- (the splash masks off whatever they were on, then the whole picture)
+            local canvas = stage.canvas
+            for _, mask in pairs(stage.masks) do
+                for _, tex in ipairs(canvas.layers or {}) do tex:RemoveMaskTexture(mask) end
+                for _, key in ipairs({ "front", "outfitFront", "outfitBack" }) do
+                    if canvas[key] then canvas[key]:RemoveMaskTexture(mask) end
+                end
             end
-            if stage.canvas.front then stage.canvas.front:SetShown(reveal.front) end
-            ns.RenderMint(stage.canvas, reveal.mint.traits, nil, reveal.mint.style)  -- (the colours, as they should be)
+            ns.RenderMint(canvas, reveal.mint.traits, nil, reveal.mint.style)
             return self:RevealDone()
         end
         if reveal.leaving then return end
@@ -1196,7 +1303,7 @@ local function Build()
             photo.swing = 1
             self.reveal = nil
             stirs, stirring = 0, false
-            self:Say("MORE?")
+            self:Say(Line("more"), 2)
             self:Refresh()
         end)
     end
@@ -1212,6 +1319,8 @@ local function Build()
     function window:Refresh()
         local cauldron = ns.Cauldron()
         potSize = LAYOUT.POT_SIZE * cauldron.size
+        self.potHit:SetSize(potSize * 0.9, potSize * 1.1)
+        Place(self.potHit, 0, LAYOUT.POT_Y - potSize * 0.1)
         self.glow:SetSize(potSize * 1.3, potSize * 1.3)
         Place(self.glow, 0, LAYOUT.POT_Y)
         -- The spice rack and the woodpile (always all of them).
@@ -1243,43 +1352,48 @@ local function Build()
                 list[#list + 1] = entry.key
             end
         end
-        local step = math.min(26, potSize * 0.78 / cauldron.slots)
+        local row = self.potLabel:GetWidth()
+        local size = math.min(22, math.floor(row / cauldron.slots) - 2)
         for i, ring in ipairs(self.potPips) do
             if i <= cauldron.slots then
-                self:FillPip(ring, (i - (cauldron.slots + 1) / 2) * step, LAYOUT.POT_Y - potSize * 0.14, step - 2, inPot[i])
+                self:FillPip(ring, self.potLabel, i, size, inPot[i])
             else
                 ring:Hide()
                 ring.icon:Hide()
             end
         end
-        for i, ring in ipairs(self.firePips) do
-            self:FillPip(ring, LAYOUT.WOOD_X + (i - (#self.firePips + 1) / 2) * 30, LAYOUT.WOOD_Y + 40, 26, inFire[i])
-        end
+        for i, ring in ipairs(self.firePips) do self:FillPip(ring, self.fireLabel, i, 22, inFire[i]) end
+        self.potLabel:SetText(("%s  |cff8a7660%d/%d|r"):format(cauldron.name, total, cauldron.slots))
+        self.fireLabel:SetText(("Fire  |cff8a7660%d/%d|r"):format(fire, ns.FIRE_SLOTS))
 
         -- The recipe card, simply: what's in, by what it does ("Deadmines ++", "Headwear +", "Epic +"); the exact odds
         -- (each piece it aims at, with its chance and without; how much rarer it makes the layers) in its tooltip.
-        local card = { ("|cff7a2a10%s|r  %d/%d"):format(cauldron.name, total, cauldron.slots),
-            ("|cff7a2a10Fire|r  %d/%d"):format(fire, ns.FIRE_SLOTS), " " }
+        local card = {}
+        local effects, MAX_EFFECTS = 0, 4
         for _, entry in ipairs(ns.IngredientList()) do
             local n = pot[entry.key] or 0
-            if n > 0 then
+            effects = effects + (n > 0 and 1 or 0)
+            if n > 0 and effects > MAX_EFFECTS then
+                if effects == MAX_EFFECTS + 1 then card[#card + 1] = "" end
+                card[#card] = ("|cff8a7660and %d more|r"):format(effects - MAX_EFFECTS)
+            elseif n > 0 then
                 local word, color = EffectWord(entry.key, true)
                 card[#card + 1] = ("|cff%02x%02x%02x%s|r %s"):format(math.floor(color[1] * 255 + 0.5),
                     math.floor(color[2] * 255 + 0.5), math.floor(color[3] * 255 + 0.5), word,
                     n > 5 and ("+" .. n) or string.rep("+", n))
             end
         end
-        if #card == 3 then
-            card[#card + 1] = "Nothing in yet: every part rolls as usual."
-            card[#card + 1] = "|cff8a7660Dungeons pull their pieces, spices aim at a part, fuel makes it rarer.|r"
+        if #card == 0 then
+            card[#card + 1] = "Nothing in yet."
+            card[#card + 1] = "|cff8a7660Every part rolls as usual.|r"
         else
-            card[#card + 1] = "|cff8a7660(hover for the exact odds)|r"
+            card[#card + 1] = "|cff8a7660hover for odds|r"
         end
         -- The price, at the page's foot.
         local points, cost, plain = ns.GetPoints().balance, ns.MintCost(pot), ns.MintCost()
-        card[#card + 1] = " "
-        card[#card + 1] = ("|cff7a2a10Price|r  %d points%s"):format(cost, cost > plain and (" |cff8a7660(%d + ingredients)|r"):format(plain) or "")
-        card[#card + 1] = ("You have |c%s%d|r"):format(points >= cost and "ff2a7a2a" or "ffaa2020", points)
+        self.price:SetText(table.concat({
+            ("|cff7a2a10Price|r  %d points%s"):format(cost, cost > plain and (" |cff8a7660(+%d)|r"):format(cost - plain) or ""),
+            ("You have |c%s%d|r"):format(points >= cost and "ff2a7a2a" or "ffaa2020", points) }, "\n"))
         self.recipe:SetText(table.concat(card, "\n"))
         local lines = { "Exact odds" }
         local plan = ns.PotPlan(pot)
@@ -1311,12 +1425,11 @@ local function Build()
         end
         table.sort(targets, function(a, b) return a.p > b.p end)
         local function Pct(p) return math.floor(p * 100 + 0.5) end
-        for i = 1, math.min(5, #targets) do
+        for i = 1, #targets do  -- (every piece the pot aims at, likeliest first)
             local t = targets[i]
             lines[#lines + 1] = ("|c%s%s|r: |cff55dd55%d%%|r |cff999999(was %d%%)|r"):format(ns.RARITY_COLORS[t.option.rarity] or "ffffffff",
                 t.option.name, Pct(t.p), Pct(t.was))
         end
-        if #targets > 5 then lines[#lines + 1] = ("|cff999999and %d more|r"):format(#targets - 5) end
         if everyLayer and #rarer > 0 then
             lines[#lines + 1] = ("Rarer everywhere: %s %d%% to |cff55dd55%d%%|r"):format(floorName, Pct(rarer[1].was), Pct(rarer[1].now))
         else
@@ -1370,9 +1483,12 @@ function ns.ShowMintPot()
     local level = window:GetFrameLevel()
     window.stage:SetFrameLevel(level + 40)
     window.stage.fx:SetFrameLevel(level + 50)
+    window.potHit:SetFrameLevel(level + 1)
+    window.spoon:SetFrameLevel(level + 3)
     window.chef:SetFrameLevel(level + 60)
     window.speech:SetFrameLevel(level + 62)
     wipe(pot)
+    wipe(added)
     for _, bit in ipairs(bits) do bit:Hide() end
     wipe(bits)
     wipe(tweens)
@@ -1390,7 +1506,7 @@ function ns.ShowMintPot()
     swirl, window.lastA, squash, slosh, flare = 0, 0, 1, 0, 0
     window:DressChef()
     window:HangPhotos()
-    window:Say(({ "COOK!", "STEW!", "HUNGY" })[math.random(3)])
+    window:Say(Line("open"), 2)
     window.howto, window.nag = 0, 2
     brewShown[1], brewShown[2], brewShown[3] = MURKY[1], MURKY[2], MURKY[3]
     window:Show()

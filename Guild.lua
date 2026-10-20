@@ -322,139 +322,21 @@ local function CurrentWeek()
 end
 ns.CurrentWeek = CurrentWeek
 
-local function Hash(text)
-    local h = 5381
-    for i = 1, #text do h = (h * 33 + text:byte(i)) % 2147483647 end
-    return h
-end
-
--- The guild's own shuffled order of the rotation, seeded by its name: every kind comes up once per
--- cycle and never twice in a row, and different guilds hunt different things.
-local orders = {}
-local function GuildOrder(guild)
-    if orders[guild] then return orders[guild] end
-    local order, seed = {}, Hash(guild)
-    for i = 1, #ROTATION do order[i] = i end
-    for i = #order, 2, -1 do
-        seed = (seed * 1103515245 + 12345) % 2147483648
-        local j = math.floor(seed / 65536) % i + 1
-        order[i], order[j] = order[j], order[i]
-    end
-    orders[guild] = order
-    return order
-end
-
--- A bounty's goal for your guild, scaled by the "Bounty goal %" setting.
-function ns.BountyGoal(bounty)
-    return math.max(1, math.floor(bounty.goal * ns.Config("bountyGoalPercent") / 100 + 0.5))
-end
-
--- Kills of your own needed for the reward: the "Reward share %" of the goal, at least 1.
-local function ShareNeeded(goal)
-    return math.max(1, math.ceil(goal * ns.Config("bountyMinPercent") / 100))
-end
-
--- The guild's bounty weeksAhead weeks from now (0 = this week): { week, bounty = BOUNTIES entry or custom
--- bounty, scheduled = true if an officer picked it, goal = the officer's own goal or nil, resetsIn = seconds
--- until this week ends }, or nil outside a guild.
-function ns.GetBounty(weeksAhead)
-    local guild = IsInGuild() and GetGuildInfo("player")
-    if not guild or issecret(guild) then return end
-    local week, resetsIn = CurrentWeek()
-    week = week + 7 * (weeksAhead or 0)
-    local id, goal = ns.GetScheduledBounty(week)
-    local scheduled = ResolveBounty(id)
-    local order = GuildOrder(guild)
-    local bounty = scheduled or ROTATION[order[math.floor(week / 7) % #order + 1]]
-    return { week = week, bounty = bounty, scheduled = scheduled ~= nil, goal = scheduled and goal, resetsIn = resetsIn }
-end
-
--- Your bounty record for this week (KillTrackerDB.bounty = { week, target = bounty id, kills, rewarded }),
--- started fresh when the week or the bounty changes. Friends receive it through sync.
-local function MyBounty(current)
-    local db = KillTrackerDB
-    if not db.bounty or db.bounty.week ~= current.week or db.bounty.target ~= current.bounty.id then
-        db.bounty = { week = current.week, target = current.bounty.id, kills = 0 }
-    end
-    return db.bounty
-end
-
--- Guild progress this week: { current, goal, needed, total, mine, contributors = { { name, kills } }, rewarded }.
-function ns.GetBountyProgress()
-    local current = ns.GetBounty()
-    if not current then return end
-    local mine = MyBounty(current)
-    local goal = current.goal or ns.BountyGoal(current.bounty)
-    local progress = { current = current, goal = goal, needed = ShareNeeded(goal), total = mine.kills, mine = mine.kills,
-        rewarded = mine.rewarded, contributors = { { name = ns.MyName(), kills = mine.kills } } }
-    for _, friend in ipairs(ns.GetFriends()) do
-        local theirs = friend.stats.bounty
-        if theirs and theirs.week == current.week and theirs.target == current.bounty.id and theirs.kills > 0 then
-            progress.total = progress.total + theirs.kills
-            progress.contributors[#progress.contributors + 1] = { name = friend.name, kills = theirs.kills }
-        end
-    end
-    table.sort(progress.contributors, function(a, b) return a.kills > b.kills end)
-    return progress
-end
-
--- Pays the reward once the guild reaches the goal, if you did your share. Called after kills and syncs.
-function ns.CheckBountyGoal()
-    local progress = ns.GetBountyProgress()
-    if not progress or progress.rewarded or progress.total < progress.goal or progress.mine < progress.needed then return end
-    KillTrackerDB.bounty.rewarded = true
-    ns.Touch(KillTrackerDB.bounty)
-    local reward = ns.Config("bountyReward")
-    local p = Points()
-    p.bounty = p.bounty + reward
-    ns.AddEvent("B", progress.current.bounty.id)
-    ns.ShowToast("achievement", "Bounty complete!", ("%s: %d/%d"):format(progress.current.bounty.name, progress.total, progress.goal),
-        ("+%d points"):format(reward))
-end
-
--- Counts one towards your bounty.
-local function Count()
-    local current = ns.GetBounty()
-    if not current then return end
-    local mine = MyBounty(current)
-    mine.kills = mine.kills + 1
-    ns.Touch(mine)
-    ns.CheckBountyGoal()
-end
-
--- Non-kill bounties: called with "pvp" and the victim { race } if known (PvP.lua), or "dungeon" (below).
+-- Non-kill bounty posters: called with "pvp" and the victim { race } if known (PvP.lua), or "dungeon" (below).
 -- A race bounty only counts victims whose race is known.
 function ns.OnBountyEvent(event, victim)
-    local current = ns.GetBounty()
-    if not current or current.bounty.event ~= event then return end
-    if current.bounty.race and not (victim and victim.race == current.bounty.race) then return end
-    Count()
+    if ns.OnPosterEvent then ns.OnPosterEvent(event, victim) end  -- (the posters, Posters.lua)
 end
 
+-- Time left, short: "2d 4h", "3h 20m" or "45m".
 local function TimeLeft(seconds)
-    return ("%dd %dh"):format(math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600))
+    seconds = math.max(0, seconds)
+    local d, h, m = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
+    if d > 0 then return ("%dd %dh"):format(d, h) end
+    if h > 0 then return ("%dh %dm"):format(h, m) end
+    return ("%dm"):format(math.max(1, m))
 end
 ns.BountyTimeLeft = TimeLeft
-
-function ns.PrintBounty()
-    local progress = ns.GetBountyProgress()
-    if not progress then
-        ns.Print("Weekly bounties are for guilds; join one to take part.")
-        return
-    end
-    local bounty = progress.current.bounty
-    ns.Print(("This week's bounty: %s - %s"):format(bounty.name, bounty.desc))
-    ns.Print(("Guild %d/%d, you %d. Resets in %s."):format(progress.total, progress.goal, progress.mine, TimeLeft(progress.current.resetsIn)))
-    if progress.rewarded then
-        ns.Print("Done! You got the reward.")
-    elseif progress.mine < progress.needed then
-        ns.Print(("Get at least %d to share the %d point reward."):format(progress.needed, ns.Config("bountyReward")))
-    end
-    local nextWeek = ns.GetBounty(1)
-    if nextWeek then
-        ns.Print(("Next week: %s%s."):format(nextWeek.bounty.name, nextWeek.scheduled and "" or " (unless an officer picks another)"))
-    end
-end
 
 -- Kills ----------------------------------------------------------------------------
 
@@ -467,11 +349,6 @@ table.insert(ns.KillHandlers, function(npcID, entry, c, unit)
     if ns.debugKills then
         ns.Print(("|cffff8000debug:|r  guild group: %d guildmate(s) in the group, +%.2f points (kill worth %d)"):format(
             guildmates, bonus, base))
-    end
-    local current = ns.GetBounty()
-    if current and current.bounty.count and current.bounty.count(npcID, entry, c) then
-        p.bounty = p.bounty + base * ns.Config("bountyExtra") / 100  -- default: double points
-        Count()
     end
 end)
 
@@ -497,6 +374,7 @@ local function OnEncounterEnd(encounterID, encounterName, _, _, success)
     -- An end boss down: a chance to unlock the dungeon for minting, better the more guildmates there are (Unlocks.lua).
     local cleared = ns.DungeonForEncounter and ns.DungeonForEncounter(encounterID, bossName)
     if cleared and ns.OnDungeonClear then ns.OnDungeonClear(cleared, guildmates) end
+    if cleared and ns.OnPosterEvent then ns.OnPosterEvent("wanted", cleared.key) end  -- (a wanted poster, Posters.lua)
     if guildmates < ns.Config("dungeonGuildmates") then return end
     local db = KillTrackerDB
     db.guildBosses = db.guildBosses or {}  -- [encounterID] = day it last paid
@@ -522,7 +400,7 @@ frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:SetScript("OnEvent", function(_, event, ...)
     if event == "ENCOUNTER_END" then
-        OnEncounterEnd(...)
+        if ns.IsMember() then OnEncounterEnd(...) end  -- (outside the guild: no clears, no chests)
     elseif event == "PLAYER_LOGIN" then
         -- Load the guild roster, the fallback for telling guildmates apart (see IsGuildmate).
         if C_GuildInfo and C_GuildInfo.GuildRoster then pcall(C_GuildInfo.GuildRoster) end

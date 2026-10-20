@@ -233,8 +233,7 @@ local function BuildChests(parent)
             row:SetShown(d ~= nil)
             if d then
                 row.key = d.key
-                local backdrop = ns.UnlockOptions("clear:" .. d.key)[1]
-                local colour = backdrop and ns.RARITY_COLORS[backdrop.option.rarity] or "ffffffff"
+                local colour = ns.RARITY_COLORS[ns.DungeonRarity(d.key)] or "ffffffff"
                 row.name:SetText(("|c%s%s|r"):format(colour, d.name))
                 local have, all = ns.PoolProgress("clear:" .. d.key)
                 row.status:SetText((have == all and all > 0 and ("|cff55dd55%d/%d|r"):format(have, all) or ("%d/%d"):format(have, all)) .. ((counts[d.key] or 0) > 0 and ("  |cffffd100x%d|r"):format(counts[d.key]) or ""))

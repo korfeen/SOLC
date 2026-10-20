@@ -1,7 +1,7 @@
 -- The guild's home (CAVE), with the Bounty Board and the rankings (the keys bounties and leaderboard open it, the
 -- first on HUNTS). A split page (ProfileHeader.lua: the profile header over the left page, the middle beam).
--- Left: tabs. NEWS: this week's bounty (its bar, your share, the time left; click for HUNTS) over the guild's activity,
--- in the Overview feed's style. HUNTS: the Bounty Board (BountyBoard.lua), moved in here while it shows.
+-- Left: tabs. NEWS: this week's bounty posters (yours claimed, the guild's count; click for HUNTS) over the guild's activity,
+-- in the Overview feed's style. HUNTS: the bounty board (HuntsBoard.lua).
 -- Right: the rankings. A tab per measure (points, kills, this week's bounty, PvP, pictures), the top three on a
 -- podium with a picture each, then everyone in rows. Clicking someone views them (the header, and every page).
 
@@ -16,7 +16,7 @@ local CREAM, DIM = { 0.93, 0.88, 0.78 }, { 0.62, 0.56, 0.48 }
 local HOVER_COLOR = { 0.65, 0.53, 0.28 }
 local AGO_COLOR = { 0.98, 0.64, 0.26 }
 local FEED_ICON = "Interface\\AddOns\\SOLC\\Media\\Icons\\Feed_"
-local FEED_ICONS = { L = "Leader", R = "Rare", A = "Achievement", M = "Mint", W = "Won", B = "Bounty", D = "Boss" }
+local FEED_ICONS = { L = "Leader", R = "Rare", A = "Achievement", M = "Mint", W = "Won", B = "Bounty", P = "Bounty", D = "Boss" }
 local MEDALS = { { 1, 0.82, 0.1 }, { 0.78, 0.78, 0.82 }, { 0.8, 0.5, 0.2 } }  -- gold, silver, bronze
 
 local TABS = { { "news", "NEWS", "NEWS" }, { "hunts", "HUNTS", "HUNTS" } }
@@ -33,7 +33,7 @@ local TAB_FOR_PAGE = { bounties = "hunts" }
 local METRICS = {  -- { Members() field, label, ogre word, what it is }
     { "points", "POINTS", "GOLD", "Points earned, before spending" },
     { "kills", "KILLS", "SMASH", "Kills" },
-    { "bounty", "BOUNTY", "HUNTS", "Kills for this week's bounty" },
+    { "bounty", "BOUNTY", "HUNTS", "Bounties claimed this week" },
     { "pvp", "PVP", "BONK", "PvP kills" },
     { "pictures", "PIX", "PIX", "Pictures minted" },
 }
@@ -127,16 +127,18 @@ local function Rows(parent, left, right, spec, bottom, overhang)
 end
 
 local function DrawNews()
-    -- This week's bounty.
-    local progress = ns.GetBountyProgress()
+    -- This week's bounty posters: yours claimed, the guild's count.
+    local board = ns.GetPosterProgress and ns.GetPosterProgress()
     local b = page.bountyBox
-    if progress then
-        local bounty = progress.current.bounty
-        Fit(b.name, NAME_FONT, 15, 10, ("|cffffd100%s|r  |cff999999%s|r"):format(bounty.name, bounty.desc or ""), b.width)
-        b.fill:SetWidth(math.max(1, (b.width - 2) * math.min(1, progress.total / math.max(1, progress.goal))))
-        b.barText:SetText(progress.rewarded and ("%d/%d - done!"):format(progress.total, progress.goal) or ("%d/%d"):format(progress.total, progress.goal))
-        b.details:SetText(("You %d (share %d)  |cff666666-|r  resets in %s"):format(progress.mine, progress.needed,
-            ns.BountyTimeLeft(progress.current.resetsIn)))
+    if board then
+        local claimed = 0
+        for _, p in ipairs(board.posters) do if p.claimed then claimed = claimed + 1 end end
+        local guild = ns.GetGuildClaims()
+        Fit(b.name, NAME_FONT, 15, 10, ("|cffffd100%s|r"):format(board.title or "This week's bounties"), b.width)
+        b.fill:SetWidth(math.max(1, (b.width - 2) * claimed / math.max(1, #board.posters)))
+        b.barText:SetText(("%d/%d claimed"):format(claimed, #board.posters))
+        b.details:SetText(("Guild %d claimed  |cff666666-|r  resets in %s"):format(guild and guild.total or 0,
+            ns.BountyTimeLeft(board.resetsIn)))
         b.track:Show()
     else
         b.name:SetText("|cff999999Weekly bounties are for guilds.|r")
@@ -296,16 +298,12 @@ ns.RegisterPage({
             ns.OpenPage(state.page)
         end)
         box:SetScript("OnEnter", function(self)
-            local progress = ns.GetBountyProgress()
-            if not progress then return end
-            local bounty = progress.current.bounty
+            local board = ns.GetPosterProgress and ns.GetPosterProgress()
+            if not board then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(("Weekly guild bounty: %s"):format(bounty.name))
-            GameTooltip:AddLine(bounty.desc, 1, 1, 1, true)
-            GameTooltip:AddLine(("If the guild reaches %d, everyone who got at least %d earns %d points."):format(progress.goal,
-                progress.needed, ns.Config("bountyReward")), 1, 1, 1, true)
-            for _, c in ipairs(progress.contributors) do UI.AddValue(c.name, c.kills) end
-            GameTooltip:AddLine("Click for the Bounty Board", 0.6, 0.6, 0.6)
+            GameTooltip:AddLine(board.title or "This week's bounties")
+            for _, p in ipairs(board.posters) do UI.AddValue(p.bounty.name, p.claimed and "claimed" or ("%d/%d"):format(p.have, p.goal)) end
+            GameTooltip:AddLine("Click for the bounty board", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
         box:SetScript("OnLeave", GameTooltip_Hide)
@@ -430,18 +428,17 @@ ns.RegisterPage({
         end
         for _, tab in ipairs(p.tabs) do tab:Redraw(false) end
         for _, tab in ipairs(p.metricTabs) do tab:Redraw(false) end
-        local hunts = p.tab == "hunts"
-        p.news:SetShown(not hunts)
-        p.bountyBand:SetShown(not hunts)
-        p.chipsBand:SetShown(not hunts)
-        p.huntsBand:SetShown(hunts)
-        p.hunts:SetShown(hunts)
-        if hunts then
-            ns.EmbedBountyBoard(p.hunts, UI.SPLIT.left.right - UI.SPLIT.left.left):Show()
-            if ns.RefreshBountyBoard then ns.RefreshBountyBoard() end
-        else
-            DrawNews()
+        -- HUNTS opens the bounty board over the pages; closing it comes back to NEWS.
+        if p.tab == "hunts" then
+            p.tab = "news"
+            ns.ShowHuntsBoard()
         end
+        p.news:Show()
+        p.bountyBand:Show()
+        p.chipsBand:Show()
+        p.huntsBand:Hide()
+        p.hunts:Hide()
+        DrawNews()
         DrawRankings()
     end,
 })

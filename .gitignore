@@ -8,3 +8,7 @@ Desktop.ini
 # Packager output when run locally
 .release/
 tools/crown-preview.png
+
+# convert-art.js builds Media folders beside them and swaps them in
+Media/*.new/
+Media/*.old/

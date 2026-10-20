@@ -52,6 +52,7 @@ end
 -- only rolled once you've unlocked them, and left out of the odds that grade a picture's rarity (so adding them never
 -- changes the rarity of pictures already minted).
 function ns.MintAllowed(option)
+    if option.retired then return false end  -- (shown on the pictures that have it, never rolled again: MintArt.lua)
     return not option.unlock or (ns.IsUnlocked ~= nil and ns.IsUnlocked((option.layerKey or "") .. ":" .. option.id))
 end
 
@@ -342,12 +343,12 @@ local function ScoreOdds()
     for _, layer in ipairs(ns.MintLayers) do
         local total = 0
         for _, option in ipairs(layer.options) do
-            if not option.unlock then total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
+            if not option.unlock and not option.retired then total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
         end
         local nextChance = {}
         for score, p in pairs(chance) do
             for _, option in ipairs(layer.options) do
-                if not option.unlock then  -- (the everyday options only, see ns.MintAllowed)
+                if not option.unlock and not option.retired then  -- (the everyday options only, see ns.MintAllowed)
                     local s = score + RARITY_SCORE[option.rarity]
                     nextChance[s] = (nextChance[s] or 0) + p * (option.weight or RARITY_WEIGHTS[option.rarity]) / total
                 end
@@ -381,15 +382,35 @@ function ns.MintRarity(traits)
     return RARITY_ORDER[1]
 end
 
--- Traits as display lines: { { layer name, option name, rarity } }.
-function ns.MintTraits(traits)
-    local lines = {}
+-- The layers hidden under a piece (option.covers: a mask over the mouth): { [layer key] = the piece }. Still rolled and
+-- kept, only not drawn: take the piece off (your built ogre) and they're back.
+function ns.CoveredLayers(traits)
+    local covered = {}
     for _, layer in ipairs(ns.MintLayers) do
         local option = FindOption(layer, traits[layer.key])
-        if option then lines[#lines + 1] = { layer.name, option.name, option.rarity, layer.key } end
+        if option and option.covers then
+            for key in pairs(option.covers) do covered[key] = option end
+        end
+    end
+    return covered
+end
+
+-- Traits as display lines: { { layer name, option name, rarity, layer key, note } } (note: "hidden by ..." under a piece
+-- covering it, else nil).
+function ns.MintTraits(traits)
+    local lines = {}
+    local covered = ns.CoveredLayers(traits)
+    for _, layer in ipairs(ns.MintLayers) do
+        local option = FindOption(layer, traits[layer.key])
+        if option then
+            local note = covered[layer.key] and ("hidden by " .. covered[layer.key].name) or nil
+            lines[#lines + 1] = { layer.name, option.name, option.rarity, layer.key, note }
+        end
     end
     return lines
 end
+-- A trait's note, ready to append to its line (dimmed), or "".
+function ns.TraitNote(trait) return trait[5] and ("  |cff8a8a8a(%s)|r"):format(trait[5]) or "" end
 
 -- Rolls and saves a new picture you don't own yet. Returns the mint, or nil and why not.
 -- Guild registry: every picture owned by you or a synced friend, as [trait key] = { owner, time }.
@@ -452,6 +473,7 @@ function ns.Mint(tokens)
     db.points.spent = db.points.spent + cost
     local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost, crayon = true }
     db.mints[#db.mints + 1] = mint
+    ns.LearnTraits(mint.traits)  -- (your ogre can wear them now, for good)
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("M", mint.number) end
     if ns.CheckAchievements then ns.CheckAchievements() end
@@ -498,6 +520,7 @@ function ns.AddWonMint(traits, from, mintedAt)
     for key, id in pairs(traits) do copy[key] = id end
     local mint = { number = ns.NextMintNumber(), traits = copy, time = mintedAt or time(), cost = 0, wonFrom = from }
     db.mints[#db.mints + 1] = mint
+    ns.LearnTraits(mint.traits)  -- (your ogre can wear them now, for good)
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("W", mint.number, from) end
     if ns.CheckAchievements then ns.CheckAchievements() end
@@ -536,14 +559,21 @@ function ns.RerollMint(mint)
     local traits = RollFree(TakenPictures(mint))
     if not traits then return nil, "Every possible picture is already taken." end
     mint.traits, mint.time, mint.duplicateOf = traits, time(), nil
+    ns.LearnTraits(traits)
     ns.Touch(mint)
     return mint
 end
 
--- Options drawn in front of every layer instead of in their own layer's place: face accessories that a hat
--- would otherwise cover (the eye mask sits where hats go). Here, not in MintArt.lua, which is generated.
-local IN_FRONT = { eye_mask_pushed_up = true, monocle = true }
-ns.MINT_IN_FRONT = IN_FRONT
+-- Accessories are drawn in front of the hat (a weapon, a pet, a floating orb), except the ones worn on the ogre: those
+-- stay under the headwear, seen only where it leaves room (a beard or long hair over a necklace, a visor over a
+-- monocle). Here, not in MintArt.lua, which is generated.
+local UNDER_HAT = {
+    gold_chain = true, moonstone_pendant = true, gear_brd_charm = true,                     -- necklaces
+    gear_ruins_charm = true, gear_zf_charm = true, gear_stratu_charm = true, gear_scholo_charm = true,  -- worn on the body
+    eye_mask_pushed_up = true, monocle = true, pirate_eyepatch = true,                     -- on the face
+}
+ns.MINT_UNDER_HAT = UNDER_HAT
+local function OverHat(layerKey, option) return layerKey == "accessory" and not UNDER_HAT[option.id] end
 local FRONT_SUBLEVEL = 7  -- the top of the ARTWORK draw layer
 -- The layers' sublevels, two apart from the bottom (-6, -4, ... 6), leaving room between them: a skin's front (a boss's
 -- mask) goes just over the eyes, so it covers the face but not the accessory or the hat.
@@ -562,16 +592,16 @@ local function SkinLayer()
     return { options = {} }
 end
 
--- A picture's layers in drawing order, back to front: { { layer key, option id } }, with IN_FRONT options
--- last and a skin's front (a boss's mask) right after the eyes, as RenderMint stacks them (the paint game builds its
--- colours the same way).
+-- A picture's layers in drawing order, back to front: { { layer key, option id } }, with accessories over the hat
+-- (OverHat) last and a skin's front (a boss's mask) right after the eyes, as RenderMint stacks them (the paint game
+-- builds its colours the same way).
 function ns.MintDrawOrder(traits)
     local order, front = {}, {}
     local skin = FindOption(SkinLayer(), traits.skin)
     for _, layer in ipairs(ns.MintLayers) do
         local option = FindOption(layer, traits[layer.key])
         if option then
-            local list = IN_FRONT[option.id] and front or order
+            local list = OverHat(layer.key, option) and front or order
             list[#list + 1] = { key = layer.key, id = option.id, perSkin = option.perSkin }
         end
         if layer.key == "eyes" and skin and skin.front then  -- a skin's front, over the face (its paint grid's id)
@@ -604,9 +634,89 @@ local function Place(tex, canvas, rect, angle)
     tex:SetRotation(-angle)  -- WoW turns anticlockwise
 end
 
+-- One piece on its own (an unlock in the feed, a chest's card): whole and centred, as big as fits frame, keeping its
+-- shape (a hat as itself, not where it sits on an ogre). Drawn in your ogre's skin if it's one drawn per skin; a boss
+-- skin with its mask. A picture drawn on the frame before hides (and ns.RenderMint hides this).
+function ns.DrawPiece(frame, layerKey, option)
+    for _, tex in ipairs(frame.layers or {}) do tex:Hide() end
+    if frame.front then frame.front:Hide() end
+    if frame.outfitFront then frame.outfitFront:Hide() end
+    if frame.outfitBack then frame.outfitBack:Hide() end
+    frame.drawnTraits = nil  -- (ns.DrawMint draws it afresh next time)
+    frame.piece = frame.piece or frame:CreateTexture(nil, "ARTWORK", nil, 5)
+    frame.pieceFront = frame.pieceFront or frame:CreateTexture(nil, "ARTWORK", nil, 6)
+    local tex, front = frame.piece, frame.pieceFront
+    local size = math.min(frame:GetWidth(), frame:GetHeight())
+    local rect = option.rect
+    local aspect = rect and rect[3] / rect[4] or 1
+    tex:ClearAllPoints()
+    tex:SetPoint("CENTER")
+    tex:SetSize(aspect >= 1 and size or size * aspect, aspect >= 1 and size / aspect or size)
+    tex:SetRotation(0)
+    tex:SetVertexColor(1, 1, 1)
+    local texture = option.texture and ns.MintTexture(option, ns.BaseTraits and ns.BaseTraits() or {})
+    if texture then
+        tex:SetTexture(texture)
+        if option.color then tex:SetVertexColor(unpack(option.color)) end
+    elseif option.color then
+        tex:SetColorTexture(unpack(option.color))
+    end
+    tex:Show()
+    front:SetShown(layerKey == "skin" and option.front ~= nil)
+    if layerKey == "skin" and option.front then  -- (a skin fills the square: its mask where it sits on it)
+        local fr = option.frontRect
+        front:ClearAllPoints()
+        if fr then
+            front:SetPoint("TOPLEFT", tex, "TOPLEFT", fr[1] * size, -fr[2] * size)
+            front:SetSize(fr[3] * size, fr[4] * size)
+        else
+            front:SetAllPoints(tex)
+        end
+        front:SetTexture(option.front)
+    end
+end
+
+-- A creature's hat and onesie worn together (make-unlock-art.js's creatures): drawn as one hooded onesie, the outfit's
+-- suit (its hood up where the hat goes, over the face like a hat, the face showing through), in place of both; the
+-- picture keeps the two pieces. The outfit option, or nil.
+local function Suit(traits)
+    for _, layer in ipairs(ns.MintLayers) do
+        if layer.key == "outfit" then
+            local option = FindOption(layer, traits.outfit)
+            if option and option.suit and option.suitHead == traits.headwear then return option end
+        end
+    end
+end
+ns.MintSuit = Suit
+
 function ns.RenderMint(canvas, traits, tilt, style)
     canvas.layers = canvas.layers or {}
+    if canvas.piece then canvas.piece:Hide() canvas.pieceFront:Hide() end  -- (a piece drawn here before, ns.DrawPiece)
     local angle = math.rad(tilt or 0)
+    local covered = ns.CoveredLayers(traits)
+    local suit = Suit(traits)
+    -- Where the pieces worn hide the ogre (an ear through a hood, painted in tools/item-fitter.js): their masks on its
+    -- skin, the suit's own when a hat and onesie are worn as one. A mask taken off a texture again can stay on it in
+    -- this client (the ogre's head stayed cut after its hat went), so when they change the skin gets a fresh texture.
+    local hides = {}
+    if suit then
+        hides[1] = suit.suitHide
+    else
+        for _, layer in ipairs(ns.MintLayers) do
+            local option = not covered[layer.key] and FindOption(layer, traits[layer.key])
+            if option and option.hide then hides[#hides + 1] = option.hide end
+        end
+    end
+    local hideKey = table.concat(hides, "|")
+    if (canvas.hideKey or "") ~= hideKey then
+        for i, layer in ipairs(ns.MintLayers) do
+            if layer.key == "skin" and canvas.layers[i] then
+                canvas.layers[i]:Hide()
+                canvas.layers[i] = nil  -- (made again below, with none)
+            end
+        end
+        canvas.hideKey, canvas.hideMasks = hideKey, nil
+    end
     for i, layer in ipairs(ns.MintLayers) do
         local tex = canvas.layers[i]
         if not tex then
@@ -614,10 +724,13 @@ function ns.RenderMint(canvas, traits, tilt, style)
             canvas.layers[i] = tex
         end
         local option = FindOption(layer, traits[layer.key])
-        local edition = ns.LayerEdition(style, layer.key)
+        if covered[layer.key] then option = nil end  -- (under a mask: not drawn)
+        if suit and layer.key == "outfit" then option = nil end  -- (the suit, in the hat's place)
+        local suitHere = suit and layer.key == "headwear" and option
+        local edition = not suitHere and ns.LayerEdition(style, layer.key)
         if edition and option and not option[edition] then edition = nil end  -- no twin: painted
-        local texture = option and option.texture and ns.MintTexture(option, traits, edition)
-        tex:SetDrawLayer("ARTWORK", option and IN_FRONT[option.id] and FRONT_SUBLEVEL or Sublevel(i))
+        local texture = suitHere and suit.suit or option and option.texture and ns.MintTexture(option, traits, edition)
+        tex:SetDrawLayer("ARTWORK", option and OverHat(layer.key, option) and FRONT_SUBLEVEL or Sublevel(i))
         tex:ClearAllPoints()
         tex:SetVertexColor(1, 1, 1)
         if not option or (not texture and not option.color) then
@@ -625,6 +738,7 @@ function ns.RenderMint(canvas, traits, tilt, style)
         else
             local rect = option.rect
             if edition then rect = option[edition .. "Rect"] end  -- its own crop (none: the whole picture)
+            if suitHere then rect = suit.suitRect end
             Place(tex, canvas, rect, angle)
             if texture then
                 tex:SetTexture(texture)
@@ -634,6 +748,24 @@ function ns.RenderMint(canvas, traits, tilt, style)
             end
             tex:Show()
         end
+    end
+    -- (the masks: put on the fresh skin once; after that only placed again, the picture may be turned another way)
+    if not canvas.hideMasks then
+        canvas.hideMasks = {}
+        local skinTex
+        for i, layer in ipairs(ns.MintLayers) do
+            if layer.key == "skin" then skinTex = canvas.layers[i] end
+        end
+        for _, file in ipairs(skinTex and hides or {}) do
+            local mask = canvas:CreateMaskTexture()
+            mask:SetTexture(file, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            skinTex:AddMaskTexture(mask)
+            canvas.hideMasks[#canvas.hideMasks + 1] = mask
+        end
+    end
+    for _, mask in ipairs(canvas.hideMasks) do
+        mask:ClearAllPoints()
+        Place(mask, canvas, nil, angle)
     end
     -- A skin's front (a boss's mask, option.front): over the face, under the accessory and the hat.
     local skin
@@ -648,6 +780,32 @@ function ns.RenderMint(canvas, traits, tilt, style)
         canvas.front:Show()
     elseif canvas.front then
         canvas.front:Hide()
+    end
+    -- An outfit's back (option.back: what's above the back line, a high collar's top, wings: make-unlock-art.js): behind
+    -- the ogre, between the background and the skin, so the head covers it.
+    local outfit
+    for _, layer in ipairs(ns.MintLayers) do
+        if layer.key == "outfit" then outfit = FindOption(layer, traits.outfit) end
+    end
+    if suit then outfit = nil end  -- (the suit has no parts behind or in front)
+    if outfit and outfit.back then
+        canvas.outfitBack = canvas.outfitBack or canvas:CreateTexture(nil, "ARTWORK", nil, Sublevel(1) + 1)
+        canvas.outfitBack:ClearAllPoints()
+        Place(canvas.outfitBack, canvas, outfit.backRect, angle)
+        canvas.outfitBack:SetTexture(outfit.back)
+        canvas.outfitBack:Show()
+    elseif canvas.outfitBack then
+        canvas.outfitBack:Hide()
+    end
+    -- An outfit's front (option.front: its parts in front of the face): over the expression and the eyes.
+    if outfit and outfit.front then
+        canvas.outfitFront = canvas.outfitFront or canvas:CreateTexture(nil, "ARTWORK", nil, SkinFrontSublevel())
+        canvas.outfitFront:ClearAllPoints()
+        Place(canvas.outfitFront, canvas, outfit.frontRect, angle)
+        canvas.outfitFront:SetTexture(outfit.front)
+        canvas.outfitFront:Show()
+    elseif canvas.outfitFront then
+        canvas.outfitFront:Hide()
     end
 end
 
@@ -772,6 +930,129 @@ function ns.ToggleShowcase(mint)
     if ns.CheckAchievements then ns.CheckAchievements() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     return true
+end
+
+-- Your ogre: one you build yourself (KillTrackerDB.card.ogre = { [layer key] = option id }) from your wardrobe: every
+-- trait you've had on a picture of yours (minted, won or rerolled; KillTrackerDB.wardrobe = { ["layer:id"] = true }),
+-- kept for good, even once the picture's gone. An unlocked piece isn't in it until you mint it (it can roll now: the
+-- minting pot helps); it's tried on meanwhile (ns.TryOn: an unlock in the feed, a chest's cards). Your Overview's photo
+-- if you pick it (card.photoOgre).
+
+-- Puts traits in your wardrobe.
+-- Pieces made from others (an option's unlock "combine:<layer:id>+<layer:id>": Sul'thraze from its two halves): it
+-- unlocks once every part is in your wardrobe (minted in a picture of yours), and rolls like any unlocked piece.
+local function CheckCombines(wardrobe)
+    for _, layer in ipairs(ns.MintLayers) do
+        for _, option in ipairs(layer.options) do
+            local parts = option.unlock and option.unlock:match("^combine:(.+)$")
+            if parts and not ns.IsUnlocked(ns.OptionKey(layer.key, option)) then
+                local all = true
+                for part in parts:gmatch("[^+]+") do
+                    if not wardrobe[part] then all = false end
+                end
+                if all then ns.UnlockOption(ns.OptionKey(layer.key, option)) end
+            end
+        end
+    end
+end
+function ns.LearnTraits(traits)
+    local wardrobe = KillTrackerDB.wardrobe or {}
+    KillTrackerDB.wardrobe = wardrobe
+    local new = false
+    for key, id in pairs(traits or {}) do
+        if not wardrobe[key .. ":" .. id] then wardrobe[key .. ":" .. id], new = true, true end
+    end
+    if new and ns.UnlockOption then CheckCombines(wardrobe) end
+end
+
+-- The options you can build with on a layer (your wardrobe's), rarest first.
+function ns.OwnedOptions(layerKey)
+    local layer
+    for _, l in ipairs(ns.MintLayers) do if l.key == layerKey then layer = l end end
+    if not layer then return {} end
+    for _, mint in ipairs(KillTrackerDB.mints or {}) do ns.LearnTraits(mint.traits) end  -- (the pictures from before it)
+    local wardrobe = KillTrackerDB.wardrobe
+    local list = {}
+    for _, option in ipairs(layer.options) do
+        if wardrobe[layer.key .. ":" .. option.id] then list[#list + 1] = option end
+    end
+    table.sort(list, function(a, b)
+        if RARITY_SCORE[a.rarity] ~= RARITY_SCORE[b.rarity] then return RARITY_SCORE[a.rarity] > RARITY_SCORE[b.rarity] end
+        return a.name < b.name
+    end)
+    return list
+end
+-- The everyday ogre: each layer's first ordinary option.
+local function PlainTraits()
+    local traits = {}
+    for _, layer in ipairs(ns.MintLayers) do
+        for _, option in ipairs(layer.options) do
+            if not option.unlock and not option.retired then traits[layer.key] = option.id break end
+        end
+    end
+    return traits
+end
+-- The ogre pieces are tried on: yours (built), else your photo's picture's, else the everyday one. A copy.
+function ns.BaseTraits()
+    local card = KillTrackerDB.card
+    local mint = card and card.portrait and ns.FindMint(nil, card.portrait)
+    local from = card and card.ogre or (mint and mint.traits) or PlainTraits()
+    local traits = {}
+    for key, id in pairs(from) do traits[key] = id end
+    return traits
+end
+-- A piece on your ogre: its traits with that layer's swapped for it.
+function ns.TryOn(layerKey, id)
+    local traits = ns.BaseTraits()
+    traits[layerKey] = id
+    return traits
+end
+-- The edition after this one that a piece has (painted, crayon, sketch, painted...: only the ones drawn for it).
+function ns.NextEditionFor(option, edition)
+    local order = { false }
+    for _, e in ipairs(ns.EDITIONS) do if option[e] then order[#order + 1] = e end end
+    for i, e in ipairs(order) do
+        if e == (edition or false) then return order[i % #order + 1] or nil end
+    end
+    return nil
+end
+-- Your ogre's layers in crayon or sketched (card.ogreStyle = { [layer key] = edition }; painted: not in it).
+function ns.SetOgreEdition(layerKey, edition)
+    KillTrackerDB.card = KillTrackerDB.card or {}
+    local card = KillTrackerDB.card
+    card.ogreStyle = card.ogreStyle or {}
+    card.ogreStyle[layerKey] = edition or nil
+    if not next(card.ogreStyle) then card.ogreStyle = nil end
+    ns.Touch(card)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+-- Saves your ogre (traits), and makes it your Overview's photo or not (asPhoto: nil leaves that as it is).
+function ns.SetOgre(traits, asPhoto)
+    KillTrackerDB.card = KillTrackerDB.card or {}
+    local card = KillTrackerDB.card
+    card.ogre = {}
+    for key, id in pairs(traits) do card.ogre[key] = id end
+    if asPhoto ~= nil then
+        card.photoOgre = asPhoto or nil
+        if asPhoto then card.portrait = nil end
+    end
+    ns.Touch(card)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+
+-- Sets your whole showcase at once (the Overview's gallery: dragged in, swapped, taken off): numbers in their slots'
+-- order, your own pictures only, each once, at most SHOWCASE_SIZE.
+function ns.SetShowcase(numbers)
+    local showcase, list, seen = Showcase(), {}, {}
+    for _, number in ipairs(numbers) do
+        if #list < ns.SHOWCASE_SIZE and not seen[number] and ns.FindMint(nil, number) then
+            list[#list + 1], seen[number] = number, true
+        end
+    end
+    showcase.numbers = list
+    ns.Touch(showcase)
+    if ns.CheckAchievements then ns.CheckAchievements() end
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
 
 -- The background behind your 3D model on the Overview: one from a picture you own, chosen by right-clicking

@@ -158,7 +158,8 @@ for i = 1, MAX_CARDS do
     card.rim:SetPoint("TOPLEFT", -3, 3)
     card.rim:SetPoint("BOTTOMRIGHT", 3, -3)
     card.canvas = CreateFrame("Frame", nil, card)
-    card.canvas:SetAllPoints()
+    card.canvas:SetSize(CARD - 12, CARD - 12)  -- (sized, not just anchored: the piece is drawn by its width, maybe hidden)
+    card.canvas:SetPoint("CENTER")
     card.coin = card:CreateTexture(nil, "ARTWORK")  -- a bag of coins' card
     card.coin:SetTexture(FX .. "Coin")
     card.coin:SetSize(CARD * 0.62, CARD * 0.62)
@@ -409,7 +410,7 @@ local function Pull(i)
     card.cover:SetFrameLevel(card:GetFrameLevel() + 4)  -- (over the picture)
     card.back:SetWidth(CARD + 6)
     if unlock then
-        ns.RenderMint(card.canvas, { [item.layer.key] = item.option.id })
+        ns.DrawPiece(card.canvas, item.layer.key, item.option)  -- (the piece itself, whole: Minting.lua)
         card.name:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", item.option.name))
         card.what:SetText(("%s %s"):format(Rarity(rarity), item.layer.name:lower()))
     else  -- the dungeon's tokens
@@ -725,8 +726,9 @@ function ns.ShowChest(dungeonKey, preview, previewTier)
     panel:Show()
     -- The top beam's title: the page, then the chest (clicking the page's part closes it).
     local dungeon = ns.DungeonByKey and ns.DungeonByKey(dungeonKey)
-    if ns.UI.SetScreen then
-        ns.UI.SetScreen((dungeon and dungeon.name or "Dungeon") .. " Chest", "LOOT", function() panel:Hide() end)
-    end
+    if ns.UI.ClearScreen and panel.screenName then ns.UI.ClearScreen(panel.screenName) end  -- (another chest's, shown before)
+    panel.screenName = (dungeon and dungeon.name or "Dungeon") .. " Chest"
+    if ns.UI.SetScreen then ns.UI.SetScreen(panel.screenName, "LOOT", function() panel:Hide() end) end
 end
-panel:HookScript("OnHide", function() if ns.UI.ClearScreen then ns.UI.ClearScreen() end end)
+-- (its own only: it can be over the kitchen's)
+panel:HookScript("OnHide", function() if ns.UI.ClearScreen and panel.screenName then ns.UI.ClearScreen(panel.screenName) end end)

@@ -1,9 +1,9 @@
--- Pictures (PIX): your collection and the guild's gallery; pictures opened anywhere (ns.ShowMint) open here. The
--- key gallery opens the GUILD tab. A split page
+-- Pictures (PIX), a tab of the Guild page (under the window: Guild | Pictures): the guild's gallery and the shop. Your
+-- own pictures live on your Overview (its gallery, Gallery.lua: minting, chests, your showcase and photo); a guildmate's
+-- picture opened anywhere (ns.ShowMint) opens here. The key gallery opens it too. A split page
 -- (ProfileHeader.lua: the profile header over the left page, the middle beam).
--- Left: tabs. MINE (THEIRS on a guildmate's): their pictures, newest first, yours led by a tile to mint a new one.
--- GUILD: everyone's, newest first, with whose. SHOP: the Collection's rows (minting, the collectibles, the points and
--- where they came from, saved paintings), in the Overview feed's style.
+-- Left: tabs. GUILD: everyone's pictures, newest first, with whose. SHOP: the Collection's rows (minting, the
+-- collectibles, the points and where they came from, saved paintings), in the Overview feed's style.
 -- Right: the picked picture filling the page, its owner on the cross beam under it, its rarity under that; then
 -- its traits (on your own with the crayon edition: click one to draw it painted, in crayon or sketched), and buttons:
 -- show it on your Overview, switch the whole picture's edition, use it as your Overview photo, reroll a duplicate.
@@ -22,8 +22,7 @@ local GOLD = { 1, 0.85, 0.1 }
 local HOVER_COLOR = { 0.65, 0.53, 0.28 }
 local PLATE, PLATE_LIT = { 0.3, 0.22, 0.12 }, { 0.65, 0.53, 0.28 }
 
-local TABS = {  -- { key, label, ogre word }; MINE reads THEIRS on someone else's
-    { "mine", "MINE", "MINE" },
+local TABS = {  -- { key, label, ogre word }
     { "guild", "GUILD", "CLAN" },
     { "shop", "SHOP", "SHOP" },
 }
@@ -203,7 +202,7 @@ local function DrawPick()
         if row then
             row.layer, row.editable, row.mint = trait[4], editable, mint
             row:EnableMouse(editable)
-            row.text:SetText(("|cffffd100%s:|r |c%s%s|r"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2]))
+            row.text:SetText(("|cffffd100%s:|r |c%s%s|r%s"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2], ns.TraitNote(trait)))
             local edition = ns.LayerEdition(style, trait[4])
             row.mark:SetText(edition and ("|cffff9a2a%s|r"):format(ns.EDITION_NAMES[edition]) or "")
             row:Show()
@@ -256,7 +255,7 @@ function UI.PixShow(mint, owner)
     local wanted = { mint = mint, owner = owner, key = key }
     if page then
         page.pick = wanted
-        page.tab = (key and key == state.viewing) and "mine" or owner and "guild" or (state.viewing and "guild" or "mine")
+        page.tab = "guild"
         page.offset = 0
     else
         UI.pendingPix = wanted
@@ -265,17 +264,16 @@ function UI.PixShow(mint, owner)
 end
 
 ns.RegisterPage({
-    key = "collection", label = "Pictures", section = "me", order = 3,
+    key = "collection", label = "Pictures", section = "guild", tabOf = "home", order = 2,
     bare = true,
     split = true,
     covers = { gallery = true },  -- (UI.lua) on the GUILD tab
     create = function(parent)
         page = CreateFrame("Frame", nil, parent)
         page:SetAllPoints()
-        page.tab, page.offset = "mine", 0
+        page.tab, page.offset = "guild", 0
         if UI.pendingPix then
             page.pick = UI.pendingPix
-            page.tab = UI.pendingPix.owner and "guild" or "mine"
             UI.pendingPix = nil
         end
         local W = UI.window
@@ -309,9 +307,7 @@ ns.RegisterPage({
         for i, tab in ipairs(TABS) do
             local button = UI.TabButton(left, slot.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
             function button:Redraw()
-                local label = Ogre() and tab[3] or tab[2]
-                if tab[1] == "mine" and state.viewing then label = Ogre() and "THEM" or "THEIRS" end
-                self:SetTab(label, page.tab == tab[1])
+                self:SetTab(Ogre() and tab[3] or tab[2], page.tab == tab[1])
             end
             button:SetScript("OnClick", function()
                 UI.ClickSound()
@@ -609,11 +605,6 @@ ns.RegisterPage({
             local guild = p.tab == "guild"
             p.pictures = guild and GuildPictures() or PicturesOf(state.viewing)
             local count = #p.pictures
-            if not guild and not state.viewing then
-                table.insert(p.pictures, 1, { mintAction = true })
-                local counts, order = ns.ChestCounts()  -- a tile per dungeon's chests (Chests.lua)
-                for i = #order, 1, -1 do table.insert(p.pictures, 2, { chest = order[i], count = counts[order[i]] }) end
-            end
             p.line:SetText(guild and ("|cffffbf66%d|r pictures in the guild, newest first"):format(count)
                 or ("|cffffbf66%d|r picture%s%s"):format(count, count == 1 and "" or "s",
                     state.viewing and "" or ("  |cff999999- %d points|r"):format(ns.GetPoints().balance)))

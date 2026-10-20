@@ -461,6 +461,7 @@ local function Award(id, name, detail, silent)
     local earned = KillTrackerDB.achievements
     if earned[id] then return 0 end
     earned[id] = time()
+    if ns.UnlockPool then ns.UnlockPool("deed:" .. id, silent) end  -- (a creature's hat and onesie: Unlocks.lua)
     if not silent then
         if ns.AddEvent then ns.AddEvent("A", id) end
         local points = ns.AchievementPoints(id)

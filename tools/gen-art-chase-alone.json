@@ -1,0 +1,344 @@
+[
+ {
+  "layer": "accessory",
+  "id": "chase_bfd_strike_of_the_hydra",
+  "dungeon": "bfd",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Strike of the Hydra: Aku'mai's famous two-handed sword from World of Warcraft: a long, slim, straight katana-like sword, the bright polished silver single-edged blade about twice the length of the hilt and ending in a sharp angled clipped tip, a small round silver disc guard with a tiny ornament, a long grip wrapped in brown leather with a pale diamond criss-cross pattern, a ribbed green band near the end and a silver pommel cap with a green inlay"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_smlib_illusionary_rod",
+  "dungeon": "smlib",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Illusionary Rod: Arcanist Doan's famous staff from World of Warcraft: a long, slim, straight staff with a plain pale grey-olive shaft, a bright glowing green crystal spearpoint at the top held in an open dark teal metal cage frame above a carved purple-and-black socket, a matching smaller green crystal point at the bottom, and purple carved bands with dark rings around the middle of the shaft"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_smarm_ravager",
+  "dungeon": "smarm",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Ravager: Herod's famous two-handed axe from World of Warcraft: a two-handed axe with a slightly curved brown wooden haft, a red-and-dark-red spiral-wrapped grip between pale metal rings, a grey steel butt cap, a dull iron collar holding a single broad dark black-red blade painted with swirling bright red flame markings, a polished silver cutting edge flaring into a pointed lower beard and a tall silver spike rising from the top"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_rfc_cursed_felblade",
+  "dungeon": "rfc",
+  "rarity": "rare",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Cursed Felblade: Taragaman the Hungerer's sword from World of Warcraft: a heavy one-handed cleaver sword with a broad straight pale grey steel blade cut square at the end, a long downward spike at the tip and another hanging from the guard, a jagged flame-like groove etched along the blade's lower half, a small dark green gem near the tip, a reddish-brown wooden grip with two steel bands and a silver chevron-shaped pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_wc_venomstrike",
+  "dungeon": "wc",
+  "rarity": "rare",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Venomstrike: Lord Serpentis's famous bow from World of Warcraft: a long, wide, shallow recurved bow with smooth glossy brown wooden limbs, thin gold bands spaced along them, segments of teal-blue and green tiles between gold rings on each limb, a thick central grip of green and teal blocks set with small gold diamond studs between gold bands, and pale horn-like pointed tips"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_sfk_meteor_shard",
+  "dungeon": "sfk",
+  "rarity": "rare",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Meteor Shard: Archmage Arugal's dagger from World of Warcraft: a dagger with a pale bone-gold blade streaked with darker ochre, sharp backward-pointing jagged spikes along both edges and a long tapering point, a spiky star-shaped gold crossguard with an amber-orange gem at its centre, a red-brown leather grip set with a row of small round studs, and a faceted gold pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_stocks_debt_collector",
+  "dungeon": "stocks",
+  "rarity": "rare",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Debt Collector: Bazil Thredd's sword from World of Warcraft: a one-handed scimitar with a long bright white-steel blade curving upward and widening towards the sharp tip, a stepped notch cut into the back edge near the point, a guard of round copper and steel discs, a short grip wrapped in criss-crossed copper and blue-steel bands, and a small spiked steel pommel"
+ },
+ {
+  "layer": "headwear",
+  "id": "chase_gnomer_gigaflux_reactivator",
+  "dungeon": "gnomer",
+  "rarity": "epic",
+  "desc": "Electromagnetic Gigaflux Reactivator: Mekgineer Thermaplugg's famous helmet from World of Warcraft: a rounded dull grey metal gnome helmet with a pale silvery lower band set with two round glossy lens-like discs on the front, a short cone antenna on top holding a large flat octagonal olive-grey dish, two angled cylindrical canisters with coppery coil wrapping and steel caps sticking out on each side, and a small red tag on the side",
+  "flags": [
+   "--alone"
+  ]
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_rfk_heart_of_agamaggan",
+  "dungeon": "rfk",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Heart of Agamaggan: Charlga Razorflank's famous shield from World of Warcraft: a round, many-sided shield with a wide dark grey iron rim studded with a ring of rivets, a thin pale steel ring inside it, a broad band of reddish-brown leather, another steel ring and a raised round orange-tan leather boss at the centre"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_smgy_torturing_poker",
+  "dungeon": "smgy",
+  "rarity": "rare",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Torturing Poker: the Scarlet Monastery graveyard's dagger from World of Warcraft: a long, thin, straight four-sided iron spike with no guard, dark brown-black blackened iron at the base fading through deep red and glowing orange to a red-hot needle point that shines with a soft yellow-white glow"
+ },
+ {
+  "layer": "headwear",
+  "id": "chase_smcath_whitemanes_chapeau",
+  "dungeon": "smcath",
+  "rarity": "epic",
+  "desc": "Whitemane's Chapeau: High Inquisitor Whitemane's famous hat from World of Warcraft: a low wide crown-like hat of rich crimson red rising into two pointed peaks at the front and flared corners at the sides, edged in gold trim, with gold filigree scrollwork on the red panels, a black-and-gold banded brow with ornate gold patterning and a large oval red gem in a gold setting at the front centre",
+  "flags": [
+   "--alone"
+  ]
+ },
+ {
+  "layer": "headwear",
+  "id": "chase_rfd_icemetal_barbute",
+  "dungeon": "rfd",
+  "rarity": "rare",
+  "desc": "Icemetal Barbute: Amnennar the Coldbringer's helmet from World of Warcraft: a tall, narrow, closed barbute helm of glossy bright blue metal with a lighter sky-blue rounded dome, a T-shaped face opening with a horizontal eye slit and a narrow vertical slot down the middle, all framed in raised silver-steel trim, and long blue cheek guards reaching down past the chin",
+  "flags": [
+   "--alone"
+  ]
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ulda_stoneslayer",
+  "dungeon": "ulda",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Stoneslayer: Archaedas's two-handed sword from World of Warcraft: a long straight double-edged sword with a plain polished silver-grey steel blade and a faint central fuller, tapering evenly to a sharp point, small stepped notches near the base of the blade, a short dark bronze cross guard shaped like a sharp diamond flaring forward, a fairly short grip wrapped in criss-crossed reddish-brown leather, and a small dark metal cap pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_zf_jangthraze",
+  "dungeon": "zf",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Jang'thraze the Protector: Chief Ukorz Sandscalp's sword from World of Warcraft, one half of Sul'thraze: a chunky troll cleaver-sword with a broad flat blade widening into a flared, notched tip with a hooked V-shaped cut-out at the end, warm beige-tan bone face with a dark painted troll rune and a pale grey steel rim, a long forked V-shaped prong at the base, an angular grey steel guard with rivets, a grip of dark segmented riveted metal bands wrapped with tufts of pale straw-coloured fur, and a forked riveted grey metal pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_zf_sangthraze",
+  "dungeon": "zf",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Sang'thraze the Deflector: Antu'sul's sword from World of Warcraft, the other half of Sul'thraze: a chunky troll cleaver-sword with a broad flat blade widening into a flared, notched tip with a hooked V-shaped cut-out at the end, pale pinkish-ivory bone face with a dark reddish-brown painted troll rune and a pale grey steel rim, a long forked V-shaped prong at the base, an angular grey steel guard with rivets, a grip of dark segmented riveted metal bands wrapped with tufts of pale straw-coloured fur, and a forked riveted grey metal pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_zf_sulthraze",
+  "dungeon": "zf",
+  "rarity": "legendary",
+  "unlock": "combine:accessory:chase_zf_jangthraze+accessory:chase_zf_sangthraze",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Sul'thraze the Lasher: the legendary troll sword from World of Warcraft, Jang'thraze and Sang'thraze joined into one: a long two-handed sword with a straight broad dark gunmetal blade with bright silver bevelled edges, widening slightly to a flat flared square tip, a recessed black centre channel carved with a chain of silver knotwork links dotted with small magenta-pink gems, a guard of two stacked black spiked flanges glowing magenta inside, a long thin black shaft-like grip with silver bands, and a matching black spiked pommel with magenta glow"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_mara_blade_of_eternal_darkness",
+  "dungeon": "mara",
+  "rarity": "legendary",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Blade of Eternal Darkness: Princess Theradras's famous dagger from World of Warcraft: a long curved dagger with a pale sage-green misty steel blade that swoops down then curves up into a sharp hooked point, a long dark green-black hilt with a smooth curved grip, angular dark metal fittings with faint silver trim at the guard, a small tan-coloured nub under the guard, and a slightly flared dark pommel end"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_st_dragons_call",
+  "dungeon": "st",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Dragon's Call: the Shade of Eranikus's famous sword from World of Warcraft: a one-handed straight broadsword with a long gleaming white-silver double-edged blade tapering to a sharp point, a thin bright green central line and swirling green flame-like tribal etchings near the base, a wide pale gold cross guard swept forward at both ends and decorated with green swirls, a short grip banded in emerald green and pale gold, and a small faceted silver pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_brd_ironfoe",
+  "dungeon": "brd",
+  "rarity": "legendary",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Ironfoe: Emperor Dagran Thaurissan's famous mace from World of Warcraft: a dwarven war hammer with a big rectangular block head of blue-grey steel framed with bevelled edges, brown inset panels on each face, a bold glowing yellow-gold dwarven rune across the face, small steel point caps on the ends, a long handle wrapped in criss-crossed tan and brown leather, a gold band with dark slots and a steel collar below the head, and a faceted silver steel pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_lbrs_fist_of_omokk",
+  "dungeon": "lbrs",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Fist of Omokk: Highlord Omokk's two-handed mace from World of Warcraft: a long two-handed maul with a heavy dark iron cylindrical head banded by two thick gold rings, a large conical steel spike on top and bottom and a pyramid spike on the striking face, dark iron panels smeared with red blood marks, a long dark twisted iron shaft with a wood-grain grip section studded with gold diamond rivets, gold end caps, and a short steel spike pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ubrs_draconian_deflector",
+  "dungeon": "ubrs",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Draconian Deflector: General Drakkisath's shield from World of Warcraft: a round decagon-edged shield of polished shiny gold, a raised faceted outer rim set with small glowing violet-purple gems around its edge, an inner circular gold ring, and a bold black swirling dragon-wing emblem curling around the centre of a smooth gleaming gold face"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ubrs_dalrends_sacred_charge",
+  "dungeon": "ubrs",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Dal'Rend's Sacred Charge: Rend Blackhand's famous sword from World of Warcraft: a broad orcish cleaver-sword with a wide curved blade in iridescent lavender-pink and pearly white steel, three big saw-tooth spikes along the back edge near the hooked rounded tip, an engraved band of orange-copper orcish runes along the base of the blade, a diamond-shaped orange-bronze guard framing a dark violet gem, and a short dark purple-maroon grip with a flared end"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ubrs_dalrends_tribal_guardian",
+  "dungeon": "ubrs",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Dal'Rend's Tribal Guardian: the matching off-hand sword of Rend Blackhand's pair from World of Warcraft: a broad orcish cleaver-sword with a wide curved pale icy blue-silver steel blade, three big saw-tooth spikes along the back edge near the hooked rounded tip, engraved orcish runes with a small red gem inlay along the base of the blade, a diamond-shaped steel guard framing a glowing blood-red gem, and a short dark olive-grey grip with a flared silver end"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ubrs_dalrends_arms",
+  "dungeon": "ubrs",
+  "rarity": "legendary",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Dal'Rend's Arms: Rend Blackhand's famous pair of orcish swords from World of Warcraft: two matching one-handed cleaver-like swords with broad slightly curved blades sweeping up into a hooked rounded tip, three large triangular saw teeth along the back edge, etched runes near the base, a diamond-shaped guard and a short round grip ending in a flared pommel, one sword pinkish-lavender steel with orange-copper etching and a bronze-gold guard framing a violet gem, the other pale icy blue-white steel with faint red-lit runes and a dark grey guard framing a glowing red gem",
+  "unlock": "combine:accessory:chase_ubrs_dalrends_sacred_charge+accessory:chase_ubrs_dalrends_tribal_guardian"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_dme_ring_of_demonic_potency",
+  "dungeon": "dme",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Ring of Demonic Potency: Alzzin the Wildshaper's ring from World of Warcraft: a big dark iron demonic ring with a glowing purple gem and purple wisps"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_dmw_mind_carver",
+  "dungeon": "dmw",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Mind Carver: Prince Tortheldrin's sword from World of Warcraft: a one-handed sword with a broad straight blade of even width ending in a square, slightly angled flat tip, pale cream-gold outer edges around a glossy icy-blue centre with a zigzag jagged border, a short dark-teal grey cross guard with small triangular spikes pointing up and down, two round bolt studs at the blade base, a segmented dark green-grey grip and a long pointed spike pommel"
+ },
+ {
+  "layer": "headwear",
+  "id": "chase_dmn_crown_of_the_ogre_king",
+  "dungeon": "dmn",
+  "rarity": "epic",
+  "desc": "Crown of the Ogre King: King Gordok's famous crown from World of Warcraft: a plain, simple wide band crown of pale cream-yellow gold with a smooth slightly dented surface, a single low triangular point rising at the front centre with a faint vertical ridge, a thin raised rim along the top and bottom edges, no gems or spikes",
+  "flags": [
+   "--alone"
+  ]
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_scholo_headmasters_charge",
+  "dungeon": "scholo",
+  "rarity": "legendary",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Headmaster's Charge: Darkmaster Gandling's famous staff from World of Warcraft: a long thin dark olive-brown staff with bands of glossy purple wrapping, topped with a brownish bone skull with a gaping mouth and two large curved ram horns sweeping outward, a ribcage-like collar of curved bone spikes just below the skull, and a small claw of bone prongs around a pointed spike at the bottom end"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_stratl_book_of_the_dead",
+  "dungeon": "stratl",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Book of the Dead: Balnazzar's book from World of Warcraft: a square tome with a deep indigo-purple cover framed by a thin gold border and gold corner ornaments, a gold diamond outline in the centre, a large glowing orange-red skull with fiery eye sockets on the cover, three small glowing red-orange orbs around it, and a gold bookmark ribbon tab sticking out at the side"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_stratu_runeblade_of_baron_rivendare",
+  "dungeon": "stratu",
+  "rarity": "legendary",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Runeblade of Baron Rivendare: Baron Rivendare's famous two-handed sword from World of Warcraft: a long straight polished silver-white blade with stepped notched shoulders along its length narrowing to a sharp point, crimson red flame-like inlays near the base, a small glowing blue oval gem set in a silver ornament with tiny studs above the guard, a swept black and red bat-wing cross guard, a red wrapped grip and a small blue crystal pommel"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ony_deathbringer",
+  "dungeon": "ony",
+  "rarity": "legendary",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Deathbringer: Onyxia's famous axe from World of Warcraft: a one-handed double-bladed axe with two big mirrored blades shaped like swept-back arrowhead wings, pale frosty white-green edges fading to icy blue and dark olive patches near the centre, a carved blue-steel core between the blades, a short dark blue-grey wrapped haft with a silver ring band and a flared rounded end"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_thanes_crescent_axe",
+  "dungeon": "thanes",
+  "rarity": "rare",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Durgen's Crescent Axe: Durgen Dirgehammer's axe: a one-handed axe with a large single crescent blade, its upper point and wide lower horn swept forward, a burnished copper-brown face with a pale silver steel rim, a silver collar socket with an engraved band and a small gold spike tip, a brass-gold shaft, a red-to-orange leather grip with faint engraving and an angled silver pommel cap"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_ruins_mirror_of_rathmael",
+  "dungeon": "ruins",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Mirror of Rath'mael: Rath'mael's off-hand mirror: a flat octagonal disc with a thick dark purple-grey iron rim studded with round rivets around the edge, the centre a face of dark brown wooden planks marked with glowing lime-green jagged runes and zigzag glyphs in rows"
+ },
+ {
+  "layer": "accessory",
+  "id": "chase_excav_golemsight_long_gun",
+  "dungeon": "excav",
+  "rarity": "epic",
+  "flags": [
+   "--alone"
+  ],
+  "desc": "Golemsight Long Gun: the Relic Guardian's rifle: a long boxy blocky rifle of pale grey-green stone or steel with engraved geometric zigzag patterns, a brown wooden grip section and a wooden muzzle cap, a squared stock with a carved angular emblem, a chunky rectangular grey scope with dark iron bands and a bracket on top, and a small curved hook-shaped hammer sticking up at the back"
+ }
+]

@@ -60,6 +60,9 @@ local RIGHT = {
     color = { 0.094, 0.094, 0.094 },
     photo = { x = 869, y = 393, w = 396, h = 494 },
     beam = 634,
+    -- A picture as the photo: laid out as on the Pictures page (PixPage.lua's RIGHT): square, the beam under it, its
+    -- rarity and number under that, then its traits in two columns.
+    square = { y = 344, beam = 536, rarity = 594, traits = { top = 612, lefts = { 690, 878 }, line = 16, size = 12 } },
     plaque = { w = UI.PHOTO_NAME_WIDTH, size = 22 },
 }
 local CRAFT_ROW = { height = 24, size = 13, colors = { 0.25, 0.18 } }  -- CRAFTS' rows
@@ -668,13 +671,18 @@ OVERVIEW = {
         end)
         -- A picture instead of the model: square, as tall as the photo, its sides cut off by the photo's edges.
         photo:SetClipsChildren(true)
+        -- A picture shows whole, as on the Pictures page: the photo goes square (refresh), the picture filling it.
         page.portrait = CreateFrame("Frame", nil, photo)
-        page.portrait:SetSize(card.photo.h, card.photo.h)
+        page.portrait:SetSize(card.photo.w, card.photo.w)
         page.portrait:SetPoint("CENTER")
         page.portrait:Hide()
         -- While it shows, the photo takes the clicks: left to open the picture, right (yours) for the menu.
         photo:SetScript("OnMouseUp", function(self, button)
             if not page.portraitMint then return end
+            if page.portraitMint.ogre then  -- an ogre (built, Minting.lua): yours opens the builder
+                if not page.key and button == "LeftButton" and not page.building then UI.ClickSound() page.OpenBuilder() end
+                return
+            end
             if button == "RightButton" and not page.key then
                 PhotoMenu(self)
             elseif button == "LeftButton" then
@@ -684,6 +692,9 @@ OVERVIEW = {
         end)
         photo:SetScript("OnEnter", function(self)
             if not page.portraitMint then return end
+            if page.portraitMint.ogre then
+                return SetTooltip(self, { page.key and "Their ogre" or "Your ogre", not page.key and not page.building and "Click to build" or nil })
+            end
             SetTooltip(self, { ("Picture #%d"):format(page.portraitMint.number), "Click to view",
                 not page.key and "Right-click to show your character instead" or nil })
         end)
@@ -699,8 +710,115 @@ OVERVIEW = {
         hung:SetAllPoints()
         hung:SetFrameLevel(photo:GetFrameLevel() + 10)  -- over the model
         page.hung = hung
-        page.signature = select(2, UI.PhotoBeam(hung, RIGHT.beam))  -- the photo's bottom edge, the name on it
+        page.tallBeam, page.signature = UI.PhotoBeam(hung, RIGHT.beam)  -- the photo's bottom edge, the name on it
         page.signatureWidth = RIGHT.plaque.w
+        -- A picture's: the beam higher (under the square photo), its rarity and number, its traits.
+        local sq = RIGHT.square
+        page.squareBeam, page.squareSignature = UI.PhotoBeam(hung, sq.beam)
+        page.portraitInfo = hung:CreateFontString(nil, "OVERLAY")
+        page.portraitInfo:SetFont(NAME_FONT, 14, "")
+        UI.OutlineText(page.portraitInfo, { 0, 0, 0 })
+        page.portraitInfo:SetPoint("CENTER", UI.window, "TOPLEFT", card.photo.x, -sq.rarity)
+        -- Its traits, two columns; on your own picture with the crayon edition, click one to draw it painted, in crayon
+        -- or sketched, in turn.
+        page.portraitTraits = {}
+        for i = 1, 8 do
+            local trait = CreateFrame("Button", nil, hung)
+            trait:SetSize(sq.traits.lefts[2] - sq.traits.lefts[1] - 8, sq.traits.line)
+            local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+            trait:SetPoint("TOPLEFT", UI.window, "TOPLEFT", sq.traits.lefts[col + 1], -(sq.traits.top + row * sq.traits.line))
+            trait.text = trait:CreateFontString(nil, "OVERLAY")
+            trait.text:SetFont(NAME_FONT, sq.traits.size, "")
+            trait.text:SetPoint("LEFT")
+            trait.text:SetPoint("RIGHT", -22, 0)
+            -- Its edition, a little icon at its end (a brush, a crayon, a pencil): click for the next one it has.
+            trait.ed = CreateFrame("Button", nil, trait)
+            trait.ed:SetSize(18, 18)
+            trait.ed:SetPoint("RIGHT", 0, 0)
+            trait.ed.icon = trait.ed:CreateTexture(nil, "ARTWORK")
+            trait.ed.icon:SetAllPoints()
+            trait.ed:SetScript("OnClick", function(self)
+                local row = self:GetParent()
+                if not row.option then return end
+                UI.ClickSound()
+                local next = ns.NextEditionFor(row.option, row.edition)
+                if row.picker then ns.SetOgreEdition(row.layer, next)
+                elseif row.editable then ns.SetLayerEdition(row.mint, row.layer, next) end
+                OVERVIEW.refresh(page)
+            end)
+            trait.ed:SetScript("OnEnter", function(self)
+                local row = self:GetParent()
+                local name = row.edition and (row.edition:gsub("^%l", string.upper)) or "Painted"
+                SetTooltip(self, { name, "Click: the next edition it has" })
+            end)
+            trait.ed:SetScript("OnLeave", GameTooltip_Hide)
+            trait.ed:Hide()
+            trait.text:SetJustifyH("LEFT")
+            trait.text:SetWordWrap(false)
+            local glow = trait:CreateTexture(nil, "BACKGROUND")
+            glow:SetAllPoints()
+            glow:SetColorTexture(1, 1, 1, 0.08)
+            glow:Hide()
+            trait:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+            trait:SetScript("OnClick", function(self, mouse)
+                if self.picker then  -- building: the next (right-click: the one before) of what you have for it
+                    local options, at = ns.OwnedOptions(self.layer), 0
+                    if #options == 0 then return end
+                    for i, option in ipairs(options) do if option.id == page.building[self.layer] then at = i end end
+                    local step = mouse == "RightButton" and -1 or 1
+                    -- (a new table: the picture is redrawn only for different traits, ns.DrawMint)
+                    local traits = {}
+                    for k, id in pairs(page.building) do traits[k] = id end
+                    traits[self.layer] = options[(at - 1 + step) % #options + 1].id
+                    page.building = traits
+                    UI.ClickSound()
+                    ns.SetOgre(page.building)
+                    OVERVIEW.refresh(page)  -- (now, not after the usual moment)
+                    return
+                end
+                if not self.editable then return end
+                UI.ClickSound()
+                ns.SetLayerEdition(self.mint, self.layer, ns.NextEdition(ns.LayerEdition(ns.MintStyle(self.mint), self.layer)))
+                OVERVIEW.refresh(page)
+            end)
+            trait:SetScript("OnEnter", function(self)
+                if self.picker then
+                    glow:Show()
+                    return SetTooltip(self, { "Click: next  -  right-click: back", ("%d to pick from"):format(#ns.OwnedOptions(self.layer)) })
+                end
+                if not self.editable then return end
+                glow:Show()
+                SetTooltip(self, { "Click: painted, crayon or sketched" })
+            end)
+            trait:SetScript("OnLeave", function() glow:Hide() GameTooltip_Hide() end)
+            page.portraitTraits[i] = trait
+        end
+        -- A picture opened to look at (yours: from your gallery, or anywhere, ns.ShowMint): its buttons under its traits.
+        page.viewButtons = {}
+        for i = 1, 3 do
+            local button = CreateFrame("Button", nil, hung)
+            button:SetSize(118, 22)
+            button:SetPoint("CENTER", UI.window, "TOPLEFT", card.photo.x + (i - 2) * 124, -704)
+            button.back = button:CreateTexture(nil, "BACKGROUND")
+            button.back:SetAllPoints()
+            button.text = button:CreateFontString(nil, "OVERLAY")
+            button.text:SetFont(NAME_FONT, 13, "")
+            button.text:SetPoint("CENTER", 0, 1)
+            UI.OutlineText(button.text, { 0, 0, 0 })
+            local function Paint(lit)
+                button.back:SetColorTexture(unpack(lit and { 0.65, 0.53, 0.28 } or { 0.3, 0.22, 0.12 }))
+                button.text:SetTextColor(unpack(lit and { 1, 1, 1 } or HEADING_COLOR))
+            end
+            button:SetScript("OnEnter", function(self) Paint(true) if self.lines then SetTooltip(self, self.lines) end end)
+            button:SetScript("OnLeave", function() Paint(false) GameTooltip_Hide() end)
+            button:SetScript("OnClick", function(self)
+                UI.ClickSound()
+                if self.action then self.action() end
+            end)
+            Paint(false)
+            button:Hide()
+            page.viewButtons[i] = button
+        end
 
         -- The left slot: the showcase's pictures, and what happened to them lately.
         local left = CreateFrame("Frame", nil, page)
@@ -715,6 +833,24 @@ OVERVIEW = {
             local holder = CreateFrame("Button", nil, left)
             holder:SetSize(pictures.size, pictures.size)
             At(holder, "TOPLEFT", x, pictures.top)
+            -- A little shake (a picture dragged onto it, Gallery.lua): side to side, dying down.
+            function holder:Shake()
+                self.shaking = 0
+                self:SetScript("OnUpdate", function(s, elapsed)
+                    s.shaking = s.shaking + elapsed
+                    local left = 1 - s.shaking / 0.35
+                    s:ClearAllPoints()
+                    if left <= 0 then
+                        At(s, "TOPLEFT", x, pictures.top)
+                        if s.mint then ns.DrawMint(s.canvas, s.mint) end
+                        s:SetScript("OnUpdate", nil)
+                    else
+                        local wobble = math.sin(s.shaking * 55) * left
+                        At(s, "TOPLEFT", x + wobble * 2, pictures.top)
+                        if s.mint then ns.DrawMint(s.canvas, s.mint, math.floor(wobble * 3 + 0.5) / 2) end  -- (rocking, up to 1.5 degrees)
+                    end
+                end)
+            end
             holder.slot = i
             holder.border = holder:CreateTexture(nil, "BACKGROUND")
             holder.border:SetAllPoints()
@@ -730,14 +866,24 @@ OVERVIEW = {
             holder.empty:SetPoint("CENTER")
             holder.empty:SetText("+")
             holder.empty:SetTextColor(0.5, 0.5, 0.5)
+            holder:RegisterForDrag("LeftButton")
+            function holder:paint()  -- its border back to its picture's rarity (after a drag lit it)
+                self.border:SetVertexColor(unpack(self.borderColor or { 0.35, 0.35, 0.35 }))
+            end
             holder:SetScript("OnClick", function(self)
                 UI.ClickSound()
-                if self.mint then
-                    ns.ShowMint(self.mint, self.key and Ambiguate(self.key, "short") or nil)
-                elseif not self.key then
-                    ns.OpenPage("collection")  -- your pictures, to pick one
+                if not self.key then
+                    page.OpenGallery()  -- yours: your gallery on the right page, to drag pictures in (Gallery.lua)
+                elseif self.mint then
+                    ns.ShowMint(self.mint, Ambiguate(self.key, "short"))
                 end
             end)
+            holder:SetScript("OnDragStart", function(self)
+                if self.key or not self.mint then return end
+                if not page.gallery:IsShown() then page.OpenGallery() end  -- (picked up first: the gallery opens to drop it on)
+                page.gallery:StartDrag(self.mint, self.slot)
+            end)
+            holder:SetScript("OnDragStop", function() page.gallery:StopDrag() end)
             holder:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 if self.mint then
@@ -748,12 +894,10 @@ OVERVIEW = {
                         GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
                     end
                     if self.mint.time then GameTooltip:AddLine(date("Minted %Y-%m-%d", self.mint.time), 0.6, 0.6, 0.6) end
-                    GameTooltip:AddLine("Click to view", 0.6, 0.6, 0.6)
+                    GameTooltip:AddLine(self.key and "Click to view" or "Click: your gallery. Drag to move it", 0.6, 0.6, 0.6)
                 else
                     GameTooltip:AddLine("Showcase")
-                    GameTooltip:AddLine(("Open one of your pictures and click \"Show on your Overview\" (up to %d)."):format(ns.SHOWCASE_SIZE),
-                        1, 1, 1, true)
-                    GameTooltip:AddLine("Click to see your pictures", 0.6, 0.6, 0.6)
+                    GameTooltip:AddLine("Click to pick from your gallery", 0.6, 0.6, 0.6)
                 end
                 GameTooltip:Show()
             end)
@@ -827,7 +971,58 @@ OVERVIEW = {
         -- An event's details over the right page instead of the photo.
         page.detail = UI.FeedDetail(page)
         local function PaintFeed() for _, row in ipairs(page.feed) do row:Paint() end end
+        -- Your gallery over the right page instead of the photo (Gallery.lua), from your showcase.
+        page.gallery = UI.Gallery(page)
+        -- One of your pictures, opened to look at (on the photo's place, with its buttons). fromGallery: BACK reopens it.
+        function page.OpenView(mint, fromGallery)
+            page.CloseDetail()
+            page.gallery:Hide()
+            page.building, page.buildingFromGallery = nil, nil
+            page.viewing, page.viewingFromGallery = mint, fromGallery
+            page.photo:Show()
+            page.hung:Show()
+            OVERVIEW.refresh(page)
+        end
+        function page.CloseView()
+            local fromGallery = page.viewingFromGallery
+            page.viewing, page.viewingFromGallery = nil, nil
+            if fromGallery then page.OpenGallery() else OVERVIEW.refresh(page) end
+        end
+        -- Building your ogre (on the photo's place): from the one you have, else your photo's picture, else a plain one.
+        function page.OpenBuilder(fromGallery)
+            page.CloseDetail()
+            page.gallery:Hide()
+            page.viewing, page.viewingFromGallery = nil, nil
+            page.building, page.buildingFromGallery = ns.BaseTraits(), fromGallery
+            page.photo:Show()
+            page.hung:Show()
+            OVERVIEW.refresh(page)
+        end
+        function page.CloseBuilder()
+            local fromGallery = page.buildingFromGallery
+            page.building, page.buildingFromGallery = nil, nil
+            if fromGallery then page.OpenGallery() else OVERVIEW.refresh(page) end
+        end
+        UI.overviewPage = page
+        function page.OpenGallery()
+            page.viewing, page.viewingFromGallery = nil, nil
+            page.building, page.buildingFromGallery = nil, nil
+            page.CloseDetail()
+            page.gallery:Show()
+            page.gallery:Refresh()
+            page.photo:Hide()
+            page.hung:Hide()
+            if UI.SetTab then UI.SetTab("overview", "Gallery", "PIX") end
+        end
+        function page.CloseGallery()
+            if not page.gallery:IsShown() then return end
+            page.gallery:Hide()
+            page.photo:SetShown(page.panel ~= "crafts")
+            page.hung:SetShown(page.panel ~= "crafts")
+            if UI.SetTab then UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end
+        end
         function page.OpenDetail(item)
+            page.gallery:Hide()
             page.detail:ShowItem(item)
             page.photo:Hide()
             page.hung:Hide()
@@ -854,6 +1049,8 @@ OVERVIEW = {
         local function ShowPanel(which)
             page.panel = which
             page.detail:Hide()
+            page.gallery:Hide()
+            page.viewing, page.viewingFromGallery = nil, nil
             page.gearPanel:SetShown(which == "gear")
             page.craftsPanel:SetShown(which == "crafts")
             left:SetShown(which == nil)
@@ -862,6 +1059,7 @@ OVERVIEW = {
             for _, tab in ipairs(page.tabs) do tab:Redraw() end
             if page.loaded then OVERVIEW.refresh(page) end  -- GEARZ shows the model, not a picture
         end
+        page.ShowPanel = ShowPanel
         local tabWidth = (LEFT.right - LEFT.left) / #TABS
         for i, spec in ipairs(TABS) do
             local tab = UI.TabButton(tabs, LEFT.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
@@ -900,8 +1098,16 @@ OVERVIEW = {
     end,
 
     refresh = function(page)
-        if UI.SetTab then UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end  -- (the top beam)
         local key = ns.GetViewing()
+        if key and page.gallery and page.gallery:IsShown() then page.CloseGallery() end  -- (someone else's: no gallery)
+        local galleryOpen = page.gallery and page.gallery:IsShown()
+        if UI.SetTab then  -- (the top beam)
+            if galleryOpen then UI.SetTab("overview", "Gallery", "PIX")
+            elseif page.viewing and not key then UI.SetTab("overview", ("Picture #%d"):format(page.viewing.number), "PIX")
+            elseif page.building and not key then UI.SetTab("overview", "Your Ogre", "ME OGRE")
+            else UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end
+        end
+        if galleryOpen then page.gallery:Refresh() end
         local p = UI.Profile(key)
 
         -- The photo: their chosen picture, or (no model of them to show) their first showcase picture or else their
@@ -909,13 +1115,110 @@ OVERVIEW = {
         local friend = key and KillTrackerFriends[key]
         local gear = friend and friend.gear
         local portrait = ns.FindMint(key, p.portrait)
+        local cardData = key and friend and friend.card or (not key and KillTrackerDB.card) or nil
+        if not portrait and cardData and cardData.photoOgre and cardData.ogre then  -- the ogre they built (Minting.lua)
+            portrait = { traits = cardData.ogre, ogre = true, style = cardData.ogreStyle }
+        end
         if not portrait and key and not gear then portrait = ns.GetShowcase(key)[1] or ns.NewestMint(key) end
         if page.panel == "gear" then portrait = nil end  -- their gear goes round their character
+        -- One of your pictures opened to look at: it, instead (with its buttons), until BACK.
+        if page.viewing and (key or page.panel ~= nil or not ns.FindMint(nil, page.viewing.number)) then
+            page.viewing, page.viewingFromGallery = nil, nil
+        end
+        if page.viewing then portrait = page.viewing end
+        -- Building your ogre: it, with a picker on each trait.
+        if page.building and (key or page.panel ~= nil) then page.building, page.buildingFromGallery = nil, nil end
+        if page.building then portrait = { traits = page.building, ogre = true, style = KillTrackerDB.card and KillTrackerDB.card.ogreStyle } end
         local switched = (page.portraitMint ~= nil) ~= (portrait ~= nil)
         page.portraitMint = portrait
         page.portrait:SetShown(portrait ~= nil)
         page.photo:EnableMouse(portrait ~= nil)
-        if portrait then ns.DrawMint(page.portrait, portrait) end
+        -- A picture: the photo square, the beam under it, its rarity and traits (as on the Pictures page); the model: the
+        -- tall photo, its beam at the bottom.
+        local square = portrait ~= nil
+        page.photo:ClearAllPoints()
+        page.photo:SetSize(RIGHT.photo.w, square and RIGHT.photo.w or RIGHT.photo.h)
+        page.photo:SetPoint("CENTER", UI.window, "TOPLEFT", RIGHT.photo.x, -(square and RIGHT.square.y or RIGHT.photo.y))
+        page.tallBeam:SetShown(not square)
+        page.squareBeam:SetShown(square)
+        page.portraitInfo:SetShown(square)
+        local traits = square and ns.MintTraits(portrait.traits) or {}
+        local editable = square and not key and not portrait.ogre and ns.CrayonUnlocked(portrait)
+        local style = square and ns.MintStyle(portrait)
+        for i, button in ipairs(page.portraitTraits) do
+            local trait = traits[i]
+            button:SetShown(trait ~= nil)
+            if trait then
+                local edition = ns.LayerEdition(style, trait[4])
+                button.mint, button.layer, button.editable = portrait, trait[4], editable
+                button.picker = page.building ~= nil
+                button:EnableMouse((editable or button.picker) and true or false)
+                local layer = ns.MintLayerByKey and ns.MintLayerByKey(trait[4])
+                button.option, button.edition = nil, edition
+                for _, option in ipairs(layer and layer.options or {}) do
+                    if option.id == portrait.traits[trait[4]] then button.option = option end
+                end
+                local twins = button.option and (button.option.crayon or button.option.sketch)
+                button.ed:SetShown((editable or button.picker) and twins and true or false)
+                button.ed.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Kitchen\\"
+                    .. (edition == "crayon" and "EdCrayon" or edition == "sketch" and "EdSketch" or "EdPainted"))
+                if button.picker then  -- < Headwear: Fel Horn Circlet >
+                    button.text:SetText(("|cffffd100<|r |cffffd100%s:|r |c%s%s|r |cffffd100>|r"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2]))
+                else
+                    button.text:SetText(("|cffffd100%s:|r |c%s%s|r%s%s"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2],
+                        edition and not button.ed:IsShown() and ("  |cffff9a2a%s|r"):format(ns.EDITION_NAMES[edition]) or "", ns.TraitNote(trait)))
+                end
+            end
+        end
+        -- Looking at one: BACK (to your gallery, if it came from there), its whole edition, a duplicate's reroll.
+        for _, button in ipairs(page.viewButtons) do button:Hide() end
+        local n = 0
+        local function Button(text, lines, action)
+            n = n + 1
+            local button = page.viewButtons[n]
+            button.text:SetText(text)
+            button.lines, button.action = lines, action
+            button:Show()
+        end
+        if page.building then
+            local isPhoto = KillTrackerDB.card and KillTrackerDB.card.photoOgre and not KillTrackerDB.card.portrait
+            Button("BACK", { page.buildingFromGallery and "Back to your gallery" or "Back to your photo" }, function() page.CloseBuilder() end)
+            Button(isPhoto and "IS YOUR PHOTO" or "AS PHOTO", { "Your Overview's photo", isPhoto and "It's on your Overview."
+                or "Show your ogre on your Overview." }, function() ns.SetOgre(page.building, true) end)
+            Button("RANDOM", { "A random ogre", "From what you have" }, function()
+                local traits = {}  -- (a new table, so the picture is redrawn)
+                for k, id in pairs(page.building) do traits[k] = id end
+                for _, layer in ipairs(ns.MintLayers) do
+                    local options = ns.OwnedOptions(layer.key)
+                    if #options > 0 then traits[layer.key] = options[math.random(#options)].id end
+                end
+                page.building = traits
+                ns.SetOgre(page.building)
+                OVERVIEW.refresh(page)
+            end)
+        end
+        if page.viewing then
+            local mint, Next = page.viewing, Button
+            Next("BACK", { page.viewingFromGallery and "Back to your gallery" or "Back to your photo" }, function() page.CloseView() end)
+            if ns.CrayonUnlocked(mint) then
+                local nextStyle = type(style) == "table" and ns.EDITIONS[1] or ns.NextEdition(style)
+                Next(nextStyle and nextStyle:upper() or "PAINTED", { "Crayon and sketch editions", "Redraw it all "
+                    .. (nextStyle and ("in " .. ns.EDITION_NAMES[nextStyle]) or "painted") .. ". Click a trait for just that one." },
+                    function() ns.SetMintStyle(mint, nextStyle) OVERVIEW.refresh(page) end)
+            end
+            if mint.duplicateOf then
+                Next("REROLL", { "Reroll for free", ("%s minted this picture first."):format(mint.duplicateOf) },
+                    function() ns.ConfirmReroll(mint) end)
+            end
+        end
+        if portrait then
+            ns.DrawMint(page.portrait, portrait)
+            local rarity = ns.MintRarity(portrait.traits)
+            local what = portrait.ogre and (key and (((p.name or ""):match("^(%S+)") or "Their") .. "'s ogre") or "Your ogre")
+                or ("#%d%s"):format(portrait.number, portrait.time and ("  " .. date("%Y-%m-%d", portrait.time)) or "")
+            page.portraitInfo:SetText(("|c%s%s|r  |cff999999%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff",
+                (rarity:gsub("^%l", string.upper)), what))
+        end
         -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
         -- refreshes.
         if key ~= page.key then page.CloseDetail() end  -- someone else's feed
@@ -935,12 +1238,9 @@ OVERVIEW = {
             holder:SetShown(mint ~= nil or key == nil)
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
-            if mint then
-                ns.DrawMint(holder.canvas, mint)
-                holder.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
-            else
-                holder.border:SetVertexColor(0.35, 0.35, 0.35)
-            end
+            holder.borderColor = mint and { ns.RarityRGB(ns.MintRarity(mint.traits)) } or nil
+            if mint then ns.DrawMint(holder.canvas, mint) end
+            holder:paint()
         end
 
         -- What happened to them lately (WHAT HAPPEN TO ME? on yours, their first name on someone else's).
@@ -973,6 +1273,16 @@ OVERVIEW = {
         -- The first name on the frame's plaque, as big as fits.
         local first = (p.name or ""):match("^(%S+)") or ""
         Fit(page.signature, SIGN_FONT, RIGHT.plaque.size, 8, first:upper(), page.signatureWidth)
+        Fit(page.squareSignature, SIGN_FONT, RIGHT.plaque.size, 8, first:upper(), page.signatureWidth)
     end,
 }
 ns.RegisterPage(OVERVIEW)
+
+-- One of your pictures, opened anywhere (ns.ShowMint): your own Overview, the ME tab, the picture on the photo's place.
+function UI.ShowOwnPicture(mint)
+    ns.ViewPlayer(nil, "overview")  -- (yours, from anyone's or the guild's view)
+    local page = UI.overviewPage
+    if not page then return end
+    if page.panel then page.ShowPanel(nil) end
+    page.OpenView(mint)
+end

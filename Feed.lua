@@ -32,7 +32,7 @@ function ns.FeedWorthy(kind, a, b)
 end
 
 -- The groups each player can hide on the Guild page's news (KillTrackerDB.feedHidden = { [group] = true }).
-ns.FEED_GROUPS = { A = "deeds", K = "deeds", L = "kills", R = "kills", D = "kills", M = "pix", W = "pix", U = "pix", G = "pix", B = "hunts" }
+ns.FEED_GROUPS = { A = "deeds", K = "deeds", L = "kills", R = "kills", D = "kills", M = "pix", W = "pix", U = "pix", G = "pix", B = "hunts", P = "hunts" }
 
 function ns.AddEvent(kind, a, b, c, d)
     local db = KillTrackerDB
@@ -115,6 +115,9 @@ local function Describe(e, who, source, calm)
     elseif e.k == "B" then
         local bounty = ns.ResolveBounty and ns.ResolveBounty(e.a)
         return ("%s helped complete the bounty |c%s%s|r"):format(who, c.bounty, bounty and bounty.name or tostring(e.a))
+    elseif e.k == "P" then
+        local poster = ns.PosterBounty and ns.PosterBounty(e.a)
+        return ("%s claimed the bounty |c%s%s|r"):format(who, c.bounty, poster and poster.name or tostring(e.a))
     elseif e.k == "G" then
         local dungeon = ns.DungeonByKey and ns.DungeonByKey(tostring(e.b):match("^chest:(%w+)$") or "")
         return ("%s got |c%s%s chest|r from %s"):format(who, c.achievement, dungeon and dungeon.name or "a", tostring(e.a))

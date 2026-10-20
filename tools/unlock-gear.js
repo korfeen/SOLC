@@ -45,17 +45,17 @@ module.exports = (h) => {
 
   const G = {
     // --- Headwear ---
-    WC: { layer: "headwear", name: "Druid of the Fang Hood", draw(c, r) {
+    WC: { layer: "headwear", name: "Mutanus Hood", draw(c, r) {
       hood(c, r, "#3a7a3a", "#a8d070");
       fill(c, [[HX - 60, 40], [HX, -40], [HX + 60, 40], [HX, 80]], "#6ab04a", r);  // the serpent's head on top
       for (const x of [HX - 22, HX + 22]) dab(c, x, 20, 9, hex("#ffd23f"), 0.95);
     } },
-    BFD: { layer: "headwear", name: "Twilight Cowl", draw(c, r) {
+    BFD: { layer: "headwear", name: "Aku'mai Hood", draw(c, r) {
       hood(c, r, "#2a2a5a", "#7a6ad8");
       fill(c, ellipse(HX, 110, 46, 26), "#ffd23f", r, { line: 10 });  // the Twilight eye
       dab(c, HX, 110, 12, OUTLINE, 0.95);
     } },
-    GNOMER: { layer: "headwear", name: "Tinker's Goggle Cap", draw(c, r) {
+    GNOMER: { layer: "headwear", name: "Mekgineer's Helm", draw(c, r) {
       dome(c, r, "#8a5a30", "#6a4020", 40);
       for (const x of [578, 686]) {  // goggles pushed up on the cap
         fill(c, circle(x, 168, 44), "#d0a040", r, { holes: [circle(x, 168, 28)] });
@@ -82,7 +82,7 @@ module.exports = (h) => {
       }
       fill(c, [[452, 196], [812, 196], [812, 228], [452, 228]], "#9fc8e8", r);
     } },
-    ZF: { layer: "headwear", name: "Sandfury Headdress", draw(c, r) {
+    ZF: { layer: "headwear", name: "Ukorz's Mohawk", draw(c, r) {
       for (let i = 0; i < 7; i++) {  // a fan of feathers
         const a = Math.PI * (1.15 + i * 0.117), x = HX + Math.cos(a) * 300, y = 220 + Math.sin(a) * 300;
         fill(c, rotate(ellipse((HX + x) / 2, (220 + y) / 2, 30, 150), a + Math.PI / 2, (HX + x) / 2, (220 + y) / 2),
@@ -91,11 +91,11 @@ module.exports = (h) => {
       fill(c, [[452, 186], [812, 186], [812, 232], [452, 232]], "#c89a5a", r);
       for (let x = 480; x <= 790; x += 50) dab(c, x, 209, 12, hex("#4f86e8"), 0.95);
     } },
-    THANES: { layer: "headwear", name: "Thane's Winged Helm", draw(c, r) {
+    THANES: { layer: "headwear", name: "Dirgehammer's Beard", draw(c, r) {
       dome(c, r, "#9aa0a8", "#ffd23f", 30);
       both((m) => fill(c, m([[470, 170], [300, 40], [360, 120], [280, 120], [380, 180], [300, 210], [464, 214]]), "#f4f4f0", r));  // wings
     } },
-    BRD: { layer: "headwear", name: "Dark Iron Crown", draw(c, r) { crownOf(c, r, "#3a3236", "#ff4a3a", 5, 220, 40); } },
+    BRD: { layer: "headwear", name: "Thaurissan's Crown", draw(c, r) { crownOf(c, r, "#3a3236", "#ff4a3a", 5, 220, 40); } },
     DME: { layer: "headwear", name: "Satyr Horns", draw(c, r) {
       both((m) => fill(c, m([...quad([520, 180], [380, 130], [370, -10], 14), ...quad([370, -10], [430, 100], [560, 150], 14).slice(1)]), "#8a6a4a", r));
       fill(c, [[460, 200], [804, 200], [804, 228], [460, 228]], "#3a7a3a", r);  // a vine band
@@ -116,7 +116,7 @@ module.exports = (h) => {
       both((m) => { for (const [x, y] of [[520, 186], [480, 200]]) fill(c, m(rotate(ellipse(x, y - 30, 16, 40), -0.6, x, y)), "#7ab07a", r, { line: 8, hatch: 6 }); });
     } },
     // --- Outfits ---
-    DM: { layer: "outfit", name: "Defias Leathers", draw(c, r) {
+    DM: { layer: "outfit", name: "VanCleef's Garb", draw(c, r) {
       const sash = (x, y) => Math.abs((y - 500) - (x - 300) * 0.75) < 70;  // a red sash across
       outfitFill(c, "#6a4a2a", r, (x, y) => !sash(x, y));
       outfitFill(c, "#c02a2a", r, sash);
@@ -124,14 +124,14 @@ module.exports = (h) => {
       fill(c, [[600, 720], [680, 720], [680, 790], [600, 790]], "#d0a040", r, { line: 10 });  // the buckle
       for (const y of [560, 900]) line(c, [[360, y], [900, y]], 8, "#4a3018", r);
     } },
-    STOCKS: { layer: "outfit", name: "Prison Stripes", draw(c, r) {
+    STOCKS: { layer: "outfit", name: "Bazil's Armor", draw(c, r) {
       outfitFill(c, "#f0ece0", r, stripes(70));
       outfitFill(c, "#2a2228", r, (x, y) => !stripes(70)(x, y));
       outfitOutline(c, r);
       fill(c, [[700, 560], [860, 560], [860, 640], [700, 640]], "#f8f4e8", r, { line: 10 });  // a number patch
       for (const x of [730, 770, 810]) line(c, [[x, 575], [x, 625]], 8, OUTLINE, r);
     } },
-    SMCATH: { layer: "outfit", name: "Scarlet Robe", draw(c, r) {
+    SMCATH: { layer: "outfit", name: "Whitemane's Robes", draw(c, r) {
       outfitFill(c, "#c02a2a", r, (x) => x < 560 || x > 700);
       outfitFill(c, "#f8f0e0", r, (x) => x >= 560 && x <= 700);
       outfitOutline(c, r);
@@ -139,7 +139,7 @@ module.exports = (h) => {
       line(c, [[630, 664], [630, 736]], 10, "#c02a2a", r);
       line(c, [[594, 700], [666, 700]], 10, "#c02a2a", r);
     } },
-    RUINS: { layer: "outfit", name: "Lordaeron Royal Tabard", draw(c, r) {
+    RUINS: { layer: "outfit", name: "Rath'mael's Robes", draw(c, r) {
       outfitFill(c, "#2a4a9a", r, (x) => x < 540 || x > 720);
       outfitFill(c, "#f4f0e0", r, (x) => x >= 540 && x <= 720);
       outfitOutline(c, r);
@@ -471,35 +471,35 @@ module.exports = (h) => {
   const piece = (key) => ({ name: G[key].name, draw: G[key].draw });
   const SETS = {
     RFC: { head: { name: "Fel Horn Circlet", draw: H.horns("#3a2228", "#7aff4a") }, body: { name: "Searing Blade Robe", draw: B.robe("#7a1a1a", "#3a1414", "#7aff4a") }, charm: piece("RFC") },
-    WC: { head: piece("WC"), body: { name: "Fang Druid Leathers", draw: B.scale("#3a7a3a", "#a8d070") }, charm: { name: "Murloc Buddy", draw: C.murloc() } },
-    DM: { head: { name: "Defias Bandana", draw: H.bandana("#c02a2a", "#f0e0d0") }, body: piece("DM"), charm: { name: "VanCleef's Cutlass", draw: C.weapon("cutlass", "#c0c8d0") } },
-    SFK: { head: { name: "Archmage's Hat", draw: H.wizard("#5a2a7a", "#c0c8d0", "#e0d0ff") }, body: { name: "Arugal's Robe", draw: B.robe("#4a1a6a", "#c0c8d0", "#e0e0ff") }, charm: piece("SFK") },
-    BFD: { head: piece("BFD"), body: { name: "Twilight Robes", draw: B.robe("#2a2a5a", "#7a6ad8", "#ffd23f") }, charm: { name: "Aku'mai Hatchling", draw: C.hatchling() } },
-    STOCKS: { head: { name: "Prison Beanie", draw: H.beanie("#2a2228", "#f0ece0") }, body: piece("STOCKS"), charm: { name: "Ball and Chain", draw: C.chain() } },
-    GNOMER: { head: piece("GNOMER"), body: { name: "Mekgineer Overalls", draw: B.overalls("#4f6ab8", "#e8dcc0") }, charm: { name: "Gnome Bot", draw: C.bot() } },
+    WC: { head: piece("WC"), body: { name: "Murloc Onesie", draw: B.scale("#3a7a3a", "#a8d070") }, charm: { name: "Murloc Buddy", draw: C.murloc() } },
+    DM: { head: { name: "VanCleef's Mask", draw: H.bandana("#c02a2a", "#f0e0d0") }, body: piece("DM"), charm: { name: "VanCleef's Cutlass", draw: C.weapon("cutlass", "#c0c8d0") } },
+    SFK: { head: { name: "Arugal's Cowl", draw: H.wizard("#5a2a7a", "#c0c8d0", "#e0d0ff") }, body: { name: "Arugal's Robe", draw: B.robe("#4a1a6a", "#c0c8d0", "#e0e0ff") }, charm: piece("SFK") },
+    BFD: { head: piece("BFD"), body: { name: "Aku'mai Shell", draw: B.robe("#2a2a5a", "#7a6ad8", "#ffd23f") }, charm: { name: "Aku'mai Hatchling", draw: C.hatchling() } },
+    STOCKS: { head: { name: "Bazil's Locks", draw: H.beanie("#2a2228", "#f0ece0") }, body: piece("STOCKS"), charm: { name: "Ball and Chain", draw: C.chain() } },
+    GNOMER: { head: piece("GNOMER"), body: { name: "Mekgineer's Mech Suit", draw: B.overalls("#4f6ab8", "#e8dcc0") }, charm: { name: "Gnome Bot", draw: C.bot() } },
     RFK: { head: piece("RFK"), body: { name: "Razorflank Hide", draw: B.fur("#8a5a30", "#c8b890") }, charm: { name: "Thorn Totem", draw: C.totem("#6a4a2a", "#7aff4a") } },
-    SMGY: { head: { name: "Bloodmage Hood", draw: H.hood("#8a1a1a", "#ff6a4a") }, body: { name: "Bloodmage Robe", draw: B.robe("#8a1a1a", "#3a1414", "#f0ece0") }, charm: piece("SMGY") },
+    SMGY: { head: { name: "Bloodmage Hood", draw: H.hood("#8a1a1a", "#ff6a4a") }, body: { name: "Thalnos's Robe", draw: B.robe("#8a1a1a", "#3a1414", "#f0ece0") }, charm: piece("SMGY") },
     SMLIB: { head: { name: "Arcanist's Hat", draw: H.wizard("#c02a2a", "#ffd23f", "#ffd23f") }, body: { name: "Scarlet Arcanist Robe", draw: B.robe("#c02a2a", "#ffd23f", "#4f86e8") }, charm: piece("SMLIB") },
-    SMARM: { head: piece("SMARM"), body: { name: "Scarlet Plate", draw: B.plate("#c02a2a", "#8a1a1a", "#ffd23f") }, charm: { name: "Herod's Axe", draw: C.weapon("axe", "#c0c8d0") } },
-    SMCATH: { head: { name: "Inquisitor's Mitre", draw: H.mitre("#f8f0e0", "#c02a2a") }, body: piece("SMCATH"), charm: { name: "Resurrection Feather", draw: C.feather("#f8f4e8", "#ffd23f") } },
+    SMARM: { head: piece("SMARM"), body: { name: "Herod's Plate", draw: B.plate("#c02a2a", "#8a1a1a", "#ffd23f") }, charm: { name: "Herod's Axe", draw: C.weapon("axe", "#c0c8d0") } },
+    SMCATH: { head: { name: "Whitemane's Locks", draw: H.mitre("#f8f0e0", "#c02a2a") }, body: piece("SMCATH"), charm: { name: "Resurrection Feather", draw: C.feather("#f8f4e8", "#ffd23f") } },
     RFD: { head: piece("RFD"), body: { name: "Coldbringer Shroud", draw: B.robe("#3a4a7a", "#9fe8ff", "#c8f0ff") }, charm: { name: "Frost Phylactery", draw: C.orb("#9fe8ff", "#c8f0ff") } },
-    ULDA: { head: { name: "Titan Stone Helm", draw: H.helm("#8a8078", "#6a6058", "#5ac8ff") }, body: { name: "Stone Keeper Plate", draw: B.plate("#8a8078", "#5a5048", "#5ac8ff") }, charm: piece("ULDA") },
-    ZF: { head: piece("ZF"), body: { name: "Sandfury Wraps", draw: B.wraps("#c8a878", "#8a5a30", "#f0ece0") }, charm: { name: "Sandfury Totem", draw: C.totem("#c89a5a", "#e04a2a") } },
-    MARA: { head: { name: "Crystal Crown", draw: H.crown("#b07aff", "#e0c8ff", 4) }, body: { name: "Earthen Gown", draw: B.robe("#6a4a3a", "#b07aff", "#e0c8ff") }, charm: piece("MARA") },
-    THANES: { head: piece("THANES"), body: { name: "Thane's Mail", draw: B.scale("#7a8090", "#c0c8d0") }, charm: { name: "Spirit Hammer", draw: C.weapon("hammer", "#c8f0ff") } },
-    RUINS: { head: { name: "Plague Hood", draw: H.hood("#2a3a2a", "#7ad86a", "#7ad86a") }, body: piece("RUINS"), charm: { name: "Plague Flask", draw: C.flask("#7ad86a") } },
-    EXCAV: { head: { name: "Explorer's Pith Helmet", draw: H.pith("#d8c8a0") }, body: { name: "Explorer's Vest", draw: B.vest("#a08a5a", "#f0e8d0") }, charm: piece("EXCAV") },
+    ULDA: { head: { name: "Titan Stone Helm", draw: H.helm("#8a8078", "#6a6058", "#5ac8ff") }, body: { name: "Archaedas's Stoneskin", draw: B.plate("#8a8078", "#5a5048", "#5ac8ff") }, charm: piece("ULDA") },
+    ZF: { head: piece("ZF"), body: { name: "Sandscalp Plate", draw: B.wraps("#c8a878", "#8a5a30", "#f0ece0") }, charm: { name: "Sandfury Totem", draw: C.totem("#c89a5a", "#e04a2a") } },
+    MARA: { head: { name: "Crystal Crown", draw: H.crown("#b07aff", "#e0c8ff", 4) }, body: { name: "Theradras's Gown", draw: B.robe("#6a4a3a", "#b07aff", "#e0c8ff") }, charm: piece("MARA") },
+    THANES: { head: piece("THANES"), body: { name: "Dirgehammer's Harness", draw: B.scale("#7a8090", "#c0c8d0") }, charm: { name: "Spirit Hammer", draw: C.weapon("hammer", "#c8f0ff") } },
+    RUINS: { head: { name: "Rath'mael's Skull", draw: H.hood("#2a3a2a", "#7ad86a", "#7ad86a") }, body: piece("RUINS"), charm: { name: "Plague Flask", draw: C.flask("#7ad86a") } },
+    EXCAV: { head: { name: "Guardian Helm", draw: H.pith("#d8c8a0") }, body: { name: "Guardian Stoneskin", draw: B.vest("#a08a5a", "#f0e8d0") }, charm: piece("EXCAV") },
     ST: { head: { name: "Dreamweaver Circlet", draw: H.circlet("#3a8a3a", "#7ad86a") }, body: { name: "Emerald Dragonscale", draw: B.scale("#3a8a5a", "#a8e8a0") }, charm: piece("ST") },
-    BRD: { head: piece("BRD"), body: { name: "Emperor's Robes", draw: B.robe("#8a2a1a", "#2a2228", "#ffd23f") }, charm: { name: "Black Anvil", draw: C.anvil() } },
-    LBRS: { head: { name: "Blackrock Warhelm", draw: H.spiked("#2a2228", "#8a8a90") }, body: piece("LBRS"), charm: { name: "Blackrock Banner", draw: C.banner("#2a2228", "#c02a2a") } },
-    UBRS: { head: { name: "Dragonspawn Skull", draw: H.skull("#2a2228", "#ff4a3a") }, body: { name: "Drakkisath's Scale Mail", draw: B.scale("#2a2228", "#c02a2a") }, charm: piece("UBRS") },
-    DME: { head: piece("DME"), body: { name: "Felvine Robe", draw: B.robe("#2a4a2a", "#7aff4a", "#9aff5a") }, charm: { name: "Felvine Sprout", draw: C.seed("#7aff4a", "#9aff5a") } },
-    DMW: { head: { name: "Highborne Diadem", draw: H.circlet("#c8c8e0", "#4f86e8") }, body: { name: "Highborne Robes", draw: B.robe("#2a4a8a", "#c8c8e0", "#9fe8ff") }, charm: piece("DMW") },
+    BRD: { head: piece("BRD"), body: { name: "Thaurissan's Robes", draw: B.robe("#8a2a1a", "#2a2228", "#ffd23f") }, charm: { name: "Black Anvil", draw: C.anvil() } },
+    LBRS: { head: { name: "Omokk's Helm", draw: H.spiked("#2a2228", "#8a8a90") }, body: piece("LBRS"), charm: { name: "Blackrock Banner", draw: C.banner("#2a2228", "#c02a2a") } },
+    UBRS: { head: { name: "Drakkisath's Helm", draw: H.skull("#2a2228", "#ff4a3a") }, body: { name: "Drakkisath's Scale Mail", draw: B.scale("#2a2228", "#c02a2a") }, charm: piece("UBRS") },
+    DME: { head: piece("DME"), body: { name: "Alzzin's Fur", draw: B.robe("#2a4a2a", "#7aff4a", "#9aff5a") }, charm: { name: "Felvine Sprout", draw: C.seed("#7aff4a", "#9aff5a") } },
+    DMW: { head: { name: "Tortheldrin's Locks", draw: H.circlet("#c8c8e0", "#4f86e8") }, body: { name: "Tortheldrin's Armor", draw: B.robe("#2a4a8a", "#c8c8e0", "#9fe8ff") }, charm: piece("DMW") },
     DMN: { head: piece("DMN"), body: { name: "Ogre King's Furs", draw: B.fur("#6a4a7a", "#c89a6a", "#ffd23f") }, charm: { name: "Gordok Club", draw: C.weapon("club", "#8a5a2e") } },
     SCHOLO: { head: { name: "Darkmaster's Hood", draw: H.hood("#1a1418", "#b07aff", "#b07aff") }, body: { name: "Necromancer Robes", draw: B.robe("#1a1418", "#5a2a7a", "#f0ece0") }, charm: piece("SCHOLO") },
-    STRATL: { head: { name: "Dreadlord Horns", draw: H.horns("#d8c8a0", "#3a2a4a") }, body: { name: "Dreadlord Mantle", draw: B.plate("#3a2a4a", "#1a1424", "#7aff4a") }, charm: piece("STRATL") },
+    STRATL: { head: { name: "Dreadlord Horns", draw: H.horns("#d8c8a0", "#3a2a4a") }, body: { name: "Balnazzar's Wings", draw: B.plate("#3a2a4a", "#1a1424", "#7aff4a") }, charm: piece("STRATL") },
     STRATU: { head: piece("STRATU"), body: { name: "Death Knight Plate", draw: B.plate("#3a3a44", "#1a1a24", "#7ad8ff") }, charm: { name: "Deathcharger's Skull", draw: C.horseSkull("#7ad8ff") } },
-    ONY: { head: { name: "Black Dragon Skull", draw: H.skull("#2a2228", "#ffd23f") }, body: { name: "Onyxia Scale Cloak", draw: B.scale("#2a2228", "#6a4a5a") }, charm: piece("ONY") },
+    ONY: { head: { name: "Onyxia Hood", draw: H.skull("#2a2228", "#ffd23f") }, body: { name: "Onyxia Onesie", draw: B.scale("#2a2228", "#6a4a5a") }, charm: piece("ONY") },
     BARROW: { head: piece("BARROW"), body: { name: "Barrowmoon Robe", draw: B.robe("#3a2a5a", "#c8b8ff", "#e8e0ff") }, charm: { name: "Barrow Wisp", draw: C.wisp("#b8a8ff") } },
     HYJAL: { head: { name: "Wild King's Antlers", draw: (c, r) => { antlers(c, r) } }, body: piece("HYJAL"), charm: { name: "Nordrassil Seed", draw: C.seed("#a06a3a", "#c8ff5a") } },
   };

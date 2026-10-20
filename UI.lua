@@ -189,7 +189,7 @@ local function BuildRows()
         local p = ns.GetPoints(Source())
         for _, part in ipairs({ { "Kills", p.kills }, { "New mob types", p.newMobs }, { "Leaders", p.leaders },
             { "Achievements", p.achievements }, { "PvP", p.pvp }, { "Guild groups", p.guildGroup },
-            { "Guild dungeons", p.dungeons }, { "Guild bounty", p.bounty }, { "Dungeon chests", p.chests }, { "Spent", -p.spent } }) do
+            { "Guild dungeons", p.dungeons }, { "Bounties", p.bounty }, { "Dungeon chests", p.chests }, { "Spent", -p.spent } }) do
             rows[#rows + 1] = { label = part[1], count = part[2], pointsPart = true }
         end
         if not state.viewing then
@@ -396,6 +396,36 @@ body:SetFrameLevel(frame:GetFrameLevel())
 body:SetBackdrop({ bgFile = ns.WINDOW_BACKGROUND })
 body:SetBackdropColor(unpack(ns.WINDOW_COLOR))
 ns.UI.pageBody = body  -- (the pages' whole background, to the wood: the minting kitchen's scenery fills it, MintPot.lua)
+
+-- Tooltips beside the window: a tooltip for anything in the window opens in one place, just outside its right edge
+-- under the top beam (its left edge, if the screen has no room on the right), so it never covers what you point at.
+-- Every tooltip, whoever opens it (a hook on GameTooltip:SetOwner). Yours to turn off (Settings, /solc tooltips:
+-- KillTrackerDB.fixedTooltips = false); then they open where each asks.
+function ns.UI.FixedTooltips() return not KillTrackerDB or KillTrackerDB.fixedTooltips ~= false end
+local function InWindow(region)
+    for _ = 1, 40 do
+        if not region then return false end
+        if region == frame then return true end
+        region = region.GetParent and region:GetParent()
+    end
+    return false
+end
+local function PlaceTooltip(tip)
+    tip:ClearAllPoints()
+    local room = (UIParent:GetRight() or 0) - (frame:GetRight() or 0)
+    if room >= (tip:GetWidth() or 0) + 8 then
+        tip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 2, -INNER.top)
+    else
+        tip:SetPoint("TOPRIGHT", frame, "TOPLEFT", -2, -INNER.top)
+    end
+end
+hooksecurefunc(GameTooltip, "SetOwner", function(tip, owner)
+    tip.solcFixed = ns.UI.FixedTooltips() and owner ~= nil and InWindow(owner) or nil
+    if tip.solcFixed and tip.SetAnchorType then tip:SetAnchorType("ANCHOR_NONE") end
+end)
+GameTooltip:HookScript("OnShow", function(tip) if tip.solcFixed then PlaceTooltip(tip) end end)
+GameTooltip:HookScript("OnSizeChanged", function(tip) if tip.solcFixed and tip:IsShown() then PlaceTooltip(tip) end end)
+GameTooltip:HookScript("OnHide", function(tip) tip.solcFixed = nil end)
 frame:SetHitRectInsets(BODY.left, WIDTH - BODY.right, SKELETON.topBeam.top, HEIGHT - BODY.bottom)
 frame:SetClampedToScreen(true)
 frame:SetMovable(true)
@@ -956,6 +986,7 @@ end
 
 function ns.OpenPage(key)
     if not PageFor(key) then return end
+    if ns.UI.CloseScreen then ns.UI.CloseScreen() end  -- (another page: the kitchen, a chest over this one closes)
     state.page = key
     if not frame:IsShown() then ns.ToggleUI() else Refresh() end
 end
@@ -1408,7 +1439,10 @@ end
 ns.UI.List = { state = state, BuildRows = BuildRows, FillRow = FillRow, RowTooltip = RowTooltip, Source = Source }
 
 -- Pictures open on the PIX page, picked (PixPage.lua). owner: whose it is, if not yours (a short name).
+-- Yours open on your Overview (OverviewCard.lua: on the photo's place, with its traits and buttons); a guildmate's on
+-- the Guild page's Pictures tab.
 function ns.ShowMint(mint, owner)
+    if not owner and ns.UI.ShowOwnPicture then return ns.UI.ShowOwnPicture(mint) end
     if ns.UI.PixShow then ns.UI.PixShow(mint, owner) end
 end
 
@@ -1502,15 +1536,37 @@ end
 
 -- A screen over the page (the minting kitchen, a chest, a reroll): its name after the page's in the title (ogre: its
 -- ogre word); onBack, if given, closes it (clicking the page's part of the title). ns.UI.ClearScreen(name) when it closes.
-function ns.UI.SetScreen(name, ogreName, onBack)
-    title.screen = { name = name, ogre = ogreName or name:upper(), onBack = onBack }
+-- One can open over another (the kitchen's reel, a chest): all of them are kept, the title shows the newest, and going
+-- to a page closes every one (only the newest kept, the kitchen under it stayed open over the next page).
+local screens = {}
+local function NewestScreen()
+    title.screen = screens[#screens]
     UpdateTitle()
 end
+local function DropScreen(name)
+    for i = #screens, 1, -1 do if screens[i].name == name then table.remove(screens, i) end end
+end
+function ns.UI.SetScreen(name, ogreName, onBack)
+    DropScreen(name)
+    screens[#screens + 1] = { name = name, ogre = ogreName or name:upper(), onBack = onBack }
+    NewestScreen()
+end
+-- Closes every screen over the page, the newest first (going to a page).
+function ns.UI.CloseScreen()
+    local open = { unpack(screens) }
+    for i = #open, 1, -1 do if open[i].onBack then open[i].onBack() end end
+    wipe(screens)
+    NewestScreen()
+end
+-- name nil: the newest.
 function ns.UI.ClearScreen(name)
-    if title.screen and (not name or title.screen.name == name) then
-        title.screen = nil
-        UpdateTitle()
+    if not name then
+        if #screens == 0 then return end
+        table.remove(screens)
+    else
+        DropScreen(name)
     end
+    NewestScreen()
 end
 
 -- Refresh -------------------------------------------------------------------
@@ -1547,7 +1603,83 @@ frame:SetScript("OnShow", Refresh)
 
 -- Public ----------------------------------------------------------------------
 
+-- Outside the Sleepy Ogre Leisure Club (Config.lua's ns.IsMember) the window is only this: the logo, floating, and one
+-- sidebar plank, JOIN US, hung from the whole logo's sign by a pair of shackles as the sidebar's top button is (its tooltip
+-- the invitation; a click says in chat how to join), big. Escape or a click anywhere else closes it.
+local teaser
+-- The club's whole logo (Media/Logo, tools/convert-logo.js: its banners too, under the sign the window's own copy ends
+-- at), its empty top and bottom cropped off (TOP..BOTTOM of the square), shown WIDE wide; the plank hangs from the
+-- "Leisure Club" sign's bottom edge (SIGN, measured on the art), between the banners.
+local TEASER_LOGO = { WIDE = 300, TOP = 0.14, BOTTOM = 0.92, SIGN = 0.847 }
+TEASER_LOGO.HIGH = TEASER_LOGO.WIDE * (TEASER_LOGO.BOTTOM - TEASER_LOGO.TOP)
+TEASER_LOGO.SIGN_Y = TEASER_LOGO.WIDE * (TEASER_LOGO.SIGN - TEASER_LOGO.TOP)
+function ns.ShowTeaser()
+    if not teaser then
+        teaser = CreateFrame("Frame", "SOLCTeaser", UIParent)
+        teaser:SetSize(TEASER_LOGO.WIDE, math.max(TEASER_LOGO.HIGH, TEASER_LOGO.SIGN_Y + TOP_GAP + NAV_HEIGHT))
+        teaser:SetPoint("TOP", 0, -40)  -- (near the top of the screen; its scale is applied to the offset too)
+        teaser:SetFrameStrata("DIALOG")
+        teaser:SetScale(1.5)
+        teaser:EnableMouse(true)
+        -- (a click anywhere but on it, while it's open, closes it; the click still goes where it went)
+        teaser:SetScript("OnShow", function(self) self:RegisterEvent("GLOBAL_MOUSE_DOWN") end)
+        teaser:SetScript("OnHide", function(self) self:UnregisterEvent("GLOBAL_MOUSE_DOWN") end)
+        teaser:SetScript("OnEvent", function(self) if not self:IsMouseOver() then self:Hide() end end)
+        -- (back to front: the plank, its shackles, the logo over their tops - as in the window)
+        -- (made as the sidebar's planks are: a plain button, its own label; its rings shrink with it when pressed)
+        local join = CreateFrame("Button", nil, teaser)
+        join:SetSize(NAV_WIDTH, NAV_HEIGHT)
+        join:SetPoint("TOP", 0, -(TEASER_LOGO.SIGN_Y + TOP_GAP))
+        join.text = join:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        join.text:SetPoint("CENTER", 0, 1)
+        if not join.text:SetFont(NAV_FONT, math.floor(NAV_FONT_SIZE * 1.3 + 0.5), "") then join.text:SetFontObject("GameFontHighlight") end  -- (30% bigger than the sidebar's)
+        join.text:SetTextColor(unpack(NAV_COLOR))
+        join.text:SetText("JOIN US")
+        ns.UI.OutlineText(join.text, NAV_OUTLINE)
+        join.rings = {}
+        local shackles = CreateFrame("Frame", nil, teaser)
+        shackles:SetAllPoints()
+        shackles:SetFrameLevel(join:GetFrameLevel() + 5)
+        for side = 1, 2 do
+            local ring = shackles:CreateTexture(nil, "ARTWORK")
+            ring:SetTexture("Interface\\AddOns\\SOLC\\Media\\Button\\ring")
+            local u, v = RING_ART_W / RING_TEXTURE_W, RING_ART_H / RING_TEXTURE_H
+            if side == 2 then ring:SetTexCoord(u, 0, 0, v) else ring:SetTexCoord(0, u, 0, v) end  -- right: mirrored
+            ring.width, ring.height = RING_WIDTH * TOP_RING_SCALE, RING_HEIGHT * TOP_RING_SCALE
+            ring:SetSize(ring.width, ring.height)
+            join.rings[side] = ring
+            ring:SetPoint("CENTER", join, side == 1 and "TOPLEFT" or "TOPRIGHT", side == 1 and RING_INSET or -RING_INSET, TOP_GAP / 2)
+        end
+        local front = CreateFrame("Frame", nil, teaser)
+        front:SetAllPoints()
+        front:SetFrameLevel(join:GetFrameLevel() + 10)
+        local logo = front:CreateTexture(nil, "ARTWORK")
+        logo:SetTexture("Interface\\AddOns\\SOLC\\Media\\Logo")
+        logo:SetTexCoord(0, 1, TEASER_LOGO.TOP, TEASER_LOGO.BOTTOM)
+        logo:SetSize(TEASER_LOGO.WIDE, TEASER_LOGO.HIGH)
+        logo:SetPoint("TOP")
+        ns.UI.SkinButton(join, { steady = true, onRedraw = ScaleRings })
+        join:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Sleepy Ogre Leisure Club")
+            GameTooltip:AddLine("SOLC is the guild's own addon. Join the guild and it all opens up: what you do counts from then on.", 0.85, 0.8, 0.7, true)
+            GameTooltip:Show()
+        end)
+        join:SetScript("OnLeave", GameTooltip_Hide)
+        join:SetScript("OnClick", function()
+            ns.Print("To join the |cffffd100Sleepy Ogre Leisure Club|r, whisper one of its members or officers for an invite.")
+        end)
+        tinsert(UISpecialFrames, "SOLCTeaser")
+        teaser:Hide()  -- (made hidden: the toggle below shows it, and its OnShow starts listening)
+    end
+    teaser:SetShown(not teaser:IsShown())
+end
+
 function ns.ToggleUI()
+    if not ns.IsMember() then  -- (outside the guild: the teaser instead)
+        if frame:IsShown() then frame:Hide() end
+        return ns.ShowTeaser()
+    end
     if frame:IsShown() then
         frame:Hide()
         return

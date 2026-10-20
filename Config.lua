@@ -4,7 +4,7 @@
 -- before accepting them, so they can't be faked by other members. Outside a guild you set your own.
 --
 -- Saved account-wide in KillTrackerConfig[guild name] = { version, by, values = { [key] = number },
--- bounties = { [week] = "bounty id" or "bounty id.goal" } } (values only where they differ from the
+-- bounties = { [week] = the posters' picks, "id.goal+id+auto" (Posters.lua); older: "bounty id" or "bounty id.goal" } } (values only where they differ from the
 -- defaults; bounties are the officers' picks for coming weeks, see Guild.lua). version is the server time of the change; newer wins.
 -- The panel is the Settings page of the main window (GuildPages.lua); /kt config opens it.
 
@@ -43,6 +43,7 @@ local FIELDS = {
     { key = "achTribe", label = "Tribe: 1000 kills", default = 150, min = 0, max = 10000 },
     { heading = "Collection" },
     { key = "mintCost", label = "Mint a picture", default = 100, min = 1, max = 100000 },
+    { key = "plinkoCost", label = "Plinko drop (one a day free)", default = 50, min = 1, max = 100000 },
     { heading = "Guild groups" },
     { key = "groupBonus", label = "Bonus % per guildmate", default = 25, min = 0, max = 1000 },
     { key = "groupMaxGuildmates", label = "Guildmates counted, max", default = 4, min = 0, max = 40 },
@@ -57,6 +58,8 @@ local FIELDS = {
     { key = "bountyMinPercent", label = "Reward share % of goal", default = 4, min = 0, max = 100 },
     { key = "bountyReward", label = "Reward", default = 100, min = 0, max = 100000 },
     { key = "bountyExtra", label = "Extra % per bounty kill", default = 100, min = 0, max = 1000 },
+    { key = "bountyPosters", label = "Bounty posters a week", default = 4, min = 3, max = 5 },
+    { key = "bountyLevelScale", label = "Goal % more per level bracket", default = 0, min = 0, max = 100 },
 }
 ns.CONFIG_FIELDS = FIELDS
 
@@ -66,6 +69,18 @@ for _, field in ipairs(FIELDS) do
 end
 
 local issecret = issecretvalue or function() return false end
+
+-- SOLC is the Sleepy Ogre Leisure Club's own: outside it (another guild, or none) nothing is recorded or synced and the
+-- window is only a teaser (UI.lua's ns.ShowTeaser); what members earn counts from joining. The guild by its name, any
+-- capitals; not known yet just after login: not yet (it unlocks by itself once it is).
+-- (and for now the guild on the beta, SVENSKA INTERNET: take it out before launch)
+local OUR_GUILDS = { ["sleepy ogre leisure club"] = true, ["svenska internet"] = true }
+function ns.IsMember()
+    if KillTrackerDB and KillTrackerDB.letMeIn then return true end  -- (testing: /solc letmein, this character)
+    if not IsInGuild() then return false end
+    local name = GetGuildInfo("player")
+    return name ~= nil and not issecret(name) and OUR_GUILDS[name:lower()] == true
+end
 
 local function GuildKey()
     local guild = IsInGuild() and GetGuildInfo("player")
@@ -164,14 +179,13 @@ end
 
 local function ParseBounties(text)
     local bounties = {}
-    for week, pick in (text or ""):gmatch("(%d+)=([%w_]+%.?%d*)") do bounties[tonumber(week)] = pick end
+    for week, pick in (text or ""):gmatch("(%d+)=([%w_%.%+%-:/]+)") do bounties[tonumber(week)] = pick end
     return bounties
 end
 
 local function Changed()
     if ns.OnConfigChanged then ns.OnConfigChanged() end
     if ns.RefreshConfigPanel then ns.RefreshConfigPanel() end
-    if ns.RefreshBountyBoard then ns.RefreshBountyBoard() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
 
@@ -197,24 +211,18 @@ function ns.ConfigSaved(current)
     return true
 end
 
--- The bounty an officer picked for a week (a day number from ns.CurrentWeek): its id and the officer's own
--- goal (nil = the bounty's usual goal). Nothing for the rotation.
-function ns.GetScheduledBounty(week)
+-- The raw picks for a week (the posters' "id.goal+id+auto", Posters.lua), or nil.
+function ns.GetBountyPicks(week)
     local current = Current()
-    local pick = current and current.bounties and current.bounties[week]
-    if not pick then return end
-    local id, goal = pick:match("^([%w_]+)%.?(%d*)$")
-    return id, tonumber(goal)
+    return current and current.bounties and current.bounties[week]
 end
-
--- Picks the bounty for a week (id nil = back to the rotation; goal nil = its usual goal) and sends it to
--- the guild. Weeks that are over are forgotten.
-function ns.ScheduleBounty(week, id, goal)
+-- Sets a week's raw picks (nil = the rotation's) and sends them to the guild. Weeks that are over are forgotten.
+function ns.SetBountyPicks(week, text)
     if not ns.CanEditConfig() then return false end
     local current = Current()
     if not current then return false end
     current.bounties = current.bounties or {}
-    current.bounties[week] = id and (goal and (id .. "." .. math.floor(goal)) or id)
+    current.bounties[week] = text
     local thisWeek = ns.CurrentWeek and ns.CurrentWeek() or week
     for w in pairs(current.bounties) do
         if w < thisWeek then current.bounties[w] = nil end
@@ -356,7 +364,28 @@ boardButton:SetPoint("BOTTOM", 0, 18)
 boardButton:SetText("Bounty Board")
 boardButton:SetScript("OnClick", function() ns.ToggleBountyBoard() end)
 
-panel:SetScript("OnShow", Refresh)
+-- Just for you (not the guild's): tooltips beside the window or where you point (UI.lua, ns.UI.FixedTooltips).
+local tips = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+tips:SetSize(24, 24)
+tips:SetPoint("TOPRIGHT", -16, -12)
+tips.label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+tips.label:SetPoint("RIGHT", tips, "LEFT", -2, 0)
+tips.label:SetText("Tooltips beside the window")
+tips:SetScript("OnClick", function(self)
+    KillTrackerDB.fixedTooltips = self:GetChecked() and true or false
+end)
+tips:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Tooltips beside the window", 1, 1, 1)
+    GameTooltip:AddLine("All of SOLC's tooltips open in one place, just outside the window, instead of next to what you point at. Just for you.", nil, nil, nil, true)
+    GameTooltip:Show()
+end)
+tips:SetScript("OnLeave", GameTooltip_Hide)
+
+panel:SetScript("OnShow", function()
+    tips:SetChecked(not KillTrackerDB or KillTrackerDB.fixedTooltips ~= false)
+    Refresh()
+end)
 function ns.ToggleConfig()
     if panel:IsShown() then panel:Hide() else panel:Show() end
 end

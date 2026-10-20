@@ -24,7 +24,7 @@
 --   group kill = npcID^spawnKey                  (for the de-duplicated combined total, see Combined.lua)
 --   picture    = number^time^layer:option;layer:option...[^style]   (minted pictures, see Minting.lua; style: c / s for
 --                every layer in crayon / sketch, layer=c,layer=s for a mix)
---   bounty     = week^bounty id^kills            (this week's guild bounty kills, see Guild.lua; at most one)
+--   posters    = week^id,id,...                 (this week's bounty posters you've claimed, see Posters.lua)
 --   summary    = earned points^PvP kills         (always sent, for the Members and Leaderboard pages)
 --   event      = time^kind^a^b[^c^d]             (guild activity feed, see Feed.lua; c and d from 0.41.0 on)
 --   gear       = race^sex^class^level^guid^slot:itemID[:enchant:suffix];...   (character and equipment, see
@@ -35,10 +35,12 @@
 --                behind their model, see Minting.lua; only when changed, empty otherwise; the "S" tells
 --                "none" from "unchanged")
 --   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
---   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor   (their character card's choices:
---                gender icon, the picture shown instead of their model (OverviewCard.lua), their profile header's
---                background, its crop (thousandths; zoom in hundredths) and their name colour (ProfileHeader.lua,
---                from 0.41.0 on); only when changed, empty otherwise)
+--   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor^ogre^photoOgre^ogreStyle   (their character
+--                card's choices: gender icon, the picture shown instead of their model (OverviewCard.lua), their profile
+--                header's background, its crop (thousandths; zoom in hundredths) and their name colour (ProfileHeader.lua),
+--                the ogre they built (layer:id,...; Minting.lua), "1" if it's their photo, and its layers' editions
+--                (ns.StyleKey: layer=c,layer=s) (all those from 0.41.0 on);
+--                only when changed, empty otherwise)
 
 local addonName, ns = ...
 
@@ -177,8 +179,13 @@ local function SerializeCard(db, baseSeq)
     local card = db.card
     if not card or (card.seq or 0) <= baseSeq then return "" end
     local function Scaled(value, scale) return value and Base36(math.floor(value * scale + 0.5)) or "" end
+    -- (From 0.41.0: the ogre you built, layer:id,layer:id..., and "1" when it's your photo.)
+    local ogre = {}
+    for key, id in pairs(card.ogre or {}) do ogre[#ogre + 1] = Clean(key) .. ":" .. Clean(id) end
+    table.sort(ogre)
     return table.concat({ "C", Clean(card.gender), card.portrait and Base36(card.portrait) or "", Clean(card.headerBg),
-        Scaled(card.cropX, 1000), Scaled(card.cropY, 1000), Scaled(card.cropZoom, 100), Clean(card.nameColor) }, FIELD)
+        Scaled(card.cropX, 1000), Scaled(card.cropY, 1000), Scaled(card.cropZoom, 100), Clean(card.nameColor),
+        table.concat(ogre, ","), card.photoOgre and "1" or "", ns.StyleKey(card.ogreStyle) }, FIELD)
 end
 
 -- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
@@ -227,8 +234,11 @@ local function Serialize(db, baseSeq)
         group[#group + 1] = Base36(g.n) .. FIELD .. Clean(g.k)
     end
     local bounty = ""
-    if db.bounty and (db.bounty.seq or 0) > baseSeq then
-        bounty = table.concat({ Base36(db.bounty.week), Clean(db.bounty.target), Base36(db.bounty.kills) }, FIELD)
+    if db.posters and (db.posters.seq or 0) > baseSeq then
+        local ids = {}
+        for id in pairs(db.posters.claimed or {}) do ids[#ids + 1] = Clean(id) end
+        table.sort(ids)
+        bounty = Base36(db.posters.week) .. FIELD .. table.concat(ids, ",")
     end
     local summary = table.concat({ Base36(ns.GetPoints and ns.GetPoints().earned or 0), Base36(db.pvp and db.pvp.total or 0) }, FIELD)
     local gear = ""
@@ -300,8 +310,11 @@ local function Deserialize(payload)
         end
     end
     local f = Split(s[11], FIELD)
-    local week, target, kills = FromBase36(f[1]), Optional(f[2]), FromBase36(f[3])
-    if week and target and kills then update.bounty = { week = week, target = target, kills = kills } end
+    local week = FromBase36(f[1])
+    if week then
+        update.posters = { week = week, claimed = {} }
+        for id in (f[2] or ""):gmatch("[%w_]+") do update.posters.claimed[id] = true end
+    end
     f = Split(s[12], FIELD)
     update.earned, update.pvp = FromBase36(f[1]), FromBase36(f[2])
     update.events = {}
@@ -364,6 +377,13 @@ local function Deserialize(payload)
         update.card = { gender = Optional(f[2]), portrait = f[3] and f[3] ~= "" and FromBase36(f[3]) or nil,
             headerBg = Optional(f[4]), cropX = Scaled(f[5], 1000), cropY = Scaled(f[6], 1000), cropZoom = Scaled(f[7], 100),
             nameColor = Optional(f[8]) }  -- the header's from 0.41.0 on
+        if f[9] and f[9] ~= "" then  -- their ogre (0.41.0 on)
+            update.card.ogre = {}
+            for key, id in f[9]:gmatch("([%w_]+):([%w_]+)") do update.card.ogre[key] = id end
+        end
+        update.card.photoOgre = f[10] == "1" or nil
+        local style = ns.StyleFromKey(f[11])  -- its layers in crayon or sketched (a table: some layers)
+        update.card.ogreStyle = type(style) == "table" and style or nil
     end
     return update
 end
@@ -396,7 +416,7 @@ local function Apply(sender, update)
     for key, npcID in pairs(update.group) do
         friend.group[key] = npcID
     end
-    if update.bounty then friend.bounty = update.bounty end  -- { week, target, kills }
+    if update.posters then friend.posters = update.posters end  -- { week, claimed = { [id] = true } }
     friend.earned, friend.pvpTotal = update.earned or friend.earned, update.pvp or friend.pvpTotal
     if #update.events > 0 then ns.MergeEvents(friend, update.events) end
     if update.gear then friend.gear = update.gear end  -- see Gear.lua
@@ -459,6 +479,7 @@ end
 
 -- target nil = broadcast to the guild.
 local function Send(target, message)
+    if not ns.IsMember() then return end  -- (outside the guild: nothing shared)
     Queue(target and "WHISPER" or "GUILD", target, message)
 end
 
@@ -541,7 +562,7 @@ local function OnUpdateComplete(sender, payload)
         pendingManual[short] = nil
         ns.Print(("Synced with %s: %d kills."):format(DisplayName(sender), update.total))
     end
-    if update.bounty and ns.CheckBountyGoal then ns.CheckBountyGoal() end
+    if update.posters and ns.CheckPosterMilestones then ns.CheckPosterMilestones() end
     if ns.OnFriendsChanged then ns.OnFriendsChanged() end
 end
 
@@ -756,7 +777,7 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("PLAYER_LOGOUT")
 frame:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
-        OnAddonMessage(...)
+        if ns.IsMember() then OnAddonMessage(...) end  -- (outside the guild: nothing taken in)
     elseif event == "PLAYER_LOGIN" then
         RememberRealm()
         lastBroadcastSeq = KillTrackerDB.seq

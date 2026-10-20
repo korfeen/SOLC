@@ -158,6 +158,26 @@ const KITCHEN = {
     for (const [x, y, s] of [[190, 190, 26], [70, 210, 14]]) soft(c, circle(x, y, s), "#e0c898", r);  // stew stains
     fill(c, circle(128, 22, 9), "#8a5a30", r, { line: 5 });                              // the pin
   },
+  // A picture's outline (white, tinted to its rarity in the game), with room round it so it can turn (Gallery.lua's
+  // dragged picture tilts): the square is 208 of the 256, from 24 to 232.
+  Outline: (c, r) => line(c, [[24, 24], [232, 24], [232, 232], [24, 232], [24, 24]], 9, "#ffffff", r),
+  // A layer's edition, at the end of its trait line (OverviewCard.lua): painted (a brush), crayon, sketch (a pencil).
+  EdPainted: (c, r) => {
+    line(c, [[60, 220], [170, 100]], 22, "#8a5a30", r);
+    fill(c, [[160, 112], [178, 92], [196, 98], [214, 60], [226, 40], [206, 52], [176, 76], [150, 96]], "#c8c8d0", r, { line: 8 });
+    fill(c, [[196, 98], [234, 30], [244, 40], [214, 104]], "#4a8ad8", r, { line: 8 });
+  },
+  EdCrayon: (c, r) => {
+    fill(c, rotate([[100, 60], [156, 60], [156, 210], [100, 210]], 0.6, 128, 135), "#e04848", r);
+    fill(c, rotate([[100, 60], [128, 18], [156, 60]], 0.6, 128, 135), "#e04848", r, { line: 8 });
+    for (const y of [100, 170]) line(c, rotate([[100, y], [156, y]], 0.6, 128, 135), 8, "#f0e0d0", r);
+  },
+  EdSketch: (c, r) => {
+    fill(c, rotate([[108, 50], [148, 50], [148, 200], [108, 200]], 0.6, 128, 135), "#e8c050", r);
+    fill(c, rotate([[108, 50], [128, 14], [148, 50]], 0.6, 128, 135), "#e8d0a0", r, { line: 8 });
+    fill(c, rotate([[120, 28], [128, 14], [136, 28]], 0.6, 128, 135), "#3a3236", r, { line: 4 });
+    fill(c, rotate([[108, 200], [148, 200], [148, 222], [108, 222]], 0.6, 128, 135), "#e88a9a", r, { line: 8 });
+  },
   Rope: (c, r) => line(c, quad([0, 90], [128, 150], [256, 90], 16), 12, "#c8a070", r),
   Peg: (c, r) => {
     fill(c, rect(104, 20, 152, 236), "#d8a868", r);
@@ -205,7 +225,7 @@ function make(name, draw, file, size, seed) {
 }
 let n = 0;
 for (const [key, [name, draw]] of Object.entries(INGREDIENTS)) make(name, draw, path.join(MEDIA, "Ingredients", key + ".blp"), 128, 7700 + n++ * 7919);
-for (const [name, draw] of Object.entries(KITCHEN)) make(name, draw, path.join(MEDIA, "Kitchen", name + ".blp"), ["Cauldron", "Wall", "Floor", "Paper"].includes(name) ? 256 : 128, 8800 + n++ * 7919);
+for (const [name, draw] of Object.entries(KITCHEN)) make(name, draw, path.join(MEDIA, "Kitchen", name + ".blp"), ["Cauldron", "Wall", "Floor", "Paper", "Outline"].includes(name) ? 256 : 128, 8800 + n++ * 7919);
 // The preview, on a dark board; and the names as Lua for Unlocks.lua (printed).
 const T = 128, cols = 10, rows = Math.ceil(sheet.length / cols), out = Buffer.alloc(T * cols * T * rows * 4);
 sheet.forEach((pic, k) => {

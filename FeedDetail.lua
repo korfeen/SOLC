@@ -53,7 +53,7 @@ local function Describe(item)
             local rarity = ns.MintRarity(mint.traits)
             Add(("|c%s%s|r picture"):format(ns.RARITY_COLORS[rarity] or "ffffffff", (rarity:gsub("^%l", string.upper))), "head")
             for _, trait in ipairs(ns.MintTraits(mint.traits)) do
-                Add(("%s:  |c%s%s|r"):format(trait[1], ns.RARITY_COLORS[trait[3]] or "ffffffff", trait[2]))
+                Add(("%s:  |c%s%s|r%s"):format(trait[1], ns.RARITY_COLORS[trait[3]] or "ffffffff", trait[2], ns.TraitNote(trait)))
             end
         else
             Add("This picture has a new owner now.", "head")
@@ -116,12 +116,12 @@ local function Describe(item)
         end
     elseif kind == "G" then  -- a gift from an officer (Dev.lua): a chest
         local dungeon = ns.DungeonByKey(tostring(e.b):match("^chest:(%w+)$") or "")
-        local backdrop = dungeon and ns.UnlockOptions("clear:" .. dungeon.key)[1]
         out.title = (dungeon and dungeon.name or "A") .. " chest"
-        out.art = backdrop and ns.MintTexture(backdrop.option, {}) or ART .. "ACHIEVEMENT"
-        out.square = backdrop ~= nil
+        -- (its dungeon as an ogre in its set; none known: the achievement art)
+        local ogre = dungeon and ns.DungeonOgre and ns.DungeonOgre(dungeon.key)
+        if ogre then out.mint, out.noOpen = { traits = ogre }, true else out.art = ART .. "ACHIEVEMENT" end
         Add(("A gift from %s"):format(tostring(e.a)), "head")
-        Add(("For %s, to open on the PIX page"):format(item.owner and item.who or "you"))
+        Add(("For %s, to open in the gallery on the Overview"):format(item.owner and item.who or "you"))
         Add(When(e.t), "dim")
     elseif kind == "U" then  -- unlocked for minting (Unlocks.lua): one picture layer (a = its option key)
         local unlocked = ns.OptionByKey(e.a)
@@ -129,10 +129,9 @@ local function Describe(item)
         local pool = option and option.unlock or ""
         local dungeon = ns.DungeonByKey(pool:match("^clear:(%w+)$") or pool:match("^chase:(%w+):") or "")
         out.title = option and option.name or "Unlocked"
-        if option and layer.key == "background" then  -- a backdrop: as the art
-            out.art, out.square = ns.MintTexture(option, {}), true
-        elseif option then  -- anything else: drawn on its own, like a picture (not one to open)
-            out.mint, out.noOpen, out.rim = { traits = { [layer.key] = option.id } }, true, option.rarity
+        if option then  -- the piece itself, big, with your ogre wearing it (ns.TryOn) in a corner; not one to open
+            out.piece = { layer = layer, option = option }
+            out.mint, out.noOpen, out.rim = { traits = ns.TryOn(layer.key, option.id) }, true, option.rarity
         end
         if option then
             Add(("Unlocked for minting: |c%s%s %s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", (option.rarity:gsub("^%l", string.upper)),
@@ -142,6 +141,13 @@ local function Describe(item)
         elseif pool:match("^loot:") then Add("For looting it") end
         Add(("It can roll in %s pictures now."):format(item.owner and item.who .. "'s" or "your"))
         Add(("Unlocked by %s, %s"):format(item.who, When(e.t)), "dim")
+    elseif kind == "P" then
+        local poster = ns.PosterBounty and ns.PosterBounty(e.a)
+        out.art, out.title = ART .. "BOUNTY", poster and poster.name or "A bounty"
+        Add("A bounty off the guild's board", "head")
+        if poster and poster.desc then Add(poster.desc) end
+        Add(("%s claimed it"):format(item.who))
+        Add(When(e.t), "dim")
     elseif kind == "B" then
         local bounty = ns.ResolveBounty and ns.ResolveBounty(e.a)
         out.art, out.title = ART .. "BOUNTY", bounty and bounty.name or "A bounty"
@@ -212,6 +218,35 @@ function UI.FeedDetail(page)
     picture.rim:SetPoint("BOTTOMRIGHT", D.picture.rim, -D.picture.rim)
     picture.canvas = CreateFrame("Frame", nil, picture)
     picture.canvas:SetAllPoints()
+    -- An unlock: the piece on a dark stage, a faint glow of its rarity behind it, and "on you" (your ogre wearing it)
+    -- small in the corner.
+    picture.stage = picture:CreateTexture(nil, "BORDER")
+    picture.stage:SetAllPoints()
+    picture.stage:SetColorTexture(0.06, 0.05, 0.05)
+    picture.glow = picture:CreateTexture(nil, "ARTWORK")
+    picture.glow:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Fx_Glow")
+    picture.glow:SetBlendMode("ADD")
+    picture.glow:SetPoint("CENTER")
+    picture.glow:SetSize(D.picture.size * 0.9, D.picture.size * 0.9)
+    picture.glow:SetAlpha(0.22)
+    picture.piece = CreateFrame("Frame", nil, picture)
+    picture.piece:SetSize(D.picture.size * 0.78, D.picture.size * 0.78)
+    picture.piece:SetPoint("CENTER", 0, 6)
+    picture.inset = CreateFrame("Frame", nil, picture)
+    picture.inset:SetSize(84, 84)
+    picture.inset:SetPoint("BOTTOMRIGHT", 14, -14)
+    picture.inset:SetFrameLevel(picture.piece:GetFrameLevel() + 2)
+    picture.inset.rim = picture.inset:CreateTexture(nil, "BACKGROUND")
+    picture.inset.rim:SetPoint("TOPLEFT", -2, 2)
+    picture.inset.rim:SetPoint("BOTTOMRIGHT", 2, -2)
+    picture.inset.canvas = CreateFrame("Frame", nil, picture.inset)
+    picture.inset.canvas:SetAllPoints()
+    picture.inset.label = picture.inset:CreateFontString(nil, "OVERLAY")
+    picture.inset.label:SetFont(NAME_FONT, 12, "")
+    picture.inset.label:SetTextColor(1, 0.93, 0.78)
+    UI.OutlineText(picture.inset.label, { 0, 0, 0 })
+    picture.inset.label:SetPoint("BOTTOM", picture.inset, "TOP", 0, 3)
+    picture.inset.label:SetText("ON YOU")
     picture:SetScript("OnClick", function(self)
         if not self.mint then return end
         UI.ClickSound()
@@ -274,9 +309,23 @@ function UI.FeedDetail(page)
 
         picture:SetShown(d.mint ~= nil)
         picture.mint, picture.owner = not d.noOpen and d.mint or nil, d.owner
+        local piece = d.piece
+        picture.canvas:SetShown(not piece)
+        picture.stage:SetShown(piece ~= nil)
+        picture.glow:SetShown(piece ~= nil)
+        picture.piece:SetShown(piece ~= nil)
+        picture.inset:SetShown(piece ~= nil)
         if d.mint then
-            ns.DrawMint(picture.canvas, d.mint)
-            picture.rim:SetColorTexture(ns.RarityRGB(d.rim or ns.MintRarity(d.mint.traits)))
+            local r, g, b = ns.RarityRGB(d.rim or ns.MintRarity(d.mint.traits))
+            picture.rim:SetColorTexture(r, g, b)
+            if piece then
+                ns.DrawPiece(picture.piece, piece.layer.key, piece.option)
+                picture.glow:SetVertexColor(r, g, b)
+                picture.inset.rim:SetColorTexture(r, g, b)
+                ns.DrawMint(picture.inset.canvas, d.mint)
+            else
+                ns.DrawMint(picture.canvas, d.mint)
+            end
         end
         badge:SetShown(d.rank ~= nil)
         badge.number:SetShown(d.rank ~= nil)

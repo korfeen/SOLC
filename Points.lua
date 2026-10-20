@@ -70,7 +70,7 @@ end
 ns.AchievementPoints = AchievementPoints
 
 -- Points of KillTrackerDB or a friend's stats: { kills, newMobs, leaders, achievements, pvp, guildGroup, dungeons,
--- bounty, chests, earned, spent, balance }.
+-- bounty, chests, earned, spent, plinko, balance }.
 -- Friends' kill points aren't synced, so they're estimated at 1 per kill.
 function ns.GetPoints(source)
     source = source or KillTrackerDB
@@ -98,7 +98,9 @@ function ns.GetPoints(source)
     p.bounty = source.points and source.points.bounty or 0
     p.chests = source.points and source.points.chests or 0  -- coins from dungeon chests (Unlocks.lua)
     p.earned = p.kills + p.newMobs + p.leaders + p.achievements + p.pvp + p.guildGroup + p.dungeons + p.bounty + p.chests
-    p.balance = p.earned - p.spent
+    -- (plinko winnings: yours to spend, but not earned - gambling never raises your rank; Plinko.lua)
+    p.plinko = source.points and source.points.plinko or 0
+    p.balance = p.earned - p.spent + p.plinko
     return p
 end
 

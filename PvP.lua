@@ -81,6 +81,7 @@ local function FindVictim()
 end
 
 local function RecordPvPKill(victim)
+    if not ns.IsMember() then return end  -- (outside the guild nothing counts)
     local pvp = KillTrackerDB.pvp
     pvp.total = pvp.total + 1
     ns.Touch(pvp)  -- guildmates get the new total (and points) with the next live update
