@@ -534,8 +534,8 @@ local function CheckAchievements(silent)
     return awarded
 end
 -- For things that change outside kills (pictures, PvP, the showcase): check, with the usual popup.
-function ns.CheckAchievements()
-    CheckAchievements(false)
+function ns.CheckAchievements(silent)
+    CheckAchievements(silent == true)
     if ns.CheckRank then ns.CheckRank() end  -- achievements and the rest earn points
 end
 

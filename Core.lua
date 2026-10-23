@@ -637,8 +637,8 @@ SlashCmdList.SOLC = function(input)
         Print("Kill announcements " .. (db.announce and "on." or "off."))
     elseif msg == "probe" then
         ns.ToggleProbe()
-    elseif msg == "dev" then
-        ns.ToggleDev()  -- the dev window: chests and picture art to try out (Dev.lua)
+    elseif msg == "supersafesolcdev" then
+        ns.ToggleDev()  -- the dev window: chests, deeds and picture art to try out (Dev.lua); not in /solc help
     elseif msg == "debug" then
         ns.debugKills = not ns.debugKills
         Print("Kill debugging " .. (ns.debugKills and "on: kills are announced, and mobs that aren't counted say why." or "off."))

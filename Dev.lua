@@ -1,9 +1,10 @@
--- Dev and DM mode (/solc dev): a window for trying out the chests and the picture art, and for officers, giving chests.
+-- Dev and DM mode (/solc supersafesolcdev, kept out of the help so guildmates don't stumble on it): a window for trying
+-- out the chests, deeds and the picture art on yourself, and for officers, giving chests and DM mode.
 -- Left, the chests: every dungeon (its backdrop's rarity colour; unlocked or not; your chests of it), each with Show
 -- (the chest show with everything it can hold, nothing unlocked: Chests.lua's preview) and, for officers, +1: a real
--- chest of it for whoever "Give to" says (you, or a synced guildmate: a gift). Officers also get a chest of every
--- dungeon for them, and for themselves: unlock everything, relock everything (unlocks, chests and tokens cleared, to try
--- it all from scratch), 5 of every ingredient (the minting pot, MintPot.lua).
+-- chest of it for you or, for officers, whoever "Give to" says (a synced guildmate: a gift). Also a chest of every
+-- dungeon, and for yourself: unlock everything, relock everything (unlocks, chests and tokens cleared, to try it all
+-- from scratch), 5 of every ingredient (the minting pot, MintPot.lua) and Random deeds (ns.RandomDeeds).
 -- Right, the layer browser: a picture drawn from one option per layer, each stepped through with arrows over every
 -- option there is, locked or not, with its rarity and what unlocks it; Random (everything) and Random unlockables.
 --
@@ -34,6 +35,67 @@ local function GiveChest(key, tier) return ns.AddChest(key, tier) end
 local function Refresh()
     if window and window:IsShown() then window:Refresh() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+
+-- Random deeds (testing): kills of 8 random kinds of creature (enough for a few tiers each), 4 random dungeons
+-- cleared 1-12 times (every boss, and a chest each) and 3 tribe leaders slain, counted as if they'd happened. The
+-- achievements and the pieces they unlock follow by themselves, quietly.
+local DEED_COUNTS = { 12, 30, 60, 120, 300, 600 }
+local function AddKills(npcID, count, name)
+    local db = KillTrackerDB
+    local entry = db.kills[npcID] or { count = 0 }
+    db.kills[npcID] = entry
+    entry.count = entry.count + count
+    entry.name = entry.name or name
+    db.total = db.total + count
+    ns.Touch(entry)
+end
+local function Pick(list) return table.remove(list, math.random(#list)) end
+function ns.RandomDeeds()
+    local bySubtype, kinds = {}, {}
+    for npcID, info in pairs(ns.NPCs) do
+        local subtype = ns.Subtypes[info[4]]
+        if subtype and info[3] == 0 then
+            if not bySubtype[subtype] then bySubtype[subtype] = {} kinds[#kinds + 1] = subtype end
+            table.insert(bySubtype[subtype], npcID)
+        end
+    end
+    for _ = 1, math.min(8, #kinds) do
+        local subtype = Pick(kinds)
+        local mobs = bySubtype[subtype]
+        AddKills(mobs[math.random(#mobs)], DEED_COUNTS[math.random(#DEED_COUNTS)], subtype .. " (dev)")
+    end
+
+    local bossNames = {}
+    for _, bosses in pairs(ns.EncounterNPCs or {}) do
+        for _, boss in ipairs(bosses) do bossNames[boss[1]] = boss[2] end
+    end
+    local dungeons, cleared = {}, {}
+    for _, d in ipairs(ns.Dungeons()) do if not d.raid and #d.bossNPCs > 0 then dungeons[#dungeons + 1] = d end end
+    for _ = 1, math.min(4, #dungeons) do
+        local d, times, done = Pick(dungeons), math.random(1, 12), {}
+        for _, npcID in ipairs(d.bossNPCs) do AddKills(npcID, times, bossNames[npcID] or "Boss") done[npcID] = true end
+        for npcID in pairs(d.lastNPCs) do
+            if not done[npcID] then AddKills(npcID, times, bossNames[npcID] or "Boss") end
+        end
+        ns.AddChest(d.key)
+        cleared[#cleared + 1] = ("%s x%d"):format(d.name, times)
+    end
+
+    local tribes = {}
+    for tribe in pairs(ns.Leaders) do tribes[#tribes + 1] = tribe end
+    for _ = 1, math.min(3, #tribes) do
+        local leader = ns.Leaders[Pick(tribes)][1]
+        if leader then AddKills(leader[1], 1, leader[2]) end
+    end
+
+    local before = 0
+    for _ in pairs(KillTrackerDB.achievements) do before = before + 1 end
+    ns.CheckAchievements(true)
+    local after = 0
+    for _ in pairs(KillTrackerDB.achievements) do after = after + 1 end
+    ns.Print(("Dev: random deeds - %d new achievements; cleared %s (a chest each)."):format(after - before, table.concat(cleared, ", ")))
+    Refresh()
 end
 
 -- Gifts -----------------------------------------------------------------------------------------------------------
@@ -109,7 +171,6 @@ local function BuildChests(parent)
     local left = CreateFrame("Frame", nil, parent)
     left:SetPoint("TOPLEFT", 12, -40)
     left:SetSize(400, 60 + ROWS * ROW_HEIGHT)
-    left.officer = {}  -- what only officers see
 
     -- Who +1 gives to: you or one of your synced guildmates.
     left.target = nil  -- nil: you
@@ -132,9 +193,13 @@ local function BuildChests(parent)
     local next = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
     next:SetSize(24, 20) next:SetText(">") next:SetPoint("TOPLEFT", 26, 0)
     next:SetScript("OnClick", function() Step(1) end)
-    left.officer[#left.officer + 1] = prev
-    left.officer[#left.officer + 1] = next
+    left.gifting = { prev, next }  -- (picking a guildmate to give to: officers only)
+    who:SetWidth(90)
+    who:SetWordWrap(false)
     left.who = who
+    local deeds = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+    deeds:SetSize(100, 20) deeds:SetText("Random deeds") deeds:SetPoint("TOPRIGHT", -156, 0)
+    deeds:SetScript("OnClick", function() ns.RandomDeeds() end)
 
     local function GiveTo(key)
         if left.target then ns.GiftChest(key, left.target) else GiveChest(key) end
@@ -171,7 +236,6 @@ local function BuildChests(parent)
         button:SetScript("OnClick", spec[3])
         button:SetPoint("TOPLEFT", x, -26)
         x = x + spec[2] + 6
-        left.officer[#left.officer + 1] = button
     end
     -- Show plays a chest of this tier (its effects: ns.CHEST_TIERS), for everyone.
     left.previewTier = 1
@@ -183,11 +247,6 @@ local function BuildChests(parent)
         left:Refresh()
     end)
     left.tierButton = tierButton
-    left.note = left:CreateFontString(nil, "OVERLAY")
-    left.note:SetFont(NAME_FONT, 12, "")
-    left.note:SetTextColor(0.62, 0.56, 0.48)
-    left.note:SetPoint("TOPLEFT", 0, -4)
-    left.note:SetText("Previews only - giving chests is for officers.")
 
     left.rows, left.offset = {}, 0
     for i = 1, ROWS do
@@ -224,9 +283,9 @@ local function BuildChests(parent)
     end)
     function left:Refresh()
         local officer = IsOfficer()
-        for _, region in ipairs(self.officer) do region:SetShown(officer) end
+        if not officer then self.target = nil end
+        for _, region in ipairs(self.gifting) do region:SetShown(officer) end
         self.who:SetShown(officer)
-        self.note:SetShown(not officer)
         local tier = ns.CHEST_TIERS[self.previewTier]
         self.tierButton:SetText("Show as: " .. tier.name)
         self.who:SetText("Give to: |cffffd100" .. (self.target and Ambiguate(self.target, "short") or "me") .. "|r")
@@ -240,7 +299,6 @@ local function BuildChests(parent)
                 row.name:SetText(("|c%s%s|r"):format(colour, d.name))
                 local have, all = ns.PoolProgress("clear:" .. d.key)
                 row.status:SetText((have == all and all > 0 and ("|cff55dd55%d/%d|r"):format(have, all) or ("%d/%d"):format(have, all)) .. ((counts[d.key] or 0) > 0 and ("  |cffffd100x%d|r"):format(counts[d.key]) or ""))
-                row.give:SetShown(officer)
             end
         end
     end
