@@ -11,6 +11,12 @@ local UI = ns.UI
 
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local GOLD, CREAM = { 1, 0.85, 0.1 }, { 0.93, 0.88, 0.78 }
+local FX = "Interface\\AddOns\\SOLC\\Media\\Icons\\Fx_"
+local function Hue(h)  -- a crayon rainbow colour, h going round 0..1 (as the chest show's)
+    local i, f = math.floor(h * 6) % 6, h * 6 - math.floor(h * 6)
+    local rgb = ({ { 1, f, 0 }, { 1 - f, 1, 0 }, { 0, 1, f }, { 0, 1 - f, 1 }, { f, 0, 1 }, { 1, 0, 1 - f } })[i + 1]
+    return rgb[1] * 0.6 + 0.4, rgb[2] * 0.6 + 0.4, rgb[3] * 0.6 + 0.4
+end
 -- In window pixels (from its top-left, y down), on the right page (UI.SPLIT.right: x 674..1064, y 146..730).
 local G = { heading = { x = 692, y = 172 }, hint = { x = 692, y = 196 }, grid = { top = 214, cols = 4, cell = 90, gap = 8 },
     footer = 716 }
@@ -179,6 +185,53 @@ function UI.Gallery(page)
         thumb.icon = thumb.tile:CreateTexture(nil, "ARTWORK")
         thumb.icon:SetSize(g.cell - 30, g.cell - 30)
         thumb.icon:SetPoint("CENTER", 0, 8)
+        -- An Ogre Godz tribute's tile shines (Unlocks.lua): rainbow rays turning behind the chest, a gold glow pulsing,
+        -- sparkles going round, the chest throbbing and the border going round the rainbow (thumb:Shine).
+        thumb.rays = thumb.tile:CreateTexture(nil, "BACKGROUND", nil, 1)
+        thumb.rays:SetTexture(FX .. "Rays")
+        thumb.rays:SetBlendMode("ADD")
+        thumb.rays:SetPoint("CENTER", thumb.icon)
+        thumb.glow = thumb.tile:CreateTexture(nil, "BORDER")
+        thumb.glow:SetTexture(FX .. "Glow")
+        thumb.glow:SetBlendMode("ADD")
+        thumb.glow:SetVertexColor(1, 0.85, 0.4)
+        thumb.glow:SetPoint("CENTER", thumb.icon)
+        thumb.sparkles = {}
+        for k = 1, 4 do
+            local star = thumb.tile:CreateTexture(nil, "OVERLAY", nil, 2)
+            star:SetTexture(FX .. "Star")
+            star:SetBlendMode("ADD")
+            thumb.sparkles[k] = star
+        end
+        local function ShineUpdate(tile, elapsed)
+            tile.t = (tile.t or 0) + elapsed
+            local t, size = tile.t, g.cell - 30
+            thumb.rays:SetRotation(t * 0.6)
+            thumb.rays:SetVertexColor(Hue(t * 0.15))
+            local pulse = 0.5 + 0.5 * math.sin(t * 3)
+            thumb.glow:SetAlpha(0.45 + pulse * 0.4)
+            thumb.glow:SetSize(size * (1.25 + pulse * 0.2), size * (1.25 + pulse * 0.2))
+            thumb.icon:SetSize(size * (1 + pulse * 0.06), size * (1 + pulse * 0.06))
+            thumb.border:SetColorTexture(Hue(t * 0.2))
+            for k, star in ipairs(thumb.sparkles) do
+                local a = t * 1.2 + k * math.pi / 2
+                local twinkle = math.max(0, math.sin(t * 4 + k * 1.7))
+                star:SetSize(4 + twinkle * 14, 4 + twinkle * 14)
+                star:SetAlpha(twinkle)
+                star:SetRotation(t * 2 + k)
+                star:SetVertexColor(Hue(t * 0.3 + k * 0.25))
+                star:SetPoint("CENTER", thumb.icon, "CENTER", math.cos(a) * size * 0.55, math.sin(a) * size * 0.45)
+            end
+        end
+        function thumb:Shine(on)
+            self.rays:SetShown(on)
+            self.glow:SetShown(on)
+            for _, star in ipairs(self.sparkles) do star:SetShown(on) end
+            self.rays:SetSize((g.cell - 30) * 1.7, (g.cell - 30) * 1.7)
+            if not on then self.icon:SetSize(g.cell - 30, g.cell - 30) end
+            self.tile:SetScript("OnUpdate", on and ShineUpdate or nil)
+        end
+        thumb:Shine(false)
         thumb.plus = thumb.tile:CreateFontString(nil, "OVERLAY")
         thumb.plus:SetFont(NAME_FONT, 44, "")
         thumb.plus:SetTextColor(unpack(GOLD))
@@ -253,6 +306,7 @@ function UI.Gallery(page)
             local ogre = entry and entry.ogre
             thumb.canvas:SetShown(mint ~= nil or ogre == true)
             thumb.tile:SetShown(entry ~= nil and mint == nil)
+            thumb:Shine(entry ~= nil and entry.chest == ns.TRIBUTE)
             if ogre then  -- your ogre, YOUR OGRE under it
                 ns.DrawMint(thumb.canvas, entry.ogreMint)
                 thumb.plus:Hide()
@@ -268,8 +322,9 @@ function UI.Gallery(page)
                     local tribute = entry.chest == ns.TRIBUTE  -- (from the Ogre Godz: Unlocks.lua)
                     thumb.dungeonName = tribute and "Ogre Godz tribute" or d and d.name or "A dungeon"
                     thumb.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Chest")
-                    thumb.icon:SetVertexColor(1, tribute and 0.8 or 1, tribute and 0.35 or 1)
-                    thumb.caption:SetText(("OPEN%s"):format(entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
+                    thumb.icon:SetVertexColor(1, tribute and 0.85 or 1, tribute and 0.45 or 1)
+                    thumb.caption:SetText(("%s%s"):format(tribute and "|cffffd100TRIBUTE!|r" or "OPEN",
+                        entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
                     thumb.border:SetColorTexture(1, 0.82, 0.25)
                 else
                     thumb.caption:SetText(("MINT  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))

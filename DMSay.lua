@@ -138,6 +138,159 @@ function ns.ShowOgreSays(say)
     pcall(PlaySound, SOUNDKIT and SOUNDKIT.TELL_MESSAGE or 3081)
 end
 
+-- The Ogre Godz (an Ogre Godz tribute arrived: Tribute.lua) ----------------------------------------------------------
+-- Their own pop-in, at the top of the screen: it floats down from above, the Ogre Godz (a crowned ogre) sitting on a
+-- bank of crayon clouds that drift and bob, a rainbow and slowly turning golden rays behind, sparkles twinkling, the
+-- words round the rainbow above and a speech bubble below; it stays a while and floats back up (click: now). It only
+-- tells: the chest waits on the PIX page.
+
+local FX = "Interface\\AddOns\\SOLC\\Media\\Icons\\Fx_"
+local GODZ_W, GODZ_H, GODZ_OGRE = 600, 400, 190
+local GODZ_REST = -30     -- its top's place under the screen's top, once down
+local GODZ_HOLD = 9       -- seconds, before it floats away
+local GOLD = { 1, 0.85, 0.4 }
+local CLOUDS = { { -150, -246, 250, 0.0 }, { 150, -250, 250, 1.7 }, { -40, -270, 210, 3.1 }, { 80, -262, 190, 4.6 },
+    { -235, -228, 150, 2.4 }, { 235, -232, 150, 5.5 } }  -- x, y (centre, from the top), size, bob phase
+-- The Ogre Godz' look: golden all over, crowned (the everyday ogre's other pieces under it).
+local GODZ_LOOK = { skin = "gold", eyes = "golden_oracle", accessory = "gold_chain", headwear = "chase_dmn_crown_of_the_ogre_king" }
+
+local godz, godzQueue = nil, {}
+local function GodzHue(h)  -- (a crayon rainbow, as the chest show's)
+    local i, f = math.floor(h * 6) % 6, h * 6 - math.floor(h * 6)
+    local rgb = ({ { 1, f, 0 }, { 1 - f, 1, 0 }, { 0, 1, f }, { 0, 1 - f, 1 }, { f, 0, 1 }, { 1, 0, 1 - f } })[i + 1]
+    return rgb[1] * 0.6 + 0.4, rgb[2] * 0.6 + 0.4, rgb[3] * 0.6 + 0.4
+end
+local function FxTexture(parent, file, layer, sublevel, light)
+    local tex = parent:CreateTexture(nil, layer, nil, sublevel)
+    tex:SetTexture(FX .. file)
+    if light then tex:SetBlendMode("ADD") end
+    return tex
+end
+
+local function BuildGodz()
+    godz = CreateFrame("Button", "SOLCOgreGodz", UIParent)
+    godz:SetSize(GODZ_W, GODZ_H)
+    godz:SetFrameStrata("HIGH")
+    godz:Hide()
+    local back = CreateFrame("Frame", nil, godz)  -- behind the ogre: the rainbow, the rays, the glow
+    back:SetAllPoints()
+    godz.rainbow = FxTexture(back, "Rainbow", "BACKGROUND", 0)
+    godz.rainbow:SetSize(560, 560)
+    godz.rainbow:SetPoint("CENTER", godz, "TOP", 0, -205)
+    godz.rays = FxTexture(back, "Rays", "BACKGROUND", 1, true)
+    godz.rays:SetSize(470, 470)
+    godz.rays:SetPoint("CENTER", godz, "TOP", 0, -165)
+    godz.rays:SetVertexColor(unpack(GOLD))
+    godz.glow = FxTexture(back, "Glow", "BACKGROUND", 2, true)
+    godz.glow:SetSize(330, 300)
+    godz.glow:SetPoint("CENTER", godz, "TOP", 0, -170)
+    godz.glow:SetVertexColor(unpack(GOLD))
+    godz.canvas = CreateFrame("Frame", nil, godz)
+    godz.canvas:SetSize(GODZ_OGRE, GODZ_OGRE)
+    godz.canvas:SetPoint("TOP", 0, -64)
+    godz.canvas:SetFrameLevel(back:GetFrameLevel() + 2)
+    local front = CreateFrame("Frame", nil, godz)  -- over the ogre: the clouds it sits on, the sparkles, the words
+    front:SetAllPoints()
+    front:SetFrameLevel(godz.canvas:GetFrameLevel() + 6)
+    godz.clouds = {}
+    for i, spec in ipairs(CLOUDS) do
+        local cloud = FxTexture(front, "Cloud", "ARTWORK", i % 2)
+        cloud:SetSize(spec[3], spec[3])
+        cloud.spec = spec
+        godz.clouds[i] = cloud
+    end
+    godz.stars = {}
+    for i = 1, 7 do
+        local star = FxTexture(front, "Star", "OVERLAY", 1, true)
+        star.phase, star.x, star.y = i * 0.9, (i - 4) * 70 + (i % 2) * 20, -60 - (i % 3) * 55
+        godz.stars[i] = star
+    end
+    godz.title = front:CreateFontString(nil, "OVERLAY")
+    godz.title:SetFont(NAME_FONT, 40, "")
+    godz.title:SetPoint("TOP", 0, -6)
+    ns.UI.OutlineText(godz.title, { 0, 0, 0 })
+    godz.bubble = CreateFrame("Frame", nil, godz, "BackdropTemplate")
+    godz.bubble:SetPoint("TOP", godz, "TOP", 0, -298)
+    godz.bubble:SetFrameLevel(front:GetFrameLevel() + 4)
+    godz.bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+    godz.bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.96)
+    godz.bubble:SetBackdropBorderColor(0.75, 0.6, 0.25)
+    godz.text = godz.bubble:CreateFontString(nil, "OVERLAY")
+    godz.text:SetFont(NAME_FONT, 16, "")
+    godz.text:SetTextColor(0.15, 0.1, 0.06)
+    godz.text:SetPoint("TOP", 0, -12)
+    godz.text:SetWidth(400)
+    godz.text:SetSpacing(2)
+    godz:SetScript("OnClick", function(self) if self.phase ~= "out" then self.phase, self.t = "out", 0 end end)
+    godz:SetScript("OnUpdate", function(self, elapsed)
+        self.t, self.time = self.t + elapsed, (self.time or 0) + elapsed
+        local time, y = self.time
+        if self.phase == "in" then  -- floating down, settling with a little bounce
+            local f = math.min(1, self.t / 1.1)
+            local s = 1.4
+            y = GODZ_H + (GODZ_REST - GODZ_H) * (1 + (s + 1) * (f - 1) ^ 3 + s * (f - 1) ^ 2)
+            if f >= 1 then self.phase, self.t = "hold", 0 end
+        elseif self.phase == "hold" then
+            y = GODZ_REST + math.sin(time * 1.6) * 4
+            if self.t >= self.hold then self.phase, self.t = "out", 0 end
+        else  -- floating back up
+            local f = math.min(1, self.t / 0.7)
+            y = GODZ_REST + (GODZ_H - GODZ_REST) * f * f
+            if f >= 1 then
+                self:Hide()
+                C_Timer.After(0.4, function() if not self:IsShown() and #godzQueue > 0 then ns.ShowOgreGodz(table.remove(godzQueue, 1)) end end)
+                return
+            end
+        end
+        self:ClearAllPoints()
+        self:SetPoint("TOP", UIParent, "TOP", 0, y)
+        self.rays:SetRotation(time * 0.25)
+        self.glow:SetAlpha(0.5 + math.sin(time * 2.4) * 0.15)
+        self.title:SetTextColor(GodzHue(time * 0.35))
+        for _, cloud in ipairs(self.clouds) do  -- drifting side to side and bobbing, each its own way
+            local spec = cloud.spec
+            cloud:SetPoint("CENTER", self, "TOP", spec[1] + math.sin(time * 0.5 + spec[4]) * 10, spec[2] + math.sin(time * 1.3 + spec[4]) * 5)
+        end
+        for _, star in ipairs(self.stars) do  -- twinkling: growing and fading, each in turn
+            local p = (time * 0.7 + star.phase) % 2
+            local size = p < 1 and math.sin(p * math.pi) * 34 or 0
+            star:SetShown(size > 1)
+            star:SetSize(math.max(1, size), math.max(1, size))
+            star:SetPoint("CENTER", self, "TOP", star.x, star.y)
+            star:SetVertexColor(GodzHue(star.phase * 0.3))
+            star:SetRotation(time * 1.5 + star.phase)
+        end
+    end)
+end
+
+-- Shows (or queues) the Ogre Godz telling you a tribute came: spec = the tribute (its note).
+function ns.ShowOgreGodz(spec)
+    if not godz then BuildGodz() end
+    if godz:IsShown() then godzQueue[#godzQueue + 1] = spec return end
+    local ogreMode = KillTrackerDB and KillTrackerDB.ogreMode
+    local traits = {}
+    for _, layer in ipairs(ns.MintLayers) do  -- (the everyday ogre, as Minting.lua's PlainTraits)
+        for _, option in ipairs(layer.options) do
+            if not option.unlock and not option.retired then traits[layer.key] = option.id break end
+        end
+    end
+    for key, id in pairs(GODZ_LOOK) do if ns.OptionByKey(key .. ":" .. id) then traits[key] = id end end
+    traits.background = nil  -- (the cut-out)
+    ns.RenderMint(godz.canvas, traits)
+    godz.title:SetText(ogreMode and "OGRE GODZ!" or "THE OGRE GODZ")
+    local note = spec and spec.note and spec.note ~= "" and ('\n|cff8a5a1a"%s"|r'):format(spec.note) or ""
+    godz.text:SetText((ogreMode and "YOU. GET. LOOT. LOOK IN PIX!" or
+        "Mortal! We have granted you a |cffb8860bTRIBUTE CHEST|r.\nIt waits for you on your PIX page.") .. note)
+    godz.bubble:SetSize(math.min(424, math.max(220, godz.text:GetUnboundedStringWidth() + 24)), godz.text:GetStringHeight() + 26)
+    godz.hold = GODZ_HOLD + (note ~= "" and 3 or 0)
+    godz.phase, godz.t, godz.time = "in", 0, 0
+    godz:ClearAllPoints()
+    godz:SetPoint("TOP", UIParent, "TOP", 0, GODZ_H)
+    godz:Show()
+    if SOUNDKIT and SOUNDKIT.UI_LEGENDARY_LOOT_TOAST then pcall(PlaySound, SOUNDKIT.UI_LEGENDARY_LOOT_TOAST) end
+end
+
 -- Sending and hearing --------------------------------------------------------------------------------------------
 
 local sendQueue, sending = {}, false

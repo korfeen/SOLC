@@ -340,6 +340,16 @@ const ICONS = {
       crayonShape(c, [...arc(r0), ...arc(r1).reverse()], hex(col), random, { outline: null, hatch: 6, fit: true });
     });
   },
+  // A puffy crayon cloud for the Ogre Godz (DMSay.lua's tribute pop-in): white with a pale blue-grey rim and a
+  // shaded underside (tinted in the game for sunset clouds).
+  fxCloud(c, random) {
+    const puffs = [[70, 150, 46], [118, 118, 58], [172, 128, 50], [210, 160, 34], [44, 170, 30], [128, 168, 50], [182, 172, 38]];
+    for (const [x, y, r] of puffs) crayonShape(c, circle(x, y, r + 7), hex("#a9bad6"), random, { outline: null, hatch: 6, fit: true });
+    for (const [x, y, r] of puffs) crayonShape(c, circle(x, y, r), hex("#ffffff"), random, { outline: null, hatch: 7, fit: true });
+    for (const [x, y, r] of puffs.filter(([, py]) => py > 140)) {
+      crayonShape(c, ellipse(x, y + r * 0.45, r * 0.8, r * 0.38), hex("#dfe7f4"), random, { outline: null, hatch: 5, fit: true });
+    }
+  },
   fxCardBack(c, random) {
     crayonShape(c, [[24, 24], [232, 24], [232, 232], [24, 232]], hex("#6a3a9a"), random, { line: 16, hatch: 8 });
     crayonShape(c, [[48, 48], [208, 48], [208, 208], [48, 208]], hex("#8a5ab8"), random, { line: 8, hatch: 8 });
@@ -758,7 +768,7 @@ const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "ro
   "close", "settings", "alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "mining",
   "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary", "feedLeader",
   "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss", "rank1", "rank2", "rank3", "rank4", "rank5",
-  "rank6", "rank7", "edit", "lock", "chest", "chestOpen", "fxRays", "fxGlow", "fxStar", "fxBurst", "fxCoin", "fxRing", "fxConfetti", "fxRainbow", "fxCardBack", "fxOgre", "token"];
+  "rank6", "rank7", "edit", "lock", "chest", "chestOpen", "fxRays", "fxGlow", "fxStar", "fxBurst", "fxCoin", "fxRing", "fxConfetti", "fxRainbow", "fxCardBack", "fxOgre", "token", "fxCloud"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
@@ -771,7 +781,7 @@ const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achieveme
   feedBounty: "Feed_Bounty", feedBoss: "Feed_Boss", rank1: "Rank_1", rank2: "Rank_2", rank3: "Rank_3", rank4: "Rank_4",
   rank5: "Rank_5", rank6: "Rank_6", rank7: "Rank_7", edit: "Edit", lock: "Lock", chest: "Chest", chestOpen: "ChestOpen", fxRays: "Fx_Rays", fxGlow: "Fx_Glow",
   fxStar: "Fx_Star", fxBurst: "Fx_Burst", fxCoin: "Fx_Coin", fxRing: "Fx_Ring", fxConfetti: "Fx_Confetti", fxRainbow: "Fx_Rainbow",
-  fxCardBack: "Fx_CardBack", fxOgre: "Fx_Ogre", token: "Token" };
+  fxCardBack: "Fx_CardBack", fxOgre: "Fx_Ogre", token: "Token", fxCloud: "Fx_Cloud" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.
