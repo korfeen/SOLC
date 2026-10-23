@@ -180,6 +180,54 @@ local function Coins(dungeonKey, tier)
     return math.floor(ns.Config("chestCoins") * dungeonTier * (TIERS[tier] or TIERS[1]).coins * (0.5 + math.random()) + 0.5)
 end
 
+-- Ogre Godz tribute (the dev menu, Dev.lua; sent by Tribute.lua): a chest made by hand, kept with the others as
+-- { dungeon = ns.TRIBUTE, time, tier, tribute = spec }, opened like them (Chests.lua, with its own entrance). spec:
+-- { tier, note, points, plinko, items = { { kind = "unlock", key = option key } or { kind = "ingredient", key, n } } }.
+-- Its points count as earned (they go with the chests' coins: they raise your Ogre Rank); plinko: free drops kept
+-- until used (Plinko.lua).
+ns.TRIBUTE = "tribute"
+ns.TRIBUTE_MAX_ITEMS = 5  -- (the cards the chest show has room for)
+function ns.AddTribute(spec)
+    local db = KillTrackerDB
+    db.chests = db.chests or {}
+    local tier = math.max(1, math.min(#TIERS, tonumber(spec.tier) or #TIERS))
+    db.chests[#db.chests + 1] = { dungeon = ns.TRIBUTE, time = time(), tier = tier, tribute = spec }
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+-- The cards a tribute shows (the chest show's items): its pieces and ingredients, and its plinko drops.
+function ns.TributeCards(spec)
+    local items = {}
+    for _, item in ipairs(spec.items or {}) do
+        if item.kind == "unlock" then
+            local unlocked = ns.OptionByKey(item.key)
+            if unlocked then items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option } end
+        elseif item.kind == "ingredient" and ns.INGREDIENTS[item.key] then
+            items[#items + 1] = { kind = "tokens", dungeon = item.key, count = item.n or 1 }
+        end
+    end
+    if (spec.plinko or 0) > 0 then
+        items[#items + 1] = { kind = "custom", icon = "Interface\\Icons\\INV_Misc_Orb_01",
+            label = ("+%d plinko drop%s"):format(spec.plinko, spec.plinko == 1 and "" or "s"), sub = "free, whenever you like" }
+    end
+    return items
+end
+local function OpenTribute(chest)
+    local db, spec = KillTrackerDB, chest.tribute or {}
+    for _, item in ipairs(spec.items or {}) do
+        if item.kind == "unlock" then ns.UnlockOption(item.key)
+        elseif item.kind == "ingredient" and ns.INGREDIENTS[item.key] then ns.AddIngredient(item.key, item.n or 1, true) end
+    end
+    local coins = math.max(0, math.floor(tonumber(spec.points) or 0))
+    if coins > 0 then
+        db.points.chests = (db.points.chests or 0) + coins
+        ns.Touch(db.points)
+    end
+    if (spec.plinko or 0) > 0 and ns.GiftPlinkoDrops then ns.GiftPlinkoDrops(spec.plinko) end
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    if ns.CheckRank then ns.CheckRank() end
+    return chest.tier or #TIERS, coins, ns.TributeCards(spec)
+end
+
 -- Opens one of your chests of a dungeon. Returns its tier, its coins and its items ({ { kind = "unlock", layer, option } },
 -- none to two: a chase item, a set piece); nil if you have no chest of it. It's all yours by the time it returns.
 function ns.OpenChest(dungeonKey)
@@ -189,6 +237,7 @@ function ns.OpenChest(dungeonKey)
         if c.dungeon == dungeonKey then chest = table.remove(db.chests, i) break end
     end
     if not chest then return nil end
+    if dungeonKey == ns.TRIBUTE then return OpenTribute(chest) end
     if ns.Tally then ns.Tally("chests") end  -- (the Chests opened deeds)
     local tier = chest.tier or 1
     local spec = TIERS[tier] or TIERS[1]

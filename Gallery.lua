@@ -265,8 +265,10 @@ function UI.Gallery(page)
                 thumb.icon:SetShown(entry.chest ~= nil)
                 if entry.chest then
                     local d = ns.DungeonByKey and ns.DungeonByKey(entry.chest)
-                    thumb.dungeonName = d and d.name or "A dungeon"
+                    local tribute = entry.chest == ns.TRIBUTE  -- (from the Ogre Godz: Unlocks.lua)
+                    thumb.dungeonName = tribute and "Ogre Godz tribute" or d and d.name or "A dungeon"
                     thumb.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Chest")
+                    thumb.icon:SetVertexColor(1, tribute and 0.8 or 1, tribute and 0.35 or 1)
                     thumb.caption:SetText(("OPEN%s"):format(entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
                     thumb.border:SetColorTexture(1, 0.82, 0.25)
                 else

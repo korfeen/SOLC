@@ -128,18 +128,50 @@ local ranks
 local rosterWatcher = CreateFrame("Frame")
 rosterWatcher:RegisterEvent("GUILD_ROSTER_UPDATE")
 rosterWatcher:SetScript("OnEvent", function() ranks = nil end)
+local guids  -- the members' character ids by full and short name, built with the ranks
 local function Ranks()
     if ranks then return ranks end
-    ranks = {}
+    ranks, guids = {}, {}
     for i = 1, GetNumGuildMembers and GetNumGuildMembers() or 0 do
         local fullName, _, rankIndex = GetGuildRosterInfo(i)
+        local guid = select(17, GetGuildRosterInfo(i))
         if fullName and not issecret(fullName) and rankIndex and not issecret(rankIndex) then
             ranks[fullName] = rankIndex
             local short = fullName:match("^[^-]+")
             if ranks[short] == nil then ranks[short] = rankIndex end
+            if guid and not issecret(guid) then
+                guids[fullName] = guid
+                if guids[short] == nil then guids[short] = guid end
+            end
         end
     end
     return ranks
+end
+
+-- The dev menu's owner: these characters only (their character ids, which never change; names do and differ by
+-- realm). Only they can open /solc supersafesolcdev, and guildmates' SOLC only takes an Ogre Godz tribute from one of
+-- them (the sender's id looked up in the receiver's own guild roster). Add new characters here.
+local DEV_CHARACTERS = {
+    ["Player-4619-00D07BF1"] = "Lance Hedman (beta)",
+    ["Player-4619-00A3B80B"] = "Ishockey Frisyr (beta)",
+    ["Player-4619-01291E2A"] = "Helga Bumblefoot (beta)",
+    ["Player-4619-01860152"] = "Helly (beta)",
+    ["Player-4619-0181BBB6"] = "Honorillade (beta)",
+    ["Player-4619-0179A9FB"] = "Kameggy (beta)",
+    ["Player-4619-0179BACE"] = "Tentodne (beta)",
+    ["Player-4619-01750C64"] = "Wardrilas Emmenthal (beta)",
+    ["Player-3657-0780F08C"] = "Josefin-Bladefist (retail)",
+}
+-- True if you're on one of the dev characters.
+function ns.IsDev()
+    local guid = UnitGUID("player")
+    return guid ~= nil and not issecret(guid) and DEV_CHARACTERS[guid] ~= nil
+end
+-- True if sender ("Name" or "Name-Realm") is one of the dev characters, by your own guild roster.
+function ns.IsDevSender(sender)
+    Ranks()
+    local guid = guids[sender] or guids[sender:match("^[^-]+")]
+    return guid ~= nil and DEV_CHARACTERS[guid] ~= nil
 end
 
 -- True if sender ("Name" or "Name-Realm") is in your guild, by your own guild roster.

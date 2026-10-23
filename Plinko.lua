@@ -107,7 +107,15 @@ local function State()
     if db.plinko.day ~= Today() then db.plinko.day, db.plinko.freeUsed = Today(), false end
     return db.plinko
 end
-function ns.PlinkoFreeLeft() return not State().freeUsed end
+-- Free drops given in an Ogre Godz tribute (Unlocks.lua): kept until used, after the day's own (state.gifted).
+function ns.GiftPlinkoDrops(n)
+    local state = State()
+    state.gifted = (state.gifted or 0) + n
+end
+function ns.PlinkoFreeLeft()
+    local state = State()
+    return not state.freeUsed or (state.gifted or 0) > 0
+end
 
 -- A chest's dungeon: one at your level (Posters.lua's ranges), else the nearest below.
 local function ChestDungeon()
@@ -676,7 +684,9 @@ end
 Drop = function(self)
     if ball.live then return end
     local state, db = State(), KillTrackerDB
-    local free = not state.freeUsed
+    local gifted = state.freeUsed and (state.gifted or 0) > 0  -- (the day's own is used: a tribute's, if any)
+    local free = not state.freeUsed or gifted
+    if gifted then state.gifted = state.gifted - 1 end
     if not free then
         if ns.GetPoints().balance < Cost() then
             ns.Print(("Not enough points for a drop (%d needed)."):format(Cost()))

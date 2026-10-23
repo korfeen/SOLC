@@ -48,6 +48,7 @@ SmashPage.lua
 PixPage.lua
 Chests.lua
 Dev.lua
+Tribute.lua
 DMSay.lua
 MintPot.lua
 DreamBedArt.lua

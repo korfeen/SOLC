@@ -1,12 +1,16 @@
--- Dev and DM mode (/solc supersafesolcdev, kept out of the help so guildmates don't stumble on it): a window for trying
--- out the chests, deeds and the picture art on yourself, and for officers, giving chests and DM mode.
--- Left, the chests: every dungeon (its backdrop's rarity colour; unlocked or not; your chests of it), each with Show
--- (the chest show with everything it can hold, nothing unlocked: Chests.lua's preview) and, for officers, +1: a real
--- chest of it for you or, for officers, whoever "Give to" says (a synced guildmate: a gift). Also a chest of every
--- dungeon, and for yourself: unlock everything, relock everything (unlocks, chests and tokens cleared, to try it all
--- from scratch), 5 of every ingredient (the minting pot, MintPot.lua) and Random deeds (ns.RandomDeeds).
--- Right, the layer browser: a picture drawn from one option per layer, each stepped through with arrows over every
--- option there is, locked or not, with its rarity and what unlocks it; Random (everything) and Random unlockables.
+-- The dev menu (/solc supersafesolcdev, and only on the dev characters: Config.lua's ns.IsDev): giving out almost
+-- anything, to yourself or (as an Ogre Godz tribute) a guildmate. Three tabs:
+-- CHESTS & ART. Left, the chests: every dungeon (its backdrop's rarity colour; unlocked or not; your chests of it), each
+-- with Show (the chest show with everything it can hold, nothing unlocked: Chests.lua's preview) and +1: a real chest of
+-- it for you or whoever "Give to" says (a synced guildmate: a gift). Also a chest of every dungeon, and for yourself:
+-- unlock everything, relock everything (unlocks, chests and tokens cleared, to try it all from scratch), 5 of every
+-- ingredient. Right, the layer browser: a picture drawn from one option per layer, each stepped through with arrows over
+-- every option there is, locked or not, with its rarity and what unlocks it; Random (everything) and Random unlockables.
+-- TRIBUTE: a chest made by hand (pieces, ingredients, points, plinko drops, a note, how fancy it looks), previewed, and
+-- sent to a guildmate or yourself; it comes down from the Ogre Godz (Tribute.lua, Unlocks.lua, Chests.lua).
+-- DEEDS & ME, for yourself: kills of any creature kind or tribe, dungeon clears, leaders, Random deeds (the
+-- achievements and their pieces follow by themselves); points, an Ogre Rank, plinko drops, Dream Bed items.
+-- (Officers who aren't dev characters can't open it; DM mode, Ogre Says, stays for officers: DMSay.lua.)
 --
 -- Gifts: an officer's chest for a guildmate goes to them as an addon whisper (GIFT_PREFIX: "C:<dungeon>:<id>"). WoW
 -- tells the receiver who really sent it and the guild roster says their rank, so a gift only counts from an officer
@@ -25,7 +29,8 @@ local GIFT_TIMEOUT = 10  -- seconds to hear back before saying it didn't arrive
 local issecret = issecretvalue or function() return false end
 
 local window
-local function IsOfficer() return ns.CanEditConfig() end  -- (you: the guild master or an officer, or no guild)
+-- (you: a dev character, the guild master or an officer, or no guild)
+local function IsOfficer() return ns.IsDev() or ns.CanEditConfig() end
 
 local function DungeonName(key)
     local d = ns.DungeonByKey(key)
@@ -51,51 +56,89 @@ local function AddKills(npcID, count, name)
     ns.Touch(entry)
 end
 local function Pick(list) return table.remove(list, math.random(#list)) end
-function ns.RandomDeeds()
-    local bySubtype, kinds = {}, {}
+
+-- The normal mobs (Data.lua) of each creature kind and each tribe: { [name] = { npcID, ... } }, and the names sorted.
+local mobsBy
+local function MobsBy()
+    if mobsBy then return mobsBy end
+    mobsBy = { subtype = {}, faction = {}, subtypes = {}, factions = {} }
     for npcID, info in pairs(ns.NPCs) do
-        local subtype = ns.Subtypes[info[4]]
-        if subtype and info[3] == 0 then
-            if not bySubtype[subtype] then bySubtype[subtype] = {} kinds[#kinds + 1] = subtype end
-            table.insert(bySubtype[subtype], npcID)
+        if info[3] == 0 then
+            local subtype, faction = ns.Subtypes[info[4]], ns.Factions[info[1]]
+            if subtype then
+                if not mobsBy.subtype[subtype] then mobsBy.subtype[subtype] = {} table.insert(mobsBy.subtypes, subtype) end
+                table.insert(mobsBy.subtype[subtype], npcID)
+            end
+            if faction and not faction:match("^PLAYER") then
+                if not mobsBy.faction[faction] then mobsBy.faction[faction] = {} table.insert(mobsBy.factions, faction) end
+                table.insert(mobsBy.faction[faction], npcID)
+            end
         end
     end
-    for _ = 1, math.min(8, #kinds) do
-        local subtype = Pick(kinds)
-        local mobs = bySubtype[subtype]
-        AddKills(mobs[math.random(#mobs)], DEED_COUNTS[math.random(#DEED_COUNTS)], subtype .. " (dev)")
-    end
+    for _, list in pairs(mobsBy.subtype) do table.sort(list) end
+    for _, list in pairs(mobsBy.faction) do table.sort(list) end
+    table.sort(mobsBy.subtypes)
+    table.sort(mobsBy.factions)
+    return mobsBy
+end
+-- Kills of a creature kind ("subtype") or tribe ("faction"): all on its first mob, named after the kind.
+local function KillsOf(dimension, name, count)
+    local mobs = MobsBy()[dimension][name]
+    if mobs then AddKills(mobs[1], count, name .. " (dev)") end
+end
 
-    local bossNames = {}
-    for _, bosses in pairs(ns.EncounterNPCs or {}) do
-        for _, boss in ipairs(bosses) do bossNames[boss[1]] = boss[2] end
+local bossNames
+local function BossName(npcID)
+    if not bossNames then
+        bossNames = {}
+        for _, bosses in pairs(ns.EncounterNPCs or {}) do
+            for _, boss in ipairs(bosses) do bossNames[boss[1]] = boss[2] end
+        end
     end
+    return bossNames[npcID] or "Boss"
+end
+-- A dungeon cleared this many times: every boss killed that often, and chests (default: one a clear, up to 10).
+local function ClearDungeon(d, times, chests)
+    local done = {}
+    for _, npcID in ipairs(d.bossNPCs) do AddKills(npcID, times, BossName(npcID)) done[npcID] = true end
+    for npcID in pairs(d.lastNPCs) do
+        if not done[npcID] then AddKills(npcID, times, BossName(npcID)) end
+    end
+    for _ = 1, chests or math.min(times, 10) do ns.AddChest(d.key) end
+end
+local function SlayLeaders(n)
+    local tribes, names = {}, {}
+    for tribe in pairs(ns.Leaders) do tribes[#tribes + 1] = tribe end
+    for _ = 1, math.min(n, #tribes) do
+        local leader = ns.Leaders[Pick(tribes)][1]
+        if leader then AddKills(leader[1], 1, leader[2]) names[#names + 1] = leader[2] end
+    end
+    return names
+end
+
+-- After kills were added: the achievements (and the pieces they unlock, the rank) caught up quietly, and one line
+-- saying how many came of it.
+local function Recount(what)
+    local function Count() local n = 0 for _ in pairs(KillTrackerDB.achievements) do n = n + 1 end return n end
+    local before = Count()
+    ns.CheckAchievements(true)
+    ns.Print(("Dev: %s - %d new achievements."):format(what, Count() - before))
+    Refresh()
+end
+
+function ns.RandomDeeds()
+    local kinds = {}
+    for _, subtype in ipairs(MobsBy().subtypes) do kinds[#kinds + 1] = subtype end
+    for _ = 1, math.min(8, #kinds) do KillsOf("subtype", Pick(kinds), DEED_COUNTS[math.random(#DEED_COUNTS)]) end
     local dungeons, cleared = {}, {}
     for _, d in ipairs(ns.Dungeons()) do if not d.raid and #d.bossNPCs > 0 then dungeons[#dungeons + 1] = d end end
     for _ = 1, math.min(4, #dungeons) do
-        local d, times, done = Pick(dungeons), math.random(1, 12), {}
-        for _, npcID in ipairs(d.bossNPCs) do AddKills(npcID, times, bossNames[npcID] or "Boss") done[npcID] = true end
-        for npcID in pairs(d.lastNPCs) do
-            if not done[npcID] then AddKills(npcID, times, bossNames[npcID] or "Boss") end
-        end
-        ns.AddChest(d.key)
+        local d, times = Pick(dungeons), math.random(1, 12)
+        ClearDungeon(d, times, 1)
         cleared[#cleared + 1] = ("%s x%d"):format(d.name, times)
     end
-
-    local tribes = {}
-    for tribe in pairs(ns.Leaders) do tribes[#tribes + 1] = tribe end
-    for _ = 1, math.min(3, #tribes) do
-        local leader = ns.Leaders[Pick(tribes)][1]
-        if leader then AddKills(leader[1], 1, leader[2]) end
-    end
-
-    local before = 0
-    for _ in pairs(KillTrackerDB.achievements) do before = before + 1 end
-    ns.CheckAchievements(true)
-    local after = 0
-    for _ in pairs(KillTrackerDB.achievements) do after = after + 1 end
-    ns.Print(("Dev: random deeds - %d new achievements; cleared %s (a chest each)."):format(after - before, table.concat(cleared, ", ")))
-    Refresh()
+    SlayLeaders(3)
+    Recount(("random deeds; cleared %s"):format(table.concat(cleared, ", ")))
 end
 
 -- Gifts -----------------------------------------------------------------------------------------------------------
@@ -149,7 +192,7 @@ listener:SetScript("OnEvent", function(_, _, prefix, message, channel, sender)
     end
     local dungeonKey, id = message:match("^C:(%w+):(%w+)$")
     if not dungeonKey or not ns.DungeonByKey(dungeonKey) then return end
-    if not ns.IsGuildOfficer(sender) then return end  -- only an officer's gift counts
+    if not ns.IsGuildOfficer(sender) and not ns.IsDevSender(sender) then return end  -- only an officer's or dev's gift counts
     local db = KillTrackerDB
     db.giftsTaken = db.giftsTaken or {}
     if not db.giftsTaken[id] then
@@ -197,9 +240,6 @@ local function BuildChests(parent)
     who:SetWidth(90)
     who:SetWordWrap(false)
     left.who = who
-    local deeds = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
-    deeds:SetSize(100, 20) deeds:SetText("Random deeds") deeds:SetPoint("TOPRIGHT", -156, 0)
-    deeds:SetScript("OnClick", function() ns.RandomDeeds() end)
 
     local function GiveTo(key)
         if left.target then ns.GiftChest(key, left.target) else GiveChest(key) end
@@ -380,6 +420,386 @@ local function BuildBrowser(parent)
     return right
 end
 
+-- Small parts for the pages ---------------------------------------------------------------------------------------
+
+local function Button(parent, text, width, onClick)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(width, 22)
+    button:SetText(text)
+    button:SetScript("OnClick", onClick)
+    return button
+end
+local function Label(parent, size, r, g, b)
+    local text = parent:CreateFontString(nil, "OVERLAY")
+    text:SetFont(NAME_FONT, size or 13, "")
+    text:SetTextColor(r or 0.93, g or 0.88, b or 0.78)
+    text:SetJustifyH("LEFT")
+    text:SetWordWrap(false)
+    return text
+end
+local function Heading(parent, text, x, y)
+    local heading = Label(parent, 16, 1, 0.5, 0.25)
+    heading:SetPoint("TOPLEFT", x, y)
+    heading:SetText(text)
+    return heading
+end
+-- A row stepping through a list ([<] [>], Shift: ten at a time): "name: label  i/n". list() gives { { label, value } };
+-- onChange(value) after a step. :Reload() reads the list again, :Value() is the one shown.
+local function Stepper(parent, width, name, list, onChange)
+    local stepper = CreateFrame("Frame", nil, parent)
+    stepper:SetSize(width, 22)
+    stepper.index, stepper.list = 1, {}
+    stepper.text = Label(stepper, 13)
+    stepper.text:SetPoint("LEFT", 54, 0)
+    stepper.text:SetWidth(width - 54)
+    local function Step(delta)
+        local n = #stepper.list
+        if n == 0 then return end
+        if IsShiftKeyDown() then delta = delta * 10 end
+        stepper.index = (stepper.index - 1 + delta) % n + 1
+        stepper:Draw()
+        if onChange then onChange(stepper:Value()) end
+    end
+    Button(stepper, "<", 24, function() Step(-1) end):SetPoint("LEFT", 0, 0)
+    Button(stepper, ">", 24, function() Step(1) end):SetPoint("LEFT", 26, 0)
+    function stepper:Value()
+        local entry = self.list[self.index]
+        if entry then return entry.value end
+    end
+    function stepper:Draw()
+        local entry = self.list[self.index]
+        self.text:SetText(("%s: %s  |cff888888%d/%d|r"):format(name, entry and entry.label or "-", entry and self.index or 0, #self.list))
+    end
+    function stepper:Reload()
+        self.list = list()
+        self.index = math.max(1, math.min(self.index, #self.list))
+        self:Draw()
+    end
+    function stepper:Select(value)
+        for i, entry in ipairs(self.list) do if entry.value == value then self.index = i end end
+        self:Draw()
+    end
+    return stepper
+end
+local function Colored(rarity, text) return ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", text) end
+local function IngredientLabel(key) return ("|T%s:14|t %s"):format(ns.IngredientIcon(key), ns.IngredientName(key)) end
+-- Every ingredient there is: the Dream Bed's, the fuels, the layers', the dungeons' tokens.
+local function AllIngredients()
+    local keys = { "milk", "story", "bonk" }
+    for _, fuel in ipairs(ns.FUELS) do keys[#keys + 1] = fuel.key end
+    for _, spec in ipairs(ns.LAYER_INGREDIENTS) do keys[#keys + 1] = spec.key end
+    for _, d in ipairs(ns.Dungeons()) do if ns.INGREDIENTS[d.key] then keys[#keys + 1] = d.key end end
+    return keys
+end
+
+-- TRIBUTE ---------------------------------------------------------------------------------------------------------
+
+local function BuildTribute(parent)
+    local page = CreateFrame("Frame", nil, parent)
+    page:SetPoint("TOPLEFT", 12, -40)
+    page:SetSize(756, 520)
+    local spec = { tier = #ns.CHEST_TIERS, items = {}, points = 0, plinko = 0, note = "" }
+
+    -- Left: who it's for, how fancy, and what to put in.
+    Heading(page, "Ogre Godz tribute", 0, 0)
+    local to = Stepper(page, 360, "To", function()
+        local list = { { label = "|cffffd100me|r", value = false } }
+        for _, friend in ipairs(ns.GetFriends()) do list[#list + 1] = { label = friend.name, value = friend.key } end
+        return list
+    end)
+    to:SetPoint("TOPLEFT", 0, -26)
+    local look = Stepper(page, 360, "Chest", function()
+        local list = {}
+        for i, tier in ipairs(ns.CHEST_TIERS) do
+            list[i] = { label = Colored(({ "uncommon", "rare", "epic", "legendary" })[i], tier.name), value = i }
+        end
+        return list
+    end, function(tier) spec.tier = tier page:Draw() end)
+    look:SetPoint("TOPLEFT", 0, -50)
+
+    Heading(page, "A piece", 0, -84)
+    local preview = CreateFrame("Frame", nil, page)
+    preview:SetSize(96, 96)
+    preview:SetPoint("TOPLEFT", 264, -110)
+    local previewBack = page:CreateTexture(nil, "BACKGROUND")
+    previewBack:SetPoint("TOPLEFT", preview, -3, 3)
+    previewBack:SetPoint("BOTTOMRIGHT", preview, 3, -3)
+    previewBack:SetColorTexture(0.3, 0.22, 0.12)
+    local piece  -- (below: the layer's stepper reloads it)
+    local function ShowPiece()
+        local layer, option = page.layer, piece and piece:Value()
+        if layer and option then ns.DrawPiece(preview, layer.key, option) end
+    end
+    local layerStep = Stepper(page, 260, "Layer", function()
+        local list = {}
+        for _, layer in ipairs(ns.MintLayers) do list[#list + 1] = { label = layer.name, value = layer } end
+        return list
+    end, function(layer) page.layer = layer piece:Reload() ShowPiece() end)
+    layerStep:SetPoint("TOPLEFT", 0, -110)
+    piece = Stepper(page, 260, "Piece", function()
+        local list = {}
+        for _, option in ipairs(page.layer and page.layer.options or {}) do
+            if option.unlock then
+                local have = ns.IsUnlocked(ns.OptionKey(page.layer.key, option)) and " |cff55dd55(yours)|r" or ""
+                list[#list + 1] = { label = Colored(option.rarity, option.name) .. have, value = option }
+            end
+        end
+        return list
+    end, ShowPiece)
+    piece:SetPoint("TOPLEFT", 0, -134)
+    local function Full()
+        if #spec.items < ns.TRIBUTE_MAX_ITEMS then return false end
+        ns.Print(("Dev: the chest is full (%d things)."):format(ns.TRIBUTE_MAX_ITEMS))
+        return true
+    end
+    local function AddPiece(option)
+        if not option or Full() then return end
+        local key = ns.OptionKey(page.layer.key, option)
+        for _, item in ipairs(spec.items) do if item.key == key then return end end
+        spec.items[#spec.items + 1] = { kind = "unlock", key = key }
+        page:Draw()
+    end
+    Button(page, "Put it in", 90, function() AddPiece(piece:Value()) end):SetPoint("TOPLEFT", 0, -162)
+    Button(page, "A random one", 110, function()
+        local options = {}
+        for _, entry in ipairs(piece.list) do options[#options + 1] = entry.value end
+        if #options > 0 then AddPiece(options[math.random(#options)]) end
+    end):SetPoint("TOPLEFT", 96, -162)
+
+    Heading(page, "An ingredient", 0, -222)
+    local ingredient = Stepper(page, 360, "Ingredient", function()
+        local list = {}
+        for _, key in ipairs(AllIngredients()) do list[#list + 1] = { label = IngredientLabel(key), value = key } end
+        return list
+    end)
+    ingredient:SetPoint("TOPLEFT", 0, -246)
+    local function AddIngredient(n)
+        local key = ingredient:Value()
+        if not key then return end
+        for _, item in ipairs(spec.items) do
+            if item.kind == "ingredient" and item.key == key then item.n = math.min(99, item.n + n) return page:Draw() end
+        end
+        if Full() then return end
+        spec.items[#spec.items + 1] = { kind = "ingredient", key = key, n = n }
+        page:Draw()
+    end
+    for i, n in ipairs({ 1, 5, 20 }) do
+        Button(page, "+" .. n, 54, function() AddIngredient(n) end):SetPoint("TOPLEFT", (i - 1) * 60, -272)
+    end
+
+    Heading(page, "Points and plinko", 0, -306)
+    for i, n in ipairs({ 50, 500, 5000 }) do
+        Button(page, ("+%d pts"):format(n), 84, function() spec.points = math.min(100000, spec.points + n) page:Draw() end)
+            :SetPoint("TOPLEFT", (i - 1) * 90, -330)
+    end
+    Button(page, "No points", 84, function() spec.points = 0 page:Draw() end):SetPoint("TOPLEFT", 270, -330)
+    Button(page, "+1 plinko drop", 120, function() spec.plinko = math.min(10, spec.plinko + 1) page:Draw() end)
+        :SetPoint("TOPLEFT", 0, -356)
+    Button(page, "No drops", 84, function() spec.plinko = 0 page:Draw() end):SetPoint("TOPLEFT", 126, -356)
+
+    Heading(page, "A note (shown with it)", 0, -390)
+    local note = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
+    note:SetSize(340, 22)
+    note:SetPoint("TOPLEFT", 6, -414)
+    note:SetAutoFocus(false)
+    note:SetMaxLetters(80)
+    note:SetScript("OnTextChanged", function(self) spec.note = self:GetText() end)
+    note:SetScript("OnEnterPressed", note.ClearFocus)
+    note:SetScript("OnEscapePressed", note.ClearFocus)
+
+    -- Right: what's in it, and the buttons.
+    Heading(page, "In the chest", 400, 0)
+    local rows = {}
+    for i = 1, ns.TRIBUTE_MAX_ITEMS do
+        local row = CreateFrame("Frame", nil, page)
+        row:SetSize(350, 24)
+        row:SetPoint("TOPLEFT", 400, -26 - (i - 1) * 26)
+        row.text = Label(row, 13)
+        row.text:SetPoint("LEFT", 30, 0)
+        row.text:SetWidth(320)
+        row.remove = Button(row, "x", 24, function() table.remove(spec.items, i) page:Draw() end)
+        row.remove:SetPoint("LEFT", 0, 0)
+        rows[i] = row
+    end
+    local summary = Label(page, 13)
+    summary:SetPoint("TOPLEFT", 400, -26 - ns.TRIBUTE_MAX_ITEMS * 26 - 8)
+    summary:SetWidth(350)
+    summary:SetWordWrap(true)
+    local function Copy()
+        local items = {}
+        for i, item in ipairs(spec.items) do items[i] = { kind = item.kind, key = item.key, n = item.n } end
+        return { tier = spec.tier, points = spec.points, plinko = spec.plinko, note = spec.note, items = items }
+    end
+    local function Empty() return #spec.items == 0 and spec.points == 0 and spec.plinko == 0 end
+    Button(page, "Preview", 100, function()
+        -- (out of the way while it plays: back when the chest closes)
+        if window and _G.SOLCChest and not window.hooked then
+            window.hooked = true
+            _G.SOLCChest:HookScript("OnHide", function() if window.reopen then window.reopen = nil window:Show() end end)
+        end
+        window.reopen = true
+        window:Hide()
+        ns.ShowChest(ns.TRIBUTE, true, nil, Copy())
+    end):SetPoint("TOPLEFT", 400, -260)
+    local send = Button(page, "SEND TRIBUTE", 160, function()
+        if Empty() then return ns.Print("Dev: the chest is empty.") end
+        ns.SendTribute(Copy(), to:Value() or nil)
+        Refresh()
+    end)
+    send:SetPoint("TOPLEFT", 506, -260)
+    Button(page, "Empty it", 80, function()
+        wipe(spec.items)
+        spec.points, spec.plinko = 0, 0
+        page:Draw()
+    end):SetPoint("TOPLEFT", 672, -260)
+    local help = Label(page, 12, 0.62, 0.56, 0.48)
+    help:SetPoint("TOPLEFT", 400, -292)
+    help:SetWidth(350)
+    help:SetWordWrap(true)
+    help:SetText("A guildmate gets it as a whisper: they must be online with this SOLC, and their SOLC checks it's from one of your characters. It waits on their PIX page until they open it. Shift-click the arrows to step ten at a time.")
+
+    function page:Draw()
+        for i, row in ipairs(rows) do
+            local item = spec.items[i]
+            row:SetShown(item ~= nil)
+            if item and item.kind == "unlock" then
+                local unlocked = ns.OptionByKey(item.key)
+                row.text:SetText(unlocked and ("%s  |cff888888%s|r"):format(Colored(unlocked.option.rarity, unlocked.option.name), unlocked.layer.name:lower()) or item.key)
+            elseif item then
+                row.text:SetText(("%d x %s"):format(item.n, IngredientLabel(item.key)))
+            end
+        end
+        summary:SetText(("%s%d points, %d plinko drop%s, a %s chest."):format(#spec.items == 0 and "Nothing else yet; " or "Plus ",
+            spec.points, spec.plinko, spec.plinko == 1 and "" or "s", ns.CHEST_TIERS[spec.tier].name:lower()))
+    end
+    function page:Refresh()
+        to:Reload()
+        look:Reload()
+        look:Select(spec.tier)
+        layerStep:Reload()
+        page.layer = layerStep:Value()
+        piece:Reload()
+        ShowPiece()
+        ingredient:Reload()
+        page:Draw()
+    end
+    return page
+end
+
+-- DEEDS & ME ------------------------------------------------------------------------------------------------------
+
+local function BuildDeeds(parent)
+    local page = CreateFrame("Frame", nil, parent)
+    page:SetPoint("TOPLEFT", 12, -40)
+    page:SetSize(756, 520)
+    local function Names(list)
+        return function()
+            local out = {}
+            for _, name in ipairs(list()) do out[#out + 1] = { label = name, value = name } end
+            return out
+        end
+    end
+
+    -- Left: deeds, on you.
+    Heading(page, "Deeds (on you)", 0, 0)
+    local kind = Stepper(page, 360, "Creature", Names(function() return MobsBy().subtypes end))
+    kind:SetPoint("TOPLEFT", 0, -26)
+    for i, n in ipairs({ 10, 100, 1000 }) do
+        Button(page, ("+%d kills"):format(n), 100, function()
+            local name = kind:Value()
+            if name then KillsOf("subtype", name, n) Recount(("%d %s kills"):format(n, name)) end
+        end):SetPoint("TOPLEFT", (i - 1) * 106, -50)
+    end
+    local tribe = Stepper(page, 360, "Tribe", Names(function() return MobsBy().factions end))
+    tribe:SetPoint("TOPLEFT", 0, -84)
+    for i, n in ipairs({ 100, 1000 }) do
+        Button(page, ("+%d kills"):format(n), 100, function()
+            local name = tribe:Value()
+            if name then KillsOf("faction", name, n) Recount(("%d %s kills"):format(n, name)) end
+        end):SetPoint("TOPLEFT", (i - 1) * 106, -108)
+    end
+    local dungeon = Stepper(page, 360, "Dungeon", function()
+        local list = {}
+        for _, d in ipairs(ns.Dungeons()) do
+            if #d.bossNPCs > 0 or next(d.lastNPCs) then list[#list + 1] = { label = d.name, value = d } end
+        end
+        return list
+    end)
+    dungeon:SetPoint("TOPLEFT", 0, -142)
+    for i, n in ipairs({ 1, 10 }) do
+        Button(page, ("+%d clear%s"):format(n, n == 1 and "" or "s"), 100, function()
+            local d = dungeon:Value()
+            if d then ClearDungeon(d, n) Recount(("%s cleared %d times (and %d chests)"):format(d.name, n, math.min(n, 10))) end
+        end):SetPoint("TOPLEFT", (i - 1) * 106, -166)
+    end
+    Button(page, "Slay 3 leaders", 120, function()
+        local names = SlayLeaders(3)
+        Recount("slain " .. table.concat(names, ", "))
+    end):SetPoint("TOPLEFT", 0, -204)
+    Button(page, "Random deeds", 120, function() ns.RandomDeeds() end):SetPoint("TOPLEFT", 126, -204)
+    local note = Label(page, 12, 0.62, 0.56, 0.48)
+    note:SetPoint("TOPLEFT", 0, -236)
+    note:SetWidth(370)
+    note:SetWordWrap(true)
+    note:SetText("Kills count as if they happened: the achievements, their creature hats and onesies, points and rank follow by themselves. A dungeon's clears give a chest each (up to 10). Shift-click the arrows to step ten at a time.")
+
+    -- Right: you.
+    Heading(page, "Me", 400, 0)
+    local status = Label(page, 13)
+    status:SetPoint("TOPLEFT", 400, -26)
+    status:SetWidth(350)
+    local function AddPoints(n)
+        local points = KillTrackerDB.points
+        points.chests = (points.chests or 0) + n
+        ns.Touch(points)
+        ns.CheckRank()
+        Refresh()
+    end
+    for i, n in ipairs({ 100, 1000, 10000 }) do
+        Button(page, ("+%d pts"):format(n), 100, function() AddPoints(n) end):SetPoint("TOPLEFT", 400 + (i - 1) * 106, -50)
+    end
+    local rank = Stepper(page, 350, "Ogre Rank", function()
+        local list = {}
+        for _, r in ipairs(ns.RANKS) do list[#list + 1] = { label = ("%d %s"):format(r.rank, r.title), value = r } end
+        return list
+    end)
+    rank:SetPoint("TOPLEFT", 400, -84)
+    Button(page, "Reach it", 100, function()
+        local r = rank:Value()
+        local need = r and r.points - ns.GetPoints().earned or 0
+        if need <= 0 then return ns.Print("Dev: you're there already (a rank can't go down: points earned stay earned).") end
+        AddPoints(need)
+    end):SetPoint("TOPLEFT", 400, -108)
+    Button(page, "+1 plinko drop", 120, function() ns.GiftPlinkoDrops(1) ns.Print("Dev: a free plinko drop.") end)
+        :SetPoint("TOPLEFT", 400, -146)
+    Button(page, "+3 plinko drops", 120, function() ns.GiftPlinkoDrops(3) ns.Print("Dev: 3 free plinko drops.") end)
+        :SetPoint("TOPLEFT", 526, -146)
+    Heading(page, "Dream Bed", 400, -184)
+    for row, key in ipairs({ "milk", "story", "bonk" }) do
+        local label = Label(page, 13)
+        label:SetPoint("TOPLEFT", 400, -212 - (row - 1) * 26)
+        label:SetWidth(160)
+        label:SetText(IngredientLabel(key))
+        for i, n in ipairs({ 1, 5 }) do
+            Button(page, "+" .. n, 48, function() ns.AddIngredient(key, n) Refresh() end)
+                :SetPoint("TOPLEFT", 566 + (i - 1) * 54, -208 - (row - 1) * 26)
+        end
+    end
+
+    function page:Refresh()
+        kind:Reload()
+        tribe:Reload()
+        dungeon:Reload()
+        rank:Reload()
+        local p, r = ns.GetPoints(), ns.GetRank()
+        local plinko = KillTrackerDB.plinko
+        status:SetText(("Earned %d points, %d to spend. Rank %d %s. Plinko drops waiting: %d."):format(p.earned, p.balance,
+            r.rank, r.title, plinko and plinko.gifted or 0))
+        rank:Select(ns.RANKS[math.min(#ns.RANKS, r.rank + 1)])
+    end
+    return page
+end
+
 -- The window ------------------------------------------------------------------------------------------------------
 
 local function Build()
@@ -403,20 +823,46 @@ local function Build()
     local close = CreateFrame("Button", nil, window, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -2, -2)
     close:SetScript("OnClick", function() window:Hide() end)
-    local chests = BuildChests(window)
-    local browser = BuildBrowser(window)
+    -- The tabs: CHESTS & ART (the chests and the layer browser), TRIBUTE, DEEDS & ME.
+    local main = CreateFrame("Frame", nil, window)
+    main:SetAllPoints()
+    local chests = BuildChests(main)
+    local browser = BuildBrowser(main)
+    local tribute = BuildTribute(window)
+    local deeds = BuildDeeds(window)
     local say = ns.BuildDMSay and ns.BuildDMSay(window, browser)  -- (officers: pop in as the ogre, DMSay.lua)
+    local pages = { { "CHESTS & ART", main, 120 }, { "TRIBUTE", tribute, 90 }, { "DEEDS & ME", deeds, 110 } }
+    window.tab = 1
+    local x = -40
+    for i = #pages, 1, -1 do
+        local spec = pages[i]
+        x = x - spec[3] - 4
+        spec.button = Button(window, spec[1], spec[3], function()
+            window.tab = i
+            window:Refresh()
+        end)
+        spec.button:SetPoint("TOPRIGHT", x + spec[3], -10)
+    end
     function window:Refresh()
-        title:SetText(IsOfficer() and "SOLC DM MODE - chests and picture art (drag to move)" or "SOLC DEV - previews and picture art (drag to move)")
-        chests:Refresh()
-        browser:Refresh()
-        if say then say:SetShown(IsOfficer()) end
+        title:SetText("SOLC DEV (drag to move)")
+        for i, spec in ipairs(pages) do
+            spec[2]:SetShown(i == self.tab)
+            if i == self.tab then spec.button:LockHighlight() else spec.button:UnlockHighlight() end
+        end
+        if self.tab == 1 then
+            chests:Refresh()
+            browser:Refresh()
+        else
+            pages[self.tab][2]:Refresh()
+        end
+        if say then say:SetShown(self.tab == 1 and ns.CanEditConfig()) end
     end
     window:SetScript("OnShow", function(self) self:Refresh() end)
     window:Hide()
 end
 
 function ns.ToggleDev()
+    if not ns.IsDev() then return false end
     if not window then Build() end
     window:SetShown(not window:IsShown())
 end

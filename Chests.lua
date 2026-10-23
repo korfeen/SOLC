@@ -15,6 +15,9 @@
 -- Everything is drawn with the crayon textures from tools/make-role-icons.js (Chest, ChestOpen, Fx_*), tinted.
 -- ns.ShowChest(dungeon key[, preview]): one of your chests of that dungeon (the PIX page's tiles, one per dungeon);
 -- preview (dev mode, Dev.lua): everything that dungeon's chest can hold, nothing unlocked.
+-- An Ogre Godz tribute (ns.TRIBUTE, Unlocks.lua: a chest made by hand in the dev menu) comes in first: a beam of gold
+-- from the sky, the chest falling down it and slamming down, THE OGRE GODZ HAVE GRACED YOU WITH TRIBUTE across the
+-- window round the rainbow and the ogre cheering; then it's tapped open like the others.
 
 local _, ns = ...
 
@@ -128,6 +131,16 @@ banner.text = Text(banner, 54, 1, 1, 1)
 banner.text:SetPoint("CENTER")
 banner.text:SetText("CHASE ITEM!")
 banner:Hide()
+-- A tribute's entrance: the beam it comes down, and the words.
+local beam = Art(FX .. "Glow", "BACKGROUND", 0, true)
+beam:Hide()
+local godz = CreateFrame("Frame", nil, top)
+godz:SetSize(780, 110)
+godz.big = Text(godz, 46, 1, 0.85, 0.3)
+godz.big:SetPoint("TOP")
+godz.small = Text(godz, 26, 1, 0.95, 0.75)
+godz.small:SetPoint("TOP", godz.big, "BOTTOM", 0, -2)
+godz:Hide()
 
 -- How many items are inside, beside the chest while it charges ("x2", in the tier's colour).
 local countBadge = CreateFrame("Frame", nil, panel)
@@ -328,6 +341,7 @@ panel:SetScript("OnUpdate", function(_, dt)
         rays:SetVertexColor(r, g, b)
         glow:SetVertexColor(Hue(show.time * 0.35 + 0.5))
         banner.text:SetTextColor(Hue(show.time * 0.8))
+        if godz:IsShown() then godz.big:SetTextColor(Hue(show.time * 0.6 + 0.2)) end
     end
     local y = show.y or STAGE.shut
     local bob = show.phase == "shut" and math.sin(show.time * 3) * 4 or 0
@@ -405,12 +419,16 @@ local function Pull(i)
     card.canvas:SetShown(unlock)
     card.coin:SetShown(not unlock)
     card.cover:SetShown(flips)
+    if item.kind == "custom" then card.coin:SetTexture(item.icon) end  -- (a tribute's plinko drops: Unlocks.lua)
     card.cover:SetFrameLevel(card:GetFrameLevel() + 4)  -- (over the picture)
     card.back:SetWidth(CARD + 6)
     if unlock then
         ns.DrawPiece(card.canvas, item.layer.key, item.option)  -- (the piece itself, whole: Minting.lua)
         card.name:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", item.option.name))
         card.what:SetText(("%s %s"):format(Rarity(rarity), item.layer.name:lower()))
+    elseif item.kind == "custom" then
+        card.name:SetText(("|cffd8dce0%s|r"):format(item.label))
+        card.what:SetText(item.sub or "")
     else  -- the dungeon's tokens
         card.coin:SetTexture(ns.IngredientIcon(item.dungeon))
         card.name:SetText(("|cffd8dce0+%d %s|r"):format(item.count, ns.IngredientName(item.dungeon)))
@@ -522,6 +540,7 @@ local function Burst()
     show.phase = "reveal"
     show.shake = 0
     countBadge:Hide()
+    godz:Hide()  -- (a tribute's words: the chest comes up where they were)
     local from = show.y or STAGE.shut
     Tween(0.4, function(p) show.y = from + (STAGE.open - from) * EaseOut(p) end)  -- up, out of the cards' way
     chest:SetTexture(ICONS .. "ChestOpen")
@@ -561,8 +580,8 @@ local function Burst()
         Cheer()
         Sound("UI_LEGENDARY_LOOT_TOAST")
     end
-    coins:Show()
-    show.shown, show.counting = 0, true
+    coins:SetShown(show.coins > 0)
+    show.shown, show.counting = 0, show.coins > 0
     show.pulled = 0
     local n = math.min(#show.items, MAX_CARDS)
     if n == 0 then  -- (only its points this time)
@@ -602,7 +621,12 @@ end
 -- A tap anywhere on the panel (not its buttons).
 local function Tap()
     if show.phase == "shut" then
-        if show.preview then  -- (dev mode: everything the dungeon's chest can hold, nothing unlocked, no coins kept)
+        if show.preview and show.tribute then  -- (dev mode: a tribute as it's made, nothing given)
+            local spec = show.spec or {}
+            show.items = ns.TributeCards(spec)
+            show.tier = show.previewTier or tonumber(spec.tier) or #ns.CHEST_TIERS
+            show.coins = tonumber(spec.points) or 0
+        elseif show.preview then  -- (dev mode: everything the dungeon's chest can hold, nothing unlocked, no coins kept)
             show.items = {}
             for _, unlocked in ipairs(ns.ChestPool(show.dungeon)) do
                 show.items[#show.items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
@@ -660,15 +684,68 @@ local function Tap()
 end
 panel:SetScript("OnMouseDown", function(_, button) if button == "LeftButton" then Tap() end end)
 
--- One of the dungeon's chests, shut, bobbing, waiting for taps.
-function Shut(dungeonKey, preview, previewTier)
+-- A tribute coming down from the Ogre Godz (see the top); taps wait until it's down.
+local GOLD = { 1, 0.85, 0.4 }
+local function Descend()
+    show.phase = "intro"
+    local ogreMode = KillTrackerDB and KillTrackerDB.ogreMode
+    panel.hint:SetText("")
+    beam:SetVertexColor(unpack(GOLD))
+    beam:SetSize(280, 820)
+    Put(beam, 0, STAGE.shut + 150)
+    beam:SetAlpha(0)
+    beam:Show()
+    Tween(0.5, function(p) beam:SetAlpha(p * 0.75) end)
+    Sound("READY_CHECK")
+    show.y, show.scale = -60, 0.2  -- high up, far away
+    After(0.5, function()
+        Tween(0.7, function(p)
+            local e = p * p  -- falling, faster and faster
+            show.y = -60 + (STAGE.shut + 60) * e
+            show.scale = 0.2 + 0.8 * e
+        end, function()
+            show.y, show.scale = STAGE.shut, 1
+            flash:SetVertexColor(unpack(GOLD))
+            Tween(0.4, function(p) flash:SetAlpha((1 - p) * 0.8) end)
+            Ring(GOLD, 720)
+            Sparkles(34, 0, STAGE.shut - 70, GOLD, 440)
+            show.windowShake = 20
+            Jump(0.22)
+            Light(0, 3)
+            Sound("UI_LEGENDARY_LOOT_TOAST")
+            Sound("LOOT_WINDOW_COIN_SOUND")
+            Word("BOOM!", GOLD)
+            show.rainbow = true
+            godz.big:SetText(ogreMode and "OGRE GODZ GIVE" or "THE OGRE GODZ")
+            godz.small:SetText(ogreMode and "YOU LOOT!" or "HAVE GRACED YOU WITH TRIBUTE")
+            godz:Show()
+            Tween(0.5, function(p)
+                local s = math.max(0.05, Overshoot(p))
+                godz:SetScale(s)
+                godz:ClearAllPoints()
+                godz:SetPoint("TOP", panel, "TOP", 0, -64 / s)
+            end)
+            ogre.say:SetText(ogreMode and "LOOT!" or "TRIBUTE!")
+            Cheer()
+            Tween(0.9, function(p) beam:SetAlpha(0.75 * (1 - p)) end, function() beam:Hide() end)
+            After(1.3, function()
+                if show.phase ~= "intro" then return end
+                show.phase = "shut"
+                panel.hint:SetText(ogreMode and "SMASH!" or "Tap the chest!")
+            end)
+        end)
+    end)
+end
+
+-- One of the dungeon's chests, shut, bobbing, waiting for taps. (previewSpec: a tribute being made, Dev.lua)
+function Shut(dungeonKey, preview, previewTier, previewSpec)
     wipe(tweens)
     for _, pt in ipairs(particles) do pt.tex:Hide() pool[#pool + 1] = pt.tex end
     wipe(particles)
     for _, w in ipairs(words) do w.frame:Hide() wordPool[#wordPool + 1] = w.frame end
     wipe(words)
     show = { phase = "shut", dungeon = dungeonKey, time = 0, angle = 0, scale = 1, shake = 0, preview = preview,
-        previewTier = previewTier, y = STAGE.shut }
+        previewTier = previewTier, y = STAGE.shut, tribute = dungeonKey == ns.TRIBUTE, spec = previewSpec }
     if panel.anchor then
         panel:ClearAllPoints()
         panel:SetAllPoints(panel.anchor)
@@ -677,6 +754,18 @@ function Shut(dungeonKey, preview, previewTier)
     panel.title:SetText((dungeon and dungeon.name or dungeonKey) .. " chest")
     local left = (ns.ChestCounts())[dungeonKey] or 0
     panel.left:SetText(preview and "|cffff8040DEV PREVIEW - nothing is unlocked|r" or left > 1 and ("%d of them waiting"):format(left) or "")
+    if show.tribute then  -- (no title: the Ogre Godz' words come in its place; its note under them)
+        local spec = previewSpec
+        for _, c in ipairs(not spec and KillTrackerDB.chests or {}) do
+            if c.dungeon == ns.TRIBUTE then spec = c.tribute break end
+        end
+        local note = spec and spec.note ~= nil and spec.note ~= "" and ('"%s"'):format(spec.note) or ""
+        panel.title:SetText("")
+        panel.left:SetText(preview and "|cffff8040DEV PREVIEW - nothing is given|r" or note)
+    end
+    beam:Hide()
+    godz:Hide()
+    ogre.say:SetText("BIG LOOT!")
     chest:SetTexture(ICONS .. "Chest")
     Light(0, 0)
     flash:SetAlpha(0)
@@ -693,11 +782,12 @@ function Shut(dungeonKey, preview, previewTier)
     PlaceButtons(false)
     panel.close:SetText("Later")
     panel.close:Show()
+    if show.tribute then Descend() end
 end
 
 -- preview (dev mode, Dev.lua): the show with everything the chest can hold, without opening one of yours; previewTier:
 -- as a chest of that tier (default: as many items as it shows).
-function ns.ShowChest(dungeonKey, preview, previewTier)
+function ns.ShowChest(dungeonKey, preview, previewTier, previewSpec)
     if not preview and ((ns.ChestCounts())[dungeonKey] or 0) == 0 then return end
     -- Over the main window's pages, covering them (the sidebar stays usable).
     local pageArea = ns.UI and ns.UI.pageArea
@@ -723,12 +813,12 @@ function ns.ShowChest(dungeonKey, preview, previewTier)
     panel.open:SetFrameLevel(panel:GetFrameLevel() + 6)  -- (their wood sits a level under them)
     panel.close:SetFrameLevel(panel:GetFrameLevel() + 6)
     top:SetFrameLevel(panel:GetFrameLevel() + 8)
-    Shut(dungeonKey, preview, previewTier)
+    Shut(dungeonKey, preview, previewTier, previewSpec)
     panel:Show()
     -- The top beam's title: the page, then the chest (clicking the page's part closes it).
     local dungeon = ns.DungeonByKey and ns.DungeonByKey(dungeonKey)
     if ns.UI.ClearScreen and panel.screenName then ns.UI.ClearScreen(panel.screenName) end  -- (another chest's, shown before)
-    panel.screenName = (dungeon and dungeon.name or "Dungeon") .. " Chest"
+    panel.screenName = dungeonKey == ns.TRIBUTE and "Ogre Godz Tribute" or ((dungeon and dungeon.name or "Dungeon") .. " Chest")
     if ns.UI.SetScreen then ns.UI.SetScreen(panel.screenName, "LOOT", function() panel:Hide() end) end
 end
 -- (its own only: it can be over the kitchen's)
