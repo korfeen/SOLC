@@ -74,7 +74,7 @@ local issecret = issecretvalue or function() return false end
 -- window is only a teaser (UI.lua's ns.ShowTeaser); what members earn counts from joining. The guild by its name, any
 -- capitals; not known yet just after login: not yet (it unlocks by itself once it is).
 -- (and for now the guild on the beta, SVENSKA INTERNET: take it out before launch)
-local OUR_GUILDS = { ["sleepy ogre leisure club"] = true, ["svenska internet"] = true }
+local OUR_GUILDS = { ["sleepy ogre leisure club"] = true, ["svenska internet"] = true, ["secret surfers"] = true }
 function ns.IsMember()
     if KillTrackerDB and KillTrackerDB.letMeIn then return true end  -- (testing: /solc letmein, this character)
     if not IsInGuild() then return false end
