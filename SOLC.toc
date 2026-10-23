@@ -1,4 +1,4 @@
-## Interface: 16001, 120000, 120001, 120005, 120007, 120100
+## Interface: 16001, 120105
 ## Title: Sleepy Ogre Leisure Club
 ## Notes: The Sleepy Ogre Leisure Club guild addon: kills, tribes and leaders, achievements, guild bounties, an activity feed and collectible pictures. Type /solc to open.
 ## Author: faluk
