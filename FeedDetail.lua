@@ -50,7 +50,7 @@ local function Describe(item)
         local mint = item.mint
         out.title, out.mint, out.owner = ("Picture #%s"):format(tostring(e.a)), mint, item.owner
         if mint then
-            local rarity = ns.MintRarity(mint.traits)
+            local rarity = ns.MintRarity(mint.traits, mint.asked)
             Add(("|c%s%s|r picture"):format(ns.RARITY_COLORS[rarity] or "ffffffff", (rarity:gsub("^%l", string.upper))), "head")
             for _, trait in ipairs(ns.MintTraits(mint.traits)) do
                 Add(("%s:  |c%s%s|r%s"):format(trait[1], ns.RARITY_COLORS[trait[3]] or "ffffffff", trait[2], ns.TraitNote(trait)))
@@ -316,7 +316,7 @@ function UI.FeedDetail(page)
         picture.piece:SetShown(piece ~= nil)
         picture.inset:SetShown(piece ~= nil)
         if d.mint then
-            local r, g, b = ns.RarityRGB(d.rim or ns.MintRarity(d.mint.traits))
+            local r, g, b = ns.RarityRGB(d.rim or ns.MintRarity(d.mint.traits, d.mint.asked))
             picture.rim:SetColorTexture(r, g, b)
             if piece then
                 ns.DrawPiece(picture.piece, piece.layer.key, piece.option)

@@ -56,6 +56,21 @@ local BOUNTIES = {
     { id = "darkiron", name = "Dark Iron Dwarves", goal = 400, count = Factions("Dark Iron Dwarves"), desc = "Searing Gorge, Burning Steppes and Blackrock Depths. Levels 45-60." },
     { id = "blackrock", name = "Blackrock Orcs", goal = 300, count = Factions("Orc, Blackrock"), desc = "Redridge, the Burning Steppes and Blackrock Spire. Levels 20-60." },
     { id = "scourge", name = "The Scourge", goal = 500, count = Factions("Undead, Scourge", "Scourge Invaders"), desc = "The Plaguelands, Stratholme and Scholomance. Levels 35-60." },
+    -- Ogre tribes (each with its own costume on the poster).
+    { id = "mogrosh", name = "Mo'grosh Ogres", goal = 100, count = Factions("Ogre, Mo'grosh"), desc = "Mo'grosh Stronghold in Loch Modan. Levels 18-22." },
+    { id = "splinterfist", name = "Splinter Fist Ogres", goal = 100, count = Factions("Ogre, Splinter Fist"), desc = "Vul'Gol Ogre Mound in Duskwood: slavers and fire weavers. Levels 25-31." },
+    { id = "boulderfist", name = "Boulderfist Ogres", goal = 150, count = Factions("Ogre, Boulderfist"), desc = "Boulderfist Hall and outposts in the Arathi Highlands. Levels 32-42." },
+    { id = "crushridge", name = "Crushridge Ogres", goal = 150, count = Factions("Ogre, Crushridge"), desc = "Crushridge Hold in the Alterac Mountains. Levels 34-43." },
+    { id = "dustbelcher", name = "Dustbelcher Ogres", goal = 150, count = Factions("Ogre, Dustbelcher"), desc = "Wyrm hunters in the Badlands. Levels 35-45." },
+    { id = "moshogg", name = "Mosh'Ogg Ogres", goal = 100, count = Factions("Ogre, Mosh'Ogg"), desc = "Mosh'Ogg Ogre Mound in Stranglethorn: witch doctors and spellcrafters. Levels 36-47." },
+    { id = "gordunni", name = "Gordunni Ogres", goal = 150, count = Factions("Ogre, Gordunni"), desc = "Blue-skinned ogres of Feralas, sworn to King Gordok. Levels 40-47." },
+    { id = "dunemaul", name = "Dunemaul Ogres", goal = 100, count = Factions("Ogre, Dunemaul"), desc = "Dunemaul Compound in the Tanaris desert. Levels 45-50." },
+    { id = "dreadmaul", name = "Dreadmaul Ogres", goal = 100, count = Factions("Ogre, Dreadmaul"), desc = "Dreadmaul Hold and Rock in the Blasted Lands. Levels 45-58." },
+    { id = "firegut", name = "Firegut Ogres", goal = 100, count = Factions("Ogre, Firegut"), desc = "The red ogres of the Burning Steppes. Levels 50-54." },
+    { id = "gordok", name = "Gordok Ogres", goal = 150, count = Factions("Ogre, Gordok"), desc = "King Gordok's own, in Dire Maul. Levels 52-60." },
+    { id = "spirestone", name = "Spirestone Ogres", goal = 100, count = Factions("Ogre, Spirestone"), desc = "Highlord Omokk's ogres in Blackrock Spire. Levels 54-59." },
+    { id = "deadwind", name = "Deadwind Ogres", goal = 100, count = Factions("Ogre, Deadwind"), desc = "Blue ogres camped in Deadwind Pass. Levels 55-60." },
+    { id = "urok", name = "Urok's Ogres", goal = 50, count = Factions("Ogre, Urok"), desc = "Urok Doomhowl's band in Blackrock Spire. Levels 54-60." },
     -- Creature types.
     { id = "undead", name = "Undead Purge", goal = 400, count = CreatureType("Undead"), desc = "Every undead creature, at any level." },
     { id = "demon", name = "Demon Hunt", goal = 150, count = CreatureType("Demon"), desc = "Demons in Ashenvale, Desolace, Felwood, Azshara and the Blasted Lands." },
@@ -287,6 +302,22 @@ local function GuildmateNames()
     return names
 end
 
+-- Who you've played with, quietly (the Dream Bed's cameos, the friendship deeds; shown nowhere as a list): guildmates
+-- only, KillTrackerDB.companions = { [name] = { seen = time, kills = together, clears = dungeons cleared together,
+-- last = the last one's key } }. clearedKey: a dungeon just cleared (else a kill).
+local function NoteCompanions(clearedKey)
+    local names = GuildmateNames()
+    if #names == 0 then return end
+    local db = KillTrackerDB
+    db.companions = db.companions or {}
+    for _, name in ipairs(names) do
+        local c = db.companions[name] or { kills = 0, clears = 0 }
+        db.companions[name] = c
+        c.seen = time()
+        if clearedKey then c.clears, c.last = c.clears + 1, clearedKey else c.kills = c.kills + 1 end
+    end
+end
+
 -- The instance map a boss fight was in: the encounter's (Encounters.lua), else where you are.
 local function InstanceMap(encounterID)
     local map = ns.EncounterMaps and ns.EncounterMaps[encounterID]
@@ -345,7 +376,10 @@ table.insert(ns.KillHandlers, function(npcID, entry, c, unit)
     local p = Points()
     local guildmates = math.min(ns.GuildmatesInGroup(), ns.Config("groupMaxGuildmates"))
     local bonus = base * ns.Config("groupBonus") / 100 * guildmates
-    if guildmates > 0 then p.guildGroup = p.guildGroup + bonus end
+    if guildmates > 0 then
+        p.guildGroup = p.guildGroup + bonus
+        NoteCompanions(nil)
+    end
     if ns.debugKills then
         ns.Print(("|cffff8000debug:|r  guild group: %d guildmate(s) in the group, +%.2f points (kill worth %d)"):format(
             guildmates, bonus, base))
@@ -374,6 +408,10 @@ local function OnEncounterEnd(encounterID, encounterName, _, _, success)
     -- An end boss down: a chance to unlock the dungeon for minting, better the more guildmates there are (Unlocks.lua).
     local cleared = ns.DungeonForEncounter and ns.DungeonForEncounter(encounterID, bossName)
     if cleared and ns.OnDungeonClear then ns.OnDungeonClear(cleared, guildmates) end
+    if cleared and guildmates > 0 then
+        NoteCompanions(cleared.key)
+        if ns.CheckAchievements then ns.CheckAchievements() end  -- (the friendship deeds)
+    end
     if cleared and ns.OnPosterEvent then ns.OnPosterEvent("wanted", cleared.key) end  -- (a wanted poster, Posters.lua)
     if guildmates < ns.Config("dungeonGuildmates") then return end
     local db = KillTrackerDB

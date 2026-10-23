@@ -526,6 +526,22 @@ const ICONS = {
     "TAILORING"].map((n) => [n, "PROFESSION"]), ...["COOKING", "FIRSTAID", "FISHING"].map((n) => [n, "SECONDARY"])],
 };
 for (const kind of Object.keys(SHAPES)) save(path.join("Icons", "Base_" + kind), SIZE, SIZE, shape(kind));
+// Each shape's glow (a level 60 card's icons, ProfileHeader.lua): its silhouette at 70%, blurred, white (tinted in the
+// game), shown a little bigger than the icon so it spreads round it.
+for (const kind of Object.keys(SHAPES)) {
+  const base = shape(kind), s = Math.round(SIZE * 0.7), off = Math.round((SIZE - s) / 2);
+  const small = resample({ width: SIZE, height: SIZE, rgba: base }, 0, 0, SIZE, SIZE, s, s);
+  let a = new Float32Array(SIZE * SIZE);
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) a[(y + off) * SIZE + x + off] = small[(y * s + x) * 4 + 3] / 255;
+  for (let pass = 0; pass < 3; pass++) {  // (a box blur three times)
+    const r = 6, b = new Float32Array(SIZE * SIZE);
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) { let sum = 0, n = 0; for (let k = -r; k <= r; k++) { const xx = x + k; if (xx >= 0 && xx < SIZE) { sum += a[y * SIZE + xx]; n++; } } b[y * SIZE + x] = sum / n; }
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) { let sum = 0, n = 0; for (let k = -r; k <= r; k++) { const yy = y + k; if (yy >= 0 && yy < SIZE) { sum += b[yy * SIZE + x]; n++; } } a[y * SIZE + x] = sum / n; }
+  }
+  const glow = Buffer.alloc(SIZE * SIZE * 4);
+  for (let i = 0; i < SIZE * SIZE; i++) { glow[i * 4] = glow[i * 4 + 1] = glow[i * 4 + 2] = 255; glow[i * 4 + 3] = Math.min(255, Math.round(a[i] * 1.4 * 255)); }
+  writeBlp(path.join(TARGET, "Icons", "Glow_" + kind + ".blp"), SIZE, SIZE, glow);
+}
 for (const [prefix, list] of Object.entries(ICONS)) {
   for (const [name, kind] of list) {
     const [share, drop] = PLACE[kind];

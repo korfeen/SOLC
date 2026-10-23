@@ -1,5 +1,5 @@
--- The bounty board: a screen over the main window's pages (like the minting kitchen), opened from the CAVE page's
--- HUNTS tab, its NEWS bounty box and /solc bounties; the top beam's title or Escape closes it. Painted in the ogre
+-- The bounty board: its own page in the sidebar (Bounties; HUNTS in ogre mode), the whole page area, also opened from
+-- the CAVE page's NEWS bounty box and /solc bounties. Painted in the ogre
 -- pictures' style (tools/gen-board-art.js: Media\Bounty\): this week's posters (Posters.lua) pinned on a tavern's
 -- bounty board, the guild's counter of claims with its milestones, and for the guild master and officers a view of
 -- next week to pick the posters.
@@ -492,6 +492,7 @@ DrawPicture = function(f)
     end
     local parts = { canvas.front, canvas.outfitFront, canvas.outfitBack }
     for _, tex in ipairs(canvas.layers or {}) do parts[#parts + 1] = tex end
+    for _, tex in pairs(canvas.behinds or {}) do parts[#parts + 1] = tex end
     for _, tex in pairs(parts) do
         if not tex.faded then tex:AddMaskTexture(canvas.fade) tex.faded = true end
         if tex:IsShown() then
@@ -510,8 +511,9 @@ local function DrawPoster(f, p, claimers)
     -- (sepia, like an inked poster; claimed too, its stamp reads better on it)
     f.art:SetDesaturated(true)
     f.art:SetVertexColor(unpack(SEPIA))
-    -- (an officer's own ogre; a wanted poster's: an ogre in the boss's gear, Posters.lua; else the engraving)
-    f.picture = (p.extra and p.extra.picture) or ns.WantedPicture(artId)
+    -- (an officer's own ogre; the poster's: a wanted boss's gear, a creature's costume, a faction's outfit, a special's
+    -- prop, Posters.lua; else the engraving)
+    f.picture = (p.extra and p.extra.picture) or ns.PosterPicture(artId)
     f.art:SetShown(not f.picture)
     f.canvas:SetShown(f.picture and true or false)
     if f.picture then DrawPicture(f) end
@@ -1247,7 +1249,6 @@ local function Build()
     screen = CreateFrame("Frame", "SOLCBountyScreen", UIParent)
     screen:EnableMouse(true)
     screen:Hide()
-    tinsert(UISpecialFrames, "SOLCBountyScreen")
     screen:SetScript("OnHide", function()
         if ns.UI.ClearScreen then ns.UI.ClearScreen("Bounty Board") end
         screen.reader:Close(true)
@@ -1311,7 +1312,7 @@ local function Build()
     nail:SetPoint("TOP", 2, -2)
     local heading = Text(screen.reset, 11, INK_DIM, "CENTER")
     heading:SetPoint("TOP", 0, -15)
-    heading:SetText("NEW POSTERS")
+    heading:SetText("NEW BOUNTIES")
     screen.meta = Text(screen.reset, 16, INK, "CENTER")
     screen.meta:SetPoint("TOP", heading, "BOTTOM", 0, -3)
     screen.posters = {}
@@ -1520,32 +1521,40 @@ local function Build()
     end
 end
 
--- Opens the board over the main window's pages; onClose runs when it closes (the CAVE page goes back to NEWS).
-function ns.ShowHuntsBoard(onClose)
-    if not screen then Build() end
-    local pageArea = UI.pageArea
-    screen:ClearAllPoints()
-    if pageArea then
-        if not pageArea:IsVisible() then ns.ToggleUI() end
-        screen:SetParent(pageArea)
-        screen:SetAllPoints(pageArea)
-        screen:SetFrameStrata(pageArea:GetFrameStrata())
-        screen:SetFrameLevel(pageArea:GetFrameLevel() + 50)
-    else
-        screen:SetParent(UIParent)
-        screen:SetSize(827, 584)
-        screen:SetPoint("CENTER")
-        screen:SetFrameStrata("DIALOG")
-    end
-    screen.onClose, screen.officer = nil, false
-    screen.rise = true  -- (the gold rises from where you last saw it: Refresh)
-    screen.swingIn = true  -- (the posters swing a little on their nails as it opens)
-    screen:Show()
-    screen.onClose = onClose
-    if UI.SetScreen then UI.SetScreen("Bounty Board", "HUNTS", function() screen:Hide() end) end
-    screen:Refresh()
-end
-function ns.RefreshHuntsBoard() if screen and screen:IsShown() then screen:Refresh() end end
+-- The board is its own page in the sidebar (Guild: Bounties; HUNTS in ogre mode), the whole page area.
+ns.RegisterPage({
+    key = "bounties", label = "Bounties", section = "guild", order = 3,
+    bare = true,
+    create = function(parent)
+        local holder = CreateFrame("Frame", nil, parent)
+        holder:SetAllPoints()
+        holder:SetScript("OnShow", function()
+            if not screen then return end
+            screen.officer = false  -- (back to this week's board)
+            screen.rise = true  -- (the gold rises from where you last saw it: Refresh)
+            screen.swingIn = true  -- (the posters swing a little on their nails as it opens)
+        end)
+        return holder
+    end,
+    refresh = function(holder)
+        if not screen then
+            Build()
+            screen.rise, screen.swingIn = true, true
+        end
+        if screen:GetParent() ~= holder then
+            screen:SetParent(holder)
+            screen:ClearAllPoints()
+            screen:SetAllPoints(holder)
+            screen:SetFrameLevel(holder:GetFrameLevel() + 5)
+        end
+        screen:Show()
+        screen:Refresh()
+    end,
+})
+
+-- Opens the board's page.
+function ns.ShowHuntsBoard() ns.OpenPage("bounties") end
+function ns.RefreshHuntsBoard() if screen and screen:IsVisible() then screen:Refresh() end end
 -- (TEMPORARY: /solc claimtest [n] draws this week's nth poster as claimed, or not again; no points, no chest, no feed)
 function ns.ToggleClaimTest(n)
     n = tonumber(n) or 1

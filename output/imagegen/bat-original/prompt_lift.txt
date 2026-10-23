@@ -1,0 +1,4 @@
+Edit this image. Remove the ogre completely: its head, face, ears, neck, hands and any bare skin.
+Keep ONLY the clothes it wears (Bat Onesie: a cute homemade bat onesie costume, sewn from CRUSHED VELVET, rich and soft, with velvet details: purple-brown with big bat wings stretched from the arms to the sides. Closed down the front; just the body suit, no hood), exactly where they are, at exactly the same size and shape, unchanged.
+Where skin showed between or around the clothes (the neck, bare arms, hands), fill with the green too.
+Everything else becomes perfectly flat pure green (#00FF00).

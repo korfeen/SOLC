@@ -1,0 +1,153 @@
+layer	id	name	rarity
+headwear	crit_bat_head	Bat Hat	uncommon
+headwear	crit_bear_head	Bear Hat	uncommon
+headwear	crit_boar_head	Boar Hat	uncommon
+headwear	crit_carrion_bird_head	Carrion Bird Hat	uncommon
+headwear	crit_cat_head	Cat Hat	uncommon
+headwear	crit_centaur_head	Centaur Hat	uncommon
+headwear	crit_crab_head	Crab Hat	uncommon
+headwear	crit_crocolisk_head	Crocolisk Hat	uncommon
+headwear	crit_demon_head	Demon Hat	uncommon
+headwear	crit_dragonkin_head	Dragonkin Hat	uncommon
+headwear	crit_dwarf_head	Dwarf Hat	uncommon
+headwear	crit_elemental_head	Elemental Hat	uncommon
+headwear	crit_furbolg_head	Furbolg Hat	uncommon
+headwear	crit_ghost_head	Ghost Hat	uncommon
+headwear	crit_ghoul_head	Ghoul Hat	uncommon
+headwear	crit_gnoll_head	Gnoll Hat	uncommon
+headwear	crit_gorilla_head	Gorilla Hat	uncommon
+headwear	crit_harpy_head	Harpy Hat	uncommon
+headwear	crit_human_head	Human Hat	uncommon
+headwear	crit_hyena_head	Hyena Hat	uncommon
+headwear	crit_kobold_head	Kobold Hat	uncommon
+headwear	crit_kodo_head	Kodo Hat	uncommon
+headwear	crit_murloc_head	Murloc Hat	uncommon
+headwear	crit_naga_head	Naga Hat	uncommon
+headwear	crit_orc_head	Orc Hat	uncommon
+headwear	crit_quilboar_head	Quilboar Hat	uncommon
+headwear	crit_raptor_head	Raptor Hat	uncommon
+headwear	crit_satyr_head	Satyr Hat	uncommon
+headwear	crit_scorpid_head	Scorpid Hat	uncommon
+headwear	crit_skeleton_head	Skeleton Hat	uncommon
+headwear	crit_spider_head	Spider Hat	uncommon
+headwear	crit_trogg_head	Trogg Hat	uncommon
+headwear	crit_troll_head	Troll Hat	uncommon
+headwear	crit_turtle_head	Turtle Hat	uncommon
+headwear	crit_wolf_head	Wolf Hat	uncommon
+headwear	crit_zombie_head	Zombie Hat	uncommon
+headwear	gear_dm_head	VanCleef's Mask	uncommon
+headwear	gear_rfc_head	Fel Horn Circlet	uncommon
+headwear	gear_rfk_head	Quilboar Bone Helm	uncommon
+headwear	gear_stocks_head	Bazil's Locks	uncommon
+headwear	fac_blackrock_head	Blackrock Helm	rare
+headwear	fac_burningblade_head	Burning Blade Hood	rare
+headwear	fac_defias_head	Defias Mask	rare
+headwear	fac_kolkar_head	Kolkar Headdress	rare
+headwear	fac_scarlet_head	Scarlet Cap	rare
+headwear	fac_venture_head	Venture Hard Hat	rare
+headwear	gear_bfd_head	Aku'mai Hood	rare
+headwear	gear_rfd_head	Coldbringer's Ice Crown	rare
+headwear	gear_smlib_head	Arcanist's Hat	rare
+headwear	gear_zf_head	Ukorz's Mohawk	rare
+headwear	hunt_tracker_head	Nesingwary's Pith Helmet	rare
+headwear	gear_dmw_head	Tortheldrin's Locks	epic
+headwear	gear_gnomer_head	Mekgineer's Helm	epic
+headwear	gear_sfk_head	Arugal's Cowl	epic
+headwear	gear_smgy_head	Bloodmage Hood	epic
+headwear	gear_ulda_head	Titan Stone Helm	epic
+headwear	gear_wc_head	Mutanus Hood	epic
+headwear	gear_barrow_head	Moonleaf Circlet	legendary
+headwear	gear_brd_head	Thaurissan's Crown	legendary
+headwear	gear_dme_head	Satyr Horns	legendary
+headwear	gear_dmn_head	Gordok Crown	legendary
+headwear	gear_excav_head	Guardian Helm	legendary
+headwear	gear_hyjal_head	Wild King's Antlers	legendary
+headwear	gear_lbrs_head	Omokk's Helm	legendary
+headwear	gear_mara_head	Crystal Crown	legendary
+headwear	gear_ony_head	Onyxia Hood	legendary
+headwear	gear_ruins_head	Rath'mael's Skull	legendary
+headwear	gear_scholo_head	Darkmaster's Hood	legendary
+headwear	gear_smarm_head	Scarlet Crusader Helm	legendary
+headwear	gear_smcath_head	Whitemane's Locks	legendary
+headwear	gear_st_head	Dreamweaver Circlet	legendary
+headwear	gear_stratl_head	Dreadlord Horns	legendary
+headwear	gear_stratu_head	Rivendare's Helm	legendary
+headwear	gear_thanes_head	Dirgehammer's Beard	legendary
+headwear	gear_ubrs_head	Drakkisath's Helm	legendary
+outfit	gear_sfk_body	Arugal's Robe	uncommon
+outfit	crit_bat_body	Bat Onesie	rare
+outfit	crit_bear_body	Bear Onesie	rare
+outfit	crit_boar_body	Boar Onesie	rare
+outfit	crit_carrion_bird_body	Carrion Bird Onesie	rare
+outfit	crit_cat_body	Cat Onesie	rare
+outfit	crit_centaur_body	Centaur Onesie	rare
+outfit	crit_crab_body	Crab Onesie	rare
+outfit	crit_crocolisk_body	Crocolisk Onesie	rare
+outfit	crit_demon_body	Demon Onesie	rare
+outfit	crit_dragonkin_body	Dragonkin Onesie	rare
+outfit	crit_dwarf_body	Dwarf Onesie	rare
+outfit	crit_elemental_body	Elemental Onesie	rare
+outfit	crit_furbolg_body	Furbolg Onesie	rare
+outfit	crit_ghost_body	Ghost Onesie	rare
+outfit	crit_ghoul_body	Ghoul Onesie	rare
+outfit	crit_gnoll_body	Gnoll Onesie	rare
+outfit	crit_gorilla_body	Gorilla Onesie	rare
+outfit	crit_harpy_body	Harpy Onesie	rare
+outfit	crit_human_body	Human Onesie	rare
+outfit	crit_hyena_body	Hyena Onesie	rare
+outfit	crit_kobold_body	Kobold Onesie	rare
+outfit	crit_kodo_body	Kodo Onesie	rare
+outfit	crit_murloc_body	Murloc Onesie	rare
+outfit	crit_naga_body	Naga Onesie	rare
+outfit	crit_orc_body	Orc Onesie	rare
+outfit	crit_quilboar_body	Quilboar Onesie	rare
+outfit	crit_raptor_body	Raptor Onesie	rare
+outfit	crit_satyr_body	Satyr Onesie	rare
+outfit	crit_scorpid_body	Scorpid Onesie	rare
+outfit	crit_skeleton_body	Skeleton Onesie	rare
+outfit	crit_spider_body	Spider Onesie	rare
+outfit	crit_tallstrider_body	Tallstrider Onesie	rare
+outfit	crit_trogg_body	Trogg Onesie	rare
+outfit	crit_troll_body	Troll Onesie	rare
+outfit	crit_turtle_body	Turtle Onesie	rare
+outfit	crit_wolf_body	Wolf Onesie	rare
+outfit	crit_zombie_body	Zombie Onesie	rare
+outfit	fac_blackrock_body	Blackrock Plate	rare
+outfit	fac_burningblade_body	Burning Blade Robes	rare
+outfit	fac_defias_body	Defias Leathers	rare
+outfit	fac_kolkar_body	Kolkar Hides	rare
+outfit	fac_scarlet_body	Scarlet Tabard	rare
+outfit	fac_syndicate_body	Syndicate Garb	rare
+outfit	fac_venture_body	Venture Overalls	rare
+outfit	gear_excav_body	Guardian Stoneskin	rare
+outfit	gear_gnomer_body	Mekgineer's Mech Suit	rare
+outfit	gear_mara_body	Theradras's Gown	rare
+outfit	gear_smarm_body	Herod's Plate	rare
+outfit	gear_smcath_body	Whitemane's Robes	rare
+outfit	gear_smgy_body	Thalnos's Robe	rare
+outfit	gear_thanes_body	Dirgehammer's Harness	rare
+outfit	gear_wc_body	Murloc Onesie	rare
+outfit	hunt_tracker_body	Nesingwary's Safari Gear	rare
+outfit	gear_bfd_body	Aku'mai Shell	epic
+outfit	gear_brd_body	Thaurissan's Robes	epic
+outfit	gear_dm_body	VanCleef's Garb	epic
+outfit	gear_dmn_body	Ogre King's Furs	epic
+outfit	gear_lbrs_body	Blackrock Plate	epic
+outfit	gear_rfc_body	Searing Blade Robe	epic
+outfit	gear_rfd_body	Coldbringer Shroud	epic
+outfit	gear_rfk_body	Razorflank Hide	epic
+outfit	gear_ruins_body	Rath'mael's Robes	epic
+outfit	gear_smlib_body	Scarlet Arcanist Robe	epic
+outfit	gear_st_body	Emerald Dragonscale	epic
+outfit	gear_stocks_body	Bazil's Armor	epic
+outfit	gear_stratu_body	Death Knight Plate	epic
+outfit	gear_zf_body	Sandscalp Plate	epic
+outfit	gear_barrow_body	Barrowmoon Robe	legendary
+outfit	gear_dme_body	Alzzin's Fur	legendary
+outfit	gear_dmw_body	Tortheldrin's Armor	legendary
+outfit	gear_hyjal_body	Wild Bark Armor	legendary
+outfit	gear_ony_body	Onyxia Onesie	legendary
+outfit	gear_scholo_body	Necromancer Robes	legendary
+outfit	gear_stratl_body	Balnazzar's Wings	legendary
+outfit	gear_ubrs_body	Drakkisath's Scale Mail	legendary
+outfit	gear_ulda_body	Archaedas's Stoneskin	legendary

@@ -17,6 +17,17 @@ local DIMENSIONS = {
     { key = "subtype", tiers = TIERS },
     { key = "faction", tiers = TRIBE_TIERS },
 }
+-- Factions with a target of their own instead of 1000. Not meant to be fair: some easy, some a silly chase. The
+-- dragonflights (each with its costume, tools/gen-art-creatures.json crit_<flight>flight_*): Black and Blue stay at
+-- 1000 (Blue: there are hardly any), Green and Red are quicker. Bronze has none to kill: its costume comes from the
+-- other four (Minting.lua's combines).
+local FACTION_TIERS = {
+    ["Dragonflight, Green"] = { { kills = 250 } },
+    ["Dragonflight, Red"] = { { kills = 100 } },
+}
+local function TiersOf(dim, category)
+    return dim.key == "faction" and FACTION_TIERS[category] or dim.tiers
+end
 
 -- Tribe factions read better without their race: "Gnoll - Riverpaw" -> "Riverpaw", "Troll, Sandfury" -> "Sandfury".
 local RACE_PREFIXES = { "Gnoll", "Ogre", "Troll", "Murloc", "Harpy", "Kobold", "Furbolg", "Trogg", "Naga", "Satyr",
@@ -80,7 +91,28 @@ local FEATS = {
         { 3, "Proud Display", 10 } } },
     { key = "puzzles", label = "Puzzle races won", unit = "won", count = function(_, f) return f.won end, tiers = {
         { 1, "Puzzle Pincher", 15 }, { 5, "Board Bully", 30 }, { 10, "Swap King", 50 } } },
+    -- From your tally (ns.Tally; only yours: not synced) and the plinko's own count of drops.
+    { key = "bounties", label = "Bounties claimed", unit = "bounties", count = function(_, f) return f.bounties end, tiers = {
+        { 1, "First Bounty", 10 }, { 10, "Bounty Regular", 20 }, { 25, "Poster Child", 35 }, { 50, "Gold Digger", 60 },
+        { 100, "Most Wanted Hunter", 100 } } },
+    { key = "chests", label = "Chests opened", unit = "chests", count = function(_, f) return f.chests end, tiers = {
+        { 1, "Lid Flipper", 5 }, { 10, "Rummager", 15 }, { 50, "Treasure Hoarder", 40 }, { 100, "Dragon's Hoard", 70 } } },
+    { key = "plinko", label = "Plinko drops", unit = "drops", count = function(_, f) return f.drops end, tiers = {
+        { 10, "Pin Ball", 5 }, { 100, "Bouncy Castle", 20 }, { 365, "Every Single Day", 50 } } },
+    { key = "jackpot", label = "Plinko jackpots", unit = "jackpots", count = function(_, f) return f.jackpots end, tiers = {
+        { 1, "Jackpot!", 30 } } },
+    -- Friendship: the most dungeons you've cleared with one guildmate (KillTrackerDB.companions, Guild.lua).
+    { key = "buddy", label = "Dungeons with one guildmate", unit = "clears together", count = function(_, f) return f.buddy end, tiers = {
+        { 3, "Dungeon Buddies", 15 }, { 10, "Partners In Crime", 30 }, { 25, "Inseparable", 60 }, { 50, "Joined At The Hip", 100 } } },
 }
+
+-- Your lifetime tally of things counted nowhere else (KillTrackerDB.tally: bounties claimed, chests opened, plinko
+-- jackpots): one more, and the deeds checked (with the usual popup).
+function ns.Tally(key)
+    KillTrackerDB.tally = KillTrackerDB.tally or {}
+    KillTrackerDB.tally[key] = (KillTrackerDB.tally[key] or 0) + 1
+    if ns.CheckAchievements then ns.CheckAchievements() end
+end
 -- Every rare in a zone (Rares.lua): one feat per zone, "<zone>'s Most Wanted" unless it has a name of its own.
 local ZONE_RARE_NAMES = {
     ["Elwynn Forest"] = "Elwynn's Most Wanted", ["Westfall"] = "Westfall Wanted Posters", ["Dun Morogh"] = "Snowed Under",
@@ -401,7 +433,7 @@ function ns.AchievementTitle(id)
     if not dimension then return tostring(id) end
     for _, dim in ipairs(DIMENSIONS) do
         if dim.key == dimension then
-            for i, tier in ipairs(dim.tiers) do
+            for i, tier in ipairs(TiersOf(dim, category)) do
                 if tier.kills == tonumber(target) then
                     return TierName(dimension, category, i), ("%s %s kills"):format(target, ShortName(category))
                 end
@@ -447,12 +479,19 @@ local function CountKills(source)
     facts.won = mine and 0 or nil
     for _, mint in pairs(source.mints or {}) do
         facts.pictures = facts.pictures + 1
-        local rarity = ns.MintRarity and RARITY_ORDER[ns.MintRarity(mint.traits)] or 0
+        local rarity = ns.MintRarity and RARITY_ORDER[ns.MintRarity(mint.traits, mint.asked)] or 0
         if rarity >= 3 then facts.epic = facts.epic + 1 end
         if rarity >= 4 then facts.legendary = facts.legendary + 1 end
         if mine and mint.wonFrom then facts.won = facts.won + 1 end
     end
     facts.showcase = source.showcase and #(source.showcase.numbers or {}) or 0
+    if mine then
+        local tally = source.tally or {}
+        facts.bounties, facts.chests, facts.jackpots = tally.bounties or 0, tally.chests or 0, tally.jackpots or 0
+        facts.drops = source.plinko and source.plinko.drops or 0
+        facts.buddy = 0
+        for _, c in pairs(source.companions or {}) do facts.buddy = math.max(facts.buddy, c.clears or 0) end
+    end
     return counts, facts
 end
 
@@ -477,7 +516,7 @@ local function CheckAchievements(silent)
     local counts, facts = CountKills(KillTrackerDB)
     for _, dim in ipairs(DIMENSIONS) do
         for category, kills in pairs(counts[dim.key]) do
-            for i, tier in ipairs(dim.tiers) do
+            for i, tier in ipairs(TiersOf(dim, category)) do
                 if kills < tier.kills then break end
                 awarded = awarded + Award(AchievementID(dim.key, category, tier.kills), TierName(dim.key, category, i),
                     ("%d %s kills"):format(tier.kills, ShortName(category)), silent)
@@ -561,7 +600,7 @@ BuildProgress = function(source)
     for _, dim in ipairs(DIMENSIONS) do
         for category, kills in pairs(counts[dim.key]) do
             local list = {}
-            for i, tier in ipairs(dim.tiers) do
+            for i, tier in ipairs(TiersOf(dim, category)) do
                 local id = AchievementID(dim.key, category, tier.kills)
                 list[i] = { id, TierName(dim.key, category, i), tier.kills, ns.AchievementPoints(id) }
             end

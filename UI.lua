@@ -1,8 +1,9 @@
 -- The Sleepy Ogre Leisure Club window: a sidebar of pages on the left, the chosen page on the right.
---   Me      Overview, Kills (+ PvP tab), Achievements, Collection
---   Guild   Home, Members (+ Crafters tab), Leaderboard (+ Bounties tab), Gallery (GuildPages.lua)
+--   Me      Overview, Kills (FOES, RARES, PVP tabs), Deeds (SmashPage.lua)
+--   Guild   Home (+ Members and its Crafters, its NEWS / MEMBERS / MAKE tabs), Bounties (the bounty board, HuntsBoard.lua), Gallery (GuildPages.lua)
 --   Settings: the cog in the top right
--- A page with tabOf = "<key>" has no sidebar button: it's a tab of that page, in the tabs under the window.
+-- A page with tabOf = "<key>" has no sidebar button: it's a tab of that page, in the tabs under the window. One with
+-- under = "<key>" has none either and lights that page's button (reached from that page's own tabs: Members, Guild).
 -- Pages register with ns.RegisterPage; this file has the window, the sidebar, and the list pages (Kills,
 -- PvP, Achievements, Collection), which show your stats, the combined stats of everyone you follow (see
 -- Combined.lua) or a synced guildmate's (see Sync.lua), chosen with the arrows in the page header.
@@ -30,7 +31,7 @@ ns.UI = { PAGE_WIDTH = PAGE_WIDTH, PAGE_HEIGHT = PAGE_HEIGHT, ROW_HEIGHT = ROW_H
 -- Kill views: levels are the categories (fields of ns.Categorize's result) a view drills through, one
 -- click each, before listing the mobs themselves.
 local VIEWS = {
-    creatures = { label = "Creatures", levels = { "subtype", "faction" } },
+    creatures = { label = "Foes", levels = { "subtype", "faction" } },
     rank = { label = "Rank", levels = { "rank" } },
     mobs = { label = "Mobs", levels = {} },
     pvp = { levels = { "race", "class" }, players = true },
@@ -704,12 +705,12 @@ local NAV_COLOR, NAV_CURRENT_COLOR = { 1, 0.93, 0.78 }, { 1, 0.82, 0 }  -- cream
 local NAV_OUTLINE = { 0.18, 0.09, 0.03 }  -- dark brown, like the wood's shadows (ns.UI.OutlineText)
 
 -- Ogre mode (/solc ogre, KillTrackerDB.ogreMode): the sidebar and the tabs in ogre words, 5 letters at most,
--- in an order that reads ME SMASH PIX, CAVE FRENZ, THUNK (pages not listed come after).
+-- in an order that reads ME SMASH BRAG, CAVE HUNTS, THUNK (pages not listed come after).
 local OGRE_LABELS = {
-    overview = "ME", kills = "SMASH", collection = "PIX", home = "CAVE", members = "FRENZ", puzzle = "THUNK",
+    overview = "ME", kills = "SMASH", deeds = "BRAG", collection = "PIX", home = "CAVE", members = "FRENZ", bounties = "HUNTS", puzzle = "THUNK",
 }
 local OGRE_ORDER = {}
-for i, key in ipairs({ "overview", "kills", "collection", "home", "members", "puzzle" }) do OGRE_ORDER[key] = i end
+for i, key in ipairs({ "overview", "kills", "deeds", "collection", "home", "members", "bounties", "puzzle" }) do OGRE_ORDER[key] = i end
 local function OgreMode() return KillTrackerDB and KillTrackerDB.ogreMode end
 local function OgreLabel(page) return OgreMode() and OGRE_LABELS[page.key] end
 local function NavLabel(page) return OgreLabel(page) or NAV_LABELS[page.key] or page.label end
@@ -912,7 +913,7 @@ local function BuildSidebar()
     for _, section in ipairs(SECTIONS) do
         local inSection = {}
         for _, page in ipairs(pageOrder) do
-            if page.section == section.key and not page.tabOf then inSection[#inSection + 1] = page end
+            if page.section == section.key and not page.tabOf and not page.under then inSection[#inSection + 1] = page end
         end
         table.sort(inSection, function(a, b) return (a.order or 99) < (b.order or 99) end)
         for _, page in ipairs(inSection) do
@@ -1288,7 +1289,7 @@ local function RowTooltip(self)
         GameTooltip:Show()
     elseif self.data.mint then
         local mint = self.data.mint
-        local rarity = ns.MintRarity(mint.traits)
+        local rarity = ns.MintRarity(mint.traits, mint.asked)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], self.data.label))
         for _, trait in ipairs(ns.MintTraits(mint.traits)) do
@@ -1376,7 +1377,7 @@ local function FillRow(row, d, total, max)
         row.count:SetText(("%d points"):format(d.count))
         barFraction = 0
     elseif d.mint then
-        local rarity = ns.MintRarity(d.mint.traits)
+        local rarity = ns.MintRarity(d.mint.traits, d.mint.asked)
         row.label:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], d.label)
             .. (d.mint.duplicateOf and "  |cffff6060Duplicate|r" or ""))
         row.count:SetText(d.mint.duplicateOf and "|cffffd100Reroll free|r"
@@ -1436,7 +1437,8 @@ end
 
 -- The list's state and rows, for the pages (SmashPage.lua, PixPage.lua): state (view, path, viewing, page),
 -- BuildRows(), FillRow(row, d, total, max), RowTooltip(row) (row.data = d), Source().
-ns.UI.List = { state = state, BuildRows = BuildRows, FillRow = FillRow, RowTooltip = RowTooltip, Source = Source }
+ns.UI.List = { state = state, BuildRows = BuildRows, FillRow = FillRow, RowTooltip = RowTooltip, Source = Source,
+    CollectMobs = CollectMobs }
 
 -- Pictures open on the PIX page, picked (PixPage.lua). owner: whose it is, if not yours (a short name).
 -- Yours open on your Overview (OverviewCard.lua: on the photo's place, with its traits and buttons); a guildmate's on
@@ -1576,7 +1578,7 @@ function Refresh()
     -- state.page stays the key asked for when the page covers it, so the page can open the matching tab.
     local current = PageFor(state.page) or pages.overview
     if current.key ~= state.page and not (current.covers and current.covers[state.page]) then state.page = current.key end
-    local navKey = current.tabOf or current.key  -- a tab lights its page's button
+    local navKey = current.tabOf or current.under or current.key  -- a tab lights its page's button
     body:SetShown(not current.bare)
     pageArea:SetBackdropColor(0, 0, 0, current.bare and 0 or 0.35)
     for key, page in pairs(pages) do

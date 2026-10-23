@@ -93,78 +93,94 @@ function ns.RankPerk(kind, rank)
     return best
 end
 
--- Name colours for the profile header (picked in its edit mode, ProfileHeader.lua): white for everyone, the rank
--- perks' colours once reached, and more bought with points (cost). KillTrackerDB.nameColors = { [id] = true } for
--- the bought ones; the one picked is KillTrackerDB.card.nameColor (synced).
-ns.NAME_COLORS = { { id = "white", name = "White", value = { 1, 1, 1 } } }
-for _, perk in ipairs(ns.RANK_PERKS) do
-    if perk.kind == "nameColor" then
-        ns.NAME_COLORS[#ns.NAME_COLORS + 1] = { id = perk.id, name = perk.name, value = perk.value, rank = perk.rank }
+-- Colours, picked in the header's edit mode (ProfileHeader.lua) for your name, your level 60 glow and your header's
+-- background: one per ogre skin, yours once you have the skin (a free one, or its unlock: Unlocks.lua), and white for
+-- everyone. The ones picked: KillTrackerDB.card.nameColor / glowColor / bgColor (synced). Built on first use (the
+-- skins are in MintArt.lua, which loads after this).
+local SKIN_RGB = {  -- each skin's face colour (sampled from the skins, as tools/make-crayon-items.js SKINS)
+    celestial_blue = { 66, 72, 107 }, enchanted_jade = { 112, 119, 58 }, gold = { 182, 131, 40 }, obsidian_ember = { 92, 56, 43 },
+    sea_cursed_teal = { 70, 114, 104 }, pale_lavender = { 164, 127, 155 }, slate_gray = { 106, 101, 102 }, sunburnt_red = { 182, 67, 54 },
+    moss = { 136, 107, 43 }, mud_brown = { 125, 82, 47 }, swamp_green = { 104, 94, 48 }, grand_sleepy_pink = { 214, 112, 158 },
+}
+ns.NAME_COLORS = { { id = "white", name = "White", value = { 1, 1, 1 }, base = { 0.55, 0.5, 0.45 } } }
+local colorsBuilt = false
+function ns.Colors()
+    if colorsBuilt or not ns.MintLayers then return ns.NAME_COLORS end
+    colorsBuilt = true
+    for _, layer in ipairs(ns.MintLayers) do
+        if layer.key == "skin" then
+            for _, option in ipairs(layer.options) do
+                local rgb = SKIN_RGB[option.id]
+                if rgb and not option.retired then
+                    -- (brighter for a name on the dark wood; the background takes the skin's own)
+                    local bright = {}
+                    for i = 1, 3 do bright[i] = math.min(1, (rgb[i] * 1.3 + 50) / 255) end
+                    ns.NAME_COLORS[#ns.NAME_COLORS + 1] = { id = option.id, name = option.name, value = bright,
+                        base = { rgb[1] / 255, rgb[2] / 255, rgb[3] / 255 }, skin = option }
+                end
+            end
+        end
     end
+    return ns.NAME_COLORS
 end
-for _, bought in ipairs({
-    { id = "swamp", name = "Swamp Green", value = { 0.45, 0.85, 0.35 }, cost = 250 },
-    { id = "sky", name = "Sky Blue", value = { 0.45, 0.75, 1 }, cost = 250 },
-    { id = "mud", name = "Mud Brown", value = { 0.72, 0.52, 0.32 }, cost = 250 },
-    { id = "lava", name = "Lava Red", value = { 1, 0.3, 0.25 }, cost = 500 },
-    { id = "purple", name = "Royal Purple", value = { 0.7, 0.45, 1 }, cost = 500 },
-    { id = "mint", name = "Fresh Mint", value = { 0.4, 1, 0.8 }, cost = 1000 },
-    { id = "fel", name = "Fel Glow", value = { 0.6, 1, 0.1 }, cost = 1000 },
-}) do ns.NAME_COLORS[#ns.NAME_COLORS + 1] = bought end
 
 function ns.FindNameColor(id)
-    for _, entry in ipairs(ns.NAME_COLORS) do
+    for _, entry in ipairs(ns.Colors()) do
         if entry.id == id then return entry end
     end
 end
 
--- Whether you can use a name colour (reached its rank, or bought it).
+-- Whether you can use a colour: its skin is yours (free, or unlocked).
 function ns.HasNameColor(entry)
-    if entry.rank then return ns.GetRank().rank >= entry.rank end
-    if entry.cost then return (KillTrackerDB.nameColors or {})[entry.id] == true end
-    return true
+    local option = entry.skin
+    return not option or not option.unlock or ns.IsUnlocked("skin:" .. option.id)
 end
 
--- Buys a name colour with points. Returns true, or false and why not.
-function ns.BuyNameColor(id)
-    local db = KillTrackerDB
-    local entry = ns.FindNameColor(id)
-    if not entry or not entry.cost then return false, "That colour can't be bought." end
-    if ns.HasNameColor(entry) then return false, "You already have it." end
-    local balance = ns.GetPoints().balance
-    if balance < entry.cost then return false, ("Not enough points (%d of %d)."):format(balance, entry.cost) end
-    db.points.spent = db.points.spent + entry.cost
-    db.nameColors = db.nameColors or {}
-    db.nameColors[id] = true
-    return true
+-- (colours aren't bought any more: they come with the skins)
+function ns.BuyNameColor() return false, "Colours come with ogre skins." end
+
+-- Someone's colour for one use ("name", "glow", "bg"): the entry they picked (yours only while you have it), or nil.
+function ns.GetCardColor(key, use)
+    local card = key and KillTrackerFriends[key] and KillTrackerFriends[key].card or not key and KillTrackerDB.card
+    local entry = card and ns.FindNameColor(card[use == "name" and "nameColor" or use .. "Color"])
+    if entry and (key or ns.HasNameColor(entry)) then return entry end
 end
 
 -- The colour of someone's name (RGB): the one they picked (yours only while you still have it), else their best
 -- rank colour, else white.
 function ns.GetNameColor(key)
-    local card = key and KillTrackerFriends[key] and KillTrackerFriends[key].card or not key and KillTrackerDB.card
-    local entry = card and card.nameColor and ns.FindNameColor(card.nameColor)
-    if entry and (key or ns.HasNameColor(entry)) then return entry.value end
-    return ns.RankPerk("nameColor", ns.GetRank(key).rank) or ns.NAME_COLORS[1].value
+    local entry = ns.GetCardColor(key, "name")
+    return entry and entry.value or ns.NAME_COLORS[1].value
 end
 
--- Watches your rank: a popup and a feed event (K, a = rank) each time it goes up. KillTrackerDB.rank is the last
--- rank seen (nil until the first check, which only records it).
+-- Watches your rank: a popup and a feed event (K, a = rank) each time it goes up, and Bonks for the Dream Bed (an extra
+-- night: BONKS a rank, BONKS_BIG every fifth). KillTrackerDB.rank is the last rank seen (nil until the first check,
+-- which only records it).
+local BONKS, BONKS_BIG = 1, 3
+local RANK_UNLOCKS = { [30] = "skin:grand_sleepy_pink" }
 function ns.CheckRank()
     local db = KillTrackerDB
     if not db or not ns.GetPoints then return end
     local current = ns.GetRank()
     local seen = db.rank
     db.rank = current.rank
+    -- (what a rank unlocks in the minting art: option keys by rank - Grand Sleepy Pink at 30; also caught up on login)
+    for rank, key in pairs(RANK_UNLOCKS) do
+        if current.rank >= rank and ns.UnlockOption then ns.UnlockOption(key, seen == nil) end
+    end
     if not seen or current.rank <= seen then return end
+    local bonks = 0
     for rank = seen + 1, current.rank do
         if ns.AddEvent then ns.AddEvent("K", rank) end
+        bonks = bonks + (rank % 5 == 0 and BONKS_BIG or BONKS)
     end
+    if ns.AddIngredient then ns.AddIngredient("bonk", bonks, true) end
     local unlocked = {}
     for _, perk in ipairs(ns.RANK_PERKS) do
         if perk.rank > seen and perk.rank <= current.rank then unlocked[#unlocked + 1] = perk.text end
     end
-    ns.ShowToast("achievement", ("Rank %d!"):format(current.rank), current.title, unlocked[1] or "Keep smashing.")
+    unlocked[#unlocked + 1] = ("%d %s for the Dream Bed"):format(bonks, bonks == 1 and "Bonk" or "Bonks")
+    ns.ShowToast("achievement", ("Rank %d!"):format(current.rank), current.title, unlocked[1])
     ns.Print(("You reached rank %d: |cffff8000%s|r%s"):format(current.rank, current.title,
         #unlocked > 0 and (". Unlocked: " .. table.concat(unlocked, "; ")) or ""))
     if ns.OnKillsChanged then ns.OnKillsChanged() end

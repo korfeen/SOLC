@@ -1,0 +1,14 @@
+Image 1 is an ogre character on a green background. Images 2 onward show example outfits worn by that same ogre.
+EDIT image 1 itself - do not redraw the ogre. Paint the new item onto this exact picture: every pixel of the ogre that
+the item doesn't cover stays exactly as it is (its head, face, ears, neck, arms and hands, where and how big they are),
+and the green background stays. The only change: it now wears an outfit (clothes, from the neck down): Bat Onesie: a cute homemade bat onesie costume, sewn from CRUSHED VELVET, rich and soft, with velvet details: purple-brown with big bat wings stretched from the arms to the sides. Closed down the front; just the body suit, no hood.
+NOTHING of the outfit rises above the bottom of the jaw beside the head: no stand-up or high collar next to the
+cheeks or ears. Collars are low: folded down, flat, or a rounded neckline at the base of the neck. Tall parts
+(pauldrons, spikes, wings, capes, furs) belong on the shoulders and out to the sides, away from the head.
+The ogre stays EXACTLY the size it is in image 1, not bigger or smaller, and the clothes run all the way down OFF the bottom edge of the picture across its whole body, cut off by the edge just as its body is in image 1 - never ending above it.
+Keep its arms and hands EXACTLY where and as wide as in image 1. Anything on the arms (sleeves, bracers, gauntlets) is chunky and a little oversized, wrapping the whole arm with no skin showing at its sides.
+It is a LOOSE, roomy costume, a size too big for it: baggy sleeves clearly wider than its arms, the body wider than its body all round, soft and puffy - never skin tight, and no skin showing anywhere at the sides of its body or arms.
+Fit the clothes naturally to its body. They don't have to follow its outline: big parts (pauldrons, spikes, capes,
+wings, tails, furs) can stick out past it, and skimpy clothes can leave lots of skin bare (a loincloth, a mankini).
+The head and face stay bare: no hat, no headwear, nothing over the face. Match the same soft painted look as the example pieces: smooth shading, gentle highlights, warm lighting, clean edges, no outline.
+The image after the examples shows the hat of the same set: the clothes must match it (its colours, materials and theme), but do NOT draw the hat.

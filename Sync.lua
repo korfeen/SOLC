@@ -22,8 +22,9 @@
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
 --   record     = subtype^weight^mob^zone^time
 --   group kill = npcID^spawnKey                  (for the de-duplicated combined total, see Combined.lua)
---   picture    = number^time^layer:option;layer:option...[^style]   (minted pictures, see Minting.lua; style: c / s for
---                every layer in crayon / sketch, layer=c,layer=s for a mix)
+--   picture    = number^time^layer:option;layer:option...[^style^asked^paintedBy^frame^tale]   (minted pictures, see
+--                Minting.lua; style: c / s for every layer in crayon / sketch, layer=c,layer=s for a mix; frame: its
+--                picture frame's id, Frames.lua; tale: the dream the ogre told, DreamBed.lua)
 --   posters    = week^id,id,...                 (this week's bounty posters you've claimed, see Posters.lua)
 --   summary    = earned points^PvP kills         (always sent, for the Members and Leaderboard pages)
 --   event      = time^kind^a^b[^c^d]             (guild activity feed, see Feed.lua; c and d from 0.41.0 on)
@@ -35,7 +36,7 @@
 --                behind their model, see Minting.lua; only when changed, empty otherwise; the "S" tells
 --                "none" from "unchanged")
 --   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
---   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor^ogre^photoOgre^ogreStyle   (their character
+--   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor^ogre^photoOgre^ogreStyle^glowColor^bgColor^main   (their character
 --                card's choices: gender icon, the picture shown instead of their model (OverviewCard.lua), their profile
 --                header's background, its crop (thousandths; zoom in hundredths) and their name colour (ProfileHeader.lua),
 --                the ogre they built (layer:id,...; Minting.lua), "1" if it's their photo, and its layers' editions
@@ -185,7 +186,8 @@ local function SerializeCard(db, baseSeq)
     table.sort(ogre)
     return table.concat({ "C", Clean(card.gender), card.portrait and Base36(card.portrait) or "", Clean(card.headerBg),
         Scaled(card.cropX, 1000), Scaled(card.cropY, 1000), Scaled(card.cropZoom, 100), Clean(card.nameColor),
-        table.concat(ogre, ","), card.photoOgre and "1" or "", ns.StyleKey(card.ogreStyle) }, FIELD)
+        table.concat(ogre, ","), card.photoOgre and "1" or "", ns.StyleKey(card.ogreStyle), Clean(card.glowColor), Clean(card.bgColor),
+        Clean(card.main) }, FIELD)
 end
 
 -- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
@@ -224,7 +226,7 @@ local function Serialize(db, baseSeq)
             for key, id in pairs(mint.traits) do traits[#traits + 1] = Clean(key) .. ":" .. Clean(id) end
             table.sort(traits)
             pictures[#pictures + 1] = table.concat({ Base36(mint.number), Base36(mint.time), table.concat(traits, ";"),
-                ns.StyleKey(mint.style) ~= "" and ns.StyleKey(mint.style) or nil }, FIELD)
+                ns.StyleKey(mint.style), Clean(mint.asked), Clean(mint.paintedBy), Clean(mint.frame), Clean(mint.tale) }, FIELD)  -- (asked, painter, tale: the Dream Bed; its frame)
         end
     end
     local group = {}
@@ -306,7 +308,8 @@ local function Deserialize(payload)
                 local key, id = pair:match("^([%w_]+):([%w_]+)$")
                 if key then traits[key] = id end
             end
-            update.mints[#update.mints + 1] = { number = number, time = time, traits = traits, style = ns.StyleFromKey(f[4]) }
+            update.mints[#update.mints + 1] = { number = number, time = time, traits = traits, style = ns.StyleFromKey(f[4]),
+                asked = Optional(f[5]), paintedBy = Optional(f[6]), frame = Optional(f[7]), tale = Optional(f[8]) }  -- (from 0.41.0 on)
         end
     end
     local f = Split(s[11], FIELD)
@@ -384,6 +387,8 @@ local function Deserialize(payload)
         update.card.photoOgre = f[10] == "1" or nil
         local style = ns.StyleFromKey(f[11])  -- its layers in crayon or sketched (a table: some layers)
         update.card.ogreStyle = type(style) == "table" and style or nil
+        update.card.glowColor, update.card.bgColor = Optional(f[12]), Optional(f[13])  -- (from 0.41.0 on)
+        update.card.main = Optional(f[14])  -- (an alt: its main's name; from 0.41.0 on)
     end
     return update
 end

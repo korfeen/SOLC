@@ -48,12 +48,14 @@ local PRIZES = {
     chest = { kind = "chest", label = "Chest", icon = CHEST },
     x5 = { kind = "points", times = 5 }, x3 = { kind = "points", times = 3 }, x2 = { kind = "points", times = 2 },
     x1 = { kind = "points", times = 1 }, x05 = { kind = "points", times = 0.5 },
-    frostwood = { kind = "fuel", key = "frostwood", label = "Frostwood" },
-    shimmer = { kind = "fuel", key = "shimmer", label = "Shimmer" },
+    -- (the slots' keys stay, as boards have them: they pay the Dream Bed's milk and stories now)
+    frostwood = { kind = "fuel", key = "milk", label = "Milk" },
+    shimmer = { kind = "fuel", key = "milk", label = "Milk x2", n = 2 },
     spice = { kind = "spice", label = "Spice" },
+    bonk = { kind = "fuel", key = "bonk", label = "Bonk" },  -- (another night in the Dream Bed)
     none = { kind = "none", label = "Nothing", icon = NOTHING },
 }
-local PRIZE_ORDER = { "chest", "x5", "x3", "x2", "x1", "x05", "frostwood", "shimmer", "spice", "none" }
+local PRIZE_ORDER = { "chest", "x5", "x3", "x2", "x1", "x05", "frostwood", "shimmer", "spice", "bonk", "none" }
 
 -- The board everyone plays (until the guild has boards of its own): conveyor rows by turns left and right over the
 -- slots' middles and their walls; a Node simulation of it: about 0.6% chests, ~9% at most for a drop perfect to the
@@ -98,12 +100,7 @@ end
 
 local function Cost() return ns.Config("plinkoCost") or 50 end
 
--- Today, as a number that changes at the daily reset.
-local function Today()
-    local reset = C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset and C_DateAndTime.GetSecondsUntilDailyReset()
-        or (GetQuestResetTime and GetQuestResetTime()) or 0
-    return math.floor((GetServerTime() + reset) / 86400 + 0.5)
-end
+local Today = ns.Today  -- (Core.lua: the daily reset's day)
 local function State()
     local db = KillTrackerDB
     db.plinko = db.plinko or { drops = 0 }
@@ -132,15 +129,15 @@ local function Pay(prize)
         if ns.Touch then ns.Touch(db.points) end
         return ("%d points"):format(won)
     elseif prize.kind == "fuel" then
-        ns.AddIngredient(prize.key, 1, true)
+        ns.AddIngredient(prize.key, prize.n or 1, true)
         return ns.IngredientName(prize.key)
     elseif prize.kind == "spice" then
-        local spec = ns.LAYER_INGREDIENTS[math.random(#ns.LAYER_INGREDIENTS)]
-        ns.AddIngredient(spec.key, 1, true)
-        return spec.name
+        ns.AddIngredient("story", 1, true)
+        return ns.IngredientName("story")
     elseif prize.kind == "chest" then
         local key = ChestDungeon()
         ns.AddChest(key)
+        if ns.Tally then ns.Tally("jackpots") end  -- (the Plinko jackpots deed)
         local d = ns.DungeonByKey(key)
         ns.ShowToast("achievement", "Plinko jackpot!", (d and d.name or key) .. " chest", "Open it on your PIX page")
         return (d and d.name or key) .. " chest"
@@ -150,7 +147,7 @@ end
 local function PrizeIcon(prize)
     if prize.kind == "points" then return COIN end
     if prize.kind == "fuel" then return ns.IngredientIcon(prize.key) end
-    if prize.kind == "spice" then return ns.IngredientIcon("l_headwear") end
+    if prize.kind == "spice" then return ns.IngredientIcon("story") end
     return prize.icon
 end
 local function PrizeLabel(prize)
@@ -689,6 +686,7 @@ Drop = function(self)
         if ns.Touch then ns.Touch(db.points) end
     end
     state.freeUsed, state.drops = true, (state.drops or 0) + 1
+    if ns.CheckAchievements then ns.CheckAchievements() end  -- (the Plinko drops deeds)
     ball.live, ball.slot, ball.smashes, ball.wait = true, nil, PLINKO.SMASHES, 0
     ball.x, ball.y = AimX() + (math.random() * 2 - 1), PLINKO.START_Y
     ball.vx, ball.vy = (math.random() * 2 - 1) * 15, 0

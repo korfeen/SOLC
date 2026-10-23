@@ -1,0 +1,7 @@
+Image 1 is an ogre character on a green background. Images 2 onward show example headwear pieces worn by that same ogre.
+EDIT image 1 itself - do not redraw the ogre. Paint the new item onto this exact picture: every pixel of the ogre that
+the item doesn't cover stays exactly as it is (its head, face, clothes and hands, where and how big they are), and the
+green background stays. The only change: it now wears a piece of headwear: Bat Hat: a cute homemade bat costume hat, sewn from CRUSHED VELVET, rich and soft, with velvet details: a purple-brown bat head: two huge pointy ears and two tiny white fangs. Like the hood of a bat onesie, but worn on its own as a hat: it sits on the head, above the brow, and the face is fully visible.
+Fit it naturally on its head, as the examples sit. It must not cover the eyes or the face: it sits on the head, above the brow. Match the same soft painted look as the example pieces: smooth shading, gentle highlights, warm lighting, clean edges, no outline.
+
+The image after the examples shows the outfit of the same set: the headwear must match it (its colours, materials and theme), but the ogre keeps the clothes of image 1.

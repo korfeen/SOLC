@@ -3,13 +3,15 @@
 -- showcase pictures and what happened to them lately; GEARZ: their stats, their gear round their character on the right
 -- page; CRAFTS: their professions, the one picked and its recipes filling the right page. On the right page (RIGHT)
 -- otherwise: their photo, filling it down to a cross beam with their first name on.
--- The photo shows the character's model on the background they picked, or one of their pictures instead (right-click
--- your own photo); when there's no model of someone to show (their character isn't synced), their chosen picture
--- shows, else their first showcase picture, else their newest.
+-- The photo (ME) is the ogre they built (Minting.lua: their avatar; the showcase is for their lucky mints). With none
+-- built: for you a big MAKE YOUR OGRE (the builder); for someone else the picture they chose, else their first showcase
+-- picture, else their newest, else their character. Characters are on GEARZ (their gear round them).
 -- KillTrackerDB.card = { gender = "MALE" | "FEMALE" | "NONBINARY" (no longer shown), portrait = picture number, seq },
 -- synced (Sync.lua, the card section).
 
 local _, ns = ...
+-- Shorter names for the long layer labels, for a trait that doesn't fit even in a smaller font.
+local SHORT_LABELS = { Background = "Back", Expression = "Face", Accessory = "Extra", Headwear = "Hat" }
 local UI = ns.UI
 local Fit, SetTooltip = UI.FitText, UI.Tooltip
 
@@ -71,29 +73,12 @@ local FEED_AGO_COLOR = { 0.98, 0.64, 0.26 }
 local FEED_HOVER_COLOR = { 0.65, 0.53, 0.28 }  -- the row under the mouse
 local FEED_OPEN_COLOR = { 0.42, 0.3, 0.12 }    -- the row whose details are open
 
--- The picture shown on your photo instead of your model: a picture number, or nil for your model.
-local function ChoosePortrait(number)
-    KillTrackerDB.card = KillTrackerDB.card or {}
-    KillTrackerDB.card.portrait = number
-    ns.Touch(KillTrackerDB.card)
-    ns.OpenPage("overview")
-end
-
--- Right-clicking your own photo: what it shows (your model or one of your pictures) and the background behind your
--- model (from the ones on your pictures).
+-- Right-clicking your own character (GEARZ): the background behind it (from the ones on your pictures).
 local function PhotoMenu(owner)
     if not MenuUtil then return UI.PickBackdrop(owner) end  -- no menus: step through the backgrounds
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle("Photo")
-        local chosen = KillTrackerDB.card and KillTrackerDB.card.portrait
-        root:CreateRadio("My character", function() return chosen == nil end, function() ChoosePortrait(nil) end)
-        local mints = KillTrackerDB.mints or {}
-        for _, mint in ipairs(mints) do
-            local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[ns.MintRarity(mint.traits)] or "ffffffff", ("Picture #%d"):format(mint.number))
-            root:CreateRadio(name, function() return chosen == mint.number end, function() ChoosePortrait(mint.number) end)
-        end
-        if #mints == 0 then root:CreateTitle("Mint a picture to show one here") end
-        local background = root:CreateButton("Background behind my character")
+        root:CreateTitle("Background behind my character")
+        local background = root
         local function IsCurrent(id) return (KillTrackerDB.showcase and KillTrackerDB.showcase.backdrop) == id end
         background:CreateRadio("None", function() return IsCurrent(nil) end, function() ns.SetModelBackdrop(nil) end)
         local owned = ns.OwnedBackgrounds()
@@ -667,7 +652,7 @@ OVERVIEW = {
         end)
         model:SetScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
         model:SetScript("OnEnter", function(self)
-            SetTooltip(self, { "Drag to turn, scroll to zoom", not page.key and "Right-click to show a picture instead, or pick a background" or nil })
+            SetTooltip(self, { "Drag to turn, scroll to zoom", not page.key and "Right-click to pick the background behind it" or nil })
         end)
         -- A picture instead of the model: square, as tall as the photo, its sides cut off by the photo's edges.
         photo:SetClipsChildren(true)
@@ -687,6 +672,12 @@ OVERVIEW = {
                 PhotoMenu(self)
             elseif button == "LeftButton" then
                 UI.ClickSound()
+                if page.viewing and page.viewing == page.portraitMint then  -- (open: turned over to read its dream, and back)
+                    page.reading = not page.reading
+                    ns.ShowMintTale(page.portrait, page.viewing, page.reading)
+                    self:GetScript("OnEnter")(self)
+                    return
+                end
                 ns.ShowMint(page.portraitMint, page.key and Ambiguate(page.key, "short") or nil)
             end
         end)
@@ -694,6 +685,10 @@ OVERVIEW = {
             if not page.portraitMint then return end
             if page.portraitMint.ogre then
                 return SetTooltip(self, { page.key and "Their ogre" or "Your ogre", not page.key and not page.building and "Click to build" or nil })
+            end
+            if page.viewing and page.viewing == page.portraitMint then
+                return SetTooltip(self, { page.reading and "Back to the picture" or page.viewing.tale and "Read the dream"
+                    or "Turn it over", "Click to turn the picture over." })
             end
             SetTooltip(self, { ("Picture #%d"):format(page.portraitMint.number), "Click to view",
                 not page.key and "Right-click to show your character instead" or nil })
@@ -704,6 +699,26 @@ OVERVIEW = {
         page.empty:SetPoint("CENTER")
         page.empty:SetWidth(card.photo.w - 16)
         page.empty:SetText("No character synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
+        -- No picture of yours yet: a big way into the ogre builder instead.
+        page.makePrompt = CreateFrame("Button", nil, photo)
+        page.makePrompt:SetSize(card.photo.w - 40, 64)
+        page.makePrompt:SetPoint("CENTER")
+        page.makePrompt:SetFrameLevel(photo:GetFrameLevel() + 20)
+        page.makePrompt.word = page.makePrompt:CreateFontString(nil, "OVERLAY")
+        page.makePrompt.word:SetFont(NAME_FONT, 24, "")
+        page.makePrompt.word:SetPoint("CENTER", 0, 1)
+        page.makePrompt.word:SetText("MAKE YOUR OGRE")
+        page.makePrompt.word:SetTextColor(1, 0.93, 0.78)  -- (cream, as the sidebar's planks)
+        UI.OutlineText(page.makePrompt.word, { 0.18, 0.09, 0.03 })
+        UI.SkinButton(page.makePrompt, { steady = true })
+        page.makePrompt.note = page.makePrompt:CreateFontString(nil, "OVERLAY")
+        page.makePrompt.note:SetFont(NAME_FONT, 15, "")
+        UI.OutlineText(page.makePrompt.note, { 0, 0, 0 })
+        page.makePrompt.note:SetPoint("TOP", page.makePrompt, "BOTTOM", 0, -8)
+        page.makePrompt.note:SetWidth(card.photo.w - 30)
+        page.makePrompt.note:SetText("Dress up your ogre: it's your picture here, for the whole guild to see")
+        page.makePrompt:SetScript("OnClick", function() UI.ClickSound() page.OpenBuilder() end)
+        page.makePrompt:Hide()
 
         -- The frame over the photo's edges, and their first name on its plaque.
         local hung = CreateFrame("Frame", nil, cardFrame)
@@ -722,15 +737,70 @@ OVERVIEW = {
         -- Its traits, two columns; on your own picture with the crayon edition, click one to draw it painted, in crayon
         -- or sketched, in turn.
         page.portraitTraits = {}
+        -- Your ogre's trait, one step on (dir 1) or back (-1) through what you have for it: kept (ns.SetOgre), redrawn.
+        local function Step(row, dir)
+            local options, at = ns.OwnedOptions(row.layer), 0
+            if #options == 0 then return end
+            local current = page.building or (row.mint and row.mint.traits) or {}
+            for i, option in ipairs(options) do if option.id == current[row.layer] then at = i end end
+            -- (a new table: the picture is redrawn only for different traits, ns.DrawMint)
+            local traits = {}
+            for k, id in pairs(current) do traits[k] = id end
+            traits[row.layer] = options[(at - 1 + dir) % #options + 1].id
+            if page.building then page.building = traits end
+            UI.ClickSound()
+            ns.SetOgre(traits)
+            OVERVIEW.refresh(page)  -- (now, not after the usual moment)
+        end
+        -- Right-click: every option you have for it, to pick one.
+        local function PickFromList(row)
+            if not MenuUtil then return end
+            local layer = ns.MintLayerByKey and ns.MintLayerByKey(row.layer)
+            MenuUtil.CreateContextMenu(row, function(_, root)
+                root:CreateTitle(layer and layer.name or row.layer)
+                if root.SetScrollMode then root:SetScrollMode(360) end
+                local current = page.building or (row.mint and row.mint.traits) or {}
+                for _, option in ipairs(ns.OwnedOptions(row.layer)) do
+                    root:CreateRadio(("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name),
+                        function() return current[row.layer] == option.id end,
+                        function()
+                            local traits = {}
+                            for k, id in pairs(current) do traits[k] = id end
+                            traits[row.layer] = option.id
+                            if page.building then page.building = traits end
+                            ns.SetOgre(traits)
+                            OVERVIEW.refresh(page)
+                        end)
+                end
+            end)
+        end
         for i = 1, 8 do
             local trait = CreateFrame("Button", nil, hung)
             trait:SetSize(sq.traits.lefts[2] - sq.traits.lefts[1] - 8, sq.traits.line)
             local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
             trait:SetPoint("TOPLEFT", UI.window, "TOPLEFT", sq.traits.lefts[col + 1], -(sq.traits.top + row * sq.traits.line))
+            -- (a faint band behind it, so the list reads as rows to work with)
+            trait.band = trait:CreateTexture(nil, "BACKGROUND", nil, -1)
+            trait.band:SetPoint("TOPLEFT", -2, 1)
+            trait.band:SetPoint("BOTTOMRIGHT", 2, -1)
+            trait.band:SetColorTexture(1, 0.9, 0.7, 0.05)
             trait.text = trait:CreateFontString(nil, "OVERLAY")
             trait.text:SetFont(NAME_FONT, sq.traits.size, "")
             trait.text:SetPoint("LEFT")
             trait.text:SetPoint("RIGHT", -22, 0)
+            -- (your ogre: arrows to flip through what you have, either side)
+            for _, dir in ipairs({ -1, 1 }) do
+                local arrow = CreateFrame("Button", nil, trait)
+                arrow:SetSize(18, 18)
+                local art = dir < 0 and "Interface\\Buttons\\UI-SpellbookIcon-PrevPage-" or "Interface\\Buttons\\UI-SpellbookIcon-NextPage-"
+                arrow:SetNormalTexture(art .. "Up")
+                arrow:SetPushedTexture(art .. "Down")
+                arrow:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+                if dir < 0 then arrow:SetPoint("LEFT", -2, 0) else arrow:SetPoint("RIGHT", -18, 0) end
+                arrow:SetScript("OnClick", function() Step(trait, dir) end)
+                arrow:Hide()
+                trait[dir < 0 and "prev" or "next"] = arrow
+            end
             -- Its edition, a little icon at its end (a brush, a crayon, a pencil): click for the next one it has.
             trait.ed = CreateFrame("Button", nil, trait)
             trait.ed:SetSize(18, 18)
@@ -761,19 +831,12 @@ OVERVIEW = {
             glow:Hide()
             trait:RegisterForClicks("LeftButtonUp", "RightButtonUp")
             trait:SetScript("OnClick", function(self, mouse)
-                if self.picker then  -- building: the next (right-click: the one before) of what you have for it
-                    local options, at = ns.OwnedOptions(self.layer), 0
-                    if #options == 0 then return end
-                    for i, option in ipairs(options) do if option.id == page.building[self.layer] then at = i end end
-                    local step = mouse == "RightButton" and -1 or 1
-                    -- (a new table: the picture is redrawn only for different traits, ns.DrawMint)
-                    local traits = {}
-                    for k, id in pairs(page.building) do traits[k] = id end
-                    traits[self.layer] = options[(at - 1 + step) % #options + 1].id
-                    page.building = traits
+                if self.picker then  -- your ogre: right-click the list; click its style (painted, crayon, sketched)
+                    if mouse == "RightButton" then return PickFromList(self) end
+                    if not self.option then return end
                     UI.ClickSound()
-                    ns.SetOgre(page.building)
-                    OVERVIEW.refresh(page)  -- (now, not after the usual moment)
+                    ns.SetOgreEdition(self.layer, ns.NextEditionFor(self.option, self.edition))
+                    OVERVIEW.refresh(page)
                     return
                 end
                 if not self.editable then return end
@@ -784,7 +847,8 @@ OVERVIEW = {
             trait:SetScript("OnEnter", function(self)
                 if self.picker then
                     glow:Show()
-                    return SetTooltip(self, { "Click: next  -  right-click: back", ("%d to pick from"):format(#ns.OwnedOptions(self.layer)) })
+                    return SetTooltip(self, { "Arrows: flip through  -  right-click: pick from the list", "Click: painted, crayon or sketched",
+                        ("%d to pick from"):format(#ns.OwnedOptions(self.layer)) })
                 end
                 if not self.editable then return end
                 glow:Show()
@@ -795,10 +859,9 @@ OVERVIEW = {
         end
         -- A picture opened to look at (yours: from your gallery, or anywhere, ns.ShowMint): its buttons under its traits.
         page.viewButtons = {}
-        for i = 1, 3 do
+        for i = 1, 4 do  -- (placed when shown: centred under the photo, however many)
             local button = CreateFrame("Button", nil, hung)
             button:SetSize(118, 22)
-            button:SetPoint("CENTER", UI.window, "TOPLEFT", card.photo.x + (i - 2) * 124, -704)
             button.back = button:CreateTexture(nil, "BACKGROUND")
             button.back:SetAllPoints()
             button.text = button:CreateFontString(nil, "OVERLAY")
@@ -887,7 +950,7 @@ OVERVIEW = {
             holder:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 if self.mint then
-                    local rarity = ns.MintRarity(self.mint.traits)
+                    local rarity = ns.MintRarity(self.mint.traits, self.mint.asked)
                     GameTooltip:AddLine(("Picture #%d"):format(self.mint.number))
                     GameTooltip:AddLine((rarity:gsub("^%l", string.upper)), ns.RarityRGB(rarity))
                     for _, trait in ipairs(ns.MintTraits(self.mint.traits)) do
@@ -1080,6 +1143,14 @@ OVERVIEW = {
         -- load; load once more on the next frame, and whenever the page comes back.
         page.Load = function()
             if page.portraitMint then  -- a picture shows instead
+                page.makePrompt:Hide()
+                model:ClearModel()
+                model:Hide()
+                page.empty:Hide()
+                return
+            end
+            page.makePrompt:SetShown(page.noPicture and not page.building or false)
+            if page.makePrompt:IsShown() then
                 model:ClearModel()
                 model:Hide()
                 page.empty:Hide()
@@ -1113,13 +1184,14 @@ OVERVIEW = {
         -- The photo: their chosen picture, or (no model of them to show) their first showcase picture or else their
         -- newest picture, or the model.
         local friend = key and KillTrackerFriends[key]
-        local gear = friend and friend.gear
-        local portrait = ns.FindMint(key, p.portrait)
         local cardData = key and friend and friend.card or (not key and KillTrackerDB.card) or nil
-        if not portrait and cardData and cardData.photoOgre and cardData.ogre then  -- the ogre they built (Minting.lua)
+        local portrait
+        if cardData and cardData.ogre and next(cardData.ogre) then  -- the ogre they built: their avatar
             portrait = { traits = cardData.ogre, ogre = true, style = cardData.ogreStyle }
+        elseif key then  -- (someone who hasn't built one: a picture of theirs, else their character)
+            portrait = ns.FindMint(key, p.portrait) or ns.GetShowcase(key)[1] or ns.NewestMint(key)
         end
-        if not portrait and key and not gear then portrait = ns.GetShowcase(key)[1] or ns.NewestMint(key) end
+        page.noPicture = not key and not portrait and page.panel == nil  -- (you, none: MAKE YOUR OGRE)
         if page.panel == "gear" then portrait = nil end  -- their gear goes round their character
         -- One of your pictures opened to look at: it, instead (with its buttons), until BACK.
         if page.viewing and (key or page.panel ~= nil or not ns.FindMint(nil, page.viewing.number)) then
@@ -1151,7 +1223,7 @@ OVERVIEW = {
             if trait then
                 local edition = ns.LayerEdition(style, trait[4])
                 button.mint, button.layer, button.editable = portrait, trait[4], editable
-                button.picker = page.building ~= nil
+                button.picker = page.building ~= nil or (portrait.ogre and not key) or false
                 button:EnableMouse((editable or button.picker) and true or false)
                 local layer = ns.MintLayerByKey and ns.MintLayerByKey(trait[4])
                 button.option, button.edition = nil, edition
@@ -1162,11 +1234,19 @@ OVERVIEW = {
                 button.ed:SetShown((editable or button.picker) and twins and true or false)
                 button.ed.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Kitchen\\"
                     .. (edition == "crayon" and "EdCrayon" or edition == "sketch" and "EdSketch" or "EdPainted"))
-                if button.picker then  -- < Headwear: Fel Horn Circlet >
-                    button.text:SetText(("|cffffd100<|r |cffffd100%s:|r |c%s%s|r |cffffd100>|r"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2]))
-                else
-                    button.text:SetText(("|cffffd100%s:|r |c%s%s|r%s%s"):format(trait[1], ns.RARITY_COLORS[trait[3]], trait[2],
-                        edition and not button.ed:IsShown() and ("  |cffff9a2a%s|r"):format(ns.EDITION_NAMES[edition]) or "", ns.TraitNote(trait)))
+                button.prev:SetShown(button.picker)
+                button.next:SetShown(button.picker)
+                button.text:ClearAllPoints()
+                button.text:SetPoint("LEFT", button.picker and 18 or 0, 0)
+                button.text:SetPoint("RIGHT", button.picker and -38 or -22, 0)
+                -- (all of it shown: the font smaller to fit, then a shorter label - Hat for Headwear - rather than cut off)
+                local rest = button.picker and ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2])
+                    or ("|c%s%s|r%s%s"):format(ns.RARITY_COLORS[trait[3]], trait[2],
+                        edition and not button.ed:IsShown() and ("  |cffff9a2a%s|r"):format(ns.EDITION_NAMES[edition]) or "", ns.TraitNote(trait))
+                local width = button:GetWidth() - (button.picker and 56 or 22)
+                for _, label in ipairs({ trait[1], SHORT_LABELS[trait[1]] or trait[1] }) do
+                    UI.FitText(button.text, NAME_FONT, RIGHT.square.traits.size, 9, ("|cffffd100%s:|r %s"):format(label, rest), width)
+                    if button.text:GetStringWidth() <= width then break end
                 end
             end
         end
@@ -1181,10 +1261,7 @@ OVERVIEW = {
             button:Show()
         end
         if page.building then
-            local isPhoto = KillTrackerDB.card and KillTrackerDB.card.photoOgre and not KillTrackerDB.card.portrait
             Button("BACK", { page.buildingFromGallery and "Back to your gallery" or "Back to your photo" }, function() page.CloseBuilder() end)
-            Button(isPhoto and "IS YOUR PHOTO" or "AS PHOTO", { "Your Overview's photo", isPhoto and "It's on your Overview."
-                or "Show your ogre on your Overview." }, function() ns.SetOgre(page.building, true) end)
             Button("RANDOM", { "A random ogre", "From what you have" }, function()
                 local traits = {}  -- (a new table, so the picture is redrawn)
                 for k, id in pairs(page.building) do traits[k] = id end
@@ -1210,10 +1287,23 @@ OVERVIEW = {
                 Next("REROLL", { "Reroll for free", ("%s minted this picture first."):format(mint.duplicateOf) },
                     function() ns.ConfirmReroll(mint) end)
             end
+            if ns.PICTURE_FRAMES then  -- (its frame: the next one you have)
+                local frame = ns.FrameById(mint.frame or ns.DefaultFrame())
+                local nextFrame = ns.FrameById(ns.NextFrame(mint.frame))
+                Next("FRAME", { "Frame: " .. (frame and frame.name or "?"), "Click: " .. (nextFrame and nextFrame.name or "?") },
+                    function() if nextFrame then ns.SetMintFrame(mint, nextFrame.id) end OVERVIEW.refresh(page) end)
+            end
         end
+        for i = 1, n do  -- (centred under the photo)
+            page.viewButtons[i]:ClearAllPoints()
+            page.viewButtons[i]:SetPoint("CENTER", UI.window, "TOPLEFT", RIGHT.photo.x + (i - (n + 1) / 2) * 124, -704)
+        end
+        -- (one of yours opened: turned over to read its dream, till another's opened)
+        if page.readingOf ~= page.viewing then page.readingOf, page.reading = page.viewing, false end
         if portrait then
             ns.DrawMint(page.portrait, portrait)
-            local rarity = ns.MintRarity(portrait.traits)
+            ns.ShowMintTale(page.portrait, portrait, page.reading and portrait == page.viewing)
+            local rarity = ns.MintRarity(portrait.traits, portrait.asked)
             local what = portrait.ogre and (key and (((p.name or ""):match("^(%S+)") or "Their") .. "'s ogre") or "Your ogre")
                 or ("#%d%s"):format(portrait.number, portrait.time and ("  " .. date("%Y-%m-%d", portrait.time)) or "")
             page.portraitInfo:SetText(("|c%s%s|r  |cff999999%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff",
@@ -1238,7 +1328,7 @@ OVERVIEW = {
             holder:SetShown(mint ~= nil or key == nil)
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
-            holder.borderColor = mint and { ns.RarityRGB(ns.MintRarity(mint.traits)) } or nil
+            holder.borderColor = mint and { ns.RarityRGB(ns.MintRarity(mint.traits, mint.asked)) } or nil
             if mint then ns.DrawMint(holder.canvas, mint) end
             holder:paint()
         end

@@ -14,6 +14,18 @@ local UI = ns.UI
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local ICONS = "Interface\\AddOns\\SOLC\\Media\\Overview\\Icons\\"
 local MEDIA_ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
+local ICON_STYLES = "Interface\\AddOns\\SOLC\\Media\\IconStyles\\"
+-- The icon style picked in edit mode (ns.ICON_STYLES, IconStyles.lua: tools/convert-icon-styles.js), or nil: the
+-- usual icons. For trying the styles on (for now on every card viewed); an icon a style hasn't got stays the usual.
+local function StyledIcon(name)
+    local id = KillTrackerDB and KillTrackerDB.card and KillTrackerDB.card.iconStyle
+    if not (id and name and ns.ICON_STYLES) then return nil end
+    for _, style in ipairs(ns.ICON_STYLES) do
+        if style.id == id and style.has[name] then return ICON_STYLES .. id .. "\\" .. name end
+    end
+end
+-- TEST (remove before release): names whose card icons glow as if level 60.
+local GLOW_TEST = { Lance = true }
 local ARROW_ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\Arrow"
 local EMPTY_SHAPE = 0.45                     -- an empty icon shape (nothing known yet) is drawn this faint
 local TEXT_OUTLINE = { 0.12, 0.07, 0.03 }    -- dark brown round the light text on the boards (ns.UI.OutlineText)
@@ -157,9 +169,27 @@ function UI.CreateIcon(parent, spot, anchor)
     icon.texture = icon:CreateTexture(nil, "ARTWORK")
     icon.texture:SetAllPoints()
     function icon:Set(name, empty, lines)
-        self.texture:SetTexture(ICONS .. (name or empty))
+        self.texture:SetTexture(StyledIcon(name) or ICONS .. (name or empty))
+        self.glow:SetTexture(ICONS .. empty:gsub("^Base_", "Glow_"))
         self.texture:SetAlpha(name and 1 or EMPTY_SHAPE)
         self.lines = lines
+    end
+    -- (level 60's glow: a soft violet light behind it, slowly breathing; icon:SetGlow(on))
+    icon.glow = icon:CreateTexture(nil, "BACKGROUND")
+    -- (its texture: the icon's own shape, blurred - Glow_<KIND>, set with the icon)
+    icon.glow:SetBlendMode("ADD")
+    icon.glow:SetVertexColor(0.62, 0.32, 1)
+    icon.glow:SetPoint("CENTER")
+    icon.glow:SetSize(spot.size * 1.45, spot.size * 1.45)  -- (the shape is 70% of its texture: the glow spreads round it)
+    icon.glow:Hide()
+    local breathe = icon.glow:CreateAnimationGroup()
+    breathe:SetLooping("BOUNCE")
+    local fade = breathe:CreateAnimation("Alpha")
+    fade:SetFromAlpha(0.3); fade:SetToAlpha(0.85); fade:SetDuration(1.8); fade:SetSmoothing("IN_OUT")
+    function icon:SetGlow(on, rgb)  -- (rgb: its colour; else violet)
+        self.glow:SetVertexColor(unpack(rgb or { 0.62, 0.32, 1 }))
+        self.glow:SetShown(on)
+        if on and not breathe:IsPlaying() then breathe:Play() elseif not on then breathe:Stop() end
     end
     icon:SetScript("OnEnter", function(self) if self.lines then Tooltip(self, self.lines) end end)
     icon:SetScript("OnLeave", GameTooltip_Hide)
@@ -419,6 +449,20 @@ local function Build()
     header.title:SetWordWrap(false)
     UI.OutlineText(header.title, { 0, 0, 0 })
     header.titleWidth = HEADER.icons.professions[1][1] - HEADER.icons.professions[1][3] / 2 - HEADER.title.x - 4
+    -- (an alt's "Alt of <main>": click it for the main's pages, when they're you or synced)
+    header.titleButton = CreateFrame("Button", nil, h)
+    header.titleButton:SetPoint("TOPLEFT", header.title, "TOPLEFT", -2, 2)
+    header.titleButton:SetPoint("BOTTOMRIGHT", header.title, "BOTTOMRIGHT", 2, -2)
+    header.titleButton:SetScript("OnClick", function()
+        if header.mainKey == nil then return end
+        UI.ClickSound()
+        ns.ViewPlayer(header.mainKey ~= "me" and header.mainKey or nil, header.page)
+    end)
+    header.titleButton:SetScript("OnEnter", function(self)
+        Tooltip(self, { "Alt of " .. (header.main or ""), header.mainKey ~= nil and "Click to see their pages" or "Their main isn't synced yet" })
+    end)
+    header.titleButton:SetScript("OnLeave", GameTooltip_Hide)
+    header.titleButton:Hide()
 
     -- The icons: race and class, the professions under them.
     local function Spot(s) return { x = s[1], y = s[2], size = s[3] } end
@@ -517,14 +561,24 @@ function ShowBackdrop(key)
     local option = ns.BackgroundOption(key, card.headerBg)
     if option then
         header.backdrop:SetTexture(ns.MintTexture(option, {}))
+        header.backdrop:SetGradient("VERTICAL", CreateColor(1, 1, 1, 1), CreateColor(1, 1, 1, 1))  -- (no wash left on it)
         local left, right, top, bottom = Crop(card.cropX, card.cropY, card.cropZoom)
         header.backdrop:SetTexCoord(left, right, top, bottom)
     end
-    header.backdrop:SetShown(option ~= nil)
+    -- (no picture: the background colour they picked, a soft wash - darker at the bottom - or nothing)
+    local wash = not option and ns.GetCardColor(key, "bg")
+    if wash then
+        local r, g, b = unpack(wash.base)
+        header.backdrop:SetTexCoord(0, 1, 0, 1)
+        header.backdrop:SetColorTexture(1, 1, 1)
+        header.backdrop:SetGradient("VERTICAL", CreateColor(r * 0.45, g * 0.45, b * 0.45, 1), CreateColor(r, g, b, 1))
+    end
+    header.backdrop:SetShown(option ~= nil or wash ~= nil)
     header.dim:SetShown(option ~= nil)
 end
 
 -- Your card, to change (KillTrackerDB.card); call Changed() after.
+local Fill  -- (below: the whole header drawn again; an edit redraws it)
 local function MyCard()
     KillTrackerDB.card = KillTrackerDB.card or {}
     return KillTrackerDB.card
@@ -533,6 +587,7 @@ local function Changed()
     ns.Touch(MyCard())  -- syncs it to guildmates
     ShowBackdrop(nil)
     header.name:SetTextColor(unpack(ns.GetNameColor(nil)))
+    if Fill and not header.key then Fill(nil) end  -- (the icons, their style and glow: all of it)
     if header.editor:IsShown() then header.editor:Refresh() end
 end
 
@@ -619,8 +674,21 @@ function BuildEditor(W, h, At)
     editor:Hide()
     local shade = editor:CreateTexture(nil, "BACKGROUND")
     PanelBacking(shade)
+    -- (its contents scroll - the mouse wheel - above the buttons at the bottom, which stay put)
+    local scroll = CreateFrame("ScrollFrame", nil, editor)
+    scroll:SetPoint("TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", 0, 52)
+    local body = CreateFrame("Frame", nil, scroll)
+    body:SetSize(panelWidth, 600)
+    scroll:SetScrollChild(body)
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        local most = math.max(0, body:GetHeight() - self:GetHeight())
+        self:SetVerticalScroll(math.max(0, math.min(most, self:GetVerticalScroll() - delta * 40)))
+    end)
+    editor.scroll, editor.body = scroll, body
     local function Heading(text, y, size)
-        local line = editor:CreateFontString(nil, "OVERLAY")
+        local line = body:CreateFontString(nil, "OVERLAY")
         line:SetFont(NAME_FONT, size or 14, "")
         line:SetTextColor(1, 0.82, 0.25)
         line:SetPoint("TOPLEFT", 4, -y)
@@ -630,18 +698,33 @@ function BuildEditor(W, h, At)
     Heading("Edit your header", 2, 18)
     Heading("Background", 32)
     Heading("Crop", 184)
-    local hint = editor:CreateFontString(nil, "OVERLAY")
+    local hint = body:CreateFontString(nil, "OVERLAY")
     hint:SetFont(NAME_FONT, 12, "")
     hint:SetTextColor(unpack(PANEL_TEXT))
     hint:SetPoint("TOPLEFT", 4, -204)
     hint:SetWidth(panelWidth - 8)
     hint:SetJustifyH("LEFT")
     hint:SetText("Drag the picture on your header to move it, scroll on it to zoom in and out.")
-    Heading("Name colour", 240)
+    Heading("Colour", 240)
+    -- (what a colour picked goes on: your name, your level 60 glow or your header's background)
+    editor.use = "name"
+    editor.useTabs = {}
+    for i, use in ipairs({ { "name", "Name" }, { "glow", "Glow" }, { "bg", "Background" } }) do
+        local tab = CreateFrame("Button", nil, body)
+        tab:SetSize(84, 18)
+        tab:SetPoint("TOPLEFT", 70 + (i - 1) * 90, -238)
+        tab.text = tab:CreateFontString(nil, "OVERLAY")
+        tab.text:SetFont(NAME_FONT, 13, "")
+        tab.text:SetAllPoints()
+        tab.text:SetText(use[2])
+        tab.use = use[1]
+        tab:SetScript("OnClick", function(self) UI.ClickSound() editor.use = self.use editor:Refresh() end)
+        editor.useTabs[i] = tab
+    end
 
     -- A square or swatch to click: its fill over a dark edge, a gold rim round it while it's the one picked.
     local function Choice(w, hgt, x, y)
-        local button = CreateFrame("Button", nil, editor)
+        local button = CreateFrame("Button", nil, body)
         button:SetSize(w, hgt)
         button:SetPoint("TOPLEFT", x, -y)
         button.rim = button:CreateTexture(nil, "BACKGROUND")
@@ -683,7 +766,7 @@ function BuildEditor(W, h, At)
     -- The name colours (ns.NAME_COLORS): yours to pick, a rank's (locked until then), or to buy.
     local swatch = EDIT.swatch
     editor.swatches = {}
-    for i, entry in ipairs(ns.NAME_COLORS) do
+    for i, entry in ipairs(ns.Colors()) do
         local x = ((i - 1) % swatch.perRow) * (swatch.w + swatch.gap) + 2
         local y = swatch.top + math.floor((i - 1) / swatch.perRow) * (swatch.h + swatch.gap)
         local button = Choice(swatch.w, swatch.h, x, y)
@@ -697,16 +780,108 @@ function BuildEditor(W, h, At)
         button:SetScript("OnClick", function(self)
             if ns.HasNameColor(self.entry) then
                 UI.ClickSound()
-                MyCard().nameColor = self.entry.id
+                local field = editor.use == "name" and "nameColor" or editor.use .. "Color"
+                MyCard()[field] = self.entry.id ~= "white" and self.entry.id or nil
                 Changed()
-            elseif self.entry.cost then
-                UI.ClickSound()
-                local popup = StaticPopup_Show("SOLC_BUY_NAME_COLOR", self.entry.name, self.entry.cost)
-                if popup then popup.data = self.entry.id end
             end
         end)
         editor.swatches[i] = button
     end
+
+    -- The icon styles (for trying on, for now): one row of the icons themselves (the usual, then each style in
+    -- ns.ICON_STYLES, your class's icon in it, else the druid's), in the gap above the buttons; the picked one glows.
+    editor.styles = {}
+    local styleIds = { false }
+    for _, style in ipairs(ns.ICON_STYLES or {}) do styleIds[#styleIds + 1] = style end
+    local size, step, per = 34, 40, math.floor((panelWidth - 4) / 40)
+    local rowY = swatch.top + math.ceil(#ns.Colors() / swatch.perRow) * (swatch.h + swatch.gap) + 12
+    Heading("Icons (trying out)", rowY)
+    rowY = rowY + 24
+    local _, myClass = UnitClass("player")
+    for i, style in ipairs(styleIds) do
+        local button = CreateFrame("Button", nil, body)
+        button:SetSize(size, size)
+        button:SetPoint("TOPLEFT", 4 + ((i - 1) % per) * step, -(rowY + math.floor((i - 1) / per) * step))
+        button.style = style or nil
+        button.picked = button:CreateTexture(nil, "BACKGROUND")
+        button.picked:SetTexture(MEDIA_ICONS .. "Fx_Glow")
+        button.picked:SetBlendMode("ADD")
+        button.picked:SetVertexColor(1, 0.82, 0.3)
+        button.picked:SetPoint("CENTER")
+        button.picked:SetSize(size * 1.9, size * 1.9)
+        button.art = button:CreateTexture(nil, "ARTWORK")
+        button.art:SetAllPoints()
+        local icon = "Class_" .. (myClass or "DRUID")
+        if style and not style.has[icon] then icon = "Class_DRUID" end
+        button.art:SetTexture(style and (ICON_STYLES .. style.id .. "\\" .. icon) or (ICONS .. icon))
+        button:SetScript("OnEnter", function(self) Tooltip(self, { style and style.name or "The usual icons" }) end)
+        button:SetScript("OnLeave", GameTooltip_Hide)
+        button:SetScript("OnClick", function(self)
+            UI.ClickSound()
+            MyCard().iconStyle = self.style and self.style.id or nil
+            for _, b in ipairs(editor.styles) do b.picked:SetShown(b == self) end
+            Changed()
+        end)
+        editor.styles[i] = button
+    end
+    -- Your main character: on an alt, your title reads "Alt of <main>" (SOLCAccount.characters: the ones played here).
+    local mainY = rowY + math.ceil(#styleIds / per) * step + 14
+    Heading("Main character", mainY)
+    local mainPick = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
+    mainPick:SetSize(panelWidth - 12, 24)
+    mainPick:SetPoint("TOPLEFT", 4, -(mainY + 22))
+    function mainPick:Redraw()
+        local main = MyCard().main
+        self:SetText(main and ("Alt of " .. main) or "This is my main")
+    end
+    mainPick:SetScript("OnClick", function(self)
+        if not MenuUtil then return end
+        local me = Ambiguate(ns.MyName(), "short")
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            root:CreateTitle("This character is")
+            root:CreateRadio("My main", function() return MyCard().main == nil end,
+                function() MyCard().main = nil Changed() mainPick:Redraw() end)
+            local names = {}
+            for _, c in pairs(SOLCAccount and SOLCAccount.characters or {}) do
+                if c.name and c.name ~= me then names[#names + 1] = c end
+            end
+            table.sort(names, function(a, b) return (a.level or 0) > (b.level or 0) end)
+            for _, c in ipairs(names) do
+                local color = c.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class]
+                local label = ("An alt of %s%s|r (%d)"):format(color and ("|c" .. color.colorStr) or "|cffffffff", c.name, c.level or 0)
+                root:CreateRadio(label, function() return MyCard().main == c.name end,
+                    function() MyCard().main = c.name Changed() mainPick:Redraw() end)
+            end
+            if #names == 0 then root:CreateTitle("Log in your other characters once to list them") end
+        end)
+    end)
+    -- Sharing the wardrobe with your other characters that share it (opt-in, per character: Core.lua).
+    local share = CreateFrame("CheckButton", nil, body, "UICheckButtonTemplate")
+    share:SetSize(24, 24)
+    share:SetPoint("TOPLEFT", 2, -(mainY + 52))
+    share.label = body:CreateFontString(nil, "OVERLAY")
+    share.label:SetFont(NAME_FONT, 13, "")
+    share.label:SetTextColor(unpack(PANEL_TEXT))
+    share.label:SetPoint("LEFT", share, "RIGHT", 4, 0)
+    share.label:SetText("Share my wardrobe with my other characters")
+    share:SetScript("OnClick", function(self)
+        UI.ClickSound()
+        ns.SetWardrobeShared(self:GetChecked())
+    end)
+    share:SetScript("OnEnter", function(self)
+        Tooltip(self, { "Shared wardrobe", "Everything this character unlocks goes in one wardrobe with your other characters "
+            .. "that share theirs, and it can wear all of it. Off: only what it unlocked itself (kept either way)." })
+    end)
+    share:SetScript("OnLeave", GameTooltip_Hide)
+    editor:HookScript("OnShow", function()
+        mainPick:Redraw()
+        share:SetChecked(KillTrackerDB.shareWardrobe and true or false)
+    end)
+    body:SetHeight(mainY + 86)  -- (as tall as what's on it)
+    editor:HookScript("OnShow", function()
+        local id = MyCard().iconStyle
+        for _, b in ipairs(editor.styles) do b.picked:SetShown((b.style and b.style.id or nil) == id) end
+    end)
 
     -- Back to the middle of the picture, and done.
     local buttons = { top = slot.bottom - 46, bottom = slot.bottom - 12, size = 16 }
@@ -740,34 +915,35 @@ function BuildEditor(W, h, At)
                 button.edge:SetColorTexture(ns.RarityRGB(option.rarity))
                 button.label:SetText("")
                 button.lines = { ("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name) }
-            else
-                button.fill:SetColorTexture(unpack(HEADER.color))
+            else  -- (no picture: the background colour picked under Colour, shown on it)
+                local wash = ns.GetCardColor(nil, "bg")
+                button.fill:SetColorTexture(unpack(wash and wash.base or HEADER.color))
                 button.edge:SetColorTexture(0, 0, 0)
-                button.label:SetText("None")
-                button.lines = { "No background", #owned == 0 and "Mint a picture to get backgrounds" or nil }
+                button.label:SetText("Colour")
+                button.lines = { "A colour instead of a picture", "Pick it under Colour: Background",
+                    #owned == 0 and "Mint a picture to get backgrounds" or nil }
             end
         end
-        local shown = ns.GetNameColor(nil)
-        local balance = ns.GetPoints().balance
+        for _, tab in ipairs(self.useTabs) do
+            if tab.use == self.use then tab.text:SetTextColor(1, 0.82, 0.25) else tab.text:SetTextColor(unpack(PANEL_TEXT)) end
+        end
+        local picked = ns.GetCardColor(nil, self.use)
+        local pickedId = picked and picked.id or "white"
         for _, button in ipairs(self.swatches) do
             local entry = button.entry
             local has = ns.HasNameColor(entry)
-            button.fill:SetColorTexture(unpack(entry.value))
+            button.fill:SetColorTexture(unpack(self.use == "bg" and entry.base or entry.value))
             button.fill:SetAlpha(has and 1 or 0.3)
-            button.rim:SetShown(entry.value == shown)
-            button.label:SetText(has and "" or entry.rank and tostring(entry.rank) or tostring(entry.cost))
+            button.rim:SetShown(entry.id == pickedId)
+            button.label:SetText("")
             button.badge:SetShown(not has)
-            button.badge:SetTexture(MEDIA_ICONS .. (entry.rank and "Lock" or "Points"))
+            button.badge:SetTexture(MEDIA_ICONS .. "Lock")
             local r, g, b = unpack(entry.value)
             local name = ("|cff%02x%02x%02x%s|r"):format(r * 255, g * 255, b * 255, entry.name)
-            if has then
-                button.lines = { name }
-            elseif entry.rank then
-                button.lines = { name, ("Unlocks at Ogre Rank %d"):format(entry.rank) }
-            else
-                button.lines = { name, ("%d points - click to buy (you have %d)"):format(entry.cost, balance) }
-            end
+            button.lines = has and { name } or { name, "Comes with the " .. entry.name .. " ogre skin" }
         end
+        local style = MyCard().iconStyle
+        for _, b in ipairs(self.styles or {}) do b.picked:SetShown((b.style and b.style.id or nil) == style) end
     end
     editor:SetScript("OnShow", function(self)
         header.editButton:Paint()
@@ -835,7 +1011,7 @@ function BuildEditor(W, h, At)
 end
 
 -- Fills the header in for key (you: nil).
-local function Fill(key)
+function Fill(key)
     local p = UI.Profile(key)
     header.key = key
     for _, arrow in ipairs(header.arrows) do arrow:SetShown(next(KillTrackerFriends) ~= nil) end
@@ -849,7 +1025,17 @@ local function Fill(key)
     header.badge.number:SetText(current.rank)
     Fit(header.name, NAME_FONT, HEADER.name.size, 10, p.name or "", HEADER.name.right - HEADER.name.x)
     header.name:SetTextColor(unpack(ns.GetNameColor(key)))
-    Fit(header.title, NAME_FONT, HEADER.title.size, 10, "-" .. TEST_TITLE, header.titleWidth)
+    -- (the title: an alt's "Alt of <main>" (the header's edit mode, synced), else their title)
+    local card = key and KillTrackerFriends[key] and KillTrackerFriends[key].card or not key and KillTrackerDB.card or nil
+    header.main, header.mainKey = card and card.main, nil
+    if header.main then
+        if Ambiguate(ns.MyName(), "short") == header.main then header.mainKey = "me" end
+        for friendKey in pairs(KillTrackerFriends) do
+            if Ambiguate(friendKey, "short") == header.main then header.mainKey = friendKey end
+        end
+    end
+    Fit(header.title, NAME_FONT, HEADER.title.size, 10, header.main and ("Alt of " .. header.main) or ("-" .. TEST_TITLE), header.titleWidth)
+    header.titleButton:SetShown(header.main ~= nil)
     if nextRank then
         local into, span = points - current.points, math.max(1, nextRank.points - current.points)
         header.barFill:SetWidth(math.max(1, header.barWidth * math.min(1, into / span)))
@@ -876,7 +1062,13 @@ local function Fill(key)
         line:SetShown(perk ~= nil)
     end
 
-    -- The icons.
+    -- The icons (glowing at level 60; GLOW_TEST: names to try it on before anyone's 60 - remove before release).
+    local glow = p.level == 60 or (KillTrackerDB and KillTrackerDB.glowTest) or GLOW_TEST[(p.name or ""):match("^[^%-%s]+") or ""] or false
+    -- (in the colour they picked for it, or violet)
+    local glowEntry = ns.GetCardColor(p.key, "glow")
+    local glowColor = glowEntry and glowEntry.id ~= "white" and glowEntry.value or nil
+    for _, icon in ipairs({ header.class, header.race, unpack(header.professions) }) do icon:SetGlow(glow, glowColor) end
+    for _, icon in ipairs(header.secondary) do icon:SetGlow(glow, glowColor) end
     local color = p.classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[p.classFile]
     local classLine = p.className and ((p.level and ("Level %d "):format(p.level) or "")
         .. (color and color:WrapTextInColorCode(p.className) or p.className))

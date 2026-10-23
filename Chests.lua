@@ -132,7 +132,7 @@ banner:Hide()
 -- How many items are inside, beside the chest while it charges ("x2", in the tier's colour).
 local countBadge = CreateFrame("Frame", nil, panel)
 countBadge:SetSize(90, 60)
-countBadge.text = Text(countBadge, 46, 1, 1, 1)
+countBadge.text = Text(countBadge, 30, 1, 1, 1)  -- (the chest's quality: COMMON! .. LEGENDARY!)
 countBadge.text:SetPoint("CENTER")
 countBadge:Hide()
 
@@ -354,9 +354,7 @@ panel:SetScript("OnUpdate", function(_, dt)
     -- The count ticking up.
     if show.counting then
         show.shown = math.min(show.coins, show.shown + dt * math.max(30, show.coins * 0.9))
-        coins.text:SetText(("+%d points"):format(math.floor(show.shown)) .. ((show.tokens or 0) > 0
-            and ("    |T%s:30|t +%d"):format(ns.IngredientIcon(show.dungeon), show.tokens) or "")
-            .. (show.fuel and ("    |T%s:30|t +1"):format(ns.IngredientIcon(show.fuel)) or ""))
+        coins.text:SetText(("+%d points"):format(math.floor(show.shown)))
         show.clink = (show.clink or 0) - dt
         if show.clink <= 0 then Sound("LOOT_WINDOW_COIN_SOUND") show.clink = 0.3 end
         if show.shown >= show.coins then show.counting = false end
@@ -417,7 +415,8 @@ local function Pull(i)
         card.coin:SetTexture(ns.IngredientIcon(item.dungeon))
         card.name:SetText(("|cffd8dce0+%d %s|r"):format(item.count, ns.IngredientName(item.dungeon)))
         local dungeon = ns.DungeonByKey and ns.DungeonByKey(item.dungeon)
-        card.what:SetText("for the minting pot, from " .. (dungeon and dungeon.name or "the dungeon"))
+        card.what:SetText(ns.DREAM_ITEMS and ns.DREAM_ITEMS[item.dungeon] and "for the Dream Bed"
+            or ("for the minting pot, from " .. (dungeon and dungeon.name or "the dungeon")))
     end
     card.name:Hide()
     card.what:Hide()
@@ -566,6 +565,11 @@ local function Burst()
     show.shown, show.counting = 0, true
     show.pulled = 0
     local n = math.min(#show.items, MAX_CARDS)
+    if n == 0 then  -- (only its points this time)
+        panel.hint:SetText("")
+        After(1.6, function() if show.phase == "reveal" then Done() end end)
+        return
+    end
     panel.hint:SetText(n == 1 and "Tap to pull it out!" or ("Tap to pull them out! (%d)"):format(n))
 end
 
@@ -604,12 +608,9 @@ local function Tap()
                 show.items[#show.items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
             end
             show.tier = show.previewTier or math.min(#ns.CHEST_TIERS, #show.items)
-            show.items[#show.items + 1] = { kind = "tokens", dungeon = show.dungeon, count = ns.CHEST_TIERS[show.tier].tokens }
             show.coins = math.random(10, 60)
-            show.tokens = ns.CHEST_TIERS[show.tier].tokens
-            show.fuel = ns.CHEST_TIERS[show.tier].fuel
         else
-            show.tier, show.coins, show.items, show.tokens, show.fuel = ns.OpenChest(show.dungeon)
+            show.tier, show.coins, show.items = ns.OpenChest(show.dungeon)
         end
         if not show.tier then return panel:Hide() end
         show.taps, show.tap = 2 + show.tier, 0
@@ -639,8 +640,8 @@ local function Tap()
         else
             panel.hint:SetText(TAP_HINTS[math.min(show.tap, #TAP_HINTS)])
         end
-        if level > 0 then  -- this many items inside
-            countBadge.text:SetText(("x%d"):format(level))
+        if level > 0 then  -- its quality so far (ns.CHEST_TIERS)
+            countBadge.text:SetText(ns.CHEST_TIERS[level].name:upper() .. "!")
             countBadge.text:SetTextColor(unpack(Tint(level)))
             countBadge:Show()
             Tween(0.25, function(p) countBadge:SetScale(1 + math.sin(p * math.pi) * 0.5) end)

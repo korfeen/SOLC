@@ -33,7 +33,24 @@ const zlib = require("zlib");
 const DENSITY = Number(process.argv[2]) || 512;
 // Options that no longer roll ("<layer key>/<option id>"), kept so the pictures that have them still show them: the
 // pirate eyepatch was an eyes option, it's an accessory now (its art in Accessory too, over any eyes).
-const RETIRED = new Set(["eyes/pirate_eyepatch"]);
+const RETIRED = new Set(["eyes/pirate_eyepatch", "eyes/cucumber_slices", "accessory/eye_mask_pushed_up"]);  // (eyewear moved to accessories, and the pushed-up mask replaced by sleep_mask: Minting.lua UNDER_HAT)
+// Base options that are earned, not there for everyone (layer/id -> unlock): Ogre Rank 30's pink skin (Ranks.lua unlocks it).
+// The pieces the Unlock Audit routed to deeds (Achievements.lua: "deed:<its id>", unlocked as it's earned) too.
+const BASE_UNLOCKS = {
+  "skin/grand_sleepy_pink": "rank:30",
+  "accessory/monocle": "deed:feat:census:1000",                         // Census Taker
+  "accessory/phoenix_on_shoulder": "deed:feat:clears:50",               // Instance Addict
+  "accessory/sleepy_parrot": "deed:faction:Bloodsail Buccaneers:1000",  // (with the Bloodsail outfit)
+  "background/ghost_ship_cove": "deed:subtype:Ghost:500",
+  "background/ancient_treasure_lounge": "deed:feat:chests:50",          // Treasure Hoarder
+  "expression/ember_yawn": "deed:feat:elites:500",                      // Bigger They Are
+  "eyes/dragon_gaze": "deed:subtype:Dragonkin:250",
+  "eyes/golden_oracle": "deed:feat:jackpot:1",                          // Jackpot!
+  "headwear/bald_with_fly": "deed:feat:total:10000",                    // Ten Thousand Thumps
+  "headwear/tiny_top_hat": "deed:feat:pictures:10",                     // Art Hoarder
+  "skin/obsidian_ember": "deed:feat:leaders:25",                        // No More Bosses
+  "skin/gold": "deed:feat:bounties:50",                                 // Gold Digger
+};
 // Pieces that cover other layers ("<layer key>/<option id>": the layers they hide): those aren't drawn under them (still
 // rolled and kept: take the piece off and they're back).
 const COVERS = { "headwear/gear_dm_head": ["expression"], "headwear/gear_brd_head": ["expression"],
@@ -455,6 +472,7 @@ for (const folder of subdirs(SOURCE)) {
             for (const file of pngs(path.join(dir, skinFolder))) add(path.join(dir, skinFolder, file), toId(skinFolder));
         }
     }
+    for (const option of options.values()) if (BASE_UNLOCKS[key + "/" + option.id]) option.unlock = BASE_UNLOCKS[key + "/" + option.id];
     if (options.size) layers[key] = { key, folder, options: [...options.values()] };
 }
 
@@ -482,11 +500,20 @@ for (const folder of subdirs(SOURCE)) {
                 // and its hooded onesie's (<id>_suit's).
                 const hide = path.join(UNLOCKS, "generated", "fits", id + ".hide.png");
                 const suitHide = path.join(UNLOCKS, "generated", "fits", id.replace(/_body$/, "_suit") + ".hide.png");
+                // Which of it goes behind the ogre (painted in the fitter, Behind ogre): generated\fits\<id>.behind.png, and
+                // its hooded onesie's.
+                const behind = path.join(UNLOCKS, "generated", "fits", id + ".behind.png");
+                const suitBehind = path.join(UNLOCKS, "generated", "fits", id.replace(/_body$/, "_suit") + ".behind.png");
+                // A colour painted behind the ogre where the piece has nothing (the fitter's Lining: a hood's inside).
+                const lining = path.join(UNLOCKS, "generated", "fits", id + ".lining.png");
+                const suitLining = path.join(UNLOCKS, "generated", "fits", id.replace(/_body$/, "_suit") + ".lining.png");
                 layer.options.push({ id, name: meta.name || toName(file), rarity, unlock: meta.unlock, faceSkin: meta.faceSkin, dropChance: meta.dropChance,
                     root: painted, files: [{ skin: null, file: path.join(painted, folder, rarityFolder, file) }],
                     frontFile: fs.existsSync(front) ? front : null, backFile: fs.existsSync(back) ? back : null,
                     suitFile: fs.existsSync(suit) && meta.suitHead ? suit : null, suitHead: meta.suitHead,
-                    hideFile: fs.existsSync(hide) ? hide : null, suitHideFile: fs.existsSync(suitHide) && /_body$/.test(id) ? suitHide : null });
+                    hideFile: fs.existsSync(hide) ? hide : null, suitHideFile: fs.existsSync(suitHide) && /_body$/.test(id) ? suitHide : null,
+                    behindFile: fs.existsSync(behind) ? behind : null, suitBehindFile: fs.existsSync(suitBehind) && /_body$/.test(id) ? suitBehind : null,
+                    liningFile: fs.existsSync(lining) ? lining : null, suitLiningFile: fs.existsSync(suitLining) && /_body$/.test(id) ? suitLining : null });
             }
         }
     }
@@ -573,6 +600,58 @@ function HideMask(file) {
     return any ? { width: img.width, height: img.height, rgba } : null;
 }
 
+// A piece's behind (painted in the fitter where it goes behind the ogre) as how much of each pixel goes behind (0-255,
+// the picture's size); null if nothing of it is painted.
+function BehindMask(file) {
+    const img = decodePng(file), a = Buffer.alloc(img.width * img.height);
+    let any = false;
+    for (let i = 0; i < a.length; i++) { a[i] = img.rgba[i * 4 + 3]; if (a[i] > 16) any = true; }
+    return any ? { width: img.width, height: img.height, a } : null;
+}
+// A piece split at its behind: { front, back }, each the piece's size (the mask scaled to it if it's another size).
+function SplitBehind(image, mask) {
+    const { width, height, rgba } = image, front = Buffer.from(rgba), back = Buffer.from(rgba);
+    for (let y = 0; y < height; y++) {
+        const my = Math.min(mask.height - 1, Math.floor(y * mask.height / height));
+        for (let x = 0; x < width; x++) {
+            const m = mask.a[my * mask.width + Math.min(mask.width - 1, Math.floor(x * mask.width / width))] / 255, i = (y * width + x) * 4 + 3;
+            front[i] = Math.round(rgba[i] * (1 - m));
+            back[i] = Math.round(rgba[i] * m);
+        }
+    }
+    return { front: { width, height, rgba: front }, back: { width, height, rgba: back } };
+}
+
+// A lining (the fitter's colour behind the ogre), or null if nothing of it is painted.
+function Lining(file) {
+    const img = decodePng(file);
+    for (let i = 3; i < img.rgba.length; i += 4) if (img.rgba[i] > 16) return img;
+    return null;
+}
+// A piece's behind part: what of it the behind mask takes (none: nothing), over its lining (the lining scaled to it if
+// it's another size); null if neither. Sets image's front (what's left in front) when there's a mask.
+function BehindPart(holder, maskFile, liningFile) {
+    const mask = maskFile && BehindMask(maskFile), lining = liningFile && Lining(liningFile);
+    if (!mask && !lining) return null;
+    const { width, height } = holder.image;
+    let back = { width, height, rgba: Buffer.alloc(width * height * 4) };
+    if (mask) { const split = SplitBehind(holder.image, mask); holder.image = split.front; back = split.back; }
+    if (lining) {
+        const out = back.rgba;
+        for (let y = 0; y < height; y++) {
+            const ly = Math.min(lining.height - 1, Math.floor(y * lining.height / height));
+            for (let x = 0; x < width; x++) {
+                const i = (y * width + x) * 4, j = (ly * lining.width + Math.min(lining.width - 1, Math.floor(x * lining.width / width))) * 4;
+                const a = out[i + 3] / 255, b = lining.rgba[j + 3] / 255, o = a + b * (1 - a);  // (the part over the lining)
+                if (!o) continue;
+                for (let k = 0; k < 3; k++) out[i + k] = Math.round((out[i + k] * a + lining.rgba[j + k] * b * (1 - a)) / o);
+                out[i + 3] = Math.round(o * 255);
+            }
+        }
+    }
+    return back;
+}
+
 // Convert.
 fs.rmSync(TARGET, { recursive: true, force: true });
 for (const edition of EDITIONS) fs.rmSync(edition.target, { recursive: true, force: true });
@@ -582,6 +661,10 @@ for (const layer of Object.values(layers)) {
     for (const option of layer.options) {
         const images = option.files.map((f) => ({ ...f, image: decodePng(f.file) }));
         option.perSkin = images.some((f) => f.skin);
+        // (its behind: split off and drawn behind the ogre, the rest in front as before)
+        const behindMask = !option.perSkin && option.behindFile && BehindMask(option.behindFile);
+        const back = !option.perSkin && BehindPart(images[0], option.behindFile, option.liningFile);
+        if (back) option.behind = convertOption(layer, { id: option.id + "_behind" }, [{ skin: null, file: option.behindFile || option.liningFile, image: back }], TARGET);
         const painted = convertOption(layer, option, images, TARGET);
         option.full = painted.full;
         option.rect = painted.rect;
@@ -592,7 +675,10 @@ for (const layer of Object.values(layers)) {
             option.front = convertOption(layer, { id: option.id + "_front" }, [{ skin: null, file: option.frontFile, image: decodePng(option.frontFile) }], TARGET);
         }
         if (option.suitFile) {
-            option.suit = convertOption(layer, { id: option.id + "_suit" }, [{ skin: null, file: option.suitFile, image: decodePng(option.suitFile) }], TARGET);
+            const suit = { image: decodePng(option.suitFile) };
+            const back = BehindPart(suit, option.suitBehindFile, option.suitLiningFile);
+            if (back) option.suitBehind = convertOption(layer, { id: option.id + "_suit_behind" }, [{ skin: null, file: option.suitBehindFile || option.suitLiningFile, image: back }], TARGET);
+            option.suit = convertOption(layer, { id: option.id + "_suit" }, [{ skin: null, file: option.suitFile, image: suit.image }], TARGET);
         }
         // (where it hides the ogre: a mask for the skin, white where the ogre shows - the whole picture, as a mask hides
         // everything outside itself; none if nothing's painted)
@@ -607,7 +693,10 @@ for (const layer of Object.values(layers)) {
                 ? path.join(UNLOCKS, edition.key, path.relative(option.root, f.file))
                 : path.join(edition.source, path.relative(SOURCE, f.file)));
             if (!twins.every((t) => fs.existsSync(t))) continue;
-            option.editions[edition.key] = convertOption(layer, option, option.files.map((f, i) => ({ ...f, image: decodePng(twins[i]) })), edition.target);
+            option.editions[edition.key] = convertOption(layer, option, option.files.map((f, i) => {
+                const image = decodePng(twins[i]);
+                return { ...f, image: behindMask ? SplitBehind(image, behindMask).front : image };  // (its behind is the painted one)
+            }), edition.target);
             twinCounts[edition.key] = (twinCounts[edition.key] || 0) + 1;
         }
         console.log(`${layer.folder}/${option.id} (${option.rarity}${option.perSkin ? ", per skin" : ""}): ${painted.pixels}` +
@@ -650,6 +739,8 @@ for (const layer of Object.values(layers)) {
         if (o.front) unlock += `, front = MEDIA .. "${layer.folder}\\\\${o.id}_front"` + (o.front.full ? "" : `, frontRect = { ${o.front.rect.map(num).join(", ")} }`);
         if (o.hide) unlock += `, hide = MEDIA .. "${layer.folder}\\\\${o.id}_hide"`;
         if (o.suitHide) unlock += `, suitHide = MEDIA .. "${layer.folder}\\\\${o.id}_suit_hide"`;
+        if (o.behind) unlock += `, behind = MEDIA .. "${layer.folder}\\\\${o.id}_behind"` + (o.behind.full ? "" : `, behindRect = { ${o.behind.rect.map(num).join(", ")} }`);
+        if (o.suitBehind) unlock += `, suitBehind = MEDIA .. "${layer.folder}\\\\${o.id}_suit_behind"` + (o.suitBehind.full ? "" : `, suitBehindRect = { ${o.suitBehind.rect.map(num).join(", ")} }`);
         if (o.suit) unlock += `, suit = MEDIA .. "${layer.folder}\\\\${o.id}_suit"` + (o.suit.full ? "" : `, suitRect = { ${o.suit.rect.map(num).join(", ")} }`) + `, suitHead = "${o.suitHead}"`;
         const name = o.name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
         if (RETIRED.has(layer.key + "/" + o.id)) unlock += ", retired = true";
@@ -686,3 +777,7 @@ for (const [final, built] of [[FINAL, TARGET], ...EDITIONS.map((e) => [e.final, 
     fs.rmSync(old, { recursive: true, force: true });
 }
 console.log(`Converted ${count} file(s) (twins: ${Object.entries(twinCounts).map(([k, n]) => n + " " + k).join(", ")}), ${(bytes / 1048576).toFixed(1)} MB, and wrote MintArt.lua. Restart WoW (not just /reload) to load new textures.`);
+
+// Rebuild the dream stories from the new MintArt.lua; it lists any piece with no story lines yet.
+try { require("child_process").execFileSync(process.execPath, [path.join(__dirname, "dream", "build-story-lua.js")], { stdio: "inherit" }); }
+catch (e) { console.log("Story build failed: " + e.message); }

@@ -218,6 +218,18 @@ const ITEMS = [
     fill(c, [...curve([[536, 150], [580, 134], [636, 146], [692, 134], [738, 152]]), ...curve([[738, 152], [690, 190], [636, 176], [580, 190], [536, 150]]).slice(1)], K.navy, r);
     for (const [x, y] of curve([[552, 154], [636, 158], [722, 154]], 6)) dot(c, x, y, 3, K.white, r);
   }],
+  // (the sleep mask worn down over the eyes, replacing the pushed-up one: its shape as painted, x 507-746, y 159-273)
+  ["Accessory/Uncommon/sleep-mask.png", (c, r) => {
+    line(c, curve([[520, 226], [508, 232], [500, 240]]), 8, K.cream, r);  // (the band, going round behind the ear)
+    fill(c, [...curve([[514, 200], [580, 166], [640, 162], [702, 172], [744, 208]]),
+      ...curve([[744, 208], [740, 268], [700, 270], [662, 238], [640, 234], [618, 238], [580, 262], [520, 262], [514, 200]]).slice(1)],
+      hex("#6a73a8"), r);
+    line(c, curve([[528, 204], [584, 176], [640, 172], [698, 182], [732, 212]]), 5, K.cream, r);  // (its piped edge)
+    for (const [x, y] of [[588, 222], [688, 226]]) {  // (the stitched closed eyes, with lashes)
+      line(c, curve([[x - 28, y - 4], [x, y + 8], [x + 28, y - 4]], 6), 5, K.gold, r);
+      for (const dx of [-16, 0, 16]) line(c, [[x + dx, y + 5], [x + dx * 1.2, y + 15]], 4, K.gold, r);
+    }
+  }],
   ["Accessory/Uncommon/membership-card.png", (c, r) => {
     line(c, curve([[466, 356], [530, 470], [604, 590]]), 7, K.gold, r);
     line(c, curve([[770, 356], [700, 470], [632, 590]]), 7, OUTLINE, r);

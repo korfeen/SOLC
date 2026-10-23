@@ -64,7 +64,7 @@ local function AchievementPoints(id)
     if ns.FeatPoints and ns.FeatPoints(id) then return ns.FeatPoints(id) end
     local dimension, kills = id:match("^(%a+):.*:(%d+)$")
     kills = tonumber(kills)
-    if dimension == "faction" then return kills == 1000 and ns.Config("achTribe") or 0 end
+    if dimension == "faction" then return ns.Config("achTribe") end  -- (a tribe's one deed: 1000 kills, or its own target)
     return TierPoints(kills)
 end
 ns.AchievementPoints = AchievementPoints

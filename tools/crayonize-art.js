@@ -4,6 +4,8 @@
 // (tools/make-role-icons.js), the shape outlined in dark crayon and the areas' borders in thinner lines.
 // Also writes preview.png there: a few whole ogres, the original above its crayon twin.
 // Usage: node tools/crayonize-art.js [filter]   (filter: only paths containing it, e.g. "Headwear"). No dependencies.
+//        node tools/crayonize-art.js bg_ --from <folder> --to <folder>   (another folder's pictures, e.g. the generated
+//          painted pieces into generated\sketch; a name starting bg_ counts as a background)
 
 const fs = require("fs");
 const os = require("os");
@@ -14,9 +16,12 @@ const { decodePng, resample } = require("./convert-art");
 const SIZE = 1254;
 crayon.setSize(SIZE);
 const { canvas, dab, stroke, OUTLINE, rng, writePng } = crayon;
-const SOURCE = path.join(os.homedir(), "killtracker-art");
-const OUT = path.join(os.homedir(), "killtracker-art-extra", "CrayonArt");
-const filter = (process.argv[2] || "").split("/").join(path.sep);
+const args = process.argv.slice(2);
+const flag = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
+const FROM = flag("--from"), TO = flag("--to");
+const SOURCE = FROM || path.join(os.homedir(), "killtracker-art");
+const OUT = TO || path.join(os.homedir(), "killtracker-art-extra", "CrayonArt");
+const filter = (args[0] || "").split("/").join(path.sep);
 
 const SMALL = 314;  // the colour areas are found at a quarter of the size
 const SCALE = SIZE / SMALL;
@@ -57,7 +62,7 @@ const crayonColour = ([r, g, b]) => {
 };
 
 function crayonize(file, random) {
-  const layer = file.split(path.sep)[0];
+  const layer = /^bg_/.test(path.basename(file)) ? "Background" : file.split(path.sep)[0];
   const image = decodePng(path.join(SOURCE, file));
   const small = resample(image, 0, 0, SIZE, SIZE, SMALL, SMALL);
   // Labels: -1 where see-through, else the colour area.
@@ -147,7 +152,7 @@ function walk(dir, rel = "") {
     e.isDirectory() ? walk(dir, path.join(rel, e.name)) : e.name.endsWith(".png") ? [path.join(rel, e.name)] : []);
 }
 fs.mkdirSync(OUT, { recursive: true });
-const files = walk(SOURCE).filter((f) => f.includes(filter));
+const files = walk(SOURCE).filter((f) => f.includes(filter) && !(FROM && f.includes(path.sep)));  // (another folder: only its own files)
 files.forEach((file, n) => {
   const rgba = crayonize(file, rng(4242 + n * 7919));
   fs.mkdirSync(path.join(OUT, path.dirname(file)), { recursive: true });
@@ -156,6 +161,7 @@ files.forEach((file, n) => {
 });
 console.log();
 
+if (FROM) { console.log(`Wrote ${files.length} crayon layers to ${OUT}`); process.exit(0); }  // (no preview of the original ogres)
 // Preview: a few whole ogres, the original above its crayon twin.
 const OGRES = [
   ["Background/Uncommon/moonlit-fairway.png", "Skin/Uncommon/moss.png", "Outfit/Uncommon/striped-pajamas.png",

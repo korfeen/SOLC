@@ -2,7 +2,7 @@
 // pictures' painted style, through Codex (the same way as tools/gen-art.js). No text on them: the board writes that.
 //
 //   node tools/gen-poster-art.js Murloc "a murloc warrior with a spear, croaking"   (one; its id as the poster's)
-//   node tools/gen-poster-art.js --queue tools/gen-poster-art.json [--redo]        (a list; skips what's made)
+//   node tools/gen-poster-art.js --queue <list.json> [--redo]                       (a list; skips what's made)
 //
 // References: two of our pictures (an ogre on its backdrop), for the style. Out: Media\Posters\<id>.blp (256x256, for
 // the game; ids lower-cased) and %USERPROFILE%\killtracker-art-extra\Posters\<id>.png (the full painting).

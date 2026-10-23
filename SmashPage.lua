@@ -1,13 +1,13 @@
--- Kills (SMASH), with PvP, Rares and Deeds as its tabs (the keys pvp, rares, achievements open them). A split
--- page (ProfileHeader.lua: the profile header over the left page, the middle beam).
--- Left: tabs (CREATURES, RARES, PVP, DEEDS), the way into the list (back, the categories clicked into), and the list
--- itself: the same rows as the Kills, PvP, Rares and Achievements lists (UI.lua's BuildRows), in the Overview feed's
--- style. A category opens it; anything else is picked.
+-- Kills (SMASH) and Deeds (BRAG): two split pages built alike here (ProfileHeader.lua: the profile header over the
+-- left page, the middle beam). Kills' tabs: FOES, RARES, PVP (the keys pvp and rares open them); Deeds: DEEDS (the key
+-- achievements opens it) - not all of them are about kills (pictures, dungeons, puzzles...).
+-- Left: the tabs, the way into the list (back, the categories clicked into), and the list itself: the same rows as the
+-- old Kills, PvP, Rares and Achievements lists (UI.lua's BuildRows), in the Overview feed's style. A category opens
+-- it; anything else is picked.
 -- Right: the pick as the page's photo: a creature's model (drag to turn, scroll to zoom), or for a deed its
 -- tiers, for a player what's known of them; its name on the plaque, and under the frame its kills and its deeds'
--- progress. Inside a category with nothing picked: the category, with its most-killed creature; at the top: the deeds
--- closest to their next tier.
-
+-- progress. Inside a category with nothing picked: the category, with its most-killed creature; at the top: on Kills
+-- the most smashed creature of all, on Deeds the deeds closest to their next tier.
 local _, ns = ...
 local UI = ns.UI
 local List = UI.List
@@ -22,14 +22,15 @@ local CREAM, DIM = { 0.93, 0.88, 0.78 }, { 0.62, 0.56, 0.48 }
 local GOLD = { 1, 0.85, 0.1 }
 local HOVER_COLOR, PICKED_COLOR = { 0.65, 0.53, 0.28 }, { 0.45, 0.36, 0.18 }
 
-local TABS = {  -- { view (BuildRows), label, ogre word }; the rares are a switch on DEEDS (RARES_SWITCH)
-    { "creatures", "CREATURES", "BEAST" },
-    { "pvp", "PVP", "BONK" },
-    { "achievements", "DEEDS", "BRAG" },
+-- The two pages: tabs = { view (BuildRows), label, ogre word }; tabFor: the page asked for (UI state.page) picks the
+-- tab when you come in from it; deeds: its top shows the closest deeds (else the most smashed creature).
+local PAGES = {
+    { key = "kills", label = "Kills", order = 2, covers = { pvp = true, rares = true },
+        tabs = { { "creatures", "FOES", "BADDY" }, { "rares", "RARES", "SHINY" }, { "pvp", "PVP", "BONK" } },
+        tabFor = { pvp = "pvp", rares = "rares" } },
+    { key = "deeds", label = "Deeds", order = 3, covers = { achievements = true }, deeds = true,
+        tabs = { { "achievements", "DEEDS", "BRAG" } }, tabFor = { achievements = "achievements" } },
 }
-local RARES_SWITCH = { width = 70, label = "RARES", ogre = "SHINY" }  -- at the right end of the line under the tabs
--- The page asked for (UI state.page) picks the tab when you come in from it.
-local TAB_FOR_PAGE = { pvp = "pvp", rares = "rares", achievements = "achievements" }
 
 -- In window pixels (from its top-left, y down). The left slot (UI.SPLIT.left): the tabs, the way in, the rows.
 local LEFT = {
@@ -92,8 +93,49 @@ local function DrawRows(page)
     page.empty:SetText(state.view == "pvp" and "No PvP kills yet." or "Nothing smashed yet - go smash something.")
 end
 
+-- Deeds' top: the latest deed earned, big in the photo's opening (made the first time): a trophy, its name in crayon,
+-- what it was for, when, its points. nil: hidden.
+local function ShowLatest(page, tier, row)
+    local f = page.latest
+    if not f then
+        f = CreateFrame("Frame", nil, page.model:GetParent())
+        f:SetAllPoints()
+        f.heading = f:CreateFontString(nil, "OVERLAY")
+        f.heading:SetFont(NAME_FONT, 15, "")
+        f.heading:SetTextColor(unpack(GOLD))
+        f.heading:SetPoint("TOP", 0, -26)
+        f.icon = f:CreateTexture(nil, "ARTWORK")
+        f.icon:SetSize(96, 96)
+        f.icon:SetPoint("TOP", f.heading, "BOTTOM", 0, -18)
+        f.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Feed_Achievement")
+        f.name = f:CreateFontString(nil, "OVERLAY")
+        f.name:SetFont(SIGN_FONT, 30, "")
+        f.name:SetTextColor(1, 0.62, 0.2)
+        f.name:SetPoint("TOP", f.icon, "BOTTOM", 0, -16)
+        f.name:SetPoint("LEFT", 16, 0)
+        f.name:SetPoint("RIGHT", -16, 0)
+        UI.OutlineText(f.name, { 0, 0, 0 })
+        f.what = f:CreateFontString(nil, "OVERLAY")
+        f.what:SetFont(NAME_FONT, 16, "")
+        f.what:SetTextColor(unpack(CREAM))
+        f.what:SetPoint("TOP", f.name, "BOTTOM", 0, -12)
+        f.when = f:CreateFontString(nil, "OVERLAY")
+        f.when:SetFont(NAME_FONT, 14, "")
+        f.when:SetTextColor(unpack(DIM))
+        f.when:SetPoint("TOP", f.what, "BOTTOM", 0, -8)
+        page.latest = f
+    end
+    f:SetShown(tier ~= nil)
+    if not tier then return end
+    f.heading:SetText("LATEST DEED")
+    f.name:SetText(tier.name)
+    f.what:SetText(("%s: %d %s"):format(row.category, tier.kills, row.unit or "kills"))
+    f.when:SetText(("Earned %s  -  |cffffbf66+%d points|r"):format(date("%Y-%m-%d", tier.time), tier.points or 0))
+end
+
 -- Writes a creature's model, or says it isn't known yet.
 local function ShowCreature(page, npcID)
+    if page.latest then page.latest:Hide() end
     page.model:Show()
     page.model:ClearModel()
     page.model:SetCreature(npcID)
@@ -106,6 +148,7 @@ local function ShowCreature(page, npcID)
 end
 
 local function ShowPanel(page, lines)
+    if page.latest then page.latest:Hide() end
     page.model:Hide()
     page.unseen:Hide()
     for i, line in ipairs(page.panel) do
@@ -173,29 +216,57 @@ local function DrawPick(page)
             ("|cffffbf66%d|r smashed in here"):format(page.total),
             top and ("Most smashed: %s (%d)"):format(top.label, top.count) or "",
         }, top and DeedsFor(top.mob.c) or nil)
-    else
-        -- The top: the deeds closest to their next tier.
+    elseif not page.spec.deeds then
+        -- Kills' top: the most smashed creature of all, and the totals.
         local who = UI.Profile(ns.GetViewing())
         name = (who.name or ""):match("^(%S+)") or ""
-        local nearest = NearestDeeds(3)
-        local lines = { { "Closest deeds", GOLD } }
-        for _, progress in ipairs(NearestDeeds(PANEL_LINES - 2)) do
-            lines[#lines + 1] = ("%s: %d/%d"):format(progress.category, progress.kills, progress.next.kills)
+        local top, kinds = nil, 0
+        for _, mob in ipairs(state.view == "creatures" and List.CollectMobs() or {}) do
+            if mob.npcID then
+                kinds = kinds + 1
+                if not top or mob.count > top.count then top = mob end
+            end
         end
-        ShowPanel(page, lines)
-        SetInfo(page, { ("|cffffbf66%d|r smashed in all"):format(page.total) }, nearest)
+        if top then ShowCreature(page, top.npcID) else ShowPanel(page, {}) end
+        SetInfo(page, {
+            ("|cffffbf66%d|r smashed in all"):format(page.total),
+            top and ("Most smashed: %s (%d)"):format(top.name, top.count) or "",
+            kinds > 0 and ("%d different creatures"):format(kinds) or "",
+        }, top and DeedsFor(top.c) or nil)
+    else
+        -- Deeds' top: the latest deed earned, big; under it how many and the deeds closest to their next tier.
+        local who = UI.Profile(ns.GetViewing())
+        name = (who.name or ""):match("^(%S+)") or ""
+        local latest, latestRow
+        for _, progress in ipairs(ns.GetAchievementProgress(List.Source())) do
+            for _, tier in ipairs(progress.tiers) do
+                if tier.time and (not latest or tier.time > latest.time) then latest, latestRow = tier, progress end
+            end
+        end
+        if latest then
+            ShowPanel(page, {})
+            ShowLatest(page, latest, latestRow)
+        else
+            ShowPanel(page, { { "No deeds yet", GOLD }, " ", "Smash things, find rares, clear dungeons, claim bounties:",
+                "every deed earns points, and some earn pieces for your ogre." })
+        end
+        SetInfo(page, { ("|cffffbf66%d|r deeds earned"):format(ns.GetAchievementTotals(List.Source())), "Closest to their next tier:" },
+            NearestDeeds(3))
     end
     Fit(page.plaque, SIGN_FONT, RIGHT.plaque.size, 8, (name or ""):upper(), RIGHT.plaque.w)
 end
 
+local function Register(spec)
+local TABS, TAB_FOR_PAGE = spec.tabs, spec.tabFor
 ns.RegisterPage({
-    key = "kills", label = "Kills", section = "me", order = 2,
+    key = spec.key, label = spec.label, section = "me", order = spec.order,
     bare = true,
     split = true,
-    covers = { pvp = true, rares = true, achievements = true },  -- (UI.lua) on those tabs
+    covers = spec.covers,  -- (UI.lua) on those tabs
     create = function(parent)
         local page = CreateFrame("Frame", nil, parent)
         page:SetAllPoints()
+        page.spec = spec
         local W = UI.window
         local slot, under = UI.SPLIT.left, UI.SPLIT.under
         local function At(region, point, x, y) region:SetPoint(point, W, "TOPLEFT", x, -y) end
@@ -226,7 +297,7 @@ ns.RegisterPage({
             local button = UI.TabButton(left, slot.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
             button.view = tab[1]
             function button:Redraw()
-                local current = state.view == self.view or (self.view == "achievements" and state.view == "rares")
+                local current = state.view == self.view
                 self:SetTab(ogre() and tab[3] or tab[2], current)
             end
             button:SetScript("OnClick", function(self)
@@ -281,34 +352,7 @@ ns.RegisterPage({
         page.crumb:SetTextColor(unpack(CREAM))
         page.crumb:SetJustifyH("LEFT")
         page.crumb:SetWordWrap(false)
-        page.crumb:SetWidth(slot.right - slot.left - 36 - RARES_SWITCH.width)
-
-        -- DEEDS' rares switch: the deeds, or every rare by zone (found or not), what the rare deeds count.
-        local rares = CreateFrame("Button", nil, left)
-        rares:SetSize(RARES_SWITCH.width, LEFT.crumb.bottom - LEFT.crumb.top - 6)
-        At(rares, "RIGHT", slot.right - 4, crumbY)
-        local raresPlate = rares:CreateTexture(nil, "BACKGROUND")
-        raresPlate:SetAllPoints()
-        rares.text = rares:CreateFontString(nil, "OVERLAY")
-        rares.text:SetFont(NAME_FONT, LEFT.crumb.size, "")
-        rares.text:SetPoint("CENTER", 0, 1)
-        function rares:Redraw(hovered)
-            local on = state.view == "rares"
-            self.text:SetText((on and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12|t " or "")
-                .. (KillTrackerDB and KillTrackerDB.ogreMode and RARES_SWITCH.ogre or RARES_SWITCH.label))
-            self.text:SetTextColor(unpack(on and GOLD or hovered and { 1, 1, 1 } or DIM))
-            raresPlate:SetColorTexture(unpack(hovered and HOVER_COLOR or on and { 0.3, 0.22, 0.12 } or { 0.2, 0.17, 0.14 }))
-        end
-        rares:SetScript("OnEnter", function(self) self:Redraw(true) Tooltip(self, { "Rares", "Every rare by zone, found or not. Finding them earns the rare deeds." }) end)
-        rares:SetScript("OnLeave", function(self) self:Redraw(false) GameTooltip_Hide() end)
-        rares:SetScript("OnClick", function()
-            UI.ClickSound()
-            page.view = state.view == "rares" and "achievements" or "rares"
-            page.pick, page.offset = nil, 0
-            state.view, state.path = page.view, {}
-            ns.OpenPage(state.page)
-        end)
-        page.raresSwitch = rares
+        page.crumb:SetWidth(slot.right - slot.left - 36)
 
         -- The rows, running on under the post and the middle beam; the wheel scrolls them.
         local rowsSpec, overhang = LEFT.rows, 20
@@ -504,17 +548,15 @@ ns.RegisterPage({
         -- Yours or a synced guildmate's (the old lists' combined stats aren't shown here).
         if state.viewing and not KillTrackerFriends[state.viewing] then state.viewing = nil end
         -- The tab: from the page asked for, when that changed; else the last one used.
-        local wanted = TAB_FOR_PAGE[state.page] or "creatures"
+        local wanted = TAB_FOR_PAGE[state.page] or TABS[1][1]
         if page.asked ~= state.page then
             if TAB_FOR_PAGE[state.page] or not page.view then page.view, page.pick, page.offset = wanted, nil, 0 end
             page.asked = state.page
         end
-        if state.view ~= page.view or state.listPage ~= "smash" then state.path = {} end
-        state.view, state.listPage = page.view, "smash"
+        if state.view ~= page.view or state.listPage ~= spec.key then state.path = {} end
+        state.view, state.listPage = page.view, spec.key
         if page.who ~= state.viewing then page.pick, page.offset, page.who = nil, 0, state.viewing end
         for _, tab in ipairs(page.tabs) do tab:Redraw(false) end
-        page.raresSwitch:SetShown(state.view == "achievements" or state.view == "rares")
-        page.raresSwitch:Redraw(false)
 
         page.data = List.BuildRows()
         local total, max = 0, 0
@@ -543,3 +585,5 @@ ns.RegisterPage({
         page:DrawPick()
     end,
 })
+end
+for _, spec in ipairs(PAGES) do Register(spec) end

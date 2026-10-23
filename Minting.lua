@@ -139,13 +139,175 @@ function ns.NextEdition(edition)
     if not edition then return ns.EDITIONS[1] end
     for i, e in ipairs(ns.EDITIONS) do if e == edition then return ns.EDITIONS[i + 1] end end
 end
--- A picture drawn on canvas in its owner's chosen style, redrawn only when its traits or style changed.
+-- Picture frames (Frames.lua, tools/convert-frames.js): mint.frame = a frame's id (nil: the first, the tape every
+-- picture starts in). A few free, the rest by Ogre Rank ("rank:<n>") or a deed ("deed:<id>"). Synced with the picture.
+function ns.DefaultFrame() return ns.PICTURE_FRAMES and ns.PICTURE_FRAMES[1] and ns.PICTURE_FRAMES[1].id end
+function ns.FrameById(id)
+    for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do if frame.id == id then return frame end end
+end
+-- Whether you have this frame (nil: free), and how to get it if not.
+function ns.FrameUnlocked(frame)
+    local unlock = frame and frame.unlock
+    if not unlock then return true end
+    local rank = unlock:match("^rank:(%d+)$")
+    if rank then return ns.GetRank().rank >= tonumber(rank), ("Ogre Rank %s"):format(rank) end
+    local deed = unlock:match("^deed:(.+)$")
+    if deed then return (KillTrackerDB.achievements or {})[deed] ~= nil, "A deed" end
+    return false
+end
+function ns.SetMintFrame(mint, id)
+    local frame = ns.FrameById(id)
+    if not frame or not ns.FrameUnlocked(frame) then return end
+    mint.frame = id ~= ns.DefaultFrame() and id or nil
+    ns.Touch(mint)  -- syncs it
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+-- The next frame you have after this one (for stepping through them).
+function ns.NextFrame(id)
+    local list, at = {}, 1
+    for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
+        if ns.FrameUnlocked(frame) then list[#list + 1] = frame.id end
+        if frame.id == (id or ns.DefaultFrame()) then at = #list end
+    end
+    return list[at % #list + 1] or ns.DefaultFrame()
+end
+
+-- A picture in its frame: the picture always the same size (FRAME_PICTURE of the canvas, whichever frame), the frame in
+-- the canvas's middle (the picture in its opening, so a lopsided frame lifts it), scaled
+-- round it so its opening fits (a child of the canvas, made the first time). Too small a
+-- canvas (a list's icon), or not a picture (your built ogre): no frame. Returns where the picture goes.
+local FRAME_MIN, FRAME_PICTURE = 40, 0.72
+local function Framed(canvas, mint)
+    local frame = mint.number and canvas:GetWidth() >= FRAME_MIN and ns.FrameById(mint.frame or ns.DefaultFrame())
+    if not frame or not frame.texture then
+        if canvas.framing then canvas.framing:Hide() end
+        return canvas
+    end
+    local f = canvas.framing
+    if not f then
+        f = CreateFrame("Frame", nil, canvas)
+        f:SetAllPoints()
+        f.picture = CreateFrame("Frame", nil, f)
+        f.over = CreateFrame("Frame", nil, f)
+        f.over:SetAllPoints()
+        f.over:SetFrameLevel(f.picture:GetFrameLevel() + 2)
+        f.tex = f.over:CreateTexture(nil, "OVERLAY")
+        f.tex:SetAllPoints()
+        canvas.framing = f
+    end
+    local size, inner = canvas:GetWidth(), frame.inner
+    local outer = frame.outer or inner
+    local side = size * FRAME_PICTURE
+    -- (the frame: its opening a little smaller than the picture, so the picture's edge is under it. The frame itself
+    -- sits in the canvas's middle, the picture in its opening: a lopsided frame, like the polaroid's thick bottom,
+    -- lifts its picture instead of hanging out below)
+    local tex = side / (math.max(inner.w, inner.h) * 1.03)
+    local bx, by = outer.x + outer.w / 2, outer.y + outer.h / 2
+    f.tex:ClearAllPoints()
+    f.tex:SetSize(tex, tex)
+    f.tex:SetPoint("CENTER", f, "CENTER", (0.5 - bx) * tex, -(0.5 - by) * tex)
+    f.picture:ClearAllPoints()
+    f.picture:SetPoint("CENTER", f, "CENTER", (inner.x + inner.w / 2 - bx) * tex, -(inner.y + inner.h / 2 - by) * tex)
+    f.picture:SetSize(side, side)
+    f.tex:SetTexture(frame.texture)
+    -- (its back, placed like the front, over it all: shown by ns.MintBack)
+    if not f.backside then
+        f.backside = CreateFrame("Frame", nil, f)
+        f.backside:SetAllPoints()
+        f.backside:SetFrameLevel(f.picture:GetFrameLevel() + 4)
+        f.backTex = f.backside:CreateTexture(nil, "ARTWORK")
+        f.backside:Hide()
+    end
+    f.backTex:ClearAllPoints()
+    f.backTex:SetSize(tex, tex)
+    f.backTex:SetPoint("CENTER", f, "CENTER", (0.5 - bx) * tex, -(0.5 - by) * tex)
+    f.backTex:SetTexture(frame.back)
+    f.hasBack = frame.back ~= nil
+    if not f.hasBack then f.backside:Hide() end
+    f:Show()
+    return f.picture
+end
+
+-- A drawn picture turned over (show) or back: its frame's back, the picture hidden. Returns the frame's opening (to
+-- write on, e.g. its dream: PixPage.lua) while turned over, or nil if it has no back (no frame: too small, or none).
+function ns.MintBack(canvas, show)
+    local f = canvas.framing
+    if not (f and f:IsShown() and f.hasBack) then return nil end
+    f.backside:SetShown(show)
+    return show and f.picture or nil
+end
+
+-- A drawn picture turned over (on), or back: its dream (mint.tale, told in the Dream Bed; older ones have none) and,
+-- at the bottom, its number, date and painter, as written on a photo's back. On its frame's back, in ink in the
+-- opening; with no frame, on a dark card over it all. The words shrink to fit. Returns whether it's turned over (any
+-- minted picture can be; not a built ogre). The Pictures page and your Overview's picture view use it.
+local TALE_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
+local TALE_TITLE_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\FingerPaint-Regular.ttf"
+function ns.ShowMintTale(canvas, mint, on)
+    on = on and mint ~= nil and mint.number ~= nil
+    local region = ns.MintBack(canvas, on)
+    local b = canvas.taleBack
+    if not on then
+        if b then b:Hide() end
+        return false
+    end
+    if not b then
+        b = CreateFrame("Frame", nil, canvas)
+        b:SetAllPoints()
+        b:SetFrameLevel(canvas:GetFrameLevel() + 8)  -- (over the frame's back)
+        b.paper = b:CreateTexture(nil, "BACKGROUND")
+        b.paper:SetAllPoints()
+        b.paper:SetColorTexture(0.12, 0.09, 0.06, 0.94)
+        b.title = b:CreateFontString(nil, "OVERLAY")
+        b.title:SetFont(TALE_TITLE_FONT, 18, "")
+        b.text = b:CreateFontString(nil, "OVERLAY")
+        b.text:SetJustifyH("LEFT")
+        b.text:SetSpacing(2)
+        b.note = b:CreateFontString(nil, "OVERLAY")
+        canvas.taleBack = b
+    end
+    b:Show()
+    local inked = region ~= nil
+    region = region or canvas
+    b.paper:SetShown(not inked)
+    local inset = region:GetWidth() * 0.07
+    b.title:SetFont(TALE_TITLE_FONT, math.max(12, math.floor(region:GetWidth() / 16)), "")
+    b.title:ClearAllPoints()
+    b.title:SetPoint("TOP", region, "TOP", 0, -inset)
+    b.title:SetText(not mint.tale and "" or KillTrackerDB.ogreMode and "DREAM" or "The dream")
+    b.title:SetTextColor(unpack(inked and { 0.45, 0.12, 0.08 } or { 1, 0.85, 0.1 }))
+    b.text:ClearAllPoints()
+    b.text:SetPoint("TOP", b.title, "BOTTOM", 0, -6)
+    b.text:SetWidth(region:GetWidth() - 2 * inset)
+    b.text:SetTextColor(unpack(inked and { 0.2, 0.12, 0.06 } or { 0.93, 0.88, 0.78 }))
+    b.text:SetShadowOffset(inked and 0 or 1, inked and 0 or -1)
+    -- (the note at the bottom: #12  2026-10-20  Koffe)
+    b.note:SetFont(TALE_TITLE_FONT, math.max(9, math.floor(region:GetWidth() / 24)), "")
+    b.note:ClearAllPoints()
+    b.note:SetPoint("BOTTOM", region, "BOTTOM", 0, inset * 0.6)
+    b.note:SetText(("#%d%s%s"):format(mint.number, mint.time and ("   " .. date("%Y-%m-%d", mint.time)) or "",
+        mint.paintedBy and ("   " .. mint.paintedBy) or ""))
+    b.note:SetTextColor(unpack(inked and { 0.3, 0.2, 0.12 } or { 0.62, 0.56, 0.48 }))
+    local room = region:GetHeight() - 2 * inset - b.title:GetStringHeight() - 6 - b.note:GetStringHeight()
+    for size = 15, 8, -1 do
+        b.text:SetFont(TALE_FONT, size, "")
+        b.text:SetText(mint.tale or "")
+        if b.text:GetStringHeight() <= room then break end
+    end
+    return true
+end
+
+-- A picture drawn on canvas in its owner's chosen style and frame, redrawn only when its traits, style or frame changed.
 function ns.DrawMint(canvas, mint, tilt)
     local style = ns.MintStyle(mint)
     local key = ns.StyleKey(style)
-    if canvas.drawnTraits == mint.traits and canvas.drawnStyle == key and canvas.drawnTilt == tilt then return end
-    ns.RenderMint(canvas, mint.traits, tilt, style)
-    canvas.drawnTraits, canvas.drawnStyle, canvas.drawnTilt = mint.traits, key, tilt
+    if canvas.drawnTraits == mint.traits and canvas.drawnStyle == key and canvas.drawnTilt == tilt
+        and canvas.drawnFrame == mint.frame then return end
+    local target = Framed(canvas, mint)
+    if target ~= canvas then ns.RenderMint(canvas, {}, tilt) end  -- (framed: the canvas's own layers cleared)
+    ns.RenderMint(target, mint.traits, tilt, style)
+    if canvas.framing and target ~= canvas then canvas.framing.tex:SetRotation(-math.rad(tilt or 0)) end
+    canvas.drawnTraits, canvas.drawnStyle, canvas.drawnTilt, canvas.drawnFrame = mint.traits, key, tilt, mint.frame
 end
 
 local function FindOption(layer, id)
@@ -158,11 +320,16 @@ end
 -- officer's mint battle rolls without it).
 local luck = 1
 local LUCKY = { epic = true, legendary = true }
+-- A dream being minted (ns.DreamMint): { milk = 0..3, asked = layer key, id = the bedtime story's piece }, else nil.
+-- Each mug of Warm Milk weighs the rarer pieces more (MILK_LUCK: per mug, by rarity).
+local dream
+local MILK_LUCK = { rare = 0.4, epic = 0.8, legendary = 1 }
 -- boost (optional): the pot's rarity boost on this layer ({ [rarity] = this much more weight }).
 local function Weight(option, boost)
     local weight = option.weight or RARITY_WEIGHTS[option.rarity]
     if LUCKY[option.rarity] then weight = weight * luck end
     if boost and boost[option.rarity] then weight = weight * boost[option.rarity] end
+    if dream and MILK_LUCK[option.rarity] then weight = weight * (1 + MILK_LUCK[option.rarity] * dream.milk) end
     return weight
 end
 
@@ -281,6 +448,7 @@ end
 
 local plan
 local function Roll(layer)
+    if dream and dream.asked == layer.key then return FindOption(layer, dream.id) end  -- (the bedtime story's piece)
     local entry = plan and plan[layer.key]
     local potted = entry and FromPot(layer, entry)
     if potted then return potted end
@@ -368,11 +536,13 @@ local function ScoreOdds()
 end
 
 -- Overall rarity from the traits' rarities added up, graded by how few rolls score that high:
--- legendary = top 1.5% of pictures, epic = top 5%, rare = top 17%, else uncommon.
-function ns.MintRarity(traits)
+-- legendary = top 1.5% of pictures, epic = top 5%, rare = top 17%, else uncommon. asked: a layer the bedtime story
+-- picked (the Dream Bed: mint.asked), counted as an everyday piece - it was chosen, not luck.
+function ns.MintRarity(traits, asked)
     local score = 0
     for _, layer in ipairs(ns.MintLayers) do
         local option = FindOption(layer, traits[layer.key])
+        if layer.key == asked then option = { rarity = RARITY_ORDER[1] } end
         score = score + (option and RARITY_SCORE[option.rarity] or 0)
     end
     local share = ScoreOdds()[score] or 1
@@ -480,6 +650,71 @@ function ns.Mint(tokens)
     return mint
 end
 
+-- The Dream Bed's mint (DreamBed.lua): the ogre dreams it, you paint it. milk: mugs of Warm Milk (0..3: luck);
+-- story: { layer, id } the bedtime story asked about (its piece for sure; Bedtime Stories by its rarity, STORY_COST), or
+-- nil. The edition is rolled too (EDITION_ODDS: crayon the rarest; each mug makes both likelier) and fixed: mint.asked,
+-- mint.paintedBy (you), mint.crayon = false (no switching). Ogres go to sleep by bonking their heads: every dream
+-- costs a Bonk (no points). Returns the mint, or nil and why not.
+ns.STORY_COST = { uncommon = 1, rare = 2, epic = 3, legendary = 5 }
+local EDITION_ODDS = { crayon = { 4, 2 }, sketch = { 10, 3 } }  -- { percent, + percent per mug }
+-- Bonks come back one a day (at the daily reset), piling up to BONK_CAP while you're away; Bonks won elsewhere (chests,
+-- bounties, plinko, Ogre Rank) go past it. KillTrackerDB.bonkDay: the last day counted. Call before showing the count.
+local BONK_CAP = 3
+ns.BONK_CAP = BONK_CAP
+function ns.TopUpBonks()
+    local db, today = KillTrackerDB, ns.Today()
+    if not db.bonkDay then db.bonkDay = today - 1 end  -- (your first: one to start with)
+    local days = today - db.bonkDay
+    if days <= 0 then return end
+    db.bonkDay = today
+    local add = math.min(days, math.max(0, BONK_CAP - ns.Tokens("bonk")))
+    if add > 0 then ns.AddIngredient("bonk", add, true) end
+end
+-- Your Bonks now (today's counted in first), and a line about them for tooltips.
+function ns.Bonks() ns.TopUpBonks() return ns.Tokens("bonk") end
+function ns.BonksLine()
+    local n = ns.Bonks()
+    return ("One Bonk in the Dream Bed. You have %d%s"):format(n, n < BONK_CAP and " (one comes back each day)" or "")
+end
+function ns.DreamMint(milk, story)
+    local db = KillTrackerDB
+    milk = math.max(0, math.min(3, milk or 0))
+    ns.TopUpBonks()
+    if ns.Tokens("bonk") < 1 then return nil, "No Bonks left. One comes back each day." end
+    if milk > ns.Tokens("milk") then return nil, "Not enough Warm Milk." end
+    local storyCost, storyOption = 0, nil
+    if story then
+        for _, layer in ipairs(ns.MintLayers) do
+            if layer.key == story.layer then storyOption = FindOption(layer, story.id) end
+        end
+        if not storyOption or not ns.MintAllowed(storyOption) then return nil, "The ogre doesn't know that story." end
+        storyCost = ns.STORY_COST[storyOption.rarity] or 1
+        if storyCost > ns.Tokens("story") then return nil, "Not enough Bedtime Stories." end
+    end
+    luck = ns.RankPerk and ns.RankPerk("luck") or 1
+    dream = { milk = milk, asked = story and story.layer, id = story and story.id }
+    local traits = RollFree(TakenPictures())
+    luck, dream = 1, nil
+    if not traits then return nil, "Every possible picture is already taken." end
+    local spend = {}
+    if milk > 0 then spend.milk = milk end
+    if storyCost > 0 then spend.story = storyCost end
+    spend.bonk = 1
+    ns.SpendTokens(spend)
+    local roll, edition = math.random() * 100, nil
+    if roll < EDITION_ODDS.crayon[1] + EDITION_ODDS.crayon[2] * milk then edition = "crayon"
+    elseif roll < EDITION_ODDS.crayon[1] + EDITION_ODDS.sketch[1] + (EDITION_ODDS.crayon[2] + EDITION_ODDS.sketch[2]) * milk then edition = "sketch" end
+    local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = 0, crayon = false, style = edition,
+        asked = story and story.layer, paintedBy = ns.MyName and Ambiguate(ns.MyName(), "short") or nil, milk = milk }
+    db.mints[#db.mints + 1] = mint
+    ns.LearnTraits(mint.traits)
+    ns.Touch(mint)  -- syncs it to guildmates
+    if ns.AddEvent then ns.AddEvent("M", mint.number) end
+    if ns.CheckAchievements then ns.CheckAchievements() end
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    return mint
+end
+
 -- The number for your next picture: above every number used so far, including pictures given away
 -- (KillTrackerDB.removedMints), so a number never means two different pictures.
 function ns.NextMintNumber()
@@ -570,10 +805,18 @@ end
 local UNDER_HAT = {
     gold_chain = true, moonstone_pendant = true, gear_brd_charm = true,                     -- necklaces
     gear_ruins_charm = true, gear_zf_charm = true, gear_stratu_charm = true, gear_scholo_charm = true,  -- worn on the body
-    eye_mask_pushed_up = true, monocle = true, pirate_eyepatch = true,                     -- on the face
+    eye_mask_pushed_up = true, sleep_mask = true, monocle = true, pirate_eyepatch = true, cucumber_slices = true,  -- eyewear
 }
+-- (Eyewear - anything over the eyes you could take off - is an accessory, never an eyes trait; it may cover the
+-- picture's eyes, even rare ones: the story and the picture's info still name them.)
 ns.MINT_UNDER_HAT = UNDER_HAT
-local function OverHat(layerKey, option) return layerKey == "accessory" and not UNDER_HAT[option.id] end
+-- And the face pieces that float off the face (a snore bubble beside the head), drawn in front of the hat too, or a
+-- hat's brim cuts them off.
+local FACE_OVER_HAT = { snoring_zzz_bubble = true }
+local function OverHat(layerKey, option)
+    if layerKey == "accessory" then return not UNDER_HAT[option.id] end
+    return FACE_OVER_HAT[option.id] == true
+end
 local FRONT_SUBLEVEL = 7  -- the top of the ARTWORK draw layer
 -- The layers' sublevels, two apart from the bottom (-6, -4, ... 6), leaving room between them: a skin's front (a boss's
 -- mask) goes just over the eyes, so it covers the face but not the accessory or the hat.
@@ -642,6 +885,7 @@ function ns.DrawPiece(frame, layerKey, option)
     if frame.front then frame.front:Hide() end
     if frame.outfitFront then frame.outfitFront:Hide() end
     if frame.outfitBack then frame.outfitBack:Hide() end
+    for _, tex in pairs(frame.behinds or {}) do tex:Hide() end
     frame.drawnTraits = nil  -- (ns.DrawMint draws it afresh next time)
     frame.piece = frame.piece or frame:CreateTexture(nil, "ARTWORK", nil, 5)
     frame.pieceFront = frame.pieceFront or frame:CreateTexture(nil, "ARTWORK", nil, 6)
@@ -662,6 +906,17 @@ function ns.DrawPiece(frame, layerKey, option)
         tex:SetColorTexture(unpack(option.color))
     end
     tex:Show()
+    -- (its part behind the ogre, painted in the fitter: under it, where it sits beside the piece)
+    frame.pieceBehind = frame.pieceBehind or frame:CreateTexture(nil, "ARTWORK", nil, 4)
+    frame.pieceBehind:SetShown(option.behind ~= nil)
+    if option.behind then
+        local r, br = rect or { 0, 0, 1, 1 }, option.behindRect or { 0, 0, 1, 1 }
+        local k = tex:GetWidth() / r[3]
+        frame.pieceBehind:ClearAllPoints()
+        frame.pieceBehind:SetPoint("TOPLEFT", tex, "TOPLEFT", (br[1] - r[1]) * k, -(br[2] - r[2]) * k)
+        frame.pieceBehind:SetSize(br[3] * k, br[4] * k)
+        frame.pieceBehind:SetTexture(option.behind)
+    end
     front:SetShown(layerKey == "skin" and option.front ~= nil)
     if layerKey == "skin" and option.front then  -- (a skin fills the square: its mask where it sits on it)
         local fr = option.frontRect
@@ -692,6 +947,7 @@ ns.MintSuit = Suit
 function ns.RenderMint(canvas, traits, tilt, style)
     canvas.layers = canvas.layers or {}
     if canvas.piece then canvas.piece:Hide() canvas.pieceFront:Hide() end  -- (a piece drawn here before, ns.DrawPiece)
+    if canvas.pieceBehind then canvas.pieceBehind:Hide() end
     local angle = math.rad(tilt or 0)
     local covered = ns.CoveredLayers(traits)
     local suit = Suit(traits)
@@ -747,6 +1003,25 @@ function ns.RenderMint(canvas, traits, tilt, style)
                 tex:SetColorTexture(unpack(option.color))
             end
             tex:Show()
+        end
+        -- Its part behind the ogre (a hood's back behind the head, painted in the fitter): between the background and
+        -- the skin, like an outfit's back; canvas.behinds by the layer's index (a hooded onesie's in the hat's).
+        local behind, behindRect
+        if suitHere then
+            behind, behindRect = suit.suitBehind, suit.suitBehindRect
+        elseif option and texture then
+            behind, behindRect = option.behind, option.behindRect
+        end
+        canvas.behinds = canvas.behinds or {}
+        if behind then
+            local back = canvas.behinds[i] or canvas:CreateTexture(nil, "ARTWORK", nil, Sublevel(1) + 1)
+            canvas.behinds[i] = back
+            back:ClearAllPoints()
+            Place(back, canvas, behindRect, angle)
+            back:SetTexture(behind)
+            back:Show()
+        elseif canvas.behinds[i] then
+            canvas.behinds[i]:Hide()
         end
     end
     -- (the masks: put on the fresh skin once; after that only placed again, the picture may be turned another way)
@@ -886,8 +1161,14 @@ function ns.DoMint(tokens)
     return mint
 end
 
--- Minting happens in the minting pot's kitchen (MintPot.lua); a popup asks if it isn't there.
+-- Minting happens in the Dream Bed (DreamBed.lua; the old kitchen, MintPot.lua, if it isn't there); a popup asks if
+-- neither is.
 function ns.ConfirmMint()
+    if ns.ShowDreamBed then
+        local ok, err = pcall(ns.ShowDreamBed)
+        if ok then return end
+        ns.Print("|cffff5555The Dream Bed broke:|r " .. tostring(err))
+    end
     if ns.ShowMintPot then
         local ok, err = pcall(ns.ShowMintPot)
         if ok then return end
@@ -932,23 +1213,27 @@ function ns.ToggleShowcase(mint)
     return true
 end
 
--- Your ogre: one you build yourself (KillTrackerDB.card.ogre = { [layer key] = option id }) from your wardrobe: every
--- trait you've had on a picture of yours (minted, won or rerolled; KillTrackerDB.wardrobe = { ["layer:id"] = true }),
--- kept for good, even once the picture's gone. An unlocked piece isn't in it until you mint it (it can roll now: the
--- minting pot helps); it's tried on meanwhile (ns.TryOn: an unlock in the feed, a chest's cards). Your Overview's photo
--- if you pick it (card.photoOgre).
+-- Your ogre: one you build yourself (KillTrackerDB.card.ogre = { [layer key] = option id }) from everything you can
+-- mint (the free pieces and every one unlocked: ns.MintAllowed) and every trait you've had on a picture of yours
+-- (minted, won or rerolled; KillTrackerDB.wardrobe = { ["layer:id"] = true }, kept for good, retired ones too). The
+-- pictures are the collectibles that show your luck; the ogre wears what you've earned. Your Overview's photo.
 
 -- Puts traits in your wardrobe.
 -- Pieces made from others (an option's unlock "combine:<layer:id>+<layer:id>": Sul'thraze from its two halves): it
--- unlocks once every part is in your wardrobe (minted in a picture of yours), and rolls like any unlocked piece.
-local function CheckCombines(wardrobe)
+-- unlocks once you have every part (unlocked, free, or on a picture of yours), and rolls like any unlocked piece.
+local function Have(key)
+    if KillTrackerDB.wardrobe and KillTrackerDB.wardrobe[key] then return true end
+    local found = ns.OptionByKey and ns.OptionByKey(key)
+    return found ~= nil and ns.MintAllowed(found.option)
+end
+local function CheckCombines()
     for _, layer in ipairs(ns.MintLayers) do
         for _, option in ipairs(layer.options) do
             local parts = option.unlock and option.unlock:match("^combine:(.+)$")
             if parts and not ns.IsUnlocked(ns.OptionKey(layer.key, option)) then
                 local all = true
                 for part in parts:gmatch("[^+]+") do
-                    if not wardrobe[part] then all = false end
+                    if not Have(part) then all = false end
                 end
                 if all then ns.UnlockOption(ns.OptionKey(layer.key, option)) end
             end
@@ -962,19 +1247,20 @@ function ns.LearnTraits(traits)
     for key, id in pairs(traits or {}) do
         if not wardrobe[key .. ":" .. id] then wardrobe[key .. ":" .. id], new = true, true end
     end
-    if new and ns.UnlockOption then CheckCombines(wardrobe) end
+    if new and ns.UnlockOption then CheckCombines() end
 end
+ns.CheckCombines = CheckCombines  -- (Unlocks.lua: after each unlock)
 
--- The options you can build with on a layer (your wardrobe's), rarest first.
+-- The options you can build with on a layer (all you can mint, and your pictures' traits), rarest first.
 function ns.OwnedOptions(layerKey)
     local layer
     for _, l in ipairs(ns.MintLayers) do if l.key == layerKey then layer = l end end
     if not layer then return {} end
     for _, mint in ipairs(KillTrackerDB.mints or {}) do ns.LearnTraits(mint.traits) end  -- (the pictures from before it)
-    local wardrobe = KillTrackerDB.wardrobe
+    local wardrobe = KillTrackerDB.wardrobe or {}
     local list = {}
     for _, option in ipairs(layer.options) do
-        if wardrobe[layer.key .. ":" .. option.id] then list[#list + 1] = option end
+        if ns.MintAllowed(option) or wardrobe[layer.key .. ":" .. option.id] then list[#list + 1] = option end
     end
     table.sort(list, function(a, b)
         if RARITY_SCORE[a.rarity] ~= RARITY_SCORE[b.rarity] then return RARITY_SCORE[a.rarity] > RARITY_SCORE[b.rarity] end

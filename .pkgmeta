@@ -8,6 +8,8 @@ move-folders:
 
 ignore:
   - tools
+  - output
+  - .claude
   - references
   - .vscode
   - .github

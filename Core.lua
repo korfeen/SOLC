@@ -48,6 +48,18 @@ function ns.MyName()
     return KillTrackerDB and KillTrackerDB.myName or UnitName("player")
 end
 
+-- Today, as a number that changes at the daily reset (Plinko's free drop, the Dream Bed's night).
+function ns.Today()
+    local reset = C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset and C_DateAndTime.GetSecondsUntilDailyReset()
+        or (GetQuestResetTime and GetQuestResetTime()) or 0
+    return math.floor((GetServerTime() + reset) / 86400 + 0.5)
+end
+-- Seconds until the next daily reset.
+function ns.UntilReset()
+    return C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset and C_DateAndTime.GetSecondsUntilDailyReset()
+        or (GetQuestResetTime and GetQuestResetTime()) or 0
+end
+
 local function NotifyChanged()
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
@@ -297,7 +309,46 @@ local function InitDB()
     end
 
     KillTrackerFriends = KillTrackerFriends or {}    -- account-wide: ["Name-Realm"] = synced stats
+
+    -- Account-wide (SOLCAccount): the shared wardrobe, and the characters played here (the header's "Main character",
+    -- ProfileHeader.lua). Each character keeps its own unlocks (db.ownUnlocks, Unlocks.lua); one that shares its
+    -- wardrobe (db.shareWardrobe, opt-in in the header's edit mode) adds them to the account's and wears all of it.
+    SOLCAccount = SOLCAccount or {}
+    SOLCAccount.unlocks = SOLCAccount.unlocks or {}
+    SOLCAccount.characters = SOLCAccount.characters or {}  -- [GUID] = { name, class, level, seen }
+    if not db.ownUnlocks then  -- (from before: its unlocks were its own)
+        db.ownUnlocks = {}
+        for key, when in pairs(db.unlocks or {}) do db.ownUnlocks[key] = when end
+    end
+    ns.LinkWardrobe()
 end
+
+-- db.unlocks, what this character can wear: the account's wardrobe (its own added to it) while it shares, else its own.
+function ns.LinkWardrobe()
+    local db, shared = KillTrackerDB, SOLCAccount.unlocks
+    if db.shareWardrobe then
+        for key, when in pairs(db.ownUnlocks) do
+            if not shared[key] or when < shared[key] then shared[key] = when end
+        end
+        db.unlocks = shared
+    else
+        db.unlocks = db.ownUnlocks
+    end
+end
+function ns.SetWardrobeShared(on)
+    KillTrackerDB.shareWardrobe = on or nil
+    ns.LinkWardrobe()
+    if ns.OnKillsChanged then ns.OnKillsChanged() end  -- (the window: what's unlocked)
+end
+
+-- This character in the account's list (its name, class and level as of now).
+local function NoteCharacter()
+    local guid = UnitGUID("player")
+    if not guid or not SOLCAccount or issecretvalue and (issecretvalue(guid) or issecretvalue(UnitName("player"))) then return end
+    local _, class = UnitClass("player")
+    SOLCAccount.characters[guid] = { name = UnitName("player"), class = class, level = UnitLevel("player"), seen = time() }
+end
+ns.NoteCharacter = NoteCharacter
 
 -- Kill detection ---------------------------------------------------------------
 
@@ -476,6 +527,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
             self:UnregisterEvent("ADDON_LOADED")
         end
     elseif event == "PLAYER_ENTERING_WORLD" then
+        NoteCharacter()
         wipe(engaged)
         wipe(counted)
     elseif event == "PLAYER_TARGET_CHANGED" then
@@ -564,10 +616,16 @@ SlashCmdList.SOLC = function(input)
         ns.ToggleConfig()
     elseif msg == "bounties" or msg == "board" then
         ns.ToggleBountyBoard()
+    elseif msg == "dream" or msg == "bed" then
+        ns.ShowDreamBed()
     elseif msg == "bounty" then
         ns.PrintPosters()
     elseif msg == "plinko" then
         ns.ShowPlinko()  -- (Plinko.lua; a place in the window later)
+    elseif msg == "glowtest" then  -- TEMPORARY: every card's icons glow as if level 60 (ProfileHeader.lua)
+        KillTrackerDB.glowTest = not KillTrackerDB.glowTest or nil
+        Print(KillTrackerDB.glowTest and "Glow test on: every card's icons glow." or "Glow test off.")
+        if ns.OnKillsChanged then ns.OnKillsChanged() end
     elseif msg == "claimtest" then
         ns.ToggleClaimTest(arg)  -- TEMPORARY: a poster drawn as claimed (HuntsBoard.lua)
     elseif msg == "burn" then

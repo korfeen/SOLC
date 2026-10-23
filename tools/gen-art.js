@@ -6,6 +6,8 @@
 //   node tools/gen-art.js headwear gear_dm_head --from raw.png        (no generating: cut and place an image you have)
 //   node tools/gen-art.js headwear gear_dm_head --at 632,232 --width 280   (where it sits, if not the layer's usual)
 //   node tools/gen-art.js headwear gear_dm_head "..." --behind-ears   (its knot and tails behind the ears, the ears in front)
+//   node tools/gen-art.js headwear gear_st_head --from raw.png --keep-greens   (a piece with bright greens of its own, an
+//     emerald, a fel glow: only the screen green round it keyed out, none in holes or small patches)
 //   node tools/gen-art.js --queue tools/gen-art-headwear.json [--redo]   (a list, one after another; then built for the game)
 //
 // 1. References: a plain ogre (the base the pieces are drawn for) and up to three original pieces of the same layer,
@@ -41,6 +43,8 @@ const RULES = {
   // (a creature's hooded onesie, crit_<kind>_suit: its onesie and hat in one, the hood up over the head; drawn in game
   // when a picture wears both, Minting.lua)
   suit: { anchor: "bottom", x: 627, y: SIZE, width: SIZE, height: SIZE },
+  // (a background: a whole scene behind the ogre, painted from the existing backgrounds' style - see Background())
+  background: { anchor: "full", x: 0, y: 0, width: SIZE, height: SIZE },
 };
 // What a layer's piece is called in the prompts.
 const NOUN = { headwear: "hat", accessory: "item", outfit: "clothes", suit: "hooded onesie" };
@@ -101,8 +105,10 @@ function examples(layer, edition) {
 // between an arm and a haft), so the item's own greens (lime runes, jade bands, an emerald crystal) stay as painted. Then
 // its fringe (FRINGE pixels round it, where the item's edge blends into the green): each pixel taken apart into the item's
 // colour next to it and the screen green, which gives how see-through it is and its colour without the green.
+// keepGreens: only the green reaching the edges goes (and its fringe); no holes, pockets or spill taken out, for a piece
+// whose own bright greens those would eat (an emerald, a fel glow).
 const FRINGE = 3;
-function key(rgba) {
+function key(rgba, keepGreens) {
   const out = Buffer.from(rgba), n = SIZE * SIZE;
   const spillAt = (p) => out[p * 4 + 1] - Math.max(out[p * 4], out[p * 4 + 2]);
   const screen = (p) => spillAt(p) > 160 && out[p * 4 + 1] > 180;
@@ -110,7 +116,7 @@ function key(rgba) {
   for (let p = 0; p < n; p++) {
     const x = p % SIZE, y = (p / SIZE) | 0;
     if ((x === 0 || y === 0 || x === SIZE - 1 || y === SIZE - 1) && screen(p)) { bg[p] = 1; st.push(p); }
-    else if (spillAt(p) > 200 && out[p * 4 + 1] > 230) { bg[p] = 1; st.push(p); }  // (screen green in a hole)
+    else if (!keepGreens && spillAt(p) > 200 && out[p * 4 + 1] > 230) { bg[p] = 1; st.push(p); }  // (screen green in a hole)
   }
   while (st.length) {
     const p = st.pop(), x = p % SIZE, y = (p / SIZE) | 0;
@@ -166,7 +172,7 @@ function key(rgba) {
     for (let c = 0; c < 3; c++) out[i + c] = Math.max(0, Math.min(255, Math.round((C[c] - (1 - a) * K[c]) / a)));
     out[i + 3] = Math.round(src[i + 3] * a);
   }
-  return despeckle(out);
+  return keepGreens ? out : despeckle(out);
 }
 // Screen green the keying missed: small pockets of it shut in by the piece (between a mane's spikes, inside a loop),
 // too dark or too blended with the piece to count as background. A pocket is a patch of greenish pixels (green well
@@ -425,6 +431,21 @@ function stretchBottom(rgba, to) {
   return rgba;
 }
 // Moves an image drawn on their ogre onto ours (ours = s * theirs + t).
+// What a transform puts above the picture (MARGIN rows over its top edge: a tall hood's ears, a bird's head), which the
+// picture itself cuts off; kept so the item fitter can show it and it can be pulled down into the frame.
+const MARGIN = 360;
+function transformAbove(rgba, t) {
+  const out = Buffer.alloc(SIZE * MARGIN * 4);
+  let any = false;
+  for (let y = 0; y < MARGIN; y++) for (let x = 0; x < SIZE; x++) {
+    const sx = Math.round((x - t.tx) / t.s), sy = Math.round((y - MARGIN - t.ty) / t.s);
+    if (sx < 0 || sy < 0 || sx >= SIZE || sy >= SIZE) continue;
+    const i = (sy * SIZE + sx) * 4;
+    if (rgba[i + 3] > 16) any = true;
+    rgba.copy(out, (y * SIZE + x) * 4, i, i + 4);
+  }
+  return any ? out : null;
+}
 function transform(rgba, t) {
   const out = Buffer.alloc(SIZE * SIZE * 4);
   for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
@@ -542,6 +563,81 @@ function generate(work, refs, prompt, outName, shape) {
 
 // --- The command ----------------------------------------------------------------------------------------------------
 
+// A background: one whole square scene (no green screen, nothing to key or place), painted to match three of the
+// existing backgrounds (the style to copy); a whole coherent scene, the middle included (it's shown on its own too),
+// only no big object right in the centre where an ogre may stand; ground across the bottom. One Codex image. Review: the ogre standing in it. from: a painting you
+// have, used instead (no generating).
+function Background(id, description, from, edition = "painted") {
+  const work = path.join(OUT, "work", `${id}_${edition}`);
+  fs.mkdirSync(work, { recursive: true });
+  let raw = from;
+  // (a crayon twin: the painted one redrawn the way the hand-drawn crayon backgrounds are, in EDITION_ART.crayon)
+  if (!raw && edition !== "painted") {
+    const dir = path.join(EDITION_ART[edition], "Background");
+    const all = fs.readdirSync(dir).flatMap((r) => fs.readdirSync(path.join(dir, r)).filter((f) => f.endsWith(".png")).map((f) => path.join(dir, r, f)));
+    const refs = all.sort(() => Math.random() - 0.5).slice(0, 3).map((file, i) => {
+      const ref = path.join(work, `ref_${edition}_${i + 1}.png`);
+      save(ref, load(file), 1024);
+      return ref;
+    });
+    const painted = path.join(OUT, "painted", id + ".png");
+    if (!fs.existsSync(painted)) throw new Error("Paint it first: " + painted);
+    refs.push(path.join(work, "ref_painting.png"));
+    save(refs[refs.length - 1], load(painted), 1024);
+    const prompt = [
+      "The first images are backgrounds drawn in crayon for a fantasy picture collection, like a child's (or an ogre's) fridge",
+      "drawing: big simple flat shapes, thick dark wobbly outlines round everything, flat colour filled in with visible",
+      "crayon hatching, no shading or gradients, playful and naive, a few fun little details. The LAST image is a painting.",
+      "Draw the place in the LAST image again as ONE new crayon drawing in exactly the style of the first images: keep its",
+      "main features and colours and roughly where they are, simplified the way a child would draw them. A square picture",
+      "filling the whole frame. Keep the very centre free of one big object (an ogre stands there); ground across the bottom.",
+      "No people or characters, no text, no frame.",
+    ].join("\n");
+    fs.writeFileSync(path.join(work, "prompt.txt"), prompt);
+    raw = generate(work, refs, prompt, "generated.png");
+  }
+  if (!raw) {
+    // (the style to copy: the original backgrounds, and the painted ones the user approved - "approved": true in
+    // tools/gen-art-backgrounds.json - so each one approved makes the next ones more alike)
+    const dir = path.join(ART, "Background");
+    const all = fs.readdirSync(dir).flatMap((r) => fs.readdirSync(path.join(dir, r)).filter((f) => f.endsWith(".png")).map((f) => path.join(dir, r, f)));
+    const list = path.join(__dirname, "gen-art-backgrounds.json");
+    for (const bg of fs.existsSync(list) ? JSON.parse(fs.readFileSync(list, "utf8")) : []) {
+      const file = path.join(OUT, "painted", bg.id + ".png");
+      if (bg.approved && bg.id !== id && fs.existsSync(file)) all.push(file);
+    }
+    const refs = all.sort(() => Math.random() - 0.5).slice(0, 3).map((file, i) => {
+      const ref = path.join(work, `ref_background_${i + 1}.png`);
+      save(ref, load(file), 1024);
+      return ref;
+    });
+    const prompt = [
+      "The images show example backgrounds from a fantasy picture collection: each is a whole painted scene a big ogre",
+      "character stands in front of (the ogre isn't in them).",
+      `Paint ONE new background in exactly the same style: ${description || id}.`,
+      "The place is only loose inspiration: evoke it with a few of its iconic features, but THE STYLE OF THE EXAMPLES",
+      "COMES FIRST - where the place and the style pull apart, follow the examples, never a realistic or game-screenshot",
+      "look. Match them: soft, smooth, rich painted look, warm glowing light, gentle highlights, a little stylised and",
+      "cosy, no hard outlines, the same palette warmth. A square picture filling the whole frame, seen at eye level.",
+      "Composition: a complete, coherent scene across the WHOLE picture, the middle included - it is also shown on its",
+      "own, so the middle must read as a natural part of the place (the floor, a path, the room going back), never an",
+      "empty gap. Only keep the very centre free of one big object or character, since an ogre may stand there; the",
+      "landmarks can be anywhere else. Ground or floor across the bottom. No people or characters, no text, no frame.",
+    ].join("\n");
+    fs.writeFileSync(path.join(work, "prompt.txt"), prompt);
+    raw = generate(work, refs, prompt, "generated.png");
+  }
+  const piece = load(raw);
+  for (let i = 3; i < piece.length; i += 4) piece[i] = 255;  // (a scene: solid all over)
+  const out = path.join(OUT, edition, id + ".png");
+  save(out, piece);
+  const review = Buffer.from(piece);
+  over(review, ogre(edition, Buffer.alloc(SIZE * SIZE * 4)));
+  fs.mkdirSync(path.join(OUT, "review"), { recursive: true });
+  save(path.join(OUT, "review", `${id}_${edition}.png`), review, 512);
+  console.log(`Background\nPlaced: ${out}\nReview: ${path.join(OUT, "review", id + "_" + edition + ".png")}`);
+}
+
 function main() {
   const args = process.argv.slice(2);
   const flag = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
@@ -550,6 +646,9 @@ function main() {
   const at = flag("--at");
   const width = flag("--width");
   const fitFlag = flag("--fit");
+  // (--like <id>: a repaint of a piece we have (generated\<edition>\<id>.png): shown on the ogre, last, to copy its
+  // shape, design and material, only its colours changed as described - e.g. the dragonflights from the dragonkin)
+  const like = flag("--like");
   // (--alone: the item painted on its own, upright and centred, copying its game screenshot (Unlocks\refs\<id>.png;
   // more than one: <id>.2.png...): placed by hand afterwards in tools/item-fitter.js)
   const alone = args.includes("--alone");
@@ -564,14 +663,24 @@ function main() {
   const offhand = args.includes("--offhand");  // (a shield held up, or a magic book, mirror or ring hovering over the fist)
   if (offhand) args.splice(args.indexOf("--offhand"), 1);
   if (tall) args.splice(args.indexOf("--tall"), 1);  // (a weapon held in a fist: left, right or both, as you look at the picture)
+  const keepGreens = args.includes("--keep-greens");
+  if (keepGreens) args.splice(args.indexOf("--keep-greens"), 1);
   const coversFace = args.includes("--covers-face");
   if (coversFace) args.splice(args.indexOf("--covers-face"), 1);
+  // (--eye-mask: a mask over the upper face - brow, round the eyes, the nose's bridge - with eye holes: the picture's
+  // own eyes show through them; Rexxar's)
+  // (--on-face: an accessory worn on the face - eyewear: a sleep mask, sunglasses, a monocle - not carried)
+  const onFace = args.includes("--on-face");
+  if (onFace) args.splice(args.indexOf("--on-face"), 1);
+  const eyeMask = args.includes("--eye-mask");
+  if (eyeMask) args.splice(args.indexOf("--eye-mask"), 1);
   const [layer, id, ...words] = args;
   const description = words.join(" ");
   if (!RULES[layer] || !id || !EDITION_ART[edition]) {
     console.log("Usage: node tools/gen-art.js <headwear|accessory|outfit> <option id> \"<what it is>\" [--fit wear|snap|rule] [--behind-ears] [--covers-face] [--edition crayon|sketch] [--from image.png] [--at x,y] [--width w]");
     process.exit(1);
   }
+  if (layer === "background") return Background(id, description, from, edition);
   const rule = { ...RULES[layer] };
   if (at) [rule.x, rule.y] = at.split(",").map(Number);
   if (width) rule.width = Number(width);
@@ -649,6 +758,15 @@ function main() {
     // shown last, to copy its look.
     const realRef = ["png", "jpg", "jpeg"].map((ext) => path.join(EXTRA, "Unlocks", "refs", id + "." + ext)).find((file) => fs.existsSync(file));
     if (realRef) refs.push(realRef);
+    if (like) {
+      const likeFile = path.join(OUT, edition, like + ".png");
+      if (!fs.existsSync(likeFile)) throw new Error("--like: no " + likeFile);
+      const pic = ogre(edition, null, layer === "outfit" || layer === "suit");
+      over(pic, load(likeFile));
+      refs.push(path.join(work, "ref_like.png"));
+      save(refs[refs.length - 1], pic, 1024);
+    }
+    const likeLine = like ? `The VERY LAST image shows the ${NOUN[layer]} to repaint: keep its exact shape, design, material and details (the same costume, sewn the same way), and change ONLY its colours, as described.` : "";
     const style = `Match ${STYLE[edition]}.`;
     if (fit === "wear") {
       // 1. The ogre wearing it (the model fits it round the head itself) ...
@@ -685,11 +803,12 @@ function main() {
         `the item doesn't cover stays exactly as it is (its head, face, clothes and hands, where and how big they are), and the`,
         `green background stays. The only change: it now wears ${kind}: ${what}.`,
         layer === "accessory" && hold ? `It carries it: ${offhand ? `a shield held in front of the fist at the bottom ${hold === "left" ? "left" : "right"} corner, covering that whole fist and hand, facing the viewer, its lower part cut off by the bottom edge of the picture; a magic item (a book, mirror, orb or ring) instead hovers glowing just above that fist, as if casting with it. Big and clear, as its famous look.` : tall ? `standing tall beside its body at the bottom ${hold === "left" ? "left" : "right"} of the picture: the long haft or grip starts OFF the bottom edge of the picture (held below the frame, the hand not seen) and rises up past its shoulder, the whole weapon big and upright, as its famous look; the fist at that corner is hidden behind the weapon or off the edge.` : `brandishing it: the weapon angled up and FORWARD, its tip coming towards the viewer (a little foreshortened), like a pirate holding up a cutlass at the camera, big and clear, as its famous look. The fist wraps around the grip: the guard just above the fist and the pommel peeking out just below it, so it clearly reads as gripped.`} The arms and fists stay exactly where they are in image 1. It must not cover the face. ${style}` :
+        layer === "accessory" && onFace ? `It wears it ON ITS FACE, exactly as described, sitting snugly on the face as the real thing would (straps round the head go behind the ears). It must not cover the mouth or tusks. ${style}` :
         layer === "accessory" ? `It carries it: a weapon strapped on its back with the handle sticking up over one shoulder (a big two-handed weapon may rest on its shoulder instead), a shield strapped on its back behind one shoulder, a book, orb or mirror floating beside its shoulder. Draw the item big and clear, as its famous look. It must not cover the face. ${style}` :
-        `Fit it naturally on its head, as the examples sit. ${coversFace ? "It covers the lower face (nose, mouth and tusks) as described: that is meant; the eyes stay uncovered." : "It must not cover the eyes or the face: it sits on the head, above the brow."} ${style}`,
+        `Fit it naturally on its head, as the examples sit. ${coversFace ? "It covers the lower face (nose, mouth and tusks) as described: that is meant; the eyes stay uncovered." : eyeMask ? "It is a mask over the UPPER face as described: it covers the forehead, the brow, the area round the eyes and the bridge of the nose, with two open eye holes the ogre's own eyes look out through (keep its eyes exactly as they are, visible in the holes). The tip of the nose, the mouth, the tusks and the chin stay uncovered." : "It must not cover the eyes or the face: it sits on the head, above the brow."} ${style}`,
         behindEars ? "Its back parts (a knot, tails, straps) go BEHIND the ears: the ears are in front of them, covering them." : "",
         matchHat ? "The image after the examples shows the outfit of the same set: the headwear must match it (its colours, materials and theme), but the ogre keeps the clothes of image 1." : "",
-      ]).concat(realRef ? ["The LAST image is a screenshot of the real item from the game: copy its shape, colours and details exactly (only the item, not the character or background in it)."] : []).join("\n");
+      ]).concat(realRef ? ["The LAST image is a screenshot of the real item from the game: copy its shape, colours and details exactly (only the item, not the character or background in it)."] : [], likeLine ? [likeLine] : []).join("\n");
       fs.writeFileSync(path.join(work, "prompt_wear.txt"), wearPrompt);
       const worn = generate(work, refs, wearPrompt, "worn.png");
       fs.mkdirSync(path.join(OUT, "review"), { recursive: true });
@@ -711,6 +830,7 @@ function main() {
         `size and shape, unchanged. Where the head was inside or under it, fill with the green too.`,
         `Everything else becomes perfectly flat pure green (#00FF00).`,
         behindEars ? "Where the ears covered parts of it, leave those parts green too (a gap): do not draw what the ears hid." : "",
+        eyeMask ? "The mask's EYE HOLES become pure green too: remove the eyes seen through them, so the holes are open." : "",
       ]).join("\n");
       fs.writeFileSync(path.join(work, "prompt_lift.txt"), liftPrompt);
       raw = generate(work, [worn], liftPrompt, "generated.png");
@@ -723,6 +843,7 @@ function main() {
         layer === "headwear" ? "Draw it exactly where and at the size it would sit on the ogre's head in image 1, seen from the front."
           : "Draw it about a quarter of the image wide, where it would float beside the ogre in image 1, seen from the front.",
         style,
+        likeLine,
       ].join("\n");
       fs.writeFileSync(path.join(work, "prompt.txt"), prompt);
       raw = generate(work, refs, prompt, "generated.png");
@@ -732,7 +853,7 @@ function main() {
   fs.mkdirSync(path.dirname(rawCopy), { recursive: true });
   if (path.resolve(raw) !== path.resolve(rawCopy)) fs.copyFileSync(raw, rawCopy);
 
-  let keyed = key(load(raw));
+  let keyed = key(load(raw), keepGreens);
   if (alone) {  // (centred as it was painted: placed by hand in the fitter)
     const out = path.join(OUT, edition, id + ".png");
     save(out, keyed);
@@ -744,7 +865,7 @@ function main() {
   }
   // Worn: moved from the generator's ogre onto ours (it redraws the ogre a little bigger or smaller, higher or lower).
   const wornFile = path.join(work, "worn.png");
-  let matched = false;
+  let matched = false, above = null;
   if (fit === "wear" && fs.existsSync(wornFile)) {
     // (first the lift onto the worn picture, where it really was; then that picture's ogre onto ours)
     const worn = load(wornFile);
@@ -756,6 +877,7 @@ function main() {
     const t = register(worn, ogre(edition, null, layer === "outfit" || layer === "suit"), keyed, layer === "headwear" ? MATCH_HEAD : MATCH_BOTTOM);  // (keyed: the lifted hat, still where it is on theirs)
     if (t && t.score > 0.6) {
       console.log(`Its ogre onto ours: scale ${t.s.toFixed(2)}, matched ${(t.score * 100).toFixed(0)}% of the outline.`);
+      above = transformAbove(keyed, t);
       keyed = transform(keyed, t);
       matched = true;
     } else {
@@ -771,6 +893,13 @@ function main() {
   if (behindEars) piece = cutEars(piece);  // (the ears in front: cut out of it, exactly our ogre's)
   const out = path.join(OUT, edition, id + ".png");
   save(out, piece);
+  // (and uncropped, for the fitter: generated\full\<id>.png, the frame's width and MARGIN taller, what stuck out on top)
+  const full = path.join(OUT, "full", id + ".png");
+  if (above && edition === "painted" && matched) {
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    writePng(full, SIZE, SIZE + MARGIN, Buffer.concat([above, piece]));
+    console.log("Stuck out above the picture: kept uncropped for the fitter in generated/full.");
+  } else if (edition === "painted" && fs.existsSync(full)) fs.rmSync(full);
   // The review: the new piece on the ogre, as it looks; and a fit check with the head's outline over it.
   const now = ogre(edition, solid(40, 32, 40), layer === "outfit" || layer === "suit");
   over(now, piece);
@@ -783,7 +912,7 @@ function main() {
 
 // A queue (--queue file.json: [{ layer, id, desc, flags }]): each in turn, one after another; the ones already made
 // skipped (--redo makes them again); three failures in a row stop it (likely the plan's image limit: run it again later).
-// Then the unlock art is built and converted for the game. Its log: generated/queue.log. The list is read again before
+// Then they're fitted and sent to the build in tools/item-fitter.js. Its log: generated/queue.log. The list is read again before
 // each piece (edit it while it runs: the change counts from the next piece); --from <id> starts at that piece.
 // To stop without losing anything: create generated/queue.stop (node tools/gen-art.js --stop). The piece being painted
 // is finished, what was made is built for the game, and the log says where to pick up (--from).
@@ -808,7 +937,8 @@ function queue(file, redo, from) {
       say(`Stopped before [${n}/${jobs.length}] ${job.id}. Pick up with: --queue ${file} --redo --from ${job.id}`);
       break;
     }
-    if (!redo && fs.existsSync(path.join(OUT, "painted", job.id + ".png"))) { say(`[${n}/${jobs.length}] ${job.id}: there already, skipped`); continue; }
+    const ei = (job.flags || []).indexOf("--edition"), jobEdition = ei >= 0 ? job.flags[ei + 1] : "painted";  // (a twin: made when its edition's is there)
+    if (!redo && fs.existsSync(path.join(OUT, jobEdition, job.id + ".png"))) { say(`[${n}/${jobs.length}] ${job.id}: there already, skipped`); continue; }
     say(`[${n}/${jobs.length}] ${job.id}: ${job.desc.split(":")[0]}...`);
     const run = spawnSync(process.execPath, [__filename, job.layer, job.id, job.desc, ...(job.flags || [])], { encoding: "utf8" });
     if (run.status === 0) {
@@ -820,12 +950,8 @@ function queue(file, redo, from) {
       if (failedInRow >= 3) { say("Three failures in a row: stopping (the image limit?). Run the queue again later: it skips what's made."); break; }
     }
   }
-  if (made > 0) {
-    say(`${made} made: building the unlock art and converting it...`);
-    spawnSync(process.execPath, [path.join(__dirname, "make-unlock-art.js"), "gear"], { stdio: "ignore" });
-    spawnSync(process.execPath, [path.join(__dirname, "convert-art.js")], { stdio: "ignore" });
-    say("Done: restart WoW to see them. Reviews in generated/review.");
-  }
+  // (no build here: each piece is fitted first, then sent to the build from the item fitter)
+  if (made > 0) say(`Done: ${made} made. Fit them in the item fitter (node tools/item-fitter.js), then Build there. Reviews in generated/review.`);
 }
 
 if (require.main === module) {

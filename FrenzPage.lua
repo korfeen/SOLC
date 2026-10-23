@@ -1,4 +1,5 @@
--- The guild's members (FRENZ), with the crafters as the MAKE tab (the key crafters opens it). A split page (ProfileHeader.lua: the profile header over the left page, the middle beam).
+-- The guild's members (FRENZ), with the crafters as the MAKE tab (the key crafters opens it); no sidebar button: the
+-- Guild page's tabs (NEWS | MEMBERS | MAKE, the same here) lead to it. A split page (ProfileHeader.lua: the profile header over the left page, the middle beam).
 -- Left: tabs. FRENZ: everyone using SOLC, you first; clicking someone views them (the header, the right page, every
 -- page), the one viewed lit. MAKE: a search box, then a heading per profession (click to open it: every recipe known in
 -- the guild under it, and who knows it; a search opens them all, showing only the matching recipes); picking a recipe
@@ -24,8 +25,9 @@ local PLATE, PLATE_LIT = { 0.3, 0.22, 0.12 }, { 0.65, 0.53, 0.28 }
 local AGO_COLOR = { 0.98, 0.64, 0.26 }
 local OFFICER = "|TInterface\\GroupFrame\\UI-Group-AssistantIcon:12|t"
 
-local TABS = { { "frenz", "FRENZ", "FRENZ" }, { "make", "MAKE", "MAKE" } }
-local TAB_FOR_PAGE = { crafters = "make" }
+-- (NEWS: the Guild page's, CavePage.lua, which has the same three)
+local TABS = { { "news", "NEWS", "NEWS" }, { "frenz", "MEMBERS", "FRENZ" }, { "make", "MAKE", "MAKE" } }
+local TAB_FOR_PAGE = { crafters = "make", members = "frenz" }
 
 -- In window pixels (from its top-left, y down).
 local LEFT = {
@@ -196,6 +198,7 @@ end
 
 ns.RegisterPage({
     key = "members", label = "Members", section = "guild", order = 2,
+    under = "home",  -- (no sidebar button: the Guild page's MEMBERS and MAKE tabs open it)
     bare = true,
     split = true,
     covers = { crafters = true },  -- (UI.lua) on the MAKE tab
@@ -203,6 +206,7 @@ ns.RegisterPage({
         page = CreateFrame("Frame", nil, parent)
         page:SetAllPoints()
         page.tab, page.offset = "frenz", 0
+        page:SetScript("OnHide", function() page.asked = nil end)  -- (opened again: the tab it was opened for)
         local slot, under = UI.SPLIT.left, UI.SPLIT.under
 
         -- The boards.
@@ -233,6 +237,7 @@ ns.RegisterPage({
             end
             button:SetScript("OnClick", function()
                 UI.ClickSound()
+                if tab[1] == "news" then return ns.OpenPage("home") end
                 page.tab, page.offset, page.pick = tab[1], 0, nil
                 ns.OpenPage(state.page)
             end)

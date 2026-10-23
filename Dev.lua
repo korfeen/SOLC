@@ -153,14 +153,17 @@ local function BuildChests(parent)
             end
             ns.Print("Dev: everything unlocked.") Refresh() end },
         { "Relock all", 92, function()
-            KillTrackerDB.unlocks, KillTrackerDB.chests, KillTrackerDB.tokens = {}, {}, {}
-            ns.Print("Dev: every unlock, chest and token of yours cleared.") Refresh() end },
+            wipe(KillTrackerDB.unlocks)  -- (what you wear: the account's wardrobe too, while you share it)
+            wipe(KillTrackerDB.ownUnlocks or {})
+            KillTrackerDB.chests, KillTrackerDB.tokens = {}, {}
+            ns.Print("Dev: your wardrobe (the shared one too, if you share it), chests and tokens cleared.") Refresh() end },
         { "+5 of all", 92, function()
             KillTrackerDB.tokens = KillTrackerDB.tokens or {}
             for _, d in ipairs(ns.Dungeons()) do KillTrackerDB.tokens[d.key] = (KillTrackerDB.tokens[d.key] or 0) + 5 end
             for _, spec in ipairs(ns.LAYER_INGREDIENTS) do ns.AddIngredient(spec.key, 5, true) end
             for _, fuel in ipairs(ns.FUELS) do ns.AddIngredient(fuel.key, 5, true) end
-            ns.Print("Dev: 5 of every ingredient for you.") Refresh() end },
+            for key in pairs(ns.DREAM_ITEMS) do ns.AddIngredient(key, 5, true) end  -- (milk, stories, bonks)
+            ns.Print("Dev: 5 of every ingredient for you, and 5 milk, stories and bonks.") Refresh() end },
     }) do
         local button = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
         button:SetSize(spec[2], 22)
@@ -344,10 +347,12 @@ local function Build()
     close:SetScript("OnClick", function() window:Hide() end)
     local chests = BuildChests(window)
     local browser = BuildBrowser(window)
+    local say = ns.BuildDMSay and ns.BuildDMSay(window, browser)  -- (officers: pop in as the ogre, DMSay.lua)
     function window:Refresh()
         title:SetText(IsOfficer() and "SOLC DM MODE - chests and picture art (drag to move)" or "SOLC DEV - previews and picture art (drag to move)")
         chests:Refresh()
         browser:Refresh()
+        if say then say:SetShown(IsOfficer()) end
     end
     window:SetScript("OnShow", function(self) self:Refresh() end)
     window:Hide()

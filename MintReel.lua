@@ -94,8 +94,10 @@ local function FillTile(tile, option, traits)
 end
 
 -- A reel (a clipped window a strip of tiles slides through, with a marker in the middle) on parent, width wide.
--- reel.frame is to be placed by its owner; reel:Spin(layer, winner, traits, onLand) scrolls it to the winner (onLand
--- when it stops), reel:Update(elapsed) drives it, reel:Stop() ends a spin at once.
+-- reel.frame is to be placed by its owner; reel:Spin(layer, winner, traits, onLand, opts) scrolls it to the winner
+-- (onLand when it stops), reel:Update(elapsed) drives it, reel:Stop() ends a spin at once, reel:Land() jumps to the end
+-- (onLand too). opts (optional): all = true (the strip is every option you could roll, once each, shuffled - the Dream
+-- Bed's), time = seconds (SPIN_TIME otherwise).
 function ns.NewMintReel(parent, width)
     local reel = {}
     local firstIndex = math.ceil(width / 2 / STEP) + 1  -- the strip starts with tiles across the whole reel
@@ -130,19 +132,39 @@ function ns.NewMintReel(parent, width)
     local function OffsetFor(index, jitter) return width / 2 - ((index - 1) * STEP + TILE / 2 + jitter * TILE) end
     local spin
 
-    function reel:Spin(layer, winner, traits, onLand)
-        for i = 1, STRIP_LENGTH do
-            FillTile(GetTile(i), i == WINNER_INDEX and winner or RandomOption(layer), traits)
+    function reel:Spin(layer, winner, traits, onLand, opts)
+        local length, winAt = STRIP_LENGTH, WINNER_INDEX
+        if opts and opts.all then
+            -- (every option once, shuffled, the winner among them moved to near the end; short layers go round twice)
+            local pool = {}
+            for _, option in ipairs(layer.options) do
+                if ns.MintAllowed(option) and option ~= winner then pool[#pool + 1] = option end
+            end
+            for i = #pool, 2, -1 do local j = math.random(i) pool[i], pool[j] = pool[j], pool[i] end
+            local list = {}
+            local lead = firstIndex + 1  -- (tiles before the first the marker reaches)
+            for i = 1, lead do list[i] = pool[(i - 1) % math.max(1, #pool) + 1] or winner end
+            repeat for _, option in ipairs(pool) do list[#list + 1] = option end until #list >= 24 or #pool == 0
+            list[#list + 1] = winner
+            winAt = #list
+            for i = 1, firstIndex + 2 do list[#list + 1] = pool[(i - 1) % math.max(1, #pool) + 1] or winner end  -- (beyond it)
+            length = #list
+            for i = 1, length do FillTile(GetTile(i), list[i], traits) GetTile(i):Show() end
+        else
+            for i = 1, length do FillTile(GetTile(i), i == winAt and winner or RandomOption(layer), traits) GetTile(i):Show() end
         end
+        for i = length + 1, #tiles do tiles[i]:Hide() end
+        strip:SetSize(length * STEP, TILE)
         -- (lands a bit off-centre, like the real thing)
-        spin = { elapsed = 0, from = OffsetFor(firstIndex, 0), to = OffsetFor(WINNER_INDEX, (math.random() - 0.5) * 0.7), onLand = onLand }
+        spin = { elapsed = 0, from = OffsetFor(firstIndex, 0), to = OffsetFor(winAt, (math.random() - 0.5) * 0.7), onLand = onLand,
+            time = opts and opts.time or SPIN_TIME }
         strip:ClearAllPoints()
         strip:SetPoint("LEFT", frame, "LEFT", spin.from, 0)
     end
     function reel:Update(elapsed)
         if not spin then return end
         spin.elapsed = spin.elapsed + elapsed
-        local t = math.min(spin.elapsed / SPIN_TIME, 1)
+        local t = math.min(spin.elapsed / spin.time, 1)
         local eased = 1 - (1 - t) ^ 3  -- fast start, long slow-down
         local x = spin.from + (spin.to - spin.from) * eased
         strip:ClearAllPoints()
@@ -150,7 +172,7 @@ function ns.NewMintReel(parent, width)
         local under = math.floor((width / 2 - x) / STEP)  -- the tile under the marker
         if under ~= spin.lastTile then
             spin.lastTile = under
-            Play(SOUND_TICK)
+            if GetTime() - (spin.ticked or 0) > 0.05 then spin.ticked = GetTime() Play(SOUND_TICK) end  -- (not a buzz when it's fast)
         end
         if t >= 1 then
             local onLand = spin.onLand
@@ -159,6 +181,7 @@ function ns.NewMintReel(parent, width)
         end
     end
     function reel:Stop() spin = nil end
+    function reel:Land() if spin then spin.elapsed = spin.time reel:Update(0) end end
     function reel:IsSpinning() return spin ~= nil end
     return reel
 end
@@ -226,7 +249,7 @@ local function Finish()
     show = nil
     reel:Stop()
     panel:SetScript("OnUpdate", nil)
-    local rarity = ns.MintRarity(mint.traits)
+    local rarity = ns.MintRarity(mint.traits, mint.asked)
     local big = rarity == "legendary" or rarity == "epic"
     ns.ShowToast(big and "achievement" or "record", "Minted!", ("Picture #%d"):format(mint.number),
         (rarity:gsub("^%l", string.upper)))

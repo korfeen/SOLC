@@ -44,6 +44,10 @@ local TIERS = {
     undead = { "medium", 60 }, demon = { "medium", 25 }, elemental = { "medium", 40 }, dragonkin = { "medium", 15 },
     elites = { "hard", 25 }, rares = { "hard", 2 }, leaders = { "hard", 3 }, dungeons = { "hard", 8 }, pvp = { "hard", 15 },
     explorers = { "hard", 10 },
+    -- Ogre tribes.
+    mogrosh = { "medium", 25 }, splinterfist = { "medium", 25 }, boulderfist = { "medium", 30 }, crushridge = { "medium", 30 }, dustbelcher = { "medium", 30 },
+    moshogg = { "medium", 25 }, gordunni = { "medium", 30 }, dunemaul = { "medium", 25 }, dreadmaul = { "medium", 25 }, firegut = { "medium", 25 },
+    gordok = { "medium", 30 }, spirestone = { "medium", 25 }, deadwind = { "medium", 25 }, urok = { "medium", 15 },
 }
 local CUSTOM_TIERS = { kind = { "easy", 40 }, tribe = { "medium", 25 }, pvp = { "hard", 15 } }
 -- The levels a bounty is for (the rotation puts it only in the brackets they touch); none: every level.
@@ -51,6 +55,10 @@ local LEVELS = {
     defias = { 10, 25 }, venture = { 10, 40 }, kolkar = { 10, 35 }, burningblade = { 10, 40 }, syndicate = { 20, 40 },
     scarlet = { 30, 60 }, bloodsail = { 40, 48 }, darkiron = { 45, 60 }, blackrock = { 20, 60 }, scourge = { 35, 60 },
     demon = { 20, 60 },
+    -- The ogre tribes.
+    mogrosh = { 18, 22 }, splinterfist = { 25, 31 }, boulderfist = { 32, 42 }, crushridge = { 34, 43 }, dustbelcher = { 35, 45 }, moshogg = { 36, 47 },
+    gordunni = { 40, 47 }, dunemaul = { 45, 50 }, dreadmaul = { 45, 58 }, firegut = { 50, 54 }, gordok = { 52, 60 }, spirestone = { 54, 59 },
+    deadwind = { 55, 60 }, urok = { 54, 60 },
     -- The dungeons' wanted posters (wanted_<key>), by the dungeon's levels.
     rfc = { 13, 18 }, thanes = { 13, 18 }, wc = { 17, 24 }, dm = { 17, 26 }, ruins = { 18, 25 }, sfk = { 22, 30 },
     bfd = { 24, 32 }, stocks = { 24, 32 }, excav = { 26, 31 }, gnomer = { 29, 38 }, rfk = { 30, 40 }, smgy = { 28, 38 },
@@ -108,6 +116,45 @@ function ns.DungeonOgre(key)
     if not key then return end
     local traits = { outfit = "gear_" .. key .. "_body", headwear = "gear_" .. key .. "_head" }
     for layer, option in pairs(WANTED_OGRE) do traits[layer] = option end
+    return traits
+end
+-- The bounty posters' ogres (their pictures; ns.PosterPicture): a creature's in its hooded onesie (hat and onesie worn
+-- together), a faction's in its outfit, a special's holding its prop. A piece not painted yet: none (the engraving).
+local POSTER_OGRE = {
+    Murloc = "crit_murloc", Troll = "crit_troll", Spider = "crit_spider", Wolf = "crit_wolf", Human = "crit_human",
+    Orc = "crit_orc", Dwarf = "crit_dwarf", Cat = "crit_cat", Scorpid = "crit_scorpid", Raptor = "crit_raptor",
+    undead = "crit_skeleton", demon = "crit_demon", elemental = "crit_elemental", dragonkin = "crit_dragonkin",
+    defias = "fac_defias", venture = "fac_venture", kolkar = "fac_kolkar", burningblade = "fac_burningblade",
+    syndicate = "fac_syndicate", scarlet = "fac_scarlet", bloodsail = "fac_bloodsail", darkiron = "fac_darkiron",
+    blackrock = "fac_blackrock", scourge = "fac_scourge",
+    elites = "prop_elites", rares = "prop_rares", leaders = "prop_leaders", dungeons = "prop_dungeons",
+    pvp = "prop_pvp", explorers = "prop_explorers",
+    mogrosh = "fac_mogrosh", splinterfist = "fac_splinterfist", boulderfist = "fac_boulderfist", crushridge = "fac_crushridge", dustbelcher = "fac_dustbelcher",
+    moshogg = "fac_moshogg", gordunni = "fac_gordunni", dunemaul = "fac_dunemaul", dreadmaul = "fac_dreadmaul", firegut = "fac_firegut",
+    gordok = "fac_gordok", spirestone = "fac_spirestone", deadwind = "fac_deadwind", urok = "fac_urok",
+}
+local function HasOption(layerKey, id)
+    for _, layer in ipairs(ns.MintLayers or {}) do
+        if layer.key == layerKey then
+            for _, option in ipairs(layer.options) do if option.id == id then return true end end
+        end
+    end
+end
+-- A poster's picture as a mint's traits (wanted posters: ns.WantedPicture), or nil.
+function ns.PosterPicture(id)
+    local wanted = ns.WantedPicture(id)
+    if wanted or not id then return wanted end
+    local piece = POSTER_OGRE[id]
+    if not piece then return end
+    local traits = {}
+    for layer, option in pairs(WANTED_OGRE) do traits[layer] = option end
+    if piece:find("^prop_") then
+        if not HasOption("accessory", piece) then return end
+        traits.accessory, traits.outfit = piece, "striped_pajamas"  -- (the plain ogre, holding it)
+    else
+        if not HasOption("headwear", piece .. "_head") or not HasOption("outfit", piece .. "_body") then return end
+        traits.headwear, traits.outfit = piece .. "_head", piece .. "_body"
+    end
     return traits
 end
 function ns.WantedPicture(id)
@@ -465,8 +512,10 @@ local function Claim(board, p, mine)
     points.bounty = (points.bounty or 0) + reward
     ns.Touch(points)
     KillTrackerDB.bountyChests = (KillTrackerDB.bountyChests or 0) + 1
+    if ns.AddIngredient then ns.AddIngredient("story", 1, true) end  -- (a Bedtime Story for the Dream Bed)
+    if ns.Tally then ns.Tally("bounties") end  -- (the Bounties claimed deeds)
     ns.AddEvent("P", p.id)
-    ns.ShowToast("achievement", "Bounty claimed!", p.bounty.name, ("+%d points and a bounty chest"):format(reward))
+    ns.ShowToast("achievement", "Bounty claimed!", p.bounty.name, ("+%d points, a bounty chest and a Bedtime Story"):format(reward))
     ns.Touch(mine)
     if ns.CheckPosterMilestones then ns.CheckPosterMilestones() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
@@ -522,9 +571,9 @@ end
 -- ones reached before their first claim. The last milestone's is the guild bounty chest
 -- (KillTrackerDB.guildBountyChests, opened on the board).
 local MILESTONES = {
-    { claims = 5, points = 25 },
-    { claims = 10, points = 50, fuel = "frostwood" },
-    { claims = 20, points = 100, fuel = "shimmer" },
+    { claims = 5, points = 25, fuel = "bonk" },
+    { claims = 10, points = 50, fuel = "milk" },
+    { claims = 20, points = 100, fuel = "milk" },
     { claims = 35, points = 150, guildChest = true },
 }
 ns.POSTER_MILESTONES = MILESTONES

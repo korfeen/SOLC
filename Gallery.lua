@@ -1,5 +1,5 @@
 -- The Overview's gallery (OverviewCard.lua): your pictures over the right page, instead of the photo, opened by clicking
--- your showcase. It starts with a tile to mint a new one (the minting kitchen, MintPot.lua), your ogre (built from what
+-- your showcase. It starts with a tile to mint a new one (the Dream Bed, DreamBed.lua), your ogre (built from what
 -- you have, Minting.lua: click to build it, drag it onto PHOTO to show it) and one per dungeon with chests to open
 -- (Chests.lua). Click a picture to look at it (on the photo's place: its traits, editions, reroll). Drag
 -- one onto a showcase slot to put it there; drag a showcase picture onto another to swap them, or anywhere else to take
@@ -210,7 +210,7 @@ function UI.Gallery(page)
         thumb:SetScript("OnEnter", function(self)
             local entry = self.entry
             if entry and entry.mintAction then
-                return UI.Tooltip(self, { "Mint a picture", ("%d points, in the minting kitchen"):format(ns.MintCost()) })
+                return UI.Tooltip(self, { "Mint a picture", ns.BonksLine() })
             elseif entry and entry.ogre then
                 return UI.Tooltip(self, { "Your ogre", "Click to build it from what you have. Drag it onto PHOTO to show it" })
             elseif entry and entry.chest then
@@ -218,7 +218,7 @@ function UI.Gallery(page)
                     "Click to open" })
             end
             if not self.mint then return end
-            local rarity = ns.MintRarity(self.mint.traits)
+            local rarity = ns.MintRarity(self.mint.traits, self.mint.asked)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(("Picture #%d"):format(self.mint.number))
             GameTooltip:AddLine((rarity:gsub("^%l", string.upper)), ns.RarityRGB(rarity))
@@ -270,13 +270,13 @@ function UI.Gallery(page)
                     thumb.caption:SetText(("OPEN%s"):format(entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
                     thumb.border:SetColorTexture(1, 0.82, 0.25)
                 else
-                    thumb.caption:SetText(("MINT  |cffffbf66%d|r"):format(ns.MintCost()))
+                    thumb.caption:SetText(("MINT  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))
                     thumb.border:SetColorTexture(0.5, 0.4, 0.2)
                 end
             end
             if mint then
                 ns.DrawMint(thumb.canvas, mint)
-                thumb.border:SetColorTexture(ns.RarityRGB(ns.MintRarity(mint.traits)))
+                thumb.border:SetColorTexture(ns.RarityRGB(ns.MintRarity(mint.traits, mint.asked)))
                 local isPhoto = photoNumber == mint.number
                 local slot = slotOf[mint.number]
                 thumb.cover:SetShown(slot ~= nil or isPhoto)
@@ -305,7 +305,7 @@ function UI.Gallery(page)
         ghost:Show()
         ghost.mint, ghost.tilt, ghost.lastX, ghost.over = mint, 0, nil, nil
         ns.DrawMint(ghost.canvas, mint, 0)
-        ghost.outline:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits)))
+        ghost.outline:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits, mint.asked)))
         ghost.outline:SetRotation(0)
     end
     local function SlotUnderCursor()

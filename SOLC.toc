@@ -4,7 +4,7 @@
 ## Author: faluk
 ## Version: 0.40.0
 ## SavedVariablesPerCharacter: KillTrackerDB
-## SavedVariables: KillTrackerFriends, KillTrackerConfig
+## SavedVariables: KillTrackerFriends, KillTrackerConfig, SOLCAccount
 
 Data.lua
 Overrides.lua
@@ -23,7 +23,10 @@ Points.lua
 Ranks.lua
 Collection.lua
 MintArt.lua
+Frames.lua
 Minting.lua
+DreamStory.lua
+DreamTeller.lua
 MintReel.lua
 Sync.lua
 Feed.lua
@@ -35,6 +38,7 @@ SkeletonLayout.lua
 HeaderLayout.lua
 ButtonArt.lua
 UI.lua
+IconStyles.lua
 ProfileHeader.lua
 GuildPages.lua
 OverviewCard.lua
@@ -44,7 +48,10 @@ SmashPage.lua
 PixPage.lua
 Chests.lua
 Dev.lua
+DMSay.lua
 MintPot.lua
+DreamBedArt.lua
+DreamBed.lua
 Plinko.lua
 HuntsBoard.lua
 CavePage.lua

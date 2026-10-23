@@ -1,7 +1,8 @@
--- The guild's home (CAVE), with the Bounty Board and the rankings (the keys bounties and leaderboard open it, the
--- first on HUNTS). A split page (ProfileHeader.lua: the profile header over the left page, the middle beam).
--- Left: tabs. NEWS: this week's bounty posters (yours claimed, the guild's count; click for HUNTS) over the guild's activity,
--- in the Overview feed's style. HUNTS: the bounty board (HuntsBoard.lua).
+-- The guild's home (CAVE), with the rankings (the key leaderboard opens it). A split page (ProfileHeader.lua: the
+-- profile header over the left page, the middle beam).
+-- Left: tabs. NEWS: this week's bounty posters (yours claimed, the guild's count; click for the Bounties page,
+-- HuntsBoard.lua) over the guild's activity, in the Overview feed's style, scrolled with the mouse wheel. MEMBERS and
+-- MAKE: the Members page (FrenzPage.lua).
 -- Right: the rankings. A tab per measure (points, kills, this week's bounty, PvP, pictures), the top three on a
 -- podium with a picture each, then everyone in rows. Clicking someone views them (the header, and every page).
 
@@ -19,7 +20,9 @@ local FEED_ICON = "Interface\\AddOns\\SOLC\\Media\\Icons\\Feed_"
 local FEED_ICONS = { L = "Leader", R = "Rare", A = "Achievement", M = "Mint", W = "Won", B = "Bounty", P = "Bounty", D = "Boss" }
 local MEDALS = { { 1, 0.82, 0.1 }, { 0.78, 0.78, 0.82 }, { 0.8, 0.5, 0.2 } }  -- gold, silver, bronze
 
-local TABS = { { "news", "NEWS", "NEWS" }, { "hunts", "HUNTS", "HUNTS" } }
+-- (MEMBERS and MAKE: the Members page, FrenzPage.lua, which has the same three; the bounty board: its own page)
+local TABS = { { "news", "NEWS", "NEWS" }, { "members", "MEMBERS", "FRENZ" }, { "make", "MAKE", "MAKE" } }
+local TAB_PAGES = { members = "members", make = "crafters" }
 -- The news' chips: { group (ns.FEED_GROUPS), label, ogre word, what it is }; each player hides what they like
 -- (KillTrackerDB.feedHidden).
 local CHIPS = {
@@ -29,7 +32,6 @@ local CHIPS = {
     { "hunts", "HUNTS", "HUNTS", "Bounties completed" },
 }
 local CHIP_ON, CHIP_OFF = { 0.3, 0.22, 0.12 }, { 0.16, 0.14, 0.12 }
-local TAB_FOR_PAGE = { bounties = "hunts" }
 local METRICS = {  -- { Members() field, label, ogre word, what it is }
     { "points", "POINTS", "GOLD", "Points earned, before spending" },
     { "kills", "KILLS", "SMASH", "Kills" },
@@ -153,8 +155,10 @@ local function DrawNews()
     for _, item in ipairs(ns.GetFeed(false, true)) do
         if not hidden[ns.FEED_GROUPS[item.kind] or ""] then feed[#feed + 1] = item end
     end
+    -- (scrolled with the mouse wheel: page.newsOffset rows down, as far as the last one shows)
+    page.newsOffset = math.max(0, math.min(page.newsOffset or 0, #feed - #page.newsRows))
     for i, row in ipairs(page.newsRows) do
-        local item = feed[i]
+        local item = feed[page.newsOffset + i]
         row.item = item
         row:SetShown(item ~= nil or i == 1)
         row.bar:Hide()
@@ -221,7 +225,7 @@ ns.RegisterPage({
     key = "home", label = "Guild", section = "guild", order = 1,
     bare = true,
     split = true,
-    covers = { leaderboard = true, bounties = true },  -- (UI.lua)
+    covers = { leaderboard = true },  -- (UI.lua)
     create = function(parent)
         page = CreateFrame("Frame", nil, parent)
         page:SetAllPoints()
@@ -252,7 +256,7 @@ ns.RegisterPage({
         left:SetAllPoints()
         left:SetFrameLevel(book:GetFrameLevel() + 2)
         page.tabs = TabStrip(left, TABS, slot.left, slot.right, LEFT.tabs, function() return page.tab end,
-            function(key) page.tab = key end)
+            function(key) if TAB_PAGES[key] then state.page = TAB_PAGES[key] else page.tab = key end end)
 
         -- NEWS: the bounty box and the activity rows.
         local news = CreateFrame("Frame", nil, left)
@@ -294,8 +298,7 @@ ns.RegisterPage({
         box.details:SetWordWrap(false)
         box:SetScript("OnClick", function()
             UI.ClickSound()
-            page.tab = "hunts"
-            ns.OpenPage(state.page)
+            ns.OpenPage("bounties")
         end)
         box:SetScript("OnEnter", function(self)
             local board = ns.GetPosterProgress and ns.GetPosterProgress()
@@ -341,6 +344,15 @@ ns.RegisterPage({
             page.chips[i] = chip
         end
         page.newsRows = Rows(news, slot.left, slot.right, LEFT.rows, slot.bottom, 20)
+        page.newsOffset = 0
+        news:EnableMouseWheel(true)
+        news:SetScript("OnMouseWheel", function(_, delta)
+            page.newsOffset = math.max(0, (page.newsOffset or 0) - delta * 3)
+            DrawNews()
+            for _, row in ipairs(page.newsRows) do  -- (the row now under the mouse: its tooltip)
+                if row:IsMouseOver() and row:IsShown() then row:GetScript("OnLeave")(row) row:GetScript("OnEnter")(row) end
+            end
+        end)
         for _, row in ipairs(page.newsRows) do
             row:SetScript("OnEnter", function(self)
                 if not self.item then return end
@@ -422,17 +434,8 @@ ns.RegisterPage({
     end,
 
     refresh = function(p)
-        if p.asked ~= state.page then
-            if TAB_FOR_PAGE[state.page] then p.tab = TAB_FOR_PAGE[state.page] end
-            p.asked = state.page
-        end
         for _, tab in ipairs(p.tabs) do tab:Redraw(false) end
         for _, tab in ipairs(p.metricTabs) do tab:Redraw(false) end
-        -- HUNTS opens the bounty board over the pages; closing it comes back to NEWS.
-        if p.tab == "hunts" then
-            p.tab = "news"
-            ns.ShowHuntsBoard()
-        end
         p.news:Show()
         p.bountyBand:Show()
         p.chipsBand:Show()

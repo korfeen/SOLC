@@ -1,9 +1,10 @@
 -- Unlocks: picture layers you can only roll once you've earned them (MintArt.lua options with an unlock key; see
 -- Minting.lua's ns.MintAllowed). Each option is unlocked on its own: KillTrackerDB.unlocks = { [layer:id] = time }
+-- (this character's own, KillTrackerDB.ownUnlocks, or while it shares its wardrobe the account's: Core.lua)
 -- (ns.OptionKey). Unlocking makes it rollable; getting it into a picture is the mint's luck. Where they come from, by
 -- their option's unlock key:
---   clear:<dungeon>         a dungeon's pieces (the dungeon keys in Achievements.lua): its backdrop, its end boss as a
---                           skin, the end boss's gear; out of the dungeon's chests, one item at a time
+--   clear:<dungeon>         a dungeon's set (the dungeon keys in Achievements.lua): its end boss's hat and outfit; out
+--                           of the dungeon's chests by chance (its backdrop: its first clear's deed)
 --   chase:<dungeon>:<name>  a chase item: in the dungeon's chests by luck (its option's dropChance, CHASE_CHANCE),
 --                           likelier in a better chest
 --   loot:<item>             looting that epic item (its name in lower case, letters and digits only)
@@ -12,24 +13,25 @@
 --                           (make-unlock-art.js's creatures; worn together they're one hooded onesie, Minting.lua)
 -- Chests: each clear (its end boss down, Guild.lua) finds the dungeon's chest by chance: the guild's chestChance (25%)
 -- for you and as much again for each guildmate with you. A chest rolls its quality as it's found (ns.CHEST_TIERS:
--- common to legendary), which is how many items are in it; the first chest of a dungeon you've had nothing from is at
--- least rare (two items). Each item is one of the dungeon's pieces you don't have yet, or a chase item, or once there's
--- nothing left for you, more of the dungeon's tokens; and every chest has its coins and tokens besides (the guild's chestCoins, more for the
--- higher dungeons and for better chests). KillTrackerDB.chests = { { dungeon, time, tier } }: kept, as many as you
+-- common to legendary); the first chest of a dungeon you've had nothing from is at least rare. Opened, it always has
+-- its coins (points: the guild's chestCoins, more for the higher dungeons and for better chests), and by chance (better
+-- in a better chest) a chase item and one of the dungeon's set you don't have yet - that one for sure after PITY
+-- chests of it without (KillTrackerDB.chestPity = { [dungeon] = chests since its last piece }). No tokens any more.
+-- KillTrackerDB.chests = { { dungeon, time, tier } }: kept, as many as you
 -- find, until you open them (Chests.lua, the PIX page's tiles); KillTrackerDB.points.chests = the coins from them.
 -- An unlock goes in your feed (event U, a = its option key). The first check ever (data from before unlocks,
 -- Achievements.lua after counting your kills) gives a chest of each dungeon you've already cleared.
 
 local _, ns = ...
 
-local CHASE_CHANCE = 0.1  -- a chase item's chance per item slot, unless its option says (dropChance)
--- A chest's quality: its chance as it's found, how many items are in it, its coins' multiplier, its chase items', how many
--- of its dungeon's tokens it has (and an item slot with nothing new left for you holds as many again).
+local CHASE_CHANCE = 0.1  -- a chase item's chance in a chest, unless its option says (dropChance)
+local PITY = 5  -- chests of a dungeon in a row without a set piece (while it has any left for you): the next has one
+-- A chest's quality: its chance as it's found, its coins' multiplier, its chase item's luck, its chance of a set piece.
 ns.CHEST_TIERS = {
-    { key = "common", name = "Common", chance = 0.60, items = 1, coins = 1, chase = 1, tokens = 1 },
-    { key = "rare", name = "Rare", chance = 0.25, items = 2, coins = 2, chase = 1.5, tokens = 2, fuel = "frostwood" },
-    { key = "epic", name = "Epic", chance = 0.12, items = 3, coins = 4, chase = 2, tokens = 3, fuel = "shimmer" },
-    { key = "legendary", name = "Legendary", chance = 0.03, items = 4, coins = 10, chase = 3, tokens = 5, fuel = "sunwood" },
+    { key = "common", name = "Common", chance = 0.60, coins = 1, chase = 1, piece = 0.25, story = 1, milk = 0, bonk = 0 },
+    { key = "rare", name = "Rare", chance = 0.25, coins = 2, chase = 1.5, piece = 0.4, story = 1, milk = 1, bonk = 0 },
+    { key = "epic", name = "Epic", chance = 0.12, coins = 4, chase = 2, piece = 0.6, story = 2, milk = 1, bonk = 1 },
+    { key = "legendary", name = "Legendary", chance = 0.03, coins = 10, chase = 3, piece = 1, story = 3, milk = 2, bonk = 1 },
 }
 local TIERS = ns.CHEST_TIERS
 local FIRST_TIER = 2  -- the first chest of a dungeon: at least rare
@@ -85,6 +87,8 @@ function ns.UnlockOption(key, quiet)
     db.unlocks = db.unlocks or {}
     if db.unlocks[key] or not ns.OptionByKey(key) then return false end
     db.unlocks[key] = time()
+    if db.ownUnlocks then db.ownUnlocks[key] = db.unlocks[key] end  -- (this character's own too: Core.lua's wardrobe)
+    if ns.CheckCombines then ns.CheckCombines() end  -- (the other half of a combined piece, Minting.lua)
     if not quiet and ns.AddEvent then ns.AddEvent("U", key) end
     return true
 end
@@ -176,10 +180,8 @@ local function Coins(dungeonKey, tier)
     return math.floor(ns.Config("chestCoins") * dungeonTier * (TIERS[tier] or TIERS[1]).coins * (0.5 + math.random()) + 0.5)
 end
 
--- Opens one of your chests of a dungeon. Returns its tier, its coins, its items ({ { kind = "unlock", layer, option } or
--- { kind = "tokens", dungeon, count } }), its tokens (all of them, those items' too) and its fuel's key
--- (one of it: rare chests and up, ns.FUELS); nil if you have no chest of
--- it. It's all yours by the time it returns.
+-- Opens one of your chests of a dungeon. Returns its tier, its coins and its items ({ { kind = "unlock", layer, option } },
+-- none to two: a chase item, a set piece); nil if you have no chest of it. It's all yours by the time it returns.
 function ns.OpenChest(dungeonKey)
     local db = KillTrackerDB
     local chest
@@ -187,9 +189,10 @@ function ns.OpenChest(dungeonKey)
         if c.dungeon == dungeonKey then chest = table.remove(db.chests, i) break end
     end
     if not chest then return nil end
+    if ns.Tally then ns.Tally("chests") end  -- (the Chests opened deeds)
     local tier = chest.tier or 1
     local spec = TIERS[tier] or TIERS[1]
-    local items, coins, tokens = {}, Coins(dungeonKey, tier), spec.tokens
+    local items, coins = {}, Coins(dungeonKey, tier)
     local function Locked(list)
         local out = {}
         for _, unlocked in ipairs(list) do
@@ -197,36 +200,42 @@ function ns.OpenChest(dungeonKey)
         end
         return out
     end
-    for _ = 1, spec.items do
-        -- A chase item, by its luck; else one of the dungeon's pieces you don't have; else a bag of coins.
-        local got
-        for _, unlocked in ipairs(Locked(ns.ChestPool(dungeonKey))) do
-            local option = unlocked.option
-            if option.unlock ~= "clear:" .. dungeonKey and math.random() < (option.dropChance or CHASE_CHANCE) * spec.chase then
-                got = unlocked
-                break
-            end
-        end
-        if not got then
-            local pieces = Locked(ns.UnlockOptions("clear:" .. dungeonKey))
-            got = #pieces > 0 and pieces[math.random(#pieces)] or nil
-        end
-        if got then
-            ns.UnlockOption(ns.OptionKey(got.layer.key, got.option))
-            items[#items + 1] = { kind = "unlock", layer = got.layer, option = got.option }
-        else  -- nothing new left in it for you: the dungeon's tokens
-            tokens = tokens + spec.tokens
-            items[#items + 1] = { kind = "tokens", dungeon = dungeonKey, count = spec.tokens }
+    local function Take(unlocked)
+        ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option))
+        items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
+    end
+    -- A chase item, by its luck (the chest's tier times it).
+    for _, unlocked in ipairs(Locked(ns.ChestPool(dungeonKey))) do
+        local option = unlocked.option
+        if option.unlock ~= "clear:" .. dungeonKey and math.random() < (option.dropChance or CHASE_CHANCE) * spec.chase then
+            Take(unlocked)
+            break
         end
     end
-    db.tokens = db.tokens or {}
-    db.tokens[dungeonKey] = (db.tokens[dungeonKey] or 0) + tokens
-    if spec.fuel then db.tokens[spec.fuel] = (db.tokens[spec.fuel] or 0) + 1 end
+    -- One of the set you don't have, by the tier's chance; for sure after PITY chests of it without.
+    local pieces = Locked(ns.UnlockOptions("clear:" .. dungeonKey))
+    if #pieces > 0 then
+        db.chestPity = db.chestPity or {}
+        local dry = db.chestPity[dungeonKey] or 0
+        if dry >= PITY or math.random() < (spec.piece or 0) then
+            Take(pieces[math.random(#pieces)])
+            db.chestPity[dungeonKey] = 0
+        else
+            db.chestPity[dungeonKey] = dry + 1
+        end
+    end
+    -- (and the Dream Bed's stories, milk and bonks, by the tier: cards of their own)
+    for _, key in ipairs({ "story", "milk", "bonk" }) do
+        if (spec[key] or 0) > 0 then
+            ns.AddIngredient(key, spec[key], true)
+            items[#items + 1] = { kind = "tokens", dungeon = key, count = spec[key] }
+        end
+    end
     db.points.chests = (db.points.chests or 0) + coins
     ns.Touch(db.points)
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     if ns.CheckRank then ns.CheckRank() end  -- the coins count towards your Ogre Rank
-    return tier, coins, items, tokens, spec.fuel
+    return tier, coins, items
 end
 
 -- After the achievements count your kills (clears per dungeon: { [dungeon key] = clears }): the first time ever, each
@@ -245,6 +254,7 @@ function ns.CheckUnlocks(clears)
     for key in pairs(db.unlocks or {}) do
         if key:match("^clear:") then
             db.unlocks[key] = nil
+            if db.ownUnlocks then db.ownUnlocks[key] = nil end
             ns.UnlockPool(key, true)
         end
     end
@@ -301,8 +311,23 @@ ns.INGREDIENTS = {
     barrow = "Barrow Moss",
     hyjal = "Nordrassil Sap",
 }
+-- The Dream Bed's three (DreamBed.lua): Warm Milk (luck, up to 3 a dream), Bedtime Stories (ask about one piece: 1 to
+-- 5 by its rarity) and Bonks (ogres go to sleep by bonking their heads: one a dream; one comes back each day). Kept with the tokens as
+-- "milk", "story" and "bonk". From rares, dungeon chests, bounties, plinko and Ogre Rank.
+ns.DREAM_ITEMS = {
+    milk = { name = "Warm Milk", icon = "Interface\\Icons\\INV_Drink_Milk_01",
+        source = "From rare creatures, dungeon chests and plinko. A mug before bed: wilder dreams (rarer pieces, and the crayons)." },
+    story = { name = "Bedtime Story", icon = "Interface\\Icons\\INV_Misc_Book_09",
+        source = "From dungeon chests, bounties and plinko. Ask the ogre to dream about one piece you pick." },
+    bonk = { name = "Bonk", icon = "Interface\\Icons\\INV_Hammer_05",
+        source = "Ogres go to sleep by bonking their heads: one bonk with the mallet and he's out. One comes back each day (up to 3); more from epic dungeon chests, bounties, plinko and Ogre Rank." },
+}
+for key, item in pairs(ns.DREAM_ITEMS) do ns.INGREDIENTS[key] = item.name end
 function ns.IngredientName(dungeonKey) return ns.INGREDIENTS[dungeonKey] or "Tokens" end
-function ns.IngredientIcon(dungeonKey) return "Interface\\AddOns\\SOLC\\Media\\Icons\\Ingredients\\" .. dungeonKey:upper() end
+function ns.IngredientIcon(dungeonKey)
+    if ns.DREAM_ITEMS[dungeonKey] then return ns.DREAM_ITEMS[dungeonKey].icon end
+    return "Interface\\AddOns\\SOLC\\Media\\Icons\\Ingredients\\" .. dungeonKey:upper()
+end
 function ns.Tokens(dungeonKey) return KillTrackerDB.tokens and KillTrackerDB.tokens[dungeonKey] or 0 end
 -- Spends tokens of each dungeon ({ [dungeon key] = how many }); false (and nothing spent) if you don't have them.
 function ns.SpendTokens(spend)
@@ -341,8 +366,8 @@ function ns.BuyPiece(dungeonKey, key)
     return true
 end
 
--- Layer ingredients (ns.PotPlan, Minting.lua: they aim the pot at a layer, and make it rarer): one per layer, dropped by
--- the creatures of its types (LAYER_DROP of their kills, elites twice that, rares and bosses always). Fuels for the fire
+-- Layer ingredients (ns.PotPlan, Minting.lua: they aim the pot at a layer, and make it rarer): one per layer, once dropped
+-- by the creatures of its types (they don't drop any more: the Dream Bed replaces the pot; kept for those who have some). Fuels for the fire
 -- under the pot (ns.FUELS: rarer pieces likelier, each its rarity and up, and the fire burns its colour): from rare
 -- creatures and rare chests and up. All kept with the tokens, as l_<layer key> and the fuels' keys.
 ns.LAYER_INGREDIENTS = {
@@ -354,13 +379,9 @@ ns.LAYER_INGREDIENTS = {
     { layer = "accessory", name = "Shiny Trinket", types = { "Mechanical", "Giant" } },
     { layer = "headwear", name = "Dragon Horn", types = { "Dragonkin" } },
 }
-local LAYER_DROP = 0.03
-local CHEST_DUST = { 0, 0, 1, 2 }  -- by chest tier
-local layerByType = {}
 for _, spec in ipairs(ns.LAYER_INGREDIENTS) do
     spec.key = "l_" .. spec.layer
     ns.INGREDIENTS[spec.key] = spec.name
-    for _, creatureType in ipairs(spec.types) do layerByType[creatureType] = spec end
 end
 ns.FUELS = {
     { key = "frostwood", name = "Frostwood Kindling", rarity = "rare", color = { 0.45, 0.75, 1 } },
@@ -375,6 +396,7 @@ end
 function ns.Fuel(key) return fuelByKey[key] end
 -- What kind an ingredient is: "dungeon", "layer" or "fuel".
 function ns.IngredientKind(key)
+    if ns.DREAM_ITEMS[key] then return "dream" end
     if fuelByKey[key] then return "fuel" end
     if key:match("^l_") then return "layer" end
     return "dungeon"
@@ -382,6 +404,7 @@ end
 -- Where an ingredient comes from, for its tooltip.
 function ns.IngredientSource(key)
     local kind = ns.IngredientKind(key)
+    if kind == "dream" then return ns.DREAM_ITEMS[key].source end
     if kind == "fuel" then
         local fuel = fuelByKey[key]
         local from = ({ rare = "rare creatures and rare chests", epic = "rare elites and epic chests", legendary = "legendary chests" })[fuel.rarity]
@@ -403,7 +426,8 @@ function ns.AddIngredient(key, n, quiet)
     db.tokens = db.tokens or {}
     db.tokens[key] = (db.tokens[key] or 0) + (n or 1)
     if not quiet then
-        ns.Print(("|T%s:16|t You found %s%s, for the minting pot."):format(ns.IngredientIcon(key), (n or 1) > 1 and (n .. " ") or "", ns.IngredientName(key)))
+        ns.Print(("|T%s:16|t You found %s%s, %s."):format(ns.IngredientIcon(key), (n or 1) > 1 and (n .. " ") or "", ns.IngredientName(key),
+            ns.DREAM_ITEMS[key] and "for the Dream Bed" or "for the minting pot"))
     end
 end
 -- Every ingredient you have, for the pot's shelves: dungeons' (in the Achievements.lua order), layers', then fuels.
@@ -421,15 +445,9 @@ function ns.IngredientList()
     end
     return list
 end
--- Kills drop layer ingredients (and rares fuel: Frostwood, rare elites Shimmer Dust).
+-- Rares give Warm Milk (a rare elite two). (The layer ingredients and fuels don't drop any more: the Dream Bed.)
 table.insert(ns.KillHandlers, function(_, _, c)
-    local spec = c.type and layerByType[c.type]
-    local rare = c.rank == "Rare" or c.rank == "Rare Elite"
-    if spec then
-        local chance = (rare or c.rank == "Boss") and 1 or c.rank == "Elite" and LAYER_DROP * 2 or LAYER_DROP
-        if math.random() < chance then ns.AddIngredient(spec.key) end
-    end
-    if rare then ns.AddIngredient(c.rank == "Rare Elite" and "shimmer" or "frostwood") end
+    if c.rank == "Rare" or c.rank == "Rare Elite" then ns.AddIngredient("milk", c.rank == "Rare Elite" and 2 or 1) end
 end)
 
 -- Wearing a famous drop unlocks its piece on this character (KillTrackerDB is per character): equip the real Ironfoe

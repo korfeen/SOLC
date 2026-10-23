@@ -1219,6 +1219,11 @@ local function Build()
             local function Also(tex) if tex and tex:IsShown() then textures[#textures + 1] = tex end end
             if layer.key == "skin" then Also(stage.canvas.front) end
             if layer.key == "outfit" then Also(stage.canvas.outfitFront) Also(stage.canvas.outfitBack) end
+            Also(stage.canvas.behinds and stage.canvas.behinds[index or 0])
+            -- (a hooded onesie's behind is the hat's: it shows when the outfit lands on a hat already there)
+            if layer.key == "outfit" and stage.canvas.behinds then
+                for i, l in ipairs(ns.MintLayers) do if l.key == "headwear" then Also(stage.canvas.behinds[i]) end end
+            end
             local mask = stage.masks[index or 0] or stage.canvas:CreateMaskTexture()
             stage.masks[index or 0] = mask
             mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -1251,7 +1256,7 @@ local function Build()
         reveal.done = true
         local mint = reveal.mint
         self.stage.reel:Stop()
-        local rarity = ns.MintRarity(mint.traits)
+        local rarity = ns.MintRarity(mint.traits, mint.asked)
         local Rarity = rarity:gsub("^%l", string.upper)
         local big = rarity == "legendary" or rarity == "epic"
         ns.ShowToast(big and "achievement" or "record", "Minted!", ("Picture #%d"):format(mint.number), Rarity)
@@ -1275,6 +1280,7 @@ local function Build()
             local canvas = stage.canvas
             for _, mask in pairs(stage.masks) do
                 for _, tex in ipairs(canvas.layers or {}) do tex:RemoveMaskTexture(mask) end
+                for _, tex in pairs(canvas.behinds or {}) do tex:RemoveMaskTexture(mask) end
                 for _, key in ipairs({ "front", "outfitFront", "outfitBack" }) do
                     if canvas[key] then canvas[key]:RemoveMaskTexture(mask) end
                 end

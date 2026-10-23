@@ -4,7 +4,8 @@
 -- (ProfileHeader.lua: the profile header over the left page, the middle beam).
 -- Left: tabs. GUILD: everyone's pictures, newest first, with whose. SHOP: the Collection's rows (minting, the
 -- collectibles, the points and where they came from, saved paintings), in the Overview feed's style.
--- Right: the picked picture filling the page, its owner on the cross beam under it, its rarity under that; then
+-- Right: the picked picture filling the page (a Dream Bed picture: click it to turn it over and read its dream), its
+-- owner on the cross beam under it, its rarity under that; then
 -- its traits (on your own with the crayon edition: click one to draw it painted, in crayon or sketched), and buttons:
 -- show it on your Overview, switch the whole picture's edition, use it as your Overview photo, reroll a duplicate.
 
@@ -129,7 +130,7 @@ local function DrawTiles()
                 tile.canvas:Hide()
                 tile.plus:Show()
                 tile.border:SetVertexColor(0.5, 0.4, 0.2)
-                tile.caption:SetText(("MINT  |cffffbf66%d|r"):format(ns.MintCost()))
+                tile.caption:SetText(("MINT  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))
                 tile.band:Show()
                 tile.tag:SetText("")
             else
@@ -137,7 +138,7 @@ local function DrawTiles()
                 tile.plus:Hide()
                 ns.DrawMint(tile.canvas, picture.mint)
                 local picked = page.pick and page.pick.mint == picture.mint
-                if picked then tile.border:SetVertexColor(1, 1, 1) else tile.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(picture.mint.traits))) end
+                if picked then tile.border:SetVertexColor(1, 1, 1) else tile.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(picture.mint.traits, picture.mint.asked))) end
                 local guild = page.tab == "guild"
                 tile.band:SetShown(guild)
                 tile.caption:SetText(guild and (picture.owner or ("|cffffd100%s|r"):format(ns.MyName())) or "")
@@ -163,6 +164,9 @@ local function DrawRows()
     page.empty:SetShown(#page.data == 0)
 end
 
+-- The picture turned over (on) to read its dream, or back (Minting.lua: ns.ShowMintTale).
+local function ShowBack(on) ns.ShowMintTale(page.canvas, page.shown and page.shown.mint, on) end
+
 -- The right page: the picked picture, or (nothing picked) the first in the tab.
 local function DrawPick()
     local picture = page.pick
@@ -178,17 +182,21 @@ local function DrawPick()
     -- Nothing to hang: on yours, an invitation to mint (the whole opening is the button).
     local invite = mint == nil and not state.viewing
     page.invite:SetShown(invite)
-    page.nothing:SetText(invite and ("|cffffd100+ MINT A PICTURE|r\n\n%d points - you have %d"):format(ns.MintCost(), ns.GetPoints().balance)
+    page.nothing:SetText(invite and ("|cffffd100+ MINT A PICTURE|r\n\n%s"):format(ns.BonksLine())
         or "No pictures here yet.")
     for _, row in ipairs(page.traitRows) do row:Hide() end
     for _, button in ipairs(page.buttons) do button:Hide() end
+    if page.taleOf ~= mint then page.taleOf, page.reading = mint, false end
+    page.tale = mint and mint.tale
     if not mint then
+        ShowBack(false)
         page.rarity:SetText("")
         Fit(page.plaque, SIGN_FONT, RIGHT.plaque.size, 8, "", RIGHT.plaque.w)
         return
     end
     ns.DrawMint(page.canvas, mint)
-    local rarity = ns.MintRarity(mint.traits)
+    ShowBack(page.reading)
+    local rarity = ns.MintRarity(mint.traits, mint.asked)
     page.rarity:SetText(("|c%s%s|r  |cff999999#%d%s|r"):format(ns.RARITY_COLORS[rarity], Capitalize(rarity), mint.number,
         mint.time and ("  " .. date("%Y-%m-%d", mint.time)) or ""))
     Fit(page.plaque, SIGN_FONT, RIGHT.plaque.size, 8, (picture.owner or ns.MyName()):match("^(%S+)"):upper(), RIGHT.plaque.w)
@@ -405,10 +413,10 @@ ns.RegisterPage({
                             "Coins, and things for your pictures to roll. Click to open.", picture.count > 1 and "Open them one after another." or nil })
                     end
                     if picture.mintAction then
-                        return Tooltip(self, { "Mint a picture", ("%d points. Rolls a random background, skin, outfit, expression, eyes, accessory and headwear. Rarer traits make a rarer picture."):format(ns.MintCost()) })
+                        return Tooltip(self, { "Mint a picture", ns.BonksLine() .. ". The ogre dreams it, you paint it." })
                     end
                     local mint = picture.mint
-                    local rarity = ns.MintRarity(mint.traits)
+                    local rarity = ns.MintRarity(mint.traits, mint.asked)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:AddLine(("%s #%d"):format(picture.owner and (picture.owner .. "'s") or "Picture", mint.number))
                     GameTooltip:AddLine(Capitalize(rarity), ns.RarityRGB(rarity))
@@ -493,6 +501,21 @@ ns.RegisterPage({
         page.canvas:SetSize(RIGHT.picture.size, RIGHT.picture.size)
         At(page.canvas, "CENTER", RIGHT.picture.x, RIGHT.picture.y)
         page.canvas:SetFrameLevel(photo:GetFrameLevel() + 1)
+        -- (the picture's back, with its dream on: click the picture to turn it over and back)
+        local function TaleTip(self)
+            if not (page.shown and page.shown.mint) then return end
+            Tooltip(self, { page.reading and "Back to the picture" or page.shown.mint.tale and "Read the dream" or "Turn it over",
+                "Click to turn the picture over." })
+        end
+        page.canvas:SetScript("OnClick", function(self)
+            if not (page.shown and page.shown.mint) then return end
+            UI.ClickSound()
+            page.reading = not page.reading
+            ShowBack(page.reading)
+            TaleTip(self)
+        end)
+        page.canvas:SetScript("OnEnter", TaleTip)
+        page.canvas:SetScript("OnLeave", GameTooltip_Hide)
         page.nothing = photo:CreateFontString(nil, "OVERLAY")
         page.nothing:SetFont(NAME_FONT, 15, "")
         page.nothing:SetTextColor(unpack(DIM))

@@ -27,7 +27,7 @@ function SOLC.GetPictures(key)
     local pictures = {}
     local function Add(mint)
         pictures[#pictures + 1] = { number = mint.number, traits = mint.traits, time = mint.time,
-            rarity = ns.MintRarity(mint.traits), style = ns.MintStyle(mint) }
+            rarity = ns.MintRarity(mint.traits, mint.asked), style = ns.MintStyle(mint) }
     end
     if key then
         local friend = KillTrackerFriends[key]

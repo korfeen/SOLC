@@ -103,12 +103,12 @@ local function Describe(e, who, source, calm)
         return ("%s earned |c%s%s|r"):format(who, c.achievement, AchievementText(e.a))
     elseif e.k == "M" then
         local mint = EventMint(e, source)
-        local rarity = mint and ns.MintRarity(mint.traits)
+        local rarity = mint and ns.MintRarity(mint.traits, mint.asked)
         return ("%s minted %spicture #%s"):format(who,
             rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a))
     elseif e.k == "W" then
         local mint = EventMint(e, source)
-        local rarity = mint and ns.MintRarity(mint.traits)
+        local rarity = mint and ns.MintRarity(mint.traits, mint.asked)
         return ("%s won %spicture #%s%s"):format(who,
             rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a),
             e.b and (" from %s"):format(e.b) or "")
@@ -134,6 +134,40 @@ local function Describe(e, who, source, calm)
     end
 end
 
+-- One clear, however many of you were there: the same boss in the same instance (c) within MERGE_WINDOW of each other
+-- (each player logs their own; clocks differ a little) is one line naming everyone: "Lance, Mira and Jonk cleared...".
+-- feed: newest first. The line kept is the newest; its together = the names.
+local MERGE_WINDOW = 15 * 60
+local function NameList(names)
+    if #names == 1 then return names[1] end
+    return table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names]
+end
+local function MergeClears(feed, calm)
+    local kept, groups = {}, {}
+    for _, item in ipairs(feed) do
+        local e, group = item.event, nil
+        if item.kind == "D" then
+            for _, g in ipairs(groups) do
+                local first = g.item.event
+                if first.a == e.a and first.c == e.c and math.abs(first.t - e.t) <= MERGE_WINDOW then group = g break end
+            end
+        end
+        if group then
+            if not group.seen[item.who] then group.seen[item.who] = true group.names[#group.names + 1] = item.who end
+        else
+            if item.kind == "D" then groups[#groups + 1] = { item = item, seen = { [item.who] = true }, names = { item.who } } end
+            kept[#kept + 1] = item
+        end
+    end
+    for _, g in ipairs(groups) do
+        if #g.names > 1 then
+            g.item.together = g.names
+            g.item.text = Describe(g.item.event, NameList(g.names), g.item.source, calm) or g.item.text
+        end
+    end
+    return kept
+end
+
 -- The guild feed, newest first: { { time, text, who, kind, mint, owner, event, source } }, from you and everyone synced
 -- (event: the event itself; source: its player's stats, KillTrackerDB for yours). kind: the
 -- event's kind (above); mint: the picture a minted/won event is about (click to view); owner: whose it is (nil for
@@ -155,6 +189,7 @@ function ns.GetFeed(calm, guild, player)
         if not player or player == friend.key then Add(friend.name, friend.stats) end
     end
     table.sort(feed, function(x, y) return x.time > y.time end)
+    feed = MergeClears(feed, calm)
     while #feed > MAX_FEED do table.remove(feed) end
     return feed
 end
