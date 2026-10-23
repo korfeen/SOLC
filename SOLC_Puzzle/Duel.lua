@@ -93,6 +93,7 @@ local function Pump()
 end
 
 local function Send(target, ...)
+    if Duel.bot and Duel.bot.IsBot(target) then return Duel.bot.Receive(table.concat({ ... }, "|")) end  -- (Bot.lua)
     outbox[#outbox + 1] = { target = target, message = table.concat({ ... }, "|") }
     if not sending then
         sending = true
@@ -154,7 +155,9 @@ local function Finish(won, reason)
     duel.phase = "done"
     duel.result = { won = won, reason = reason, myTime = duel.myTime, theirTime = duel.theirTime,
         myScore = duel.myScore, theirScore = duel.theirScore }
-    if not won then
+    if not won and duel.bot then  -- (the practice bot: nothing changes hands)
+        SOLC.Print("Practice duel: you keep your picture.")
+    elseif not won then
         -- Hand our picture over: give it away first, then tell the winner, so it can't end up with both.
         local traits = SOLC.GivePicture(duel.mine.number)
         if traits then
@@ -227,7 +230,7 @@ function Duel.Challenge(target, mode, size, seconds)
     if duel and duel.phase ~= "done" then return false, "You're already in a duel." end
     declinedAt[target] = nil  -- challenging them yourself lifts the cooldown from declining them
     duel = { id = NewID(), role = "challenger", opponent = target, mode = mode, size = size, seconds = seconds, phase = "inviting",
-        invitedAt = GetTime(), reactions = {} }
+        invitedAt = GetTime(), reactions = {}, bot = Duel.bot and Duel.bot.IsBot(target) or nil }
     Send(target, "C", duel.id, mode, size, seconds or 0)
     Changed()
     local id = duel.id
@@ -413,7 +416,7 @@ function handlers.C(sender, id, mode, size, seconds)
     if not valid then return end
     seconds = math.max(10, math.min(600, tonumber(seconds) or ns.DEFAULT_PAINT_TIME))
     duel = { id = id, role = "opponent", opponent = sender, address = address, mode = mode, size = size, seconds = seconds,
-        phase = "invited", invitedAt = GetTime(), reactions = {} }
+        phase = "invited", invitedAt = GetTime(), reactions = {}, bot = Duel.bot and Duel.bot.IsBot(sender) or nil }
     if Duel.OnInvited then Duel.OnInvited(duel) end
     Changed()
     -- Unanswered: let it go (the challenger gives up after as long), so it doesn't block later challenges.
@@ -533,15 +536,17 @@ function handlers.G(sender, id, minted, traits)
     -- The prize: only from the opponent of the duel we just won, once.
     if not Mine(sender, id) or not duel.result or not duel.result.won or duel.result.received then return end
     duel.result.received = true
+    if duel.bot then  -- (the practice bot's picture: shown as the prize, not yours to keep)
+        duel.result.prize = { traits = SOLC.TextToTraits(traits or "") }
+        return Changed()
+    end
     local mint = SOLC.ReceivePicture(SOLC.TextToTraits(traits or ""), sender, tonumber(minted))
     duel.result.prize = mint and { number = mint.number, traits = mint.traits }
     Changed()
 end
 
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("CHAT_MSG_ADDON")
-frame:SetScript("OnEvent", function(_, _, prefix, message, _, sender)
-    if prefix ~= PREFIX or issecret(message) or issecret(sender) then return end
+-- A message from sender (as the game gives it): to its handler. (Also the practice bot's way in: Bot.lua.)
+local function Deliver(sender, message)
     local raw = sender
     sender = Short(sender)
     if SameName(sender, SOLC.MyName()) and not (duel and SameName(sender, duel.opponent)) then return end
@@ -553,6 +558,15 @@ frame:SetScript("OnEvent", function(_, _, prefix, message, _, sender)
     lastSender = raw
     if handler then handler(sender, select(2, unpack(fields))) end
     lastSender = nil
+end
+Duel.Deliver = Deliver
+
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("CHAT_MSG_ADDON")
+frame:SetScript("OnEvent", function(_, _, prefix, message, _, sender)
+    if prefix ~= PREFIX or issecret(message) or issecret(sender) then return end
+    if Duel.bot and Duel.bot.IsBot(Short(sender)) then return end  -- (nobody else gets to speak as the bot)
+    Deliver(sender, message)
 end)
 C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
 
@@ -572,5 +586,6 @@ function Duel.OnlineGuildmates()
         end
     end
     table.sort(list)
+    if Duel.bot and SOLC.IsDev and SOLC.IsDev() then table.insert(list, 1, Duel.bot.name) end  -- (dev: the practice bot)
     return list
 end

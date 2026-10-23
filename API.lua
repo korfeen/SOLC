@@ -14,6 +14,8 @@ function SOLC.Print(text) ns.Print(text) end
 
 -- True for a guild officer or guild master.
 function SOLC.IsOfficer() return IsInGuild() and ns.CanEditConfig() end
+function SOLC.IsDev() return ns.IsDev() end  -- (the dev characters: Config.lua; the practice bot, Bot.lua)
+function SOLC.RandomPicture() return ns.RollFreePicture() or ns.BaseTraits() end  -- traits, owned by nobody (nothing paid)
 
 -- Synced guildmates (and your other characters): { { key, name } }, sorted by name.
 function SOLC.GetPlayers()

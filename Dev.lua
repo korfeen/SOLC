@@ -786,11 +786,47 @@ local function BuildDeeds(parent)
         end
     end
 
+    -- The puzzle's practice bot (SOLC_Puzzle's Bot.lua): how fast it is, and a duel it challenges you to. (It's also
+    -- first in the duel panel's list, to challenge it yourself.)
+    Heading(page, "Puzzle practice bot", 400, -300)
+    local function PuzzleBot() return _G.SOLC and _G.SOLC.PuzzleBot end
+    local speed = Stepper(page, 350, "Speed", function()
+        local list = {}
+        for i, s in ipairs(PuzzleBot() and PuzzleBot().SPEEDS or {}) do
+            list[#list + 1] = { label = ("%s (%.1fs a piece)"):format(s.name, s.perPiece), value = i }
+        end
+        return list
+    end, function(i) PuzzleBot().speed = i end)
+    speed:SetPoint("TOPLEFT", 400, -324)
+    local DUELS = { { "swap", 3 }, { "swap", 4 }, { "swap", 5 }, { "sliding", 3 }, { "sliding", 4 }, { "sliding", 5 },
+        { "paint", 16, 60 }, { "paint", 24, 90 } }
+    local duelStep = Stepper(page, 350, "Duel", function()
+        local list = {}
+        for _, d in ipairs(DUELS) do
+            list[#list + 1] = { label = d[1] == "paint" and ("paint %dx%d, %ds"):format(d[2], d[2], d[3]) or ("%s %dx%d"):format(d[1], d[2], d[2]), value = d }
+        end
+        return list
+    end)
+    duelStep:SetPoint("TOPLEFT", 400, -348)
+    Button(page, "Bot challenges me", 150, function()
+        local bot, d = PuzzleBot(), duelStep:Value()
+        if not bot then return ns.Print("Dev: SOLC Puzzle isn't loaded.") end
+        if d then bot.ChallengeMe(d[1], d[2], d[3]) end
+    end):SetPoint("TOPLEFT", 400, -376)
+    local botNote = Label(page, 12, 0.62, 0.56, 0.48)
+    botNote:SetPoint("TOPLEFT", 400, -404)
+    botNote:SetWidth(350)
+    botNote:SetWordWrap(true)
+    botNote:SetText("Practice only: you keep your picture if you lose, and its picture isn't yours if you win.")
+
     function page:Refresh()
         kind:Reload()
         tribe:Reload()
         dungeon:Reload()
         rank:Reload()
+        speed:Reload()
+        if PuzzleBot() then speed:Select(PuzzleBot().speed) end
+        duelStep:Reload()
         local p, r = ns.GetPoints(), ns.GetRank()
         local plinko = KillTrackerDB.plinko
         status:SetText(("Earned %d points, %d to spend. Rank %d %s. Plinko drops waiting: %d."):format(p.earned, p.balance,
