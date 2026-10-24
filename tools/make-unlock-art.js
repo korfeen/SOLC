@@ -533,6 +533,40 @@ if (!only || only === "gear" || only === "creatures") {
   console.log(`Creatures: ${n} pieces painted, ${suits} hooded onesies`);
 }
 
+// - Pro Shop pieces: the golf and club wearables (tools/gen-art-proshop.json, gen-art-proshop-club.json) and the zone
+//   golf courses (gen-art-zone-courses.json), all bought in the shop: "shop:<id>". Nothing unlocks that until the shop
+//   is built, so they sit in the game locked (never rolled). Only the ones painted (and, for wearables, fitted) so far.
+if (!only || only === "gear" || only === "shop") {
+  const read = (f) => fs.existsSync(path.join(__dirname, f)) ? JSON.parse(fs.readFileSync(path.join(__dirname, f), "utf8")) : [];
+  const shop = read("gen-art-proshop.json").concat(read("gen-art-proshop-club.json"), read("gen-art-zone-courses.json"));
+  const LAYER_FOLDER = { headwear: "Headwear", outfit: "Outfit", accessory: "Accessory", background: "Background" };
+  for (const edition of ["painted", "crayon", "sketch"]) {
+    for (const folder of Object.values(LAYER_FOLDER)) for (const rarity of Object.values(FOLDER)) {
+      const dir = path.join(UNLOCKS, edition, folder, rarity);
+      for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^(shop|zone)-/.test(f)) fs.rmSync(path.join(dir, f));
+    }
+  }
+  for (const key of Object.keys(info)) if (/\/(shop|zone)_/.test(key)) delete info[key];
+  const generated = (edition, id) => path.join(UNLOCKS, "generated", edition, id + ".png");
+  let n = 0;
+  for (const item of shop) {
+    if (!LAYER_FOLDER[item.layer] || !ready(item.id)) continue;
+    const base = item.id.replace(/_/g, "-") + ".png";
+    const file = path.join(UNLOCKS, "painted", LAYER_FOLDER[item.layer], FOLDER[item.rarity], base);
+    let rgba = defringe(Buffer.from(decodePng(generated("painted", item.id)).rgba)), back = null;
+    if (item.layer === "outfit") ({ rgba, back } = splitOutfit(rgba));
+    write(file, rgba);
+    if (back) write(file.replace(/.png$/i, ".back.png"), back);
+    for (const edition of ["crayon", "sketch"]) {
+      if (fs.existsSync(generated(edition, item.id))) write(path.join(UNLOCKS, edition, LAYER_FOLDER[item.layer], FOLDER[item.rarity], base), Buffer.from(decodePng(generated(edition, item.id)).rgba));
+    }
+    info[item.layer + "/" + item.id] = { unlock: item.unlock || "shop:" + item.id, name: item.desc.split(":")[0] };
+    made.push({ layer: LAYER_FOLDER[item.layer], file });
+    n++;
+  }
+  console.log(`Pro Shop: ${n} pieces painted of ${shop.length}`);
+}
+
 // (the retired backdrops out, unless they were just made on purpose)
 if (only !== "backgrounds") {
   for (const edition of ["painted", "crayon", "sketch"]) for (const rarity of Object.values(FOLDER)) {

@@ -1,0 +1,9 @@
+{
+  "_": "Theme tags for minting pieces, by piece id (a generated piece's id, or MintArt.lua's id for the base pieces). Read by tools/item-fitter.js (its Theme row); meant for the Pro Shop and the collection later too.",
+  "golf": [
+    "shop_flat_cap", "shop_tam_pompom", "shop_panama", "shop_golfball_hat", "shop_putting_green_hat", "shop_argyle_vest", "shop_caddie_bib", "shop_norfolk_jacket", "shop_loud_windbreaker", "shop_champions_jacket", "shop_putter", "shop_golf_glove_ball", "shop_driver", "shop_golf_bag", "shop_gopher", "shop_trophy_cup", "golf_course_at_dawn", "moonlit_fairway", "dragon_over_the_fairway", "sun_visor", "golf_polo", "dragonhide_golf_jacket", "zone_elwynn", "zone_dunmorogh", "zone_ironforge", "zone_darnassus", "zone_needles", "zone_westfall", "zone_redridge"
+  ],
+  "club": [
+    "clubhouse_lounge", "blazer_with_club_crest", "tweed_vest", "membership_card", "loincloth_and_member_sash", "monocle", "tiny_top_hat", "gold_chain", "shop_bowler_hat", "shop_straw_boater", "shop_smoking_cap", "shop_yacht_cap", "shop_chandelier_crown", "shop_tennis_whites", "shop_smoking_jacket", "shop_yacht_blazer", "shop_tuxedo", "shop_founders_robe", "shop_champagne_flute", "shop_tennis_racket", "shop_pocket_watch", "shop_service_bell", "shop_lapdog", "shop_club_key"
+  ]
+}

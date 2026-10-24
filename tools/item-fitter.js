@@ -132,7 +132,9 @@ const tint = document.createElement("canvas"); tint.width = S; tint.height = H; 
 const lining_ = () => document.getElementById("lining").checked;
 const paintX = () => hiding() ? hdx : behinding() ? bhx : lining_() ? lnx : ex;  // (what the brushes paint on)
 let ogre = new Image(), item = null, id = null, fit = null, mode = "move", size = 40, zoom = 0.6, space = false;
-let drag = null, pan = null, cursor = null, lasso = null;
+let drag = null, pan = null, cursor = null, lasso = null, peek = false;  // (peek: Tab held, the plain result without markings)
+addEventListener("keydown", (e) => { if (e.key === "Tab" && e.target.tagName !== "INPUT") { e.preventDefault(); if (!peek) { peek = true; draw(); } } });
+addEventListener("keyup", (e) => { if (e.key === "Tab" && peek) { peek = false; draw(); } });
 const undo = [];
 const ogres = {};
 function loadImg(src) { return new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.src = src; }); }
@@ -235,7 +237,9 @@ function draw() {
   vx.drawImage(lining, 0, 0);  // (the lining, under all of it)
   // (the piece's behind part first, under the ogre; the rest over it after)
   bkx.clearRect(0, 0, S, H); bkx.drawImage(behind, 0, 0);
-  bkx.globalCompositeOperation = "source-in"; bkx.drawImage(out, 0, 0); bkx.globalCompositeOperation = "source-over";
+  bkx.globalCompositeOperation = "source-in"; bkx.drawImage(out, 0, 0);
+  if (behinding() && !peek) { bkx.fillStyle = "rgba(60,140,255,0.3)"; bkx.fillRect(0, 0, S, H); }  // (tinted, still behind him)
+  bkx.globalCompositeOperation = "source-over";
   vx.drawImage(bk, 0, 0);
   if (ogre.complete) {  // (the ogre, without where this piece hides it; that shown red while hiding)
     ogx.clearRect(0, 0, S, H); ogx.drawImage(ogre, 0, M);
@@ -250,11 +254,15 @@ function draw() {
   bkx.clearRect(0, 0, S, H); bkx.drawImage(out, 0, 0);
   bkx.globalCompositeOperation = "destination-out"; bkx.drawImage(behind, 0, 0); bkx.globalCompositeOperation = "source-over";
   vx.drawImage(bk, 0, 0);
-  if (behinding()) {  // (what goes behind, shown blue)
+  if (behinding() && !peek) {  // (what goes behind: the real result shows, with a thin blue line round it on top; Tab hides it)
     bkx.clearRect(0, 0, S, H); bkx.drawImage(behind, 0, 0);
-    bkx.globalCompositeOperation = "source-in"; bkx.drawImage(out, 0, 0);
-    bkx.fillStyle = "rgba(60,140,255,0.5)"; bkx.fillRect(0, 0, S, H); bkx.globalCompositeOperation = "source-over";
-    vx.drawImage(bk, 0, 0);
+    bkx.globalCompositeOperation = "source-in"; bkx.drawImage(out, 0, 0); bkx.globalCompositeOperation = "source-over";
+    ogx.clearRect(0, 0, S, H);
+    for (const [dx, dy] of [[-3, 0], [3, 0], [0, -3], [0, 3]]) ogx.drawImage(bk, dx, dy);  // (the shape, a little bigger)
+    ogx.globalCompositeOperation = "destination-out"; ogx.drawImage(bk, 0, 0);            // (minus itself: its edge)
+    ogx.globalCompositeOperation = "source-in"; ogx.fillStyle = "rgba(80,170,255,0.95)"; ogx.fillRect(0, 0, S, H);
+    ogx.globalCompositeOperation = "source-over";
+    vx.drawImage(og, 0, 0);
   }
   // (above the frame: shown dimmed, it isn't saved; the frame's top edge)
   vx.fillStyle = "rgba(10,8,10,0.55)"; vx.fillRect(0, 0, S, M);
@@ -518,21 +526,23 @@ document.getElementById("save").onclick = async () => {
   }
 };
 // Tags for the list, from a piece's id and its fit: within a row any ticked one matches, across rows all must.
-const KINDS = { crit: "Creature", gear: "Gear set", chase: "Chase item", bg: "Background", fac: "Faction", prop: "Prop", hunt: "Hunter", test: "Test" };
+const KINDS = { crit: "Creature", gear: "Gear set", chase: "Chase item", bg: "Background", fac: "Faction", prop: "Prop", hunt: "Hunter", test: "Test", shop: "Shop", zone: "Zone course" };
 const PIECES = { head: "Hat", body: "Outfit", suit: "Hooded onesie" };
+const LAYERS = { headwear: "Hat", outfit: "Outfit", background: "Background", accessory: "Item" };
 function tagsOf(it) {
   const [prefix, place] = it.id.split("_");
   const end = it.id.split("_").pop();
   return {
-    kind: KINDS[prefix] || "Other",
-    piece: PIECES[end] || (prefix === "bg" ? "Background" : "Item"),
+    kind: [KINDS[prefix] || "Other"].concat(it.layer === "background" && prefix !== "bg" ? ["Background"] : []),  // (a zone course is a background too)
+    piece: PIECES[end] || LAYERS[it.layer] || (prefix === "bg" ? "Background" : "Item"),
+    theme: it.themes.length ? it.themes : null,
     status: [it.fitted ? "Fitted" : "Not fitted"].concat(it.hide ? ["Hides ogre"] : [], it.behind ? ["Behind ogre"] : []),
     game: it.game,
     place: ["gear", "chase", "bg"].includes(prefix) ? place.toUpperCase() : null,
   };
 }
-const ROWS = [["kind", "Kind"], ["piece", "Piece"], ["status", "Status"], ["game", "Game"], ["place", "Dungeon"]];
-const ticked = { kind: new Set(), piece: new Set(), status: new Set(), game: new Set(), place: new Set() };
+const ROWS = [["kind", "Kind"], ["piece", "Piece"], ["theme", "Theme"], ["status", "Status"], ["game", "Game"], ["place", "Dungeon"]];
+const ticked = { kind: new Set(), piece: new Set(), theme: new Set(), status: new Set(), game: new Set(), place: new Set() };
 async function list() {
   const items = await (await fetch("/list")).json();
   for (const it of items) it.tags = tagsOf(it);
@@ -712,9 +722,20 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/list") {
     const files = fs.existsSync(PAINTED) ? fs.readdirSync(PAINTED).filter((f) => f.endsWith(".png")) : [];
     const built = builtTextures();
+    // (each piece's layer, from the Codex queue lists; its themes, from piece-tags.json)
+    const layerOf = {}, themesOf = {};
+    for (const q of fs.readdirSync(__dirname).filter((f) => /^gen-art-.*\.json$/.test(f))) {
+      try { for (const job of JSON.parse(fs.readFileSync(path.join(__dirname, q), "utf8"))) if (job.id && job.layer) layerOf[job.id] = job.layer; } catch (err) { /* (not a list) */ }
+    }
+    try {
+      const tags = JSON.parse(fs.readFileSync(path.join(__dirname, "piece-tags.json"), "utf8"));
+      for (const [theme, ids] of Object.entries(tags)) if (Array.isArray(ids)) for (const id of ids) {
+        (themesOf[id] = themesOf[id] || []).push(theme[0].toUpperCase() + theme.slice(1));
+      }
+    } catch (err) { /* (no tags yet) */ }
     return send("application/json", JSON.stringify(files.map((f) => {
       const id = f.slice(0, -4);
-      return { id, fitted: fs.existsSync(path.join(FITS, id + ".json")), hide: hasPaint(path.join(FITS, id + ".hide.png")),
+      return { id, layer: layerOf[id], themes: themesOf[id] || [], fitted: fs.existsSync(path.join(FITS, id + ".json")), hide: hasPaint(path.join(FITS, id + ".hide.png")),
         behind: hasPaint(path.join(FITS, id + ".behind.png")) || hasPaint(path.join(FITS, id + ".lining.png")), game: gameState(id, built) };
     }).sort((a, b) => a.id.localeCompare(b.id))));
   }

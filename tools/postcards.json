@@ -1,0 +1,218 @@
+{
+  "_": "Postcard text for the Pro Shop's postcard versions of backgrounds (draft). name = block-letter place name on the front (max 14 chars); back = message on the back; ogre = the back in ogre mode.",
+  "bg_bfd": {
+    "name": "BLACKFATHOM",
+    "back": "Lovely and damp here! The moonwells glow all night, so no sleep. Met Aku'mai, the big local hydra. Three heads, zero manners. Wish you were here!",
+    "ogre": "WET HOLE. BLUE WATER. AKU HAS 3 HEAD. ALL RUDE. WISH U HERE."
+  },
+  "bg_dm": {
+    "name": "THE DEADMINES",
+    "back": "Weather in the mine: dark, with a chance of cannon. VanCleef waved his knife at me from the big pirate ship. Cookie made soup. Wish you were here!",
+    "ogre": "DARK MINE. BIG BOAT. VAN SAY HI. COOK MAKE SOUP. WISH U HERE."
+  },
+  "bg_gnomer": {
+    "name": "GNOMEREGAN",
+    "back": "Everything here whirs, beeps and glows green. Thermaplugg says the glow is perfectly safe. I now also glow. Wish you were here!",
+    "ogre": "GNOME TOWN. ALL GO BEEP. GREEN GLOW. NOW ME GLOW TOO. WISH U HERE."
+  },
+  "bg_rfc": {
+    "name": "RAGEFIRE CHASM",
+    "back": "Toasty under Orgrimmar! Lava views from every rope bridge. Taragaman the Hungerer is always hungry, so bring snacks. Wish you were here!",
+    "ogre": "HOT HOT HOT. LAVA RIVER. BIG RED DEMON WANT SNACK. WISH U HERE."
+  },
+  "bg_rfk": {
+    "name": "RAZORFEN KRAUL",
+    "back": "The brambles are lovely and pointy. The quilboar are very welcoming, apart from the stabbing. Charlga Razorflank sends her regards. Wish you were here!",
+    "ogre": "THORN MAZE. PIG MEN POKE ME. PIG LADY SAY HI. WISH U HERE."
+  },
+  "bg_sfk": {
+    "name": "SHADOWFANG",
+    "back": "Stormy night, full moon, very romantic. Arugal keeps asking who dares interfere. Me, I said. The locals are very hairy. Wish you were here!",
+    "ogre": "STORM. BIG MOON. WOLF MEN VERY HAIRY. OLD MAGE YELL. WISH U HERE."
+  },
+  "bg_stocks": {
+    "name": "THE STOCKADE",
+    "back": "Lovely stay in Stormwind's finest locked rooms. Free straw bed! Bazil Thredd started a riot, very lively. Wish you were here! (Please send key.)",
+    "ogre": "NICE JAIL. FREE STRAW BED. BIG RIOT. PLS SEND KEY. WISH U HERE."
+  },
+  "bg_wc": {
+    "name": "WAILING CAVERN",
+    "back": "Very green and very echoey. Naralex is asleep here having a bad dream. I know the feeling. Mutanus is the local wildlife. Wish you were here!",
+    "ogre": "GREEN CAVE. ELF HAS BAD DREAM. ME TOO. BIG FISH MAN. WISH U HERE."
+  },
+  "clubhouse_lounge": {
+    "name": "THE CLUBHOUSE",
+    "back": "Comfy chairs, roaring fire, and my paper is upside down again. The barman is still polishing that one glass. Wish you were here!",
+    "ogre": "COMFY CHAIR. BIG FIRE. PAPER WRONG WAY UP. WISH U HERE."
+  },
+  "golf_course_at_dawn": {
+    "name": "SUNRISE GREENS",
+    "back": "Up at sunrise for a round! Dew on the greens, birds singing, me missing putts. Lost four balls in the pond. The ducks have them now. Wish you were here!",
+    "ogre": "UP EARLY. SUN COME UP. MISS PUTT. DUCK TAKE BALL. WISH U HERE."
+  },
+  "hammock_between_two_trees": {
+    "name": "HAMMOCK HOLLOW",
+    "back": "Found two perfect trees and a hammock between them. Have not moved since Tuesday. Weather: dappled. Wish you were here, but there's no room!",
+    "ogre": "TWO TREE. ONE NAP BED. NO MOVE FOR DAYS. NO ROOM FOR U. SORRY."
+  },
+  "moonlit_fairway": {
+    "name": "MOONLIT LINKS",
+    "back": "Sneaked out for a midnight round. Huge moon, groundskeeper asleep. Hole in one! Probably. Too dark to check. Wish you were here!",
+    "ogre": "NIGHT GOLF. BIG MOON. HOLE IN ONE. MAYBE. TOO DARK. WISH U HERE."
+  },
+  "spa_steam_room": {
+    "name": "THE STEAM ROOM",
+    "back": "Very relaxing! Cucumbers on my eyes, so I can't see the steam room, but I'm told it's lovely. Somebody wrote NO REFUNDS on the glass. Wish you were here!",
+    "ogre": "HOT FOG. CUKE ON EYE. CANT SEE. VERY NICE. WISH U HERE."
+  },
+  "swamp_hot_spring": {
+    "name": "SWAMP SPRINGS",
+    "back": "Soaking up to my chin in the hot spring. Smells like eggs, feels like heaven. A croc borrowed my towel. Wish you were here!",
+    "ogre": "HOT MUD BATH. SMELL LIKE EGG. CROC TOOK TOWEL. WISH U HERE."
+  },
+  "bg_excav": {
+    "name": "WETLANDS DIG",
+    "back": "Wet greetings from the Wetlands! It has rained every day, which the dwarves say is normal. They dug up some old rocks and got very excited. Wish you were here!",
+    "ogre": "RAIN. RAIN. MORE RAIN. DWARF DIG UP OLD ROCK. SO HAPPY. WISH U HERE."
+  },
+  "bg_mara": {
+    "name": "MARAUDON",
+    "back": "Crystals, waterfalls and ferns everywhere: like a spa, but cave. Princess Theradras is huge and not a morning person. Wish you were here!",
+    "ogre": "SHINY ROCK. BIG WATER FALL. ROCK LADY BIG AND GRUMP. WISH U HERE."
+  },
+  "bg_rfd": {
+    "name": "RAZORFEN DOWNS",
+    "back": "Chilly here, and bonier than the brochure said. Amnennar the Coldbringer brought the cold, as promised. Pack a scarf! Wish you were here!",
+    "ogre": "COLD. MANY BONE. ICE MAN BRING COLD. PACK SCARF. WISH U HERE."
+  },
+  "bg_ruins": {
+    "name": "LORDAERON",
+    "back": "Watched the sunset from an old throne room. Purple sky, broken pillars and a faint green mist. A real fixer-upper! Wish you were here!",
+    "ogre": "OLD KING HOUSE. ALL BROKE. NICE SKY. GREEN FOG. WISH U HERE."
+  },
+  "bg_smarm": {
+    "name": "THE ARMORY",
+    "back": "Shopping in the Armory! Racks of swords, and the training dummies don't hit back. Herod spins a lot. Got dizzy just watching. Wish you were here!",
+    "ogre": "SWORD SHOP. DUMMY NO HIT BACK. RED MAN SPIN. ME DIZZY. WISH U HERE."
+  },
+  "bg_smcath": {
+    "name": "THE CATHEDRAL",
+    "back": "The stained glass is gorgeous and the light is very holy. Whitemane said 'Arise, my champion!' so I got up. So did Mograine. Wish you were here!",
+    "ogre": "NICE GLASS. WHITE LADY SAY ARISE. SO ME GET UP. WISH U HERE."
+  },
+  "bg_smgy": {
+    "name": "THE GRAVEYARD",
+    "back": "Foggy, spooky, lots of candles: very cosy really. Bloodmage Thalnos is the local ghoul, and quite chatty for a dead man. Wish you were here!",
+    "ogre": "SPOOK FOG. DEAD MAGE VERY CHAT. COSY. WISH U HERE."
+  },
+  "bg_smlib": {
+    "name": "THE LIBRARY",
+    "back": "Quiet please, it's a library. Except Houndmaster Loksey, who keeps shouting 'Release the hounds!' Arcanist Doan is loud too. Wish you were here!",
+    "ogre": "BOOK ROOM. SHH. DOG MAN YELL. BOOK MAN YELL. NO SHH. WISH U HERE."
+  },
+  "bg_thanes": {
+    "name": "HALL OF THANES",
+    "back": "Deep under the mountain in a grand old dwarf hall. Huge stone thanes everywhere, all with better beards than me. The forge keeps my toes warm. Wish you were here!",
+    "ogre": "DEEP HALL. BIG ROCK DWARF. GOOD BEARD. WARM TOES. WISH U HERE."
+  },
+  "bg_ulda": {
+    "name": "ULDAMAN",
+    "back": "Visiting an ancient titan vault! The statues are enormous and some of them move, which wasn't in the guidebook. Archaedas says hello. Wish you were here!",
+    "ogre": "OLD ROCK VAULT. BIG STONE MEN. THEY MOVE. WISH U HERE."
+  },
+  "bg_zf": {
+    "name": "ZUL'FARRAK",
+    "back": "Hot sun, golden sand, lovely pyramids! I rang the big gong and Gahz'rilla came out of the pool to say hello. Bring sun cream. Wish you were here!",
+    "ogre": "HOT SAND. BIG STEP HOUSE. BANG GONG. BIG BEAST COME. WISH U HERE."
+  },
+  "bg_brd": {
+    "name": "SHADOWFORGE",
+    "back": "Stopped at the Grim Guzzler for a Dark Iron ale. Lava rivers, iron bridges, warm and cosy. Emperor Thaurissan didn't join us. Wish you were here!",
+    "ogre": "FIRE CITY. GOOD ALE AT BAR. LAVA. WARM. KING NO COME. WISH U HERE."
+  },
+  "bg_dme": {
+    "name": "DIRE MAUL EAST",
+    "back": "Lovely woodland walk. The trees are twisty and the flowers glow purple. Chased a tiny imp called Pusillin all the way here. Wish you were here!",
+    "ogre": "TWIST TREE. GLOW PLANT. CHASE TINY IMP. WISH U HERE."
+  },
+  "bg_dmn": {
+    "name": "GORDOK COMMONS",
+    "back": "Ogre country at last! Nice tents, warm campfires, and King Gordok's throne is very comfy. I sat on it. Now I'm king, apparently. Wish you were here!",
+    "ogre": "OGRE HOME. NICE TENT. SIT ON KING CHAIR. NOW ME KING. WISH U HERE."
+  },
+  "bg_dmw": {
+    "name": "DIRE MAUL WEST",
+    "back": "Very posh here: marble, crystals, all very Highborne. Prince Tortheldrin was a bit rude. Immol'thar sends a big hello. Wish you were here!",
+    "ogre": "POSH ELF HOUSE. SHINY ROCK. ELF BOSS RUDE. WISH U HERE."
+  },
+  "bg_lbrs": {
+    "name": "LOWER SPIRE",
+    "back": "Black rock, spiky banners, very homely. Highlord Omokk is an ogre, so I felt welcome. Mind the spiders. Wish you were here!",
+    "ogre": "BLACK ROCK. SPIKY FLAG. OGRE BOSS. LIKE HOME. MIND WEB. WISH U HERE."
+  },
+  "bg_scholo": {
+    "name": "SCHOLOMANCE",
+    "back": "Enrolled in school at last! Green candles and very old books. Headmaster Gandling keeps sending me to other rooms. Wish you were here!",
+    "ogre": "NOW ME LEARN. GREEN FIRE. BIG BOSS SEND ME AWAY. WISH U HERE."
+  },
+  "bg_st": {
+    "name": "SUNKEN TEMPLE",
+    "back": "Temple views, half under a lovely green lake. The dragon statues stare a bit. Eranikus is having a bad dream too, poor thing. Wish you were here!",
+    "ogre": "SUNK HOUSE. GREEN LAKE. BIG DRAKE HAS BAD DREAM. WISH U HERE."
+  },
+  "bg_stratl": {
+    "name": "STRATHOLME",
+    "back": "The whole city is having a big bonfire. The Scarlet Crusade really like red. Grand Crusader Dathrohan is not quite what he seems. Wish you were here!",
+    "ogre": "TOWN ON FIRE. ALL RED FLAG. RED BOSS NOT REAL. WISH U HERE."
+  },
+  "bg_stratu": {
+    "name": "THE ZIGGURATS",
+    "back": "The quiet side of town. Green fog, dead trees, some lovely ziggurats. Baron Rivendare is the local nobleman, and his horse is gorgeous. Wish you were here!",
+    "ogre": "DEAD TOWN. GREEN FOG. BARON HAS NICE HORSE. WANT. WISH U HERE."
+  },
+  "bg_ubrs": {
+    "name": "UPPER SPIRE",
+    "back": "Top of the Spire! Lots of dragon eggs, please don't touch. General Drakkisath has a lovely view and a bad temper. Wish you were here!",
+    "ogre": "TOP OF ROCK. MANY EGG. NO TOUCH. DRAKE BOSS GRUMP. WISH U HERE."
+  },
+  "pool_with_floaties": {
+    "name": "THE CLUB POOL",
+    "back": "Lazing by the club pool on a rubber duck. Sun's out, floaties out. The lifeguard is asleep, so anything goes. Wish you were here!",
+    "ogre": "POOL DAY. ME ON DUCK. SUN. GUARD SLEEP. WISH U HERE."
+  },
+  "ancient_treasure_lounge": {
+    "name": "TREASURE VAULT",
+    "back": "Lounging on a mountain of gold! Lumpy, but rich. Counted all the coins twice and got a different number both times. Wish you were here!",
+    "ogre": "BIG GOLD PILE. LUMPY. COUNT COIN. GET LOST. WISH U HERE."
+  },
+  "bg_barrow": {
+    "name": "BARROW DEEPS",
+    "back": "Down in the old barrows under Hyjal. Very quiet, everyone's asleep. Druids having a very long nap: my kind of place! Wish you were here!",
+    "ogre": "OLD TOMB. ELF SLEEP. LONG NAP. ME LIKE. WISH U HERE."
+  },
+  "bg_hyjal": {
+    "name": "HYJAL SUMMIT",
+    "back": "The World Tree is enormous! Snow on the pines and green lights in the sky. Didn't climb it. Probably not allowed. Wish you were here!",
+    "ogre": "BIG BIG TREE. SNOW. GREEN SKY. NO CLIMB. WISH U HERE."
+  },
+  "bg_ony": {
+    "name": "ONYXIA'S LAIR",
+    "back": "Lovely cave full of eggs and gold. Onyxia did her deep breath, which was very warm. Many whelps. I mean MANY. Wish you were here!",
+    "ogre": "EGG CAVE. GOLD. DRAKE LADY BLOW FIRE. MANY WHELP. WISH U HERE."
+  },
+  "dragon_over_the_fairway": {
+    "name": "DRAGON FAIRWAY",
+    "back": "Lovely round today, apart from the dragon. It circled all morning and ate my ball on the ninth. Still my best score. Wish you were here!",
+    "ogre": "GOLF DAY. BIG DRAKE IN SKY. DRAKE EAT BALL. WISH U HERE."
+  },
+  "floating_sky_spa": {
+    "name": "THE SKY SPA",
+    "back": "Greetings from above the clouds! Massage on a cloud, very fluffy. Don't look down. I looked down. Wish you were here!",
+    "ogre": "SPA IN SKY. FLUFF CLOUD. NO LOOK DOWN. ME LOOK. WISH U HERE."
+  },
+  "ghost_ship_cove": {
+    "name": "GHOST COVE",
+    "back": "Foggy cove, creaky old ship, crew a bit see-through. Lovely once you get used to the moaning. Bring a towel. Wish you were here!",
+    "ogre": "FOGGY COVE. GHOST BOAT. CREW SAY OOOO. WISH U HERE."
+  }
+}

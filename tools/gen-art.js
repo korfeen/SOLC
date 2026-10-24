@@ -86,15 +86,19 @@ function ogre(edition, background, bare) {
   return out;
 }
 // Up to three original pieces of the layer (in the edition's art), each on the ogre.
-function examples(layer, edition) {
-  const dir = path.join(EDITION_ART[edition] || ART, FOLDERS[layer]);
+// pick: chosen examples instead ("--examples Accessory/Rare/pet-frog.png,Accessory/Epic/sleepy-parrot.png", paths in
+// the edition's art), when the usual three would show the wrong kind of thing (pets: the frog and the parrot).
+function examples(layer, edition, pick) {
+  const root = EDITION_ART[edition] || ART, dir = path.join(root, FOLDERS[layer]);
   const files = [];
   for (const rarity of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
     const sub = path.join(dir, rarity);
     if (!fs.statSync(sub).isDirectory()) continue;
     for (const f of fs.readdirSync(sub)) if (f.endsWith(".png") && !f.startsWith("gear-")) files.push(path.join(sub, f));
   }
-  return files.sort().filter((_, i, all) => i % Math.max(1, Math.floor(all.length / 3)) === 0).slice(0, 3).map((file) => {
+  const chosen = pick ? pick.split(",").map((p) => path.resolve(root, p.trim())) : null;
+  if (chosen) for (const f of chosen) if (!fs.existsSync(f)) throw new Error("--examples: no " + f);
+  return (chosen || files.sort().filter((_, i, all) => i % Math.max(1, Math.floor(all.length / 3)) === 0).slice(0, 3)).map((file) => {
     const pic = ogre(edition, null, layer === "outfit" || layer === "suit");
     over(pic, load(file));
     return pic;
@@ -567,7 +571,7 @@ function generate(work, refs, prompt, outName, shape) {
 // existing backgrounds (the style to copy); a whole coherent scene, the middle included (it's shown on its own too),
 // only no big object right in the centre where an ogre may stand; ground across the bottom. One Codex image. Review: the ogre standing in it. from: a painting you
 // have, used instead (no generating).
-function Background(id, description, from, edition = "painted") {
+function Background(id, description, from, edition = "painted", pick = null) {
   const work = path.join(OUT, "work", `${id}_${edition}`);
   fs.mkdirSync(work, { recursive: true });
   let raw = from;
@@ -606,7 +610,11 @@ function Background(id, description, from, edition = "painted") {
       const file = path.join(OUT, "painted", bg.id + ".png");
       if (bg.approved && bg.id !== id && fs.existsSync(file)) all.push(file);
     }
-    const refs = all.sort(() => Math.random() - 0.5).slice(0, 3).map((file, i) => {
+    // (--examples: these backgrounds as the style instead of three random ones - e.g. the first golf courses for the
+    // zone courses; paths in killtracker-art, like "Background/Uncommon/golf-course-at-dawn.png")
+    const chosen = pick ? pick.split(",").map((p) => path.resolve(ART, p.trim())) : null;
+    if (chosen) for (const f of chosen) if (!fs.existsSync(f)) throw new Error("--examples: no " + f);
+    const refs = (chosen || all.sort(() => Math.random() - 0.5).slice(0, 3)).map((file, i) => {
       const ref = path.join(work, `ref_background_${i + 1}.png`);
       save(ref, load(file), 1024);
       return ref;
@@ -641,6 +649,7 @@ function Background(id, description, from, edition = "painted") {
 function main() {
   const args = process.argv.slice(2);
   const flag = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
+  const pickExamples = flag("--examples");  // (chosen style examples: see examples())
   const edition = flag("--edition") || "painted";
   const from = flag("--from");
   const at = flag("--at");
@@ -680,7 +689,7 @@ function main() {
     console.log("Usage: node tools/gen-art.js <headwear|accessory|outfit> <option id> \"<what it is>\" [--fit wear|snap|rule] [--behind-ears] [--covers-face] [--edition crayon|sketch] [--from image.png] [--at x,y] [--width w]");
     process.exit(1);
   }
-  if (layer === "background") return Background(id, description, from, edition);
+  if (layer === "background") return Background(id, description, from, edition, pickExamples);
   const rule = { ...RULES[layer] };
   if (at) [rule.x, rule.y] = at.split(",").map(Number);
   if (width) rule.width = Number(width);
@@ -716,7 +725,7 @@ function main() {
     const refs = [path.join(work, "ref_ogre.png")];
     const bare = layer === "outfit" || layer === "suit";
     save(refs[0], ogre(edition, null, bare), 1024);
-    examples(layer, edition).forEach((pic, i) => {
+    examples(layer, edition, pickExamples).forEach((pic, i) => {
       const file = path.join(work, `ref_example_${i + 1}.png`);
       save(file, pic, 1024);
       refs.push(file);
