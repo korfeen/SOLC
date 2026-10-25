@@ -24,7 +24,7 @@ local VELVET_LIT, VELVET_DARK = { 0.55, 0.1, 0.13 }, { 0.22, 0.03, 0.05 }
 -- The room's painting is 827 x 584 (the page's size): everything is placed in its pixels and scaled to the page.
 local SCENE_W, SCENE_H = 827, 584
 local BLEED = 14  -- (the painting, and the zoomed view, run this far under the wooden frame on every side)
-local EASEL = { x = 655, bottom = 574, height = 300 }  -- (its middle, the floor it stands on: by the sewing table)
+local EASEL = { x = 650, bottom = 548, height = 370 }  -- (its middle, where its feet stand: by the sewing table)
 local PICTURE = { x = 413, y = 255, size = 340 }  -- zoomed in: its middle and size
 local CURTAIN_W, VALANCE_H = 200, 58
 local OPEN_TIME = 0.55
@@ -409,7 +409,10 @@ local function Build(holder)
     room.easel = easel
 
     -- Your points and the cart, in the corner (empty until the curtains can fill it).
-    room.cart = Pill(room, 110, "Cart (0)")
+    room.corner = CreateFrame("Frame", nil, room)  -- (over the easel)
+    room.corner:SetAllPoints()
+    room.corner:SetFrameLevel(easel:GetFrameLevel() + 5)
+    room.cart = Pill(room.corner, 110, "Cart (0)")
     room.cart:SetPoint("BOTTOMRIGHT", -14, 12)
     room.cart:HookScript("OnEnter", function(self)
         local items, total = CartItems()
@@ -419,7 +422,7 @@ local function Build(holder)
         UI.Tooltip(self, lines)
     end)
     room.cart:SetScript("OnClick", function() Zoom(true) end)
-    room.points = room:CreateFontString(nil, "OVERLAY")
+    room.points = room.corner:CreateFontString(nil, "OVERLAY")
     room.points:SetPoint("BOTTOMRIGHT", room.cart, "TOPRIGHT", 0, 5)
     room.points:SetFont(NAME_FONT, 14, "")
     room.points:SetTextColor(unpack(CREAM))
@@ -429,7 +432,9 @@ local function Build(holder)
     local zoom = CreateFrame("Frame", nil, room)
     zoom:SetPoint("TOPLEFT", -BLEED, BLEED)
     zoom:SetPoint("BOTTOMRIGHT", BLEED, -BLEED)
-    zoom:SetFrameLevel(room:GetFrameLevel() + 10)  -- (still under the window's wood: UI.FRAME_LEVEL)
+    -- (under the window's posts and beams, UI.FRAME_LEVEL.wood, so they cover what runs under them; its own parts sit up
+    -- to 6 levels above it)
+    zoom:SetFrameLevel(UI.window:GetFrameLevel() + UI.FRAME_LEVEL.wood - 8)
     zoom:EnableMouse(true)
     zoom:Hide()
     zoom.dim = zoom:CreateTexture(nil, "BACKGROUND")
