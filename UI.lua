@@ -710,12 +710,12 @@ local NAV_COLOR, NAV_CURRENT_COLOR = { 1, 0.93, 0.78 }, { 1, 0.82, 0 }  -- cream
 local NAV_OUTLINE = { 0.18, 0.09, 0.03 }  -- dark brown, like the wood's shadows (ns.UI.OutlineText)
 
 -- Ogre mode (/solc ogre, KillTrackerDB.ogreMode): the sidebar and the tabs in ogre words, 5 letters at most,
--- in an order that reads ME SMASH BRAG, CAVE HUNTS, THUNK (pages not listed come after).
+-- in an order that reads ME SMASH BRAG, CAVE HUNTS SHOP, THUNK (pages not listed come after).
 local OGRE_LABELS = {
-    overview = "ME", kills = "SMASH", deeds = "BRAG", collection = "PIX", home = "CAVE", members = "FRENZ", bounties = "HUNTS", puzzle = "THUNK",
+    overview = "ME", kills = "SMASH", deeds = "BRAG", collection = "PIX", home = "CAVE", members = "FRENZ", bounties = "HUNTS", proshop = "SHOP", puzzle = "THUNK",
 }
 local OGRE_ORDER = {}
-for i, key in ipairs({ "overview", "kills", "deeds", "collection", "home", "members", "bounties", "puzzle" }) do OGRE_ORDER[key] = i end
+for i, key in ipairs({ "overview", "kills", "deeds", "collection", "home", "members", "bounties", "proshop", "puzzle" }) do OGRE_ORDER[key] = i end
 local function OgreMode() return KillTrackerDB and KillTrackerDB.ogreMode end
 local function OgreLabel(page) return OgreMode() and OGRE_LABELS[page.key] end
 local function NavLabel(page) return OgreLabel(page) or NAV_LABELS[page.key] or page.label end
