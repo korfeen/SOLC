@@ -504,6 +504,8 @@ local function Build(holder)
     end
     info.name = Text(20, CREAM)
     info.name:SetPoint("TOP", 0, -12)
+    info.name:SetHeight(26)  -- (a fixed slot: a long name shrinks to fit without moving what's under it)
+    info.name:SetJustifyV("MIDDLE")
     info.line = Text(13, { 0.78, 0.68, 0.55 })
     info.line:SetPoint("TOP", info.name, "BOTTOM", 0, -3)
     info.price = Text(17, GOLD)
