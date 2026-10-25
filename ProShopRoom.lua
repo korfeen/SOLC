@@ -4,11 +4,12 @@
 -- set painted on its canvas: the walnut mannequin (Media/ProShop/Mannequin, the moss ogre in walnut) wearing it.
 -- Click the easel -> ZOOMED IN: the room blurs and dims (it crossfades to a pre-blurred twin, Media/ProShop/Room-blur),
 -- the easel's picture comes forward to the middle in a gilt and burgundy border, red velvet curtains slide in from the
--- sides and a valance drops in on top. The left curtain: a brass plaque per layer in stock (Hats, Outfits,
--- Accessories); the right: the piece's name, rarity, price (or "In your wardrobe") and your cart (a piece a layer, the
--- total, your points, Checkout: bought at once for now, the steward rings it up later). Under the picture: knobs either
--- side of Add to cart and a count. The mannequin wears the display set, the cart over it, the piece looked at over that
--- (hats zoomed further in). Keys: W/S or Up/Down tabs, A/D or Left/Right pieces, Enter adds, Escape goes back. Back or Escape -> the room. The wares and buying: ProShop.lua.
+-- sides and a valance drops in on top. The left curtain: a brass plaque per layer in stock, in the mockup's words and
+-- groups (WEAR: Outfit, Headwear, Accessory; you walk in on Outfit); the right: the piece's name, rarity, price (or "In
+-- your wardrobe") and your cart (a piece a layer, the total, your points, Checkout: bought at once for now, the steward
+-- rings it up later). Under the picture: knobs either side of Add to cart and a count. The mannequin wears the display
+-- set, the cart over it, the piece looked at over that (headwear zoomed further in). Keys: W/S or Up/Down tabs, A/D or
+-- Left/Right pieces, Enter adds, Back or Escape -> the room. The wares and buying: ProShop.lua.
 
 local _, ns = ...
 local UI = ns.UI
@@ -166,11 +167,13 @@ end
 
 -- The dressing (zoomed in): the layers the shop stocks as tabs, the piece looked at on each, the cart (one piece a
 -- layer; kept while you're logged in).
-local TAB_ORDER = { "headwear", "outfit", "accessory", "skin", "eyes", "expression", "background" }
-local TAB_LABELS = { headwear = "Hats", outfit = "Outfits", accessory = "Accessories", skin = "Skins", eyes = "Eyes", expression = "Faces", background = "Backdrops" }
-local PIECE_WORDS = { headwear = "hat", outfit = "outfit", accessory = "accessory", skin = "skin", eyes = "eyes", expression = "face", background = "backdrop" }
+-- (the mockup's words and groups; you walk in on Outfit, so not zoomed in)
+local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background" }
+local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", outfit = "Outfit", headwear = "Headwear", accessory = "Accessory", background = "Background" }
+local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE" }
+local FIRST_TAB = "outfit"
 local CLOSE_LAYERS = { headwear = true, eyes = true, expression = true }
-local view = { tab = 1, look = {}, cart = {} }  -- look[layer key] = its stock's index; cart[layer key] = a stock item
+local view = { look = {}, cart = {} }  -- tab: the open one's index; look[layer key] = its stock's index; cart[layer key] = a stock item
 
 -- The tabs: { key, label, items (stock items, cheapest first) }, for the layers with something in stock.
 local function Tabs()
@@ -197,6 +200,10 @@ local function Tabs()
         view.cart[key] = found
     end
     view.tabs = tabs
+    if not view.tab then  -- (walking in: Outfit)
+        for i, tab in ipairs(tabs) do if tab.key == FIRST_TAB then view.tab = i end end
+    end
+    view.tab = math.min(view.tab or 1, math.max(1, #tabs))
     return tabs
 end
 
@@ -266,11 +273,17 @@ local function PlaceZoom()
     zoom.back:SetAlpha(t)
 end
 
--- Zooms in on the easel (true) or back out to the room.
+local Redraw  -- (further down)
+
+-- Zooms in on the easel (true) or back out to the room. Walking in, you start on Outfit (not zoomed in).
 local function Zoom(open)
     local zoom = room.zoom
     if open then
-        if not zoom:IsShown() then zoom.t = 0 end
+        if not zoom:IsShown() then
+            zoom.t = 0
+            for i, tab in ipairs(Tabs()) do if tab.key == FIRST_TAB then view.tab = i end end
+            Redraw()
+        end
         zoom:Show()
         if not InCombatLockdown() then zoom:EnableKeyboard(true) end
         PlaceZoom()
@@ -284,15 +297,37 @@ end
 
 -- Draws the dressing: the tabs, the piece's info, the cart, the buttons; the mannequin (PlaceZoom). And the room's
 -- cart pill.
-local function Redraw()
+function Redraw()
     local zoom = room.zoom
     local tabs = Tabs()
     PlaceZoom()  -- (first: the curtains' width, which the name is fitted to)
+    -- (the plaques down the left curtain, a small heading over each group)
+    local y, group = VALANCE_H + 26, nil
+    for _, heading in pairs(zoom.headings) do heading:Hide() end
     for i, tab in ipairs(tabs) do
+        if TAB_GROUPS[tab.key] ~= group then
+            group = TAB_GROUPS[tab.key]
+            local heading = zoom.headings[group]
+            if not heading then
+                heading = zoom.left:CreateFontString(nil, "OVERLAY")
+                heading:SetFont(NAME_FONT, 12, "")
+                heading:SetTextColor(0.85, 0.71, 0.42)
+                UI.OutlineText(heading, { 0, 0, 0 })
+                heading:SetText(group)
+                zoom.headings[group] = heading
+            end
+            heading:ClearAllPoints()
+            heading:SetPoint("TOP", zoom.left, "TOPRIGHT", -93, -y)
+            heading:Show()
+            y = y + 20
+        end
         local plaque = zoom.plaques[i]
+        plaque:ClearAllPoints()
+        plaque:SetPoint("TOPRIGHT", -18, -y)  -- (clear of the post, from the inner edge)
         plaque.text:SetText(tab.label)
         plaque:SetLit(i == view.tab)
         plaque:Show()
+        y = y + 38
     end
     for i = #tabs + 1, #zoom.plaques do zoom.plaques[i]:Hide() end
     local info = zoom.info
@@ -300,7 +335,7 @@ local function Redraw()
     if item then
         UI.FitText(info.name, NAME_FONT, 20, 12, item.option.name, info:GetWidth() - 16)
         info.name:SetTextColor(ns.RarityRGB(item.option.rarity))
-        info.line:SetText(item.option.rarity:gsub("^%l", string.upper) .. " " .. (PIECE_WORDS[tab.key] or ""))
+        info.line:SetText(item.option.rarity:gsub("^%l", string.upper) .. " " .. tab.label:lower())
         info.price:SetText(item.owned and "In your wardrobe" or (BreakUpLargeNumbers(item.price) .. " points"))
         info.price:SetTextColor(unpack(item.owned and CREAM or GOLD))
         zoom.count:SetText(("%d / %d"):format(index, #tab.items))
@@ -473,11 +508,10 @@ local function Build(holder)
     zoom.back:SetFrameLevel(zoom.valance:GetFrameLevel() + 1)
     zoom.back:SetScript("OnClick", function() Zoom(false) end)
     -- The left curtain: a brass plaque a tab (polished: the one open).
-    zoom.plaques = {}
+    zoom.plaques, zoom.headings = {}, {}
     for i = 1, #TAB_ORDER do
         local plaque = CreateFrame("Button", nil, zoom.left)
         plaque:SetSize(150, 30)
-        plaque:SetPoint("TOPRIGHT", -18, -(VALANCE_H + 40 + (i - 1) * 38))  -- (clear of the post, from the inner edge)
         local rim = plaque:CreateTexture(nil, "BACKGROUND", nil, -1)
         rim:SetPoint("TOPLEFT", -1, 1) rim:SetPoint("BOTTOMRIGHT", 1, -1)
         rim:SetColorTexture(0.24, 0.15, 0.06)
