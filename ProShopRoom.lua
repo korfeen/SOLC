@@ -328,7 +328,7 @@ function Redraw()
     for i, line in ipairs(info.lines) do
         local inCart = items[i]
         if inCart then
-            line.name:SetText(inCart.option.name)
+            UI.FitText(line.name, S.BODY_FONT, 11, 7, inCart.option.name, L.info.w - 58)
             line.price:SetText(BreakUpLargeNumbers(inCart.price))
             line.item = inCart
         end
@@ -390,7 +390,7 @@ local function BuildInfo(zoom, S)
     info:SetSize(L.info.w, L.panel.h - L.info.y)
     info.name = S.Text(info, S.DISPLAY_FONT, 21, "#f6e3b0")
     info.name:SetPoint("TOP", 0, 0)
-    info.name:SetSize(L.info.w, 26)  -- (a fixed slot: a long name shrinks to fit without moving what's under it)
+    info.name:SetHeight(26)  -- (a fixed slot, no width: a long name shrinks to fit (Redraw) without moving what's under it)
     info.line = S.Text(info, S.BODY_FONT, 12, "#e8cf9a")
     info.line:SetPoint("TOP", 0, -32)
     for side = 1, 2 do  -- the rule: gilt fading out to both ends
@@ -429,9 +429,7 @@ local function BuildInfo(zoom, S)
         line:SetPoint("TOPLEFT", 0, -(y + 28 + (i - 1) * 17))
         line:SetPoint("TOPRIGHT", 0, -(y + 28 + (i - 1) * 17))
         line.name = S.Text(line, S.BODY_FONT, 11, "#f1dfb5")
-        line.name:SetPoint("LEFT") line.name:SetPoint("RIGHT", -58, 0)
-        line.name:SetJustifyH("LEFT")
-        line.name:SetWordWrap(false)
+        line.name:SetPoint("LEFT")  -- (no right edge: a long name shrinks to fit, Redraw)
         line.price = S.Text(line, S.BODY_FONT, 11, "#f1dfb5")
         line.price:SetPoint("RIGHT", -16, 0)
         local x = S.Text(line, S.BODY_FONT, 12, "#f0a0a0")
