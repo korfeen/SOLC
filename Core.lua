@@ -652,6 +652,21 @@ SlashCmdList.SOLC = function(input)
             n = n + 1
         end
         ns.Print(("%d pieces you don't have marked as seen (EDIT: Mine + seen)"):format(n))
+    elseif msg == "shop" and ns.IsDev() then  -- (dev, until the shop room: /solc shop lists the stock, /solc shop <id> ... buys)
+        if arg == "" then
+            for _, item in ipairs(ns.ShopStock()) do
+                Print(("%s |c%s%s|r (%s) %d%s"):format(item.layer.key, ns.RARITY_COLORS[item.option.rarity] or "ffffffff",
+                    item.option.name, item.option.id, item.price, item.owned and " - owned" or ""))
+            end
+            Print(("You have %d points."):format(ns.GetPoints().balance))
+        else
+            local keys = {}
+            for id in arg:gmatch("%S+") do
+                for _, item in ipairs(ns.ShopStock()) do if item.option.id == id then keys[#keys + 1] = item.key end end
+            end
+            local ok, result = ns.ShopBuy(keys)
+            Print(ok and ("Bought %d for %d points."):format(#keys, result) or result)
+        end
     elseif msg == "supersafesolcdev" and ns.IsDev() then
         ns.ToggleDev()  -- the dev menu (Dev.lua): only on the dev characters (Config.lua), not in /solc help
     elseif msg == "debug" then

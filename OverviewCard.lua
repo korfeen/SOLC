@@ -971,7 +971,7 @@ local function HowToGet(option, nextDeed)
     elseif kind == "rank" then return "Ogre Rank " .. a
     elseif kind == "combine" then return "Combine its pieces"
     elseif kind == "loot" then return "Loot it"
-    elseif kind == "shop" then return "Pro Shop" end
+    elseif kind == "shop" then return "Pro Shop: " .. (ns.ShopPrice(option) or "?") .. " points" end
     return "Not yours yet"
 end
 -- The pieces you've seen: on guildmates (their ogre on their Overview, a picture of theirs opened), in the Pro Shop, and your
