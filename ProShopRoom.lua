@@ -19,6 +19,7 @@ local VELVET_LIT, VELVET_DARK = { 0.55, 0.1, 0.13 }, { 0.22, 0.03, 0.05 }
 
 -- The room's painting is 827 x 584 (the page's size): everything is placed in its pixels and scaled to the page.
 local SCENE_W, SCENE_H = 827, 584
+local BLEED = 14  -- (the painting, and the zoomed view, run this far under the wooden frame on every side)
 local EASEL = { x = 655, bottom = 574, height = 300 }  -- (its middle, the floor it stands on: by the sewing table)
 local PICTURE = { x = 413, y = 255, size = 340 }  -- zoomed in: its middle and size
 local CURTAIN_W, VALANCE_H = 200, 58
@@ -32,6 +33,13 @@ local room
 local function Gradient(tex, orientation, from, to)
     tex:SetColorTexture(1, 1, 1)
     tex:SetGradient(orientation, CreateColor(from[1], from[2], from[3], from[4] or 1), CreateColor(to[1], to[2], to[3], to[4] or 1))
+end
+
+-- The room's scale: page pixels per painting pixel, the painting stretched BLEED past the page on every side.
+local function Scale()
+    local w, h = room:GetSize()
+    if w == 0 or h == 0 then return end
+    return (w + 2 * BLEED) / SCENE_W, (h + 2 * BLEED) / SCENE_H
 end
 
 -- The pieces a set of traits wears, by layer key: { [layer key] = option }.
@@ -133,9 +141,8 @@ end
 -- The zoomed view at its point in the opening (zoom.t, 0 closed .. 1 open, eased).
 local function PlaceZoom()
     local zoom = room.zoom
-    local w, h = room:GetSize()
-    if w == 0 or h == 0 then return end
-    local sx, sy = w / SCENE_W, h / SCENE_H
+    local sx, sy = Scale()
+    if not sx then return end
     local t = 1 - (1 - (zoom.t or 0)) ^ 3
     local cw = CURTAIN_W * sx
     zoom.left:ClearAllPoints()
@@ -154,12 +161,12 @@ local function PlaceZoom()
     room.easel:SetAlpha(1 - t)  -- (its picture comes forward; the easel goes with the sharp room)
     local size = math.floor(PICTURE.size * math.min(sx, sy))
     zoom.frame:ClearAllPoints()
-    zoom.frame:SetPoint("CENTER", room, "TOPLEFT", PICTURE.x * sx, -PICTURE.y * sy)
+    zoom.frame:SetPoint("CENTER", room, "TOPLEFT", PICTURE.x * sx - BLEED, BLEED - PICTURE.y * sy)
     zoom.frame:SetSize(size, size)
     zoom.frame:SetAlpha(math.max(0, (zoom.t or 0) * 2 - 1))  -- (comes in once the curtains are half way)
     zoom.picture:Dress(ns.SHOP_DISPLAY, size)
     zoom.back:ClearAllPoints()
-    zoom.back:SetPoint("BOTTOM", room, "BOTTOM", 0, 14)
+    zoom.back:SetPoint("BOTTOM", room, "BOTTOM", 0, 12)
     zoom.back:SetAlpha(t)
 end
 
@@ -183,11 +190,12 @@ local function Build(holder)
     room = CreateFrame("Frame", nil, holder)
     room:SetAllPoints()
     room.scene = room:CreateTexture(nil, "BACKGROUND")
-    room.scene:SetAllPoints()
+    room.scene:SetPoint("TOPLEFT", -BLEED, BLEED)
+    room.scene:SetPoint("BOTTOMRIGHT", BLEED, -BLEED)
     room.scene:SetTexture(MEDIA .. "Room")
     room.scene:SetTexCoord(0, SCENE_W / 1024, 0, SCENE_H / 1024)
     room.blur = room:CreateTexture(nil, "BACKGROUND", nil, 1)  -- (zoomed in: the room crossfades to its blurred twin)
-    room.blur:SetAllPoints()
+    room.blur:SetAllPoints(room.scene)
     room.blur:SetTexture(MEDIA .. "Room-blur")
     room.blur:SetTexCoord(0, SCENE_W / 1024, 0, SCENE_H / 1024)
     room.blur:SetAlpha(0)
@@ -233,8 +241,9 @@ local function Build(holder)
 
     -- Zoomed in: over the room (which takes no clicks while it's up).
     local zoom = CreateFrame("Frame", nil, room)
-    zoom:SetAllPoints()
-    zoom:SetFrameLevel(room:GetFrameLevel() + 20)
+    zoom:SetPoint("TOPLEFT", -BLEED, BLEED)
+    zoom:SetPoint("BOTTOMRIGHT", BLEED, -BLEED)
+    zoom:SetFrameLevel(room:GetFrameLevel() + 10)  -- (still under the window's wood: UI.FRAME_LEVEL)
     zoom:EnableMouse(true)
     zoom:Hide()
     zoom.dim = zoom:CreateTexture(nil, "BACKGROUND")
@@ -291,14 +300,13 @@ local function Build(holder)
 end
 
 local function Layout()
-    local w, h = room:GetSize()
-    if w == 0 or h == 0 then return end
-    local sx, sy = w / SCENE_W, h / SCENE_H
+    local sx, sy = Scale()
+    if not sx then return end
     local easel = room.easel
     local eh = EASEL.height * sy
     local ew = eh * easel.box.w / easel.box.h
     easel:ClearAllPoints()
-    easel:SetPoint("BOTTOM", room, "BOTTOMLEFT", EASEL.x * sx, (SCENE_H - EASEL.bottom) * sy)
+    easel:SetPoint("BOTTOM", room, "BOTTOMLEFT", EASEL.x * sx - BLEED, (SCENE_H - EASEL.bottom) * sy - BLEED)
     easel:SetSize(ew, eh)
     local cv = easel.cv
     easel.blank:ClearAllPoints()
