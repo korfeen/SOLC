@@ -20,13 +20,12 @@ local EASEL_ART = "Interface\\AddOns\\SOLC\\Media\\DreamBed\\easel"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local CREAM, GOLD, GILT = { 0.96, 0.9, 0.78 }, { 1, 0.82, 0.1 }, { 0.79, 0.63, 0.29 }
 local BURGUNDY = { 0.3, 0.06, 0.09 }
-local VELVET_LIT, VELVET_DARK = { 0.55, 0.1, 0.13 }, { 0.22, 0.03, 0.05 }
 
 -- The room's painting is 827 x 584 (the page's size): everything is placed in its pixels and scaled to the page.
 local SCENE_W, SCENE_H = 827, 584
 local BLEED = 14  -- (the painting, and the zoomed view, run this far under the wooden frame on every side)
 local EASEL = { x = 680, bottom = 548, height = 370 }  -- (its middle, where its feet stand: by the sewing table)
-local PICTURE = { x = 413, y = 255, size = 340 }  -- zoomed in: its middle and size
+local PICTURE = { x = 413, y = 260, size = 340 }  -- zoomed in: its middle and size
 local CURTAIN_W, VALANCE_H = 200, 58
 local POST_REACH = 18  -- (how far the window's posts reach over the page's sides)
 local OPEN_TIME = 0.55
@@ -115,56 +114,6 @@ local function NewPicture(parent)
     return picture
 end
 
--- A dark pill with a brass rim and a label (the cart, Back).
-local function Pill(parent, width, text)
-    local pill = CreateFrame("Button", nil, parent)
-    pill:SetSize(width, 30)
-    local rim = pill:CreateTexture(nil, "BACKGROUND", nil, -1)
-    rim:SetPoint("TOPLEFT", -1, 1) rim:SetPoint("BOTTOMRIGHT", 1, -1)
-    rim:SetColorTexture(unpack(GILT))
-    local fill = pill:CreateTexture(nil, "BACKGROUND")
-    fill:SetAllPoints()
-    fill:SetColorTexture(0.12, 0.07, 0.04, 0.95)
-    pill.text = pill:CreateFontString(nil, "OVERLAY")
-    pill.text:SetPoint("CENTER")
-    pill.text:SetFont(NAME_FONT, 15, "")
-    pill.text:SetTextColor(unpack(CREAM))
-    pill.text:SetText(text or "")
-    pill:SetScript("OnEnter", function(self) self.text:SetTextColor(unpack(GOLD)) end)
-    pill:SetScript("OnLeave", function(self) self.text:SetTextColor(unpack(CREAM)) GameTooltip:Hide() end)
-    return pill
-end
-
--- A velvet curtain: folds across it (lit and shaded in turn), a gilt edge on the side facing the middle.
-local function Curtain(parent, side)
-    local curtain = CreateFrame("Frame", nil, parent)
-    curtain.folds = {}
-    for i = 1, 16 do
-        local fold = curtain:CreateTexture(nil, "BACKGROUND")
-        local lit = i % 2 == 0
-        Gradient(fold, "HORIZONTAL", lit and VELVET_DARK or VELVET_LIT, lit and VELVET_LIT or VELVET_DARK)
-        curtain.folds[i] = fold
-    end
-    local shade = curtain:CreateTexture(nil, "BORDER")  -- (darker towards the top, under the valance)
-    shade:SetAllPoints()
-    Gradient(shade, "VERTICAL", { 0, 0, 0, 0 }, { 0, 0, 0, 0.45 })
-    local edge = curtain:CreateTexture(nil, "ARTWORK")
-    edge:SetPoint("TOP") edge:SetPoint("BOTTOM")
-    edge:SetPoint(side == "left" and "RIGHT" or "LEFT")
-    edge:SetWidth(3)
-    edge:SetColorTexture(unpack(GILT))
-    function curtain:Layout(width)
-        local w = width / #self.folds
-        for i, fold in ipairs(self.folds) do
-            fold:ClearAllPoints()
-            fold:SetPoint("TOPLEFT", (i - 1) * w, 0)
-            fold:SetPoint("BOTTOMLEFT", (i - 1) * w, 0)
-            fold:SetWidth(w + 0.5)
-        end
-    end
-    return curtain
-end
-
 -- The dressing (zoomed in): the layers the shop stocks as tabs, the piece looked at on each, the cart (one piece a
 -- layer; kept while you're logged in).
 -- (the mockup's words and groups, but Clothes for the outfit layer; you walk in on Clothes, so not zoomed in)
@@ -173,7 +122,19 @@ local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", ou
 local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE" }
 local FIRST_TAB = "outfit"
 local CLOSE_LAYERS = { headwear = true, eyes = true, expression = true }
+local CART_LINES = 5  -- (the cart's lines shown; one piece a layer, so 3 for now)
 local view = { look = {}, cart = {} }  -- tab: the open one's index; look[layer key] = its stock's index; cart[layer key] = a stock item
+
+-- The mockup's layout, in page pixels (827 x 584): the panels on the curtains (moved in a little, clear of the posts),
+-- what's in them, the buttons under the picture.
+local L = {
+    panel = { x = 18, y = 78, w = 178, h = 428 },  -- (the left one; the right one mirrored)
+    plaques = { x = 15, y = 10, w = 148, h = 25, gap = 4 },  -- inside the left panel
+    info = { x = 14, y = 16, w = 150 },  -- inside the right panel; the cart under it at cartY
+    cartY = 212,
+    add = { x = 413, y = 538, w = 110, h = 38 }, knobs = { 334, 492 }, count = 568,  -- (middles)
+    back = { x = 21, y = 14, w = 130, h = 28 },  -- (top-left)
+}
 
 -- The tabs: { key, label, items (stock items, cheapest first) }, for the layers with something in stock.
 local function Tabs()
@@ -238,13 +199,19 @@ local function CartItems()
     return items, total
 end
 
+-- Puts a region's middle at a spot in page pixels (scaled like the room).
+local function AtPage(region, x, y, sx, sy)
+    region:ClearAllPoints()
+    region:SetPoint("CENTER", room, "TOPLEFT", x * sx - BLEED, BLEED - y * sy)
+end
+
 -- The zoomed view at its point in the opening (zoom.t, 0 closed .. 1 open, eased).
 local function PlaceZoom()
     local zoom = room.zoom
     local sx, sy = Scale()
     if not sx then return end
     local t = 1 - (1 - (zoom.t or 0)) ^ 3
-    local cw = CURTAIN_W * sx
+    local cw = CURTAIN_W * sx + BLEED  -- (from the zoomed view's edge, under the post, to the mock's 200 px in)
     zoom.left:ClearAllPoints()
     zoom.left:SetPoint("TOPLEFT", -cw * (1 - t), 0) zoom.left:SetPoint("BOTTOMLEFT", -cw * (1 - t), 0)
     zoom.left:SetWidth(cw)
@@ -252,25 +219,36 @@ local function PlaceZoom()
     zoom.right:SetPoint("TOPRIGHT", cw * (1 - t), 0) zoom.right:SetPoint("BOTTOMRIGHT", cw * (1 - t), 0)
     zoom.right:SetWidth(cw)
     zoom.left:Layout(cw) zoom.right:Layout(cw)
-    local vh = VALANCE_H * sy
+    local vh = VALANCE_H * sy + BLEED
     zoom.valance:ClearAllPoints()
-    zoom.valance:SetPoint("TOPLEFT", 0, (vh + 10) * (1 - t)) zoom.valance:SetPoint("TOPRIGHT", 0, (vh + 10) * (1 - t))
+    zoom.valance:SetPoint("TOPLEFT", 0, (vh + 30) * (1 - t)) zoom.valance:SetPoint("TOPRIGHT", 0, (vh + 30) * (1 - t))
     zoom.valance:SetHeight(vh)
+    zoom.valance:Layout(zoom:GetWidth(), vh)
     zoom.dim:SetAlpha(t)
+    zoom.vignette:SetAlpha(t)
     room.blur:SetAlpha(t)
     room.easel:SetAlpha(1 - t)  -- (its picture comes forward; the easel goes with the sharp room)
     local size = math.floor(PICTURE.size * math.min(sx, sy))
-    zoom.frame:ClearAllPoints()
-    zoom.frame:SetPoint("CENTER", room, "TOPLEFT", PICTURE.x * sx - BLEED, BLEED - PICTURE.y * sy)
+    AtPage(zoom.frame, PICTURE.x, PICTURE.y, sx, sy)
     zoom.frame:SetSize(size, size)
-    zoom.frame:SetAlpha(math.max(0, (zoom.t or 0) * 2 - 1))  -- (comes in once the curtains are half way)
+    local late = math.max(0, (zoom.t or 0) * 2 - 1)  -- (the picture and the buttons come in once the curtains are half way)
+    zoom.frame:SetAlpha(late)
     local _, tab = Looked()
     zoom.picture:Dress(ShownTraits(), size)
     zoom.picture:SetZoom(tab and CLOSE_LAYERS[tab.key] and CLOSE_ZOOM or 1, (zoom.t or 0) < 1)  -- (opening: no zoom on top)
-    zoom.controls:SetAlpha(math.max(0, (zoom.t or 0) * 2 - 1))
+    zoom.controls:SetAlpha(late)
+    AtPage(zoom.add, L.add.x, L.add.y, sx, sy)
+    AtPage(zoom.prev, L.knobs[1], L.add.y, sx, sy)
+    AtPage(zoom.next, L.knobs[2], L.add.y, sx, sy)
+    AtPage(zoom.count, L.add.x, L.count, sx, sy)
     zoom.back:ClearAllPoints()
-    zoom.back:SetPoint("BOTTOM", room, "BOTTOM", 0, 12)
-    zoom.back:SetAlpha(t)
+    zoom.back:SetPoint("TOPLEFT", room, "TOPLEFT", L.back.x, -L.back.y)
+    zoom.back:SetAlpha(late)
+    local panelX, panelY = L.panel.x * sx, L.panel.y * sy + BLEED
+    zoom.leftPanel:ClearAllPoints()
+    zoom.leftPanel:SetPoint("TOPRIGHT", zoom.left, "TOPRIGHT", -(cw - BLEED - panelX - L.panel.w), -panelY)
+    zoom.rightPanel:ClearAllPoints()
+    zoom.rightPanel:SetPoint("TOPLEFT", zoom.right, "TOPLEFT", cw - BLEED - panelX - L.panel.w, -panelY)
 end
 
 local Redraw  -- (further down)
@@ -296,73 +274,77 @@ local function Zoom(open)
 end
 
 -- Draws the dressing: the tabs, the piece's info, the cart, the buttons; the mannequin (PlaceZoom). And the room's
--- cart pill.
+-- floor cart.
 function Redraw()
-    local zoom = room.zoom
+    local zoom, S = room.zoom, ns.ShopUI
     local tabs = Tabs()
-    PlaceZoom()  -- (first: the curtains' width, which the name is fitted to)
-    -- (the plaques down the left curtain, a small heading over each group)
-    local y, group = VALANCE_H + 26, nil
+    PlaceZoom()
+    -- (the plaques down the left panel, a small heading over each group)
+    local P = L.plaques
+    local y, group = P.y, nil
     for _, heading in pairs(zoom.headings) do heading:Hide() end
     for i, tab in ipairs(tabs) do
         if TAB_GROUPS[tab.key] ~= group then
+            if group then y = y + 6 end
             group = TAB_GROUPS[tab.key]
             local heading = zoom.headings[group]
             if not heading then
-                heading = zoom.left:CreateFontString(nil, "OVERLAY")
-                heading:SetFont(NAME_FONT, 12, "")
-                heading:SetTextColor(0.85, 0.71, 0.42)
-                UI.OutlineText(heading, { 0, 0, 0 })
-                heading:SetText(group)
+                heading = S.Text(zoom.leftPanel, S.DISPLAY_FONT, 11, "#d9b66a")
+                heading:SetText(group:gsub("(.)", "%1 "):sub(1, -2))  -- (spaced out, as the mock's letter-spacing)
                 zoom.headings[group] = heading
             end
             heading:ClearAllPoints()
-            heading:SetPoint("TOP", zoom.left, "TOPRIGHT", -93, -y)
+            heading:SetPoint("TOP", zoom.leftPanel, "TOPLEFT", P.x + P.w / 2, -y)
             heading:Show()
-            y = y + 20
+            y = y + 15
         end
         local plaque = zoom.plaques[i]
         plaque:ClearAllPoints()
-        plaque:SetPoint("TOPRIGHT", -18, -y)  -- (clear of the post, from the inner edge)
+        plaque:SetPoint("TOPLEFT", P.x, -y)
         plaque.text:SetText(tab.label)
         plaque:SetLit(i == view.tab)
         plaque:Show()
-        y = y + 38
+        y = y + P.h + P.gap
     end
     for i = #tabs + 1, #zoom.plaques do zoom.plaques[i]:Hide() end
+    -- (the piece)
     local info = zoom.info
     local item, tab, index = Looked()
     if item then
-        UI.FitText(info.name, NAME_FONT, 20, 12, item.option.name, info:GetWidth() - 16)
+        UI.FitText(info.name, S.DISPLAY_FONT, 21, 12, item.option.name, L.info.w)
         info.name:SetTextColor(ns.RarityRGB(item.option.rarity))
         info.line:SetText(item.option.rarity:gsub("^%l", string.upper) .. " " .. tab.label:lower())
-        info.price:SetText(item.owned and "In your wardrobe" or (BreakUpLargeNumbers(item.price) .. " points"))
-        info.price:SetTextColor(unpack(item.owned and CREAM or GOLD))
+        info.price:SetText(BreakUpLargeNumbers(item.price))
+        info.price:SetPoint("TOP", info, "TOP", -(info.unit:GetStringWidth() + 4) / 2, -64)
+        info.price:SetShown(not item.owned)
+        info.unit:SetShown(not item.owned)
+        info.owned:SetShown(item.owned)
         zoom.count:SetText(("%d / %d"):format(index, #tab.items))
         zoom.add.text:SetText(item.owned and "Yours already" or view.cart[tab.key] == item and "Take it out" or "Add to cart")
         zoom.add:SetEnabled(not item.owned)
-        zoom.add:SetAlpha(item.owned and 0.6 or 1)
     end
+    -- (the cart)
     local items, total = CartItems()
     for i, line in ipairs(info.lines) do
         local inCart = items[i]
         if inCart then
             line.name:SetText(inCart.option.name)
-            line.name:SetTextColor(ns.RarityRGB(inCart.option.rarity))
             line.price:SetText(BreakUpLargeNumbers(inCart.price))
             line.item = inCart
         end
         line:SetShown(inCart ~= nil)
     end
     info.empty:SetShown(#items == 0)
+    info.cartCount:SetText(#items > 0 and ("(%d)"):format(#items) or "")
     local balance = ns.GetPoints().balance
-    local canBuy = #items > 0 and total <= balance
-    info.total:SetText(("Total  |cffffd21a%s|r"):format(BreakUpLargeNumbers(total)))
-    info.points:SetText(("You have %s points"):format(BreakUpLargeNumbers(balance)))
-    info.message:SetText(view.message or (total > balance and ("%s points short"):format(BreakUpLargeNumbers(total - balance))) or "")
-    info.checkout:SetEnabled(canBuy)
-    info.checkout:SetAlpha(canBuy and 1 or 0.5)
-    room.cart.text:SetText(("Cart (%d)"):format(#items))
+    info.total:SetText(BreakUpLargeNumbers(total))
+    info.points:SetText(BreakUpLargeNumbers(balance))
+    info.short:SetText(view.message or (total > balance and ("%s points short"):format(BreakUpLargeNumbers(total - balance))) or "")
+    info.checkout:SetEnabled(#items > 0 and total <= balance)
+    -- (the room's floor cart: only with something in it)
+    room.cart.text:SetText(("%d piece%s  ·  %s points"):format(#items, #items == 1 and "" or "s", BreakUpLargeNumbers(total)))
+    room.cart:SetWidth(room.cart.text:GetStringWidth() + 26)
+    room.cart:SetShown(#items > 0)
 end
 
 -- Moves to another tab (dt) or piece (di), round the ends.
@@ -401,7 +383,96 @@ local function Checkout()
     Redraw()
 end
 
+-- The right panel's piece info and cart (the mock's .info and .chit).
+local function BuildInfo(zoom, S)
+    local info = CreateFrame("Frame", nil, zoom.rightPanel)
+    info:SetPoint("TOPLEFT", L.info.x, -L.info.y)
+    info:SetSize(L.info.w, L.panel.h - L.info.y)
+    info.name = S.Text(info, S.DISPLAY_FONT, 21, "#f6e3b0")
+    info.name:SetPoint("TOP", 0, 0)
+    info.name:SetSize(L.info.w, 26)  -- (a fixed slot: a long name shrinks to fit without moving what's under it)
+    info.line = S.Text(info, S.BODY_FONT, 12, "#e8cf9a")
+    info.line:SetPoint("TOP", 0, -32)
+    for side = 1, 2 do  -- the rule: gilt fading out to both ends
+        local half = info:CreateTexture(nil, "ARTWORK")
+        half:SetSize((L.info.w - 12) / 2, 1)
+        half:SetPoint(side == 1 and "TOPRIGHT" or "TOPLEFT", info, "TOP", 0, -58)
+        half:SetColorTexture(1, 1, 1)
+        local gilt, clear = CreateColor(0.79, 0.63, 0.29, 1), CreateColor(0.79, 0.63, 0.29, 0)
+        half:SetGradient("HORIZONTAL", side == 1 and clear or gilt, side == 1 and gilt or clear)
+    end
+    info.price = S.Text(info, S.DISPLAY_FONT, 24, "#f2c14e")
+    info.unit = S.Text(info, S.DISPLAY_FONT, 13, "#e8cf9a")
+    info.unit:SetPoint("BOTTOMLEFT", info.price, "BOTTOMRIGHT", 4, 3)
+    info.unit:SetText("points")
+    info.owned = S.Text(info, S.DISPLAY_FONT, 15, "#9fdc8f")
+    info.owned:SetPoint("TOP", 0, -72)
+    info.owned:SetText("In your wardrobe")
+    -- The cart.
+    local y = L.cartY - L.info.y
+    local top = info:CreateTexture(nil, "ARTWORK")
+    top:SetPoint("TOPLEFT", 0, -y) top:SetPoint("TOPRIGHT", 0, -y)
+    top:SetHeight(1)
+    top:SetColorTexture(0.79, 0.63, 0.29, 0.55)
+    local heading = S.Text(info, S.DISPLAY_FONT, 15, "#f6d98a")
+    heading:SetPoint("TOPLEFT", 0, -(y + 8))
+    heading:SetText("Your cart")
+    info.cartCount = S.Text(info, S.BODY_FONT, 10, "#d9c296")
+    info.cartCount:SetPoint("TOPRIGHT", 0, -(y + 11))
+    info.empty = S.Text(info, S.BODY_FONT, 11, "#9d7f6a")
+    info.empty:SetPoint("TOPLEFT", 0, -(y + 30))
+    info.empty:SetText("Nothing yet")
+    info.lines = {}
+    for i = 1, CART_LINES do
+        local line = CreateFrame("Button", nil, info)
+        line:SetHeight(17)
+        line:SetPoint("TOPLEFT", 0, -(y + 28 + (i - 1) * 17))
+        line:SetPoint("TOPRIGHT", 0, -(y + 28 + (i - 1) * 17))
+        line.name = S.Text(line, S.BODY_FONT, 11, "#f1dfb5")
+        line.name:SetPoint("LEFT") line.name:SetPoint("RIGHT", -58, 0)
+        line.name:SetJustifyH("LEFT")
+        line.name:SetWordWrap(false)
+        line.price = S.Text(line, S.BODY_FONT, 11, "#f1dfb5")
+        line.price:SetPoint("RIGHT", -16, 0)
+        local x = S.Text(line, S.BODY_FONT, 12, "#f0a0a0")
+        x:SetPoint("RIGHT", 0, 0)
+        x:SetText("x")
+        line:SetScript("OnEnter", function(self) UI.Tooltip(self, { self.item.option.name, "Click to take it out of the cart" }) end)
+        line:SetScript("OnLeave", GameTooltip_Hide)
+        line:SetScript("OnClick", function(self)
+            view.cart[self.item.layer.key] = nil
+            view.message = nil
+            Redraw()
+        end)
+        info.lines[i] = line
+    end
+    local ty = y + 28 + CART_LINES * 17 + 4
+    local rule = info:CreateTexture(nil, "ARTWORK")
+    rule:SetPoint("TOPLEFT", 0, -ty) rule:SetPoint("TOPRIGHT", 0, -ty)
+    rule:SetHeight(1)
+    rule:SetColorTexture(0.79, 0.63, 0.29, 0.55)
+    local totalLabel = S.Text(info, S.DISPLAY_FONT, 13, "#f6d98a")
+    totalLabel:SetPoint("TOPLEFT", 0, -(ty + 4))
+    totalLabel:SetText("Total")
+    info.total = S.Text(info, S.DISPLAY_FONT, 13, "#f6d98a")
+    info.total:SetPoint("TOPRIGHT", 0, -(ty + 4))
+    local pointsLabel = S.Text(info, S.BODY_FONT, 11, "#f1dfb5")
+    pointsLabel:SetPoint("TOPLEFT", 0, -(ty + 22))
+    pointsLabel:SetText("Your points")
+    info.points = S.Text(info, S.BODY_FONT, 11, "#f1dfb5")
+    info.points:SetPoint("TOPRIGHT", 0, -(ty + 22))
+    info.short = S.Text(info, S.BODY_FONT, 11, "#ff9b8a")
+    info.short:SetPoint("TOPLEFT", 0, -(ty + 38))
+    info.short:SetPoint("TOPRIGHT", 0, -(ty + 38))
+    info.short:SetJustifyH("LEFT")
+    info.checkout = S.Button(info, L.info.w, 30, "Checkout", 14)
+    info.checkout:SetPoint("TOP", 0, -(ty + 56))
+    info.checkout:SetScript("OnClick", Checkout)
+    zoom.info = info
+end
+
 local function Build(holder)
+    local S = ns.ShopUI
     room = CreateFrame("Frame", nil, holder)
     room:SetAllPoints()
     room.scene = room:CreateTexture(nil, "BACKGROUND")
@@ -429,8 +500,9 @@ local function Build(holder)
     easel.blank:SetClipsChildren(true)
     easel.picture = NewPicture(easel.blank)
     easel.picture:SetPoint("CENTER")
-    easel.hint = Pill(easel, 130, "Try things on")
+    easel.hint = S.Plaque(easel, 112, 22, 12)  -- (the mock's hint: a little brass label)
     easel.hint:SetPoint("BOTTOM", easel, "TOP", 0, 4)
+    easel.hint.text:SetText("Try things on")
     easel.hint:EnableMouse(false)
     easel.hint:Hide()
     easel:SetScript("OnEnter", function(self)
@@ -444,22 +516,23 @@ local function Build(holder)
     easel:SetScript("OnClick", function() Zoom(true) end)
     room.easel = easel
 
-    -- Your points and the cart, in the corner (empty until the curtains can fill it).
-    room.corner = CreateFrame("Frame", nil, room)  -- (over the easel)
+    -- Over the easel: your points, and the floor cart (the mock's gold plaque, top right, while the cart has something).
+    room.corner = CreateFrame("Frame", nil, room)
     room.corner:SetAllPoints()
     room.corner:SetFrameLevel(easel:GetFrameLevel() + 5)
-    room.cart = Pill(room.corner, 110, "Cart (0)")
-    room.cart:SetPoint("BOTTOMRIGHT", -14, 12)
+    room.cart = S.Plaque(room.corner, 160, 30, 14)
+    room.cart:SetPoint("TOPRIGHT", -(POST_REACH + 6), -12)
     room.cart:HookScript("OnEnter", function(self)
         local items, total = CartItems()
         local lines = { "Your cart" }
         for _, item in ipairs(items) do lines[#lines + 1] = item.option.name .. " - " .. BreakUpLargeNumbers(item.price) end
-        lines[#lines + 1] = #items == 0 and "Empty. Try something on first." or ("Total: %s points"):format(BreakUpLargeNumbers(total))
+        lines[#lines + 1] = ("Total: %s points"):format(BreakUpLargeNumbers(total))
         UI.Tooltip(self, lines)
     end)
+    room.cart:HookScript("OnLeave", GameTooltip_Hide)
     room.cart:SetScript("OnClick", function() Zoom(true) end)
     room.points = room.corner:CreateFontString(nil, "OVERLAY")
-    room.points:SetPoint("BOTTOMRIGHT", room.cart, "TOPRIGHT", 0, 5)
+    room.points:SetPoint("BOTTOMRIGHT", -(POST_REACH + 4), 14)
     room.points:SetFont(NAME_FONT, 14, "")
     room.points:SetTextColor(unpack(CREAM))
     UI.OutlineText(room.points, { 0, 0, 0 })
@@ -474,9 +547,12 @@ local function Build(holder)
     zoom:EnableMouse(true)
     zoom:SetClipsChildren(true)  -- (the curtains wait outside it, sliding in and out: never drawn past the beams)
     zoom:Hide()
-    zoom.dim = zoom:CreateTexture(nil, "BACKGROUND")
+    zoom.dim = zoom:CreateTexture(nil, "BACKGROUND")  -- (the mock's room: blurred, darker, a vignette)
     zoom.dim:SetAllPoints()
-    zoom.dim:SetColorTexture(0, 0, 0, 0.5)
+    zoom.dim:SetColorTexture(0, 0, 0, 0.45)
+    zoom.vignette = zoom:CreateTexture(nil, "BACKGROUND", nil, 1)
+    zoom.vignette:SetAllPoints()
+    zoom.vignette:SetTexture(MEDIA .. "UI\\Vignette")
     zoom.frame = CreateFrame("Frame", nil, zoom)  -- the border: a shadow, gilt, burgundy, then the picture
     local shadow = zoom.frame:CreateTexture(nil, "BACKGROUND", nil, -2)
     shadow:SetPoint("TOPLEFT", -2, -6) shadow:SetPoint("BOTTOMRIGHT", 6, -10)
@@ -490,130 +566,33 @@ local function Build(holder)
     zoom.picture = NewPicture(zoom.frame)
     zoom.picture:SetAllPoints()
     zoom.picture:SetClipsChildren(true)
-    zoom.left, zoom.right = Curtain(zoom, "left"), Curtain(zoom, "right")
-    zoom.valance = CreateFrame("Frame", nil, zoom)
-    zoom.valance:SetFrameLevel(zoom.left:GetFrameLevel() + 2)
-    local valance = zoom.valance:CreateTexture(nil, "BACKGROUND")
-    valance:SetAllPoints()
-    Gradient(valance, "VERTICAL", VELVET_DARK, VELVET_LIT)
-    local trim = zoom.valance:CreateTexture(nil, "ARTWORK")
-    trim:SetPoint("BOTTOMLEFT", 0, 6) trim:SetPoint("BOTTOMRIGHT", 0, 6)
-    trim:SetHeight(3)
-    trim:SetColorTexture(unpack(GILT))
-    local fringe = zoom.valance:CreateTexture(nil, "ARTWORK")
-    fringe:SetPoint("TOPLEFT", zoom.valance, "BOTTOMLEFT") fringe:SetPoint("TOPRIGHT", zoom.valance, "BOTTOMRIGHT")
-    fringe:SetHeight(8)
-    Gradient(fringe, "VERTICAL", { GILT[1], GILT[2], GILT[3], 0 }, { GILT[1], GILT[2], GILT[3], 0.9 })
-    zoom.back = Pill(zoom, 170, "Back to the shop")
-    zoom.back:SetFrameLevel(zoom.valance:GetFrameLevel() + 1)
+    zoom.left, zoom.right = S.Curtain(zoom, "left"), S.Curtain(zoom, "right")
+    zoom.valance = S.Valance(zoom)
+    zoom.valance:SetFrameLevel(zoom.left:GetFrameLevel() + 3)
+    zoom.leftPanel, zoom.rightPanel = S.Panel(zoom.left), S.Panel(zoom.right)
+    zoom.leftPanel:SetSize(L.panel.w, L.panel.h)
+    zoom.rightPanel:SetSize(L.panel.w, L.panel.h)
+    zoom.back = S.Button(zoom, L.back.w, L.back.h, "Back to the shop", 13)
+    zoom.back:SetFrameLevel(zoom.valance:GetFrameLevel() + 2)
     zoom.back:SetScript("OnClick", function() Zoom(false) end)
-    -- The left curtain: a brass plaque a tab (polished: the one open).
+    -- The left panel: a brass plaque a tab (velvet: the one open).
     zoom.plaques, zoom.headings = {}, {}
     for i = 1, #TAB_ORDER do
-        local plaque = CreateFrame("Button", nil, zoom.left)
-        plaque:SetSize(150, 30)
-        local rim = plaque:CreateTexture(nil, "BACKGROUND", nil, -1)
-        rim:SetPoint("TOPLEFT", -1, 1) rim:SetPoint("BOTTOMRIGHT", 1, -1)
-        rim:SetColorTexture(0.24, 0.15, 0.06)
-        plaque.fill = plaque:CreateTexture(nil, "BACKGROUND")
-        plaque.fill:SetAllPoints()
-        plaque.text = plaque:CreateFontString(nil, "OVERLAY")
-        plaque.text:SetPoint("CENTER")
-        plaque.text:SetFont(NAME_FONT, 16, "")
-        function plaque:SetLit(lit)
-            self.lit = lit
-            Gradient(self.fill, "VERTICAL", lit and { 0.72, 0.55, 0.22 } or { 0.3, 0.2, 0.09 }, lit and { 1, 0.88, 0.55 } or { 0.52, 0.38, 0.18 })
-            self.text:SetTextColor(unpack(lit and { 0.23, 0.15, 0.08 } or CREAM))
-        end
+        local plaque = S.Plaque(zoom.leftPanel, L.plaques.w, L.plaques.h, 13)
         plaque:SetScript("OnClick", function() Step(i - view.tab, 0) end)
-        plaque:SetScript("OnEnter", function(self) if not self.lit then self.text:SetTextColor(unpack(GOLD)) end end)
-        plaque:SetScript("OnLeave", function(self) if not self.lit then self.text:SetTextColor(unpack(CREAM)) end end)
         zoom.plaques[i] = plaque
     end
-    -- The right curtain: a dark panel with the piece's info and the cart.
-    local info = CreateFrame("Frame", nil, zoom.right)
-    info:SetPoint("TOPLEFT", 12, -(VALANCE_H + 30))
-    info:SetPoint("BOTTOMRIGHT", -(BLEED + POST_REACH), 60)
-    local panel = info:CreateTexture(nil, "BACKGROUND")
-    panel:SetAllPoints()
-    Gradient(panel, "VERTICAL", { 0.17, 0.03, 0.05, 0.95 }, { 0.24, 0.04, 0.07, 0.95 })
-    local function Text(size, color)
-        local text = info:CreateFontString(nil, "OVERLAY")
-        text:SetFont(NAME_FONT, size, "")
-        text:SetTextColor(unpack(color))
-        return text
-    end
-    info.name = Text(20, CREAM)
-    info.name:SetPoint("TOP", 0, -12)
-    info.name:SetHeight(26)  -- (a fixed slot: a long name shrinks to fit without moving what's under it)
-    info.name:SetJustifyV("MIDDLE")
-    info.line = Text(13, { 0.78, 0.68, 0.55 })
-    info.line:SetPoint("TOP", info.name, "BOTTOM", 0, -3)
-    info.price = Text(17, GOLD)
-    info.price:SetPoint("TOP", info.line, "BOTTOM", 0, -8)
-    local rule = info:CreateTexture(nil, "ARTWORK")
-    rule:SetPoint("TOPLEFT", 12, -92) rule:SetPoint("TOPRIGHT", -12, -92)
-    rule:SetHeight(1)
-    rule:SetColorTexture(GILT[1], GILT[2], GILT[3], 0.6)
-    local heading = Text(15, GOLD)
-    heading:SetPoint("TOP", 0, -102)
-    heading:SetText("Your cart")
-    info.empty = Text(13, { 0.7, 0.6, 0.5 })
-    info.empty:SetPoint("TOP", heading, "BOTTOM", 0, -8)
-    info.empty:SetText("Nothing yet")
-    info.lines = {}
-    for i = 1, #TAB_ORDER do
-        local line = CreateFrame("Button", nil, info)
-        line:SetHeight(18)
-        line:SetPoint("TOPLEFT", 10, -(124 + (i - 1) * 20))
-        line:SetPoint("TOPRIGHT", -10, -(124 + (i - 1) * 20))
-        line.name = line:CreateFontString(nil, "OVERLAY")
-        line.name:SetFont(NAME_FONT, 13, "")
-        line.name:SetPoint("LEFT")
-        line.name:SetPoint("RIGHT", -44, 0)
-        line.name:SetJustifyH("LEFT")
-        line.name:SetWordWrap(false)
-        line.price = line:CreateFontString(nil, "OVERLAY")
-        line.price:SetFont(NAME_FONT, 13, "")
-        line.price:SetPoint("RIGHT")
-        line.price:SetTextColor(unpack(CREAM))
-        line:SetScript("OnEnter", function(self) UI.Tooltip(self, { self.item.option.name, "Click to take it out of the cart" }) end)
-        line:SetScript("OnLeave", GameTooltip_Hide)
-        line:SetScript("OnClick", function(self)
-            view.cart[self.item.layer.key] = nil
-            view.message = nil
-            Redraw()
-        end)
-        info.lines[i] = line
-    end
-    info.checkout = Pill(info, 130, "Checkout")
-    info.checkout:SetPoint("BOTTOM", 0, 12)
-    info.checkout:SetScript("OnClick", Checkout)
-    info.message = Text(13, { 1, 0.45, 0.35 })
-    info.message:SetPoint("BOTTOM", info.checkout, "TOP", 0, 8)
-    info.message:SetWidth(140)
-    info.points = Text(13, CREAM)
-    info.points:SetPoint("BOTTOM", info.message, "TOP", 0, 6)
-    info.total = Text(16, CREAM)
-    info.total:SetPoint("BOTTOM", info.points, "TOP", 0, 4)
-    zoom.info = info
+    BuildInfo(zoom, S)
     -- Under the picture: the knobs either side of Add to cart, the count under it.
     zoom.controls = CreateFrame("Frame", nil, zoom)
     zoom.controls:SetAllPoints()
-    zoom.add = Pill(zoom.controls, 150, "Add to cart")
-    zoom.add:SetPoint("TOP", zoom.frame, "BOTTOM", 0, -18)
+    zoom.add = S.Button(zoom.controls, L.add.w, L.add.h, "Add to cart", 15)
     zoom.add:SetScript("OnClick", ToggleCart)
-    local prev = Pill(zoom.controls, 36, "<")
-    prev:SetPoint("RIGHT", zoom.add, "LEFT", -10, 0)
-    prev:SetScript("OnClick", function() Step(0, -1) end)
-    local nxt = Pill(zoom.controls, 36, ">")
-    nxt:SetPoint("LEFT", zoom.add, "RIGHT", 10, 0)
-    nxt:SetScript("OnClick", function() Step(0, 1) end)
-    zoom.count = zoom.controls:CreateFontString(nil, "OVERLAY")
-    zoom.count:SetPoint("TOP", zoom.add, "BOTTOM", 0, -6)
-    zoom.count:SetFont(NAME_FONT, 13, "")
-    zoom.count:SetTextColor(unpack(CREAM))
-    UI.OutlineText(zoom.count, { 0, 0, 0 })
+    zoom.prev = S.Knob(zoom.controls, -1)
+    zoom.prev:SetScript("OnClick", function() Step(0, -1) end)
+    zoom.next = S.Knob(zoom.controls, 1)
+    zoom.next:SetScript("OnClick", function() Step(0, 1) end)
+    zoom.count = S.Text(zoom.controls, S.DISPLAY_FONT, 13, "#f1dfb5")
     -- Keys (caught only out of combat, as on the bounty board): Up/Down or W/S tabs, Left/Right or A/D pieces, Enter
     -- adds (or takes out), Escape goes back.
     local KEYS = { UP = { -1, 0 }, W = { -1, 0 }, DOWN = { 1, 0 }, S = { 1, 0 }, LEFT = { 0, -1 }, A = { 0, -1 }, RIGHT = { 0, 1 }, D = { 0, 1 } }

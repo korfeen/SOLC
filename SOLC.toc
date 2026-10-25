@@ -56,6 +56,7 @@ DreamBedArt.lua
 DreamBed.lua
 Plinko.lua
 HuntsBoard.lua
+ProShopUI.lua
 ProShopRoom.lua
 CavePage.lua
 FrenzPage.lua
