@@ -36,9 +36,10 @@ local TABS = {  -- { panel (nil: ME), label, ogre word }
     { nil, "ME", "ME" },
     { "gear", "GEARZ", "GEARZ" },
     { "crafts", "CRAFTS", "MAKE" },
+    { "edit", "EDIT", "EDIT" },  -- (yours only: your look, changed in place on your portrait)
 }
 -- The tabs' names on the top beam (ns.UI.SetTab; ME: nothing added) and in ogre mode.
-local TAB_TITLES, TABS_OGRE = { gear = "Gear", crafts = "Crafts" }, { gear = "GEARZ", crafts = "MAKE" }
+local TAB_TITLES, TABS_OGRE = { gear = "Gear", crafts = "Crafts", edit = "Your Look" }, { gear = "GEARZ", crafts = "MAKE", edit = "ME OGRE" }
 -- The ME tab on someone else's Overview: their pronoun, by the gender on their card (UI.Profile), THEY if unknown.
 local PRONOUNS = { MALE = "HE", FEMALE = "SHE", NONBINARY = "THEY" }
 
@@ -52,7 +53,8 @@ local LEFT = {
         { 494, beam = true },                  -- the feed's heading
         { 750, 0.1, 0.1, 0.1 },                -- the feed
     },
-    pictures = { lefts = { 242, 371, 500 }, top = 325, size = 122, rim = 2 },
+    -- (each hangs a touch crooked, in its own frame; the middle one in front)
+    pictures = { lefts = { 242, 371, 500 }, top = 325, size = 122, tilts = { -3, 2, -1.5 }, levels = { 1, 3, 2 } },
     heading = { x = 247, y = 473, size = 22, text = "WHAT HAPPEN TO ME?" },
     feed = { top = 494, rowHeight = 24, textSize = 13, iconSize = 18, colors = { 0.25, 0.18 } },
 }
@@ -564,6 +566,686 @@ local function CraftsPage(page)
     return crafts
 end
 
+-- The portrait (ME, the right page): the ogre they built (or the picture shown instead) hung in the frame they picked,
+-- the frame its only frame: big frames reach over the middle beam, the window's edge and the top beam (the gear and
+-- the X hide meanwhile). The picture keeps its size and place whatever the frame; the frame goes round it. Under it
+-- their name on a plate in their name colour (written on a polaroid's white strip instead), under that their motto
+-- on a pinned note. KillTrackerDB.card.frame / .motto (synced, Sync.lua's card section).
+-- In window pixels (from its top-left, y down): the picture's middle and size, the plate's and the note's middles.
+local PORTRAIT = { x = 870, y = 321, size = 345, plate = 590, note = 676, level = 45, mottoMax = 90,
+    noteWidth = 270, noteLine = 18,  -- (the note: as wide as this at most, up to 3 lines)
+    hand = 442 / 512,  -- (the polaroid's white strip under its opening, its middle: where the name is written)
+    -- One of your pictures opened (a showcase picture clicked, or from the gallery): in the portrait's place, the same
+    -- size, in its own frame; its layers at one height whatever the frame (two columns), its buttons under them.
+    traits = { top = 628, lefts = { 690, 878 }, width = 180, line = 16, size = 12 }, buttons = 712 }
+local INK = { 0.17, 0.13, 0.09 }
+-- (their art: tools/make-portrait-bits.js. The note's paper has a soft margin round it, NOTE_PAPER of the texture; the
+-- plate's ends are its left and right quarters, the middle stretches)
+local NOTE_PAPER = { w = 244 / 256, h = 52 / 64 }
+local DEFAULT_PORTRAIT_FRAME = "wood"
+
+-- Your motto (the note's editbox): kept, synced.
+local function SetMotto(text)
+    KillTrackerDB.card = KillTrackerDB.card or {}
+    text = strtrim(((text or ""):gsub("[#~^|]", ""):gsub("%s+", " ")))
+    KillTrackerDB.card.motto = text ~= "" and text or nil
+    ns.Touch(KillTrackerDB.card)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+
+-- Your portrait's frame: one of the frames you have (Frames.lua; the same ones as your pictures').
+local function SetPortraitFrame(id)
+    KillTrackerDB.card = KillTrackerDB.card or {}
+    KillTrackerDB.card.frame = id ~= DEFAULT_PORTRAIT_FRAME and id or nil
+    ns.Touch(KillTrackerDB.card)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+
+-- Builds the portrait over the page (and over the window's wood: its own level, PORTRAIT.level). onClick(button):
+-- clicking the picture.
+local function BuildPortrait(page, onClick)
+    local W = UI.window
+    local top = CreateFrame("Frame", nil, W)
+    top:SetAllPoints()
+    top:SetFrameLevel(W:GetFrameLevel() + PORTRAIT.level)
+    top:Hide()
+    page.portraitTop = top
+    -- The picture, then the frame over its edge.
+    local picture = CreateFrame("Button", nil, top)
+    picture:SetSize(PORTRAIT.size, PORTRAIT.size)
+    picture:SetPoint("CENTER", W, "TOPLEFT", PORTRAIT.x, -PORTRAIT.y)
+    picture:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    picture:SetScript("OnClick", function(_, button) onClick(button) end)
+    picture.canvas = CreateFrame("Frame", nil, picture)
+    picture.canvas:SetAllPoints()
+    top.picture = picture
+    local over = CreateFrame("Frame", nil, top)
+    over:SetAllPoints()
+    over:SetFrameLevel(picture:GetFrameLevel() + 5)
+    top.frame = over:CreateTexture(nil, "ARTWORK")
+    top.frameGlow = over:CreateTexture(nil, "OVERLAY")  -- (saving: the frame lit up, fading)
+    top.frameGlow:SetBlendMode("ADD")
+    top.frameGlow:SetAllPoints(top.frame)
+    top.frameGlow:Hide()
+
+    -- Turned over (an opened picture): its frame's back, solid, over the picture and the frame; the dream on it.
+    local backside = CreateFrame("Frame", nil, top)
+    backside:SetAllPoints()
+    backside:SetFrameLevel(over:GetFrameLevel() + 3)
+    backside:Hide()
+    top.backTex = backside:CreateTexture(nil, "ARTWORK")
+    local tale = CreateFrame("Frame", nil, top)
+    tale:SetAllPoints(picture)
+    tale:SetFrameLevel(backside:GetFrameLevel() + 1)
+    tale.framing = CreateFrame("Frame", nil, tale)  -- (as Minting.lua's framed canvas: its back and its opening)
+    tale.framing.backside, tale.framing.picture = backside, picture
+    top.tale = tale
+    -- The plate: a dark board in a gilt rim, a rivet at each end (three slices, the middle stretching), the name on it.
+    local plate = CreateFrame("Frame", nil, over)
+    plate:SetFrameLevel(over:GetFrameLevel() + 1)
+    local ends = {}
+    for i, slice in ipairs({ { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }) do
+        local t = plate:CreateTexture(nil, "BACKGROUND")
+        t:SetTexture(ART .. "Plate")
+        t:SetTexCoord(slice[1], slice[2], 0, 1)
+        ends[i] = t
+    end
+    ends[1]:SetPoint("TOPLEFT") ends[1]:SetPoint("BOTTOMLEFT") ends[1]:SetWidth(18)
+    ends[3]:SetPoint("TOPRIGHT") ends[3]:SetPoint("BOTTOMRIGHT") ends[3]:SetWidth(18)
+    ends[2]:SetPoint("TOPLEFT", ends[1], "TOPRIGHT") ends[2]:SetPoint("BOTTOMRIGHT", ends[3], "BOTTOMLEFT")
+    plate.name = plate:CreateFontString(nil, "OVERLAY")
+    plate.name:SetPoint("CENTER", 0, 1)
+    plate.name:SetFont(NAME_FONT, 24, "")
+    UI.OutlineText(plate.name, { 0, 0, 0 })
+    top.plate = plate
+    -- (on a polaroid: the name written on it, no plate)
+    top.written = over:CreateFontString(nil, "OVERLAY")
+    -- The motto: a pinned note, the paper a touch crooked (text can't turn, so the words stay level). Yours: click it
+    -- and write on it (Enter keeps it, Escape drops it).
+    local note = CreateFrame("Button", nil, top)
+    note:SetFrameLevel(over:GetFrameLevel() + 1)
+    note.shade = note:CreateTexture(nil, "BACKGROUND", nil, -1)  -- (its shadow on the wood)
+    note.shade:SetPoint("CENTER", 1, -3)
+    note.shade:SetTexture(ART .. "Note")
+    note.shade:SetVertexColor(0, 0, 0, 0.45)
+    note.shade:SetRotation(math.rad(2))
+    note.paper = note:CreateTexture(nil, "BACKGROUND")
+    note.paper:SetPoint("CENTER")
+    note.paper:SetTexture(ART .. "Note")
+    note.paper:SetRotation(math.rad(2))
+    note.pin = note:CreateTexture(nil, "OVERLAY")
+    note.pin:SetSize(18, 18)
+    note.pin:SetTexture(ART .. "Pin")
+    note.text = note:CreateFontString(nil, "ARTWORK")
+    note.text:SetPoint("CENTER", 0, -1)
+    note.text:SetFont(SIGN_FONT, 15, "")
+    note.text:SetTextColor(unpack(INK))
+    note.text:SetWordWrap(true)
+    note.text:SetSpacing(2)
+    note.text:SetMaxLines(3)
+    local box = CreateFrame("EditBox", nil, note)
+    box:SetPoint("TOPLEFT", 14, -8)
+    box:SetPoint("BOTTOMRIGHT", -14, 6)
+    box:SetMultiLine(true)
+    box:SetFont(SIGN_FONT, 15, "")
+    box:SetTextColor(unpack(INK))
+    box:SetJustifyH("CENTER")
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(PORTRAIT.mottoMax)
+    box:Hide()
+    local function Done(keep)
+        if not box:IsShown() then return end
+        local text = box:GetText()
+        box:Hide()
+        note.text:Show()
+        if keep then SetMotto(text) end
+    end
+    box:SetScript("OnEnterPressed", function() Done(true) end)
+    box:SetScript("OnEscapePressed", function() Done(false) end)
+    box:SetScript("OnEditFocusLost", function() Done(false) end)
+    box:SetScript("OnTextChanged", function(self)
+        local text = self:GetText() or ""
+        if text:find("\n") then self:SetText((text:gsub("\n", " "))) end  -- (no line breaks of your own: it wraps)
+    end)
+    note.box = box
+    note:SetScript("OnClick", function()
+        if page.key or box:IsShown() then return end
+        UI.ClickSound()
+        note.text:Hide()
+        page.SizeNote(3)  -- (writing: room for all three lines)
+        box:SetText(KillTrackerDB.card and KillTrackerDB.card.motto or "")
+        box:Show()
+        box:SetFocus()
+        box:HighlightText()
+    end)
+    note:SetScript("OnEnter", function(self) if not page.key and not box:IsShown() then SetTooltip(self, { "Your motto", "Click to write it" }) end end)
+    note:SetScript("OnLeave", GameTooltip_Hide)
+    -- (its size: as wide as the text up to noteWidth, then wrapping onto up to 3 lines; lines: a set number, writing)
+    function page.SizeNote(lines)
+        local most = PORTRAIT.noteWidth - 44
+        note.text:SetWidth(most)
+        local one = note.text.GetUnboundedStringWidth and note.text:GetUnboundedStringWidth() or note.text:GetStringWidth()
+        local w = lines and PORTRAIT.noteWidth or math.max(120, math.min(one, most) + 44)
+        if not lines then note.text:SetWidth(w - 44) end
+        lines = lines or math.max(1, math.min(3, math.floor(note.text:GetStringHeight() / PORTRAIT.noteLine + 0.5)))
+        local h = lines * PORTRAIT.noteLine + 18
+        note:SetSize(w, h)
+        note.paper:SetSize(w / NOTE_PAPER.w, h / NOTE_PAPER.h)
+        note.shade:SetSize(w / NOTE_PAPER.w, h / NOTE_PAPER.h)
+    end
+    top.note = note
+    -- A picture opened: its layers (two columns) and its buttons.
+    local tr = PORTRAIT.traits
+    top.traits = {}
+    for i = 1, 8 do
+        local line = over:CreateFontString(nil, "OVERLAY")
+        line:SetFont(NAME_FONT, tr.size, "")
+        UI.OutlineText(line, { 0, 0, 0 })
+        line:SetJustifyH("LEFT")
+        line:SetWordWrap(false)
+        line:SetWidth(tr.width)
+        line:SetPoint("TOPLEFT", UI.window, "TOPLEFT", tr.lefts[(i - 1) % 2 + 1], -(tr.top + math.floor((i - 1) / 2) * tr.line))
+        top.traits[i] = line
+    end
+    top.buttons = {}
+    for i = 1, 3 do
+        local button = CreateFrame("Button", nil, over)
+        button:SetSize(118, 24)
+        button:SetFrameLevel(over:GetFrameLevel() + 2)
+        button.back = button:CreateTexture(nil, "BACKGROUND")
+        button.back:SetAllPoints()
+        button.text = button:CreateFontString(nil, "OVERLAY")
+        button.text:SetFont(NAME_FONT, 13, "")
+        button.text:SetPoint("CENTER", 0, 1)
+        UI.OutlineText(button.text, { 0, 0, 0 })
+        function button:Paint(lit)
+            local off = not self:IsEnabled()
+            self.back:SetColorTexture(unpack(lit and not off and { 0.65, 0.53, 0.28 } or { 0.3, 0.22, 0.12 }))
+            self.text:SetTextColor(unpack(off and { 0.62, 0.55, 0.42 } or lit and { 1, 1, 1 } or HEADING_COLOR))
+        end
+        button:SetScript("OnEnter", function(self) self:Paint(true) end)
+        button:SetScript("OnLeave", function(self) self:Paint(false) end)
+        button:SetScript("OnClick", function(self) UI.ClickSound() if self.action then self.action() end end)
+        button:SetPoint("CENTER", UI.window, "TOPLEFT", PORTRAIT.x + (i - 2) * 126, -PORTRAIT.buttons)
+        top.buttons[i] = button
+    end
+    picture:SetScript("OnEnter", function(self)
+        local mint = page.portraitMint
+        if not mint then return end
+        if page.viewing and mint == page.viewing then
+            return SetTooltip(self, { ("Picture #%d"):format(mint.number), page.reading and "Click: back to the picture"
+                or "Click: turn it over", "Right-click: its frame" })
+        end
+        if page.key then return SetTooltip(self, { mint.ogre and "Their ogre" or ("Picture #%d"):format(mint.number) }) end
+        SetTooltip(self, { mint.ogre and "Your ogre" or ("Picture #%d"):format(mint.number), "Click to change your look",
+            "Right-click: frame and motto" })
+    end)
+    picture:SetScript("OnLeave", GameTooltip_Hide)
+    -- Showing it: the page's own photo and its beams hide, the header's buttons too.
+    top:SetScript("OnShow", function() if UI.SetHeaderButtonsShown then UI.SetHeaderButtonsShown(false) end end)
+    top:SetScript("OnHide", function() if UI.SetHeaderButtonsShown then UI.SetHeaderButtonsShown(true) end end)
+    page:HookScript("OnHide", function() top:Hide() end)
+end
+
+-- Your portrait's menu (right-click it): its frame, from the ones you have, and your motto.
+local function PortraitMenu(owner)
+    if not MenuUtil then return end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle("Frame")
+        local current = KillTrackerDB.card and KillTrackerDB.card.frame or DEFAULT_PORTRAIT_FRAME
+        for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
+            local has, how = ns.FrameUnlocked(frame)
+            if has then
+                root:CreateRadio(frame.name, function() return current == frame.id end, function() SetPortraitFrame(frame.id) end)
+            else
+                root:CreateTitle(("|cff808080%s (%s)|r"):format(frame.name, how or "locked"))
+            end
+        end
+        root:CreateDivider()
+        root:CreateButton("Write your motto", function() local page = UI.overviewPage if page then page.portraitTop.note:Click() end end)
+    end)
+end
+
+-- An opened picture's menu (right-click it): its frame (the ones you have), a duplicate's free reroll.
+local function PictureMenu(owner, mint, refresh)
+    if not MenuUtil then return end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle("Frame")
+        for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
+            local has, how = ns.FrameUnlocked(frame)
+            if has then
+                root:CreateRadio(frame.name, function() return (mint.frame or ns.DefaultFrame()) == frame.id end,
+                    function() ns.SetMintFrame(mint, frame.id) refresh() end)
+            else
+                root:CreateTitle(("|cff808080%s (%s)|r"):format(frame.name, how or "locked"))
+            end
+        end
+        if mint.duplicateOf then
+            root:CreateDivider()
+            root:CreateButton(("Reroll for free (%s minted it first)"):format(mint.duplicateOf), function() ns.ConfirmReroll(mint) end)
+        end
+    end)
+end
+
+-- Hangs a picture in a showcase spot (slot), or (no slot) in the first free one, else the last: already in another
+-- spot, the two trade places.
+local function HangInShowcase(mint, slot)
+    local numbers = {}
+    for _, m in ipairs(ns.GetShowcase()) do numbers[#numbers + 1] = m.number end
+    local at
+    for i, n in ipairs(numbers) do if n == mint.number then at = i end end
+    slot = math.min(slot or #numbers + 1, ns.SHOWCASE_SIZE or 3)
+    if at then
+        local to = math.min(slot, #numbers)
+        numbers[at], numbers[to] = numbers[to], numbers[at]
+    else
+        numbers[math.min(slot, #numbers + 1)] = mint.number
+    end
+    ns.SetShowcase(numbers)
+end
+
+-- Draws the portrait: mint (the ogre or picture), card (their card's choices), name (their first name), color (their
+-- name colour), own (yours: the note shows even empty, to write on). view: one of your pictures opened instead (its own
+-- frame, its number and rarity, its layers and buttons; no motto).
+local function ShowPortrait(page, mint, card, name, color, own, view)
+    local top = page.portraitTop
+    local side, picture = PORTRAIT.size, top.picture
+    -- (a picture shown as the portrait: drawn without its own frame, the portrait's goes round it)
+    ns.DrawMint(picture.canvas, mint.ogre and mint or setmetatable({ number = false }, { __index = mint }))
+    -- The frame round the picture: its opening on the picture (a little smaller, its edge under the frame).
+    local frame = view and ns.FrameById(mint.frame or ns.DefaultFrame())
+        or ns.FrameById(card and card.frame or DEFAULT_PORTRAIT_FRAME) or ns.FrameById(DEFAULT_PORTRAIT_FRAME)
+    if view then  -- (a picture: its number for its name, in its rarity's colour; turned over to read its dream)
+        local rarity = ns.MintRarity(mint.traits, mint.asked)
+        name, color = ("Picture #%d"):format(mint.number), { ns.RarityRGB(rarity) }
+    end
+    top.tale.framing.hasBack = view and frame and frame.back ~= nil or false
+    ns.ShowMintTale(top.tale, mint, view and page.reading or false)
+    local written = frame and frame.id == "polaroid"
+    if frame and frame.texture then
+        local inner = frame.inner
+        local tex = side / (math.max(inner.w, inner.h) * 1.03)
+        local ix, iy = inner.x + inner.w / 2, inner.y + inner.h / 2
+        top.frame:ClearAllPoints()
+        top.frame:SetSize(tex, tex)
+        top.frame:SetPoint("TOPLEFT", UI.window, "TOPLEFT", PORTRAIT.x - ix * tex, -(PORTRAIT.y - iy * tex))
+        top.frame:SetTexture(frame.texture)
+        top.frame:Show()
+        top.backTex:ClearAllPoints()
+        top.backTex:SetSize(tex, tex)
+        top.backTex:SetPoint("TOPLEFT", UI.window, "TOPLEFT", PORTRAIT.x - ix * tex, -(PORTRAIT.y - iy * tex))
+        top.backTex:SetTexture(frame.back)
+        if written then  -- (on its white strip)
+            top.written:ClearAllPoints()
+            top.written:SetPoint("CENTER", UI.window, "TOPLEFT", PORTRAIT.x, -(PORTRAIT.y + (PORTRAIT.hand - iy) * tex))
+        end
+    else
+        top.frame:Hide()
+    end
+    -- Their name: written in marker on a polaroid (outlined, so a light colour reads on the white), else on the plate.
+    top.plate:SetShown(not written)
+    top.written:SetShown(written and true or false)
+    if written then
+        top.written:SetFont(SIGN_FONT, 26, "OUTLINE")
+        top.written:SetText(name)
+        top.written:SetTextColor(unpack(color))
+    else
+        local plate = top.plate
+        plate.name:SetText(view and name or name:upper())
+        plate.name:SetTextColor(unpack(color))
+        plate:SetSize(math.max(150, plate.name:GetStringWidth() + 52), 36)
+        plate:ClearAllPoints()
+        plate:SetPoint("CENTER", UI.window, "TOPLEFT", PORTRAIT.x, -PORTRAIT.plate)
+    end
+    -- The motto: theirs, or (yours, none yet) an empty note to write on.
+    local motto = card and card.motto
+    local note = top.note
+    local editing = page.panel == "edit" and not view
+    note:SetShown(not view and not editing and (motto ~= nil or own))
+    if page.editButtons then page.editButtons:SetShown(editing) end
+    -- (the handwriting font's apostrophes read like an I: left out)
+    note.text:SetText(motto and (motto:gsub("'", "")) or "Write your motto...")
+    note.text:SetAlpha(motto and 1 or 0.45)
+    if not note.box:IsShown() then page.SizeNote() end
+    note.pin:ClearAllPoints()
+    note.pin:SetPoint("CENTER", note, "TOP", 0, -1)
+    note:ClearAllPoints()
+    note:SetPoint("TOP", UI.window, "TOPLEFT", PORTRAIT.x, -PORTRAIT.note + 17)  -- (its top fixed: more lines grow down)
+    -- An opened picture's layers and buttons.
+    local traits = view and ns.MintTraits(mint.traits) or {}
+    for i, line in ipairs(top.traits) do
+        local trait = traits[i]
+        line:SetShown(trait ~= nil)
+        if trait then
+            line:SetText(("|cffffd100%s:|r |c%s%s|r"):format(trait[1], ns.RARITY_COLORS[trait[3]] or "ffffffff", trait[2]))
+            if line:GetStringWidth() > PORTRAIT.traits.width then  -- (too long: the shorter label)
+                line:SetText(("|cffffd100%s:|r |c%s%s|r"):format(SHORT_LABELS[trait[1]] or trait[1], ns.RARITY_COLORS[trait[3]] or "ffffffff", trait[2]))
+            end
+        end
+    end
+    local b = top.buttons
+    for _, button in ipairs(b) do button:SetShown(view and true or false) end
+    if view then
+        b[1].text:SetText("BACK")
+        b[1].action = function() page.CloseView() end
+        local shown
+        for i, m in ipairs(ns.GetShowcase()) do if m.number == mint.number then shown = i end end
+        local slot = page.viewingSlot
+        if shown and (not slot or shown == slot) then
+            b[2].text:SetText(("IN SPOT %d"):format(shown))
+            b[2]:Disable()
+        else
+            b[2].text:SetText(slot and ("HANG IN SPOT %d"):format(slot) or "HANG IT")
+            b[2]:Enable()
+            b[2].action = function() HangInShowcase(mint, slot) end
+        end
+        b[3].text:SetText("GALLERY")
+        b[3].action = function() page.OpenGallery() end
+        for _, button in ipairs(b) do button:Paint(false) end
+    end
+end
+
+-- EDIT (yours): your look, changed in place - every pick shows on your portrait at once, kept with SAVE (CANCEL, or
+-- another tab, drops it). On the left slot under the tabs: the groups' tabs, then what you have for the one picked
+-- (two columns; the mouse wheel scrolls), then CANCEL and SAVE. page.edit = the draft { traits, frame, nameColor, tab }.
+local EDIT = { left = 247, top = 327, width = 370, height = 397, row = 24, cell = 42, cols = 2, rows = 6, thumb = 34 }
+local EDIT_GROUPS = {
+    { "OGRE", { { "skin", "Skin" }, { "eyes", "Eyes" }, { "expression", "Expression" } } },
+    { "WEAR", { { "outfit", "Outfit" }, { "headwear", "Headwear" }, { "accessory", "Accessory" } } },
+    { "PICTURE", { { "background", "Background" }, { "frame", "Frame" } } },
+    { "ME", { { "name", "Name colour" } } },
+}
+local CREAM, GOLD_TEXT = { 0.93, 0.88, 0.78 }, { 1, 0.82, 0 }
+
+-- The choices for one of the editor's tabs: { id, name, color (RGB, for the name), texture (its thumbnail) or swatch }.
+local function EditChoices(tab, draft)
+    local list = {}
+    if tab == "frame" then
+        for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
+            if ns.FrameUnlocked(frame) then list[#list + 1] = { id = frame.id, name = frame.name, color = CREAM, texture = frame.texture } end
+        end
+    elseif tab == "name" then
+        for _, entry in ipairs(ns.Colors()) do
+            if ns.HasNameColor(entry) then list[#list + 1] = { id = entry.id, name = entry.name, color = entry.value, swatch = entry.value } end
+        end
+    else
+        for _, option in ipairs(ns.OwnedOptions(tab)) do
+            local hex = ns.RARITY_COLORS[option.rarity] or "ffffffff"
+            list[#list + 1] = { id = option.id, name = option.name,
+                color = { tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255 },
+                texture = ns.MintTexture(option, draft.traits) }
+        end
+    end
+    return list
+end
+local function EditCurrent(tab, draft)
+    if tab == "frame" then return draft.frame elseif tab == "name" then return draft.nameColor end
+    return draft.traits[tab]
+end
+
+local function SmallButton(parent, width, label, height, size)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(width, height or 22)
+    button.back = button:CreateTexture(nil, "BACKGROUND")
+    button.back:SetAllPoints()
+    button.text = button:CreateFontString(nil, "OVERLAY")
+    button.text:SetFont(NAME_FONT, size or 12, "")
+    button.text:SetPoint("CENTER", 0, 1)
+    button.text:SetText(label)
+    UI.OutlineText(button.text, { 0, 0, 0 })
+    function button:Paint(lit)
+        local on = lit or self.selected
+        self.back:SetColorTexture(unpack(self.pressed and { 0.11, 0.07, 0.04 } or self.selected and { 0.45, 0.31, 0.15 }
+            or lit and { 0.32, 0.22, 0.12 } or { 0.2, 0.13, 0.07 }))
+        self.text:SetTextColor(unpack(self.selected and GOLD_TEXT or on and { 1, 1, 1 } or CREAM))
+    end
+    button:SetScript("OnEnter", function(self) self.hover = true self:Paint(true) end)
+    button:SetScript("OnLeave", function(self) self.hover, self.pressed = false, false self:Dip(false) self:Paint(false) end)
+    function button:Dip(down)  -- (pressed: the label and its icon a pixel lower)
+        local x, y = self.textX or 0, (self.textY or 1) - (down and 2 or 0)
+        self.text:ClearAllPoints()
+        self.text:SetPoint("CENTER", x, y)
+    end
+    button:SetScript("OnMouseDown", function(self) if self:IsEnabled() then self.pressed = true self:Dip(true) self:Paint(true) end end)
+    button:SetScript("OnMouseUp", function(self) self.pressed = false self:Dip(false) self:Paint(self.hover) end)
+    button:Paint(false)
+    return button
+end
+
+local function BuildEditor(page, parent)
+    local W = UI.window
+    local panel = CreateFrame("Frame", nil, parent)
+    panel:SetSize(EDIT.width, EDIT.height)
+    panel:SetPoint("TOPLEFT", W, "TOPLEFT", EDIT.left, -EDIT.top)
+    panel:Hide()
+    local board = panel:CreateTexture(nil, "BACKGROUND", nil, -8)
+    board:SetPoint("TOPLEFT", W, "TOPLEFT", UI.SPLIT.under.left, -LEFT.tabs.bottom)
+    board:SetPoint("BOTTOMRIGHT", W, "TOPLEFT", UI.SPLIT.under.middle, -UI.SPLIT.under.bottom)
+    board:SetColorTexture(0.03, 0.03, 0.03)
+    local hint = panel:CreateFontString(nil, "OVERLAY")
+    hint:SetFont(NAME_FONT, 12, "")
+    hint:SetPoint("TOPLEFT", 2, -2)
+    hint:SetTextColor(0.62, 0.56, 0.48)
+    hint:SetText("Changes show on your portrait as you pick")
+    -- The groups' tabs.
+    panel.tabs = {}
+    for g, group in ipairs(EDIT_GROUPS) do
+        local y = -20 - (g - 1) * (EDIT.row + 3)
+        local label = panel:CreateFontString(nil, "OVERLAY")
+        label:SetFont(NAME_FONT, 11, "")
+        label:SetPoint("TOPLEFT", 2, y - 6)
+        label:SetTextColor(0.72, 0.65, 0.51)
+        label:SetText(group[1])
+        local x = 62
+        for _, spec in ipairs(group[2]) do
+            local button = SmallButton(panel, spec[2]:len() * 7 + 18, spec[2])
+            button:SetPoint("TOPLEFT", x, y)
+            button:SetScript("OnClick", function()
+                UI.ClickSound()
+                page.edit.tab, page.edit.offset = spec[1], 0
+                panel:Refresh()
+            end)
+            button.tab = spec[1]
+            panel.tabs[#panel.tabs + 1] = button
+            x = x + button:GetWidth() + 4
+        end
+    end
+    -- The list: what you have for the tab picked, two columns.
+    local listTop = -20 - #EDIT_GROUPS * (EDIT.row + 3) - 6
+    local list = CreateFrame("Frame", nil, panel)
+    list:SetPoint("TOPLEFT", 0, listTop - 4)  -- (13 px of grey round the cells on every side)
+    list:SetSize(EDIT.width, EDIT.cell * EDIT.rows + 6)
+    local back = panel:CreateTexture(nil, "BACKGROUND", nil, -7)  -- (grey under the list, to the slot's bottom)
+    back:SetPoint("TOPLEFT", W, "TOPLEFT", UI.SPLIT.under.left, -(EDIT.top - listTop - 5))  -- (halfway from the tabs above)
+    back:SetPoint("BOTTOMRIGHT", W, "TOPLEFT", UI.SPLIT.under.middle, -UI.SPLIT.under.bottom)
+    back:SetColorTexture(0.1, 0.1, 0.1)
+    list:EnableMouseWheel(true)
+    list:SetScript("OnMouseWheel", function(_, delta)
+        local edit = page.edit
+        local rows = math.ceil(#EditChoices(edit.tab, edit) / EDIT.cols)
+        edit.offset = math.max(0, math.min(math.max(0, rows - EDIT.rows), (edit.offset or 0) - delta))
+        panel:Refresh()
+    end)
+    local cellWidth = (EDIT.width - 9) / EDIT.cols
+    panel.cells = {}
+    for i = 1, EDIT.cols * EDIT.rows do
+        local cell = CreateFrame("Button", nil, list)
+        cell:SetSize(cellWidth, EDIT.cell - 3)
+        cell:SetPoint("TOPLEFT", 3 + ((i - 1) % EDIT.cols) * (cellWidth + 3), -3 - math.floor((i - 1) / EDIT.cols) * EDIT.cell)
+        cell.back = cell:CreateTexture(nil, "BACKGROUND")
+        cell.back:SetAllPoints()
+        cell.rim = {}
+        for side = 1, 4 do  -- (picked: a gold rim)
+            local edge = cell:CreateTexture(nil, "BORDER")
+            edge:SetColorTexture(1, 0.82, 0.3)
+            if side <= 2 then edge:SetHeight(2) edge:SetPoint("LEFT") edge:SetPoint("RIGHT") edge:SetPoint(side == 1 and "TOP" or "BOTTOM")
+            else edge:SetWidth(2) edge:SetPoint("TOP") edge:SetPoint("BOTTOM") edge:SetPoint(side == 3 and "LEFT" or "RIGHT") end
+            cell.rim[side] = edge
+        end
+        cell.thumb = cell:CreateTexture(nil, "ARTWORK")
+        cell.thumb:SetSize(EDIT.thumb, EDIT.thumb)
+        cell.thumb:SetPoint("LEFT", 3, 0)
+        cell.swatch = cell:CreateFontString(nil, "OVERLAY")
+        cell.swatch:SetFont(NAME_FONT, 16, "")
+        cell.swatch:SetPoint("CENTER", cell.thumb)
+        cell.swatch:SetText("Aa")
+        UI.OutlineText(cell.swatch, { 0, 0, 0 })
+        cell.name = cell:CreateFontString(nil, "OVERLAY")
+        cell.name:SetFont(NAME_FONT, 12, "")
+        cell.name:SetPoint("LEFT", cell.thumb, "RIGHT", 6, 0)
+        cell.name:SetPoint("RIGHT", -18, 0)
+        cell.name:SetJustifyH("LEFT")
+        cell.name:SetWordWrap(true)
+        cell.name:SetMaxLines(2)
+        UI.OutlineText(cell.name, { 0, 0, 0 })
+        cell.tick = cell:CreateTexture(nil, "OVERLAY")
+        cell.tick:SetSize(16, 16)
+        cell.tick:SetPoint("TOPRIGHT", -2, -2)
+        cell.tick:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+        cell:SetScript("OnEnter", function(self) self.hover = true panel:PaintCell(self) end)
+        cell:SetScript("OnLeave", function(self) self.hover = false panel:PaintCell(self) end)
+        cell:SetScript("OnClick", function(self)
+            local edit, choice = page.edit, self.choice
+            if not choice then return end
+            UI.ClickSound()
+            if edit.tab == "frame" then edit.frame = choice.id
+            elseif edit.tab == "name" then edit.nameColor = choice.id
+            else  -- (a new table: the portrait is redrawn only for different traits, ns.DrawMint)
+                local traits = {}
+                for k, id in pairs(edit.traits) do traits[k] = id end
+                traits[edit.tab] = choice.id
+                edit.traits = traits
+            end
+            page.RefreshNow()
+        end)
+        panel.cells[i] = cell
+    end
+    function panel:PaintCell(cell)
+        local picked = cell.picked
+        cell.back:SetColorTexture(unpack(picked and { 0.35, 0.27, 0.09, 0.9 } or cell.hover and { 1, 1, 1, 0.1 } or { 1, 1, 1, 0.04 }))
+        for _, edge in ipairs(cell.rim) do edge:SetShown(picked) end
+        cell.tick:SetShown(picked)
+    end
+    -- CANCEL and SAVE.
+    -- CANCEL and SAVE: big, under your portrait in the motto's place (shown by ShowPortrait while editing).
+    local buttons = CreateFrame("Frame", nil, page.portraitTop)
+    buttons:SetAllPoints()
+    buttons:SetFrameLevel(page.portraitTop:GetFrameLevel() + 12)
+    buttons:Hide()
+    page.editButtons = buttons
+    -- SAVE is the main one (gold, a tick); it only wakes once something's changed, then pulses gently. CANCEL dimmer
+    -- (cream, a cross). Enter saves, Escape cancels. Saving flashes the portrait's frame.
+    local function Icon(button, file)
+        local icon = button:CreateTexture(nil, "OVERLAY")
+        icon:SetSize(18, 18)
+        icon:SetTexture(file)
+        button.textX = 10
+        button.text:ClearAllPoints()
+        button.text:SetPoint("CENTER", 10, 1)
+        icon:SetPoint("RIGHT", button.text, "LEFT", -6, 0)
+        button.icon = icon
+    end
+    local save = SmallButton(buttons, 140, "SAVE", 36, 18)
+    save:SetPoint("CENTER", W, "TOPLEFT", PORTRAIT.x + 76, -PORTRAIT.note)
+    Icon(save, "Interface\\RaidFrame\\ReadyCheck-Ready")
+    save.glow = save:CreateTexture(nil, "BORDER")
+    save.glow:SetPoint("TOPLEFT", -3, 3)
+    save.glow:SetPoint("BOTTOMRIGHT", 3, -3)
+    save.glow:SetColorTexture(1, 0.78, 0.25)
+    save.glow:Hide()
+    local cancel = SmallButton(buttons, 140, "CANCEL", 36, 18)
+    cancel:SetPoint("CENTER", W, "TOPLEFT", PORTRAIT.x - 76, -PORTRAIT.note)
+    Icon(cancel, "Interface\\RaidFrame\\ReadyCheck-NotReady")
+    cancel.icon:SetAlpha(0.7)
+    -- (whether the draft differs from what's saved)
+    local function Changed()
+        local edit, card = page.edit, KillTrackerDB.card or {}
+        if not edit then return false end
+        if edit.frame ~= (card.frame or DEFAULT_PORTRAIT_FRAME) or edit.nameColor ~= (card.nameColor or "white") then return true end
+        local saved = ns.BaseTraits()
+        for k, id in pairs(edit.traits) do if saved[k] ~= id then return true end end
+        for k, id in pairs(saved) do if edit.traits[k] ~= id then return true end end
+        return false
+    end
+    -- (SAVE asleep: dim, unclickable; awake: gold, pulsing)
+    local paintSave = save.Paint
+    function save:Paint(lit)
+        paintSave(self, lit)
+        local awake = self:IsEnabled()
+        self.text:SetTextColor(unpack(awake and GOLD_TEXT or { 0.5, 0.45, 0.36 }))
+        self.icon:SetDesaturated(not awake)
+        self.icon:SetAlpha(awake and 1 or 0.4)
+        self.glow:SetShown(awake)
+    end
+    save:SetScript("OnUpdate", function(self)
+        if self.glow:IsShown() then self.glow:SetAlpha(0.18 + 0.22 * (0.5 + 0.5 * math.sin(GetTime() * 4))) end
+    end)
+    function page.PaintEditButtons()
+        save:SetEnabled(Changed())
+        save:Paint(false)
+        cancel:Paint(false)
+        cancel.text:SetTextColor(0.8, 0.75, 0.66)
+    end
+    local function Flash()  -- (the new look hung: the frame lights up and fades)
+        local top, start = page.portraitTop, GetTime()
+        top.frameGlow:SetTexture(top.frame:GetTexture())
+        top.frameGlow:Show()
+        local flasher = page.portraitFlash or CreateFrame("Frame")
+        page.portraitFlash = flasher
+        flasher:SetScript("OnUpdate", function(self)
+            local t = (GetTime() - start) / 1.2
+            if t >= 1 then top.frameGlow:Hide() self:SetScript("OnUpdate", nil) return end
+            top.frameGlow:SetAlpha(0.85 * (1 - t) ^ 2)
+        end)
+    end
+    save:SetScript("OnClick", function()
+        local edit = page.edit
+        if not edit or not Changed() then return end
+        UI.ClickSound()
+        local card = KillTrackerDB.card or {}
+        KillTrackerDB.card = card
+        card.frame = edit.frame ~= DEFAULT_PORTRAIT_FRAME and edit.frame or nil
+        card.nameColor = edit.nameColor ~= "white" and edit.nameColor or nil
+        page.edit = nil
+        ns.SetOgre(edit.traits)  -- (syncs the card, all of it)
+        page.ShowPanel(nil)
+        Flash()
+    end)
+    cancel:SetScript("OnClick", function() UI.ClickSound() page.edit = nil page.ShowPanel(nil) end)
+    -- Enter saves, Escape cancels (out of combat: keys can't be caught in it); other keys go on to the game.
+    buttons:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then return end
+        local mine = key == "ENTER" or key == "ESCAPE"
+        self:SetPropagateKeyboardInput(not mine)
+        if key == "ENTER" then save:Click() elseif key == "ESCAPE" then cancel:Click() end
+    end)
+    buttons:SetScript("OnShow", function(self) if not InCombatLockdown() then self:EnableKeyboard(true) end end)
+    buttons:SetScript("OnHide", function(self) if not InCombatLockdown() then self:EnableKeyboard(false) end end)
+    function panel:Refresh()
+        local edit = page.edit
+        if not edit then return end
+        for _, button in ipairs(self.tabs) do button.selected = button.tab == edit.tab button:Paint(false) end
+        local choices, current = EditChoices(edit.tab, edit), EditCurrent(edit.tab, edit)
+        local first = (edit.offset or 0) * EDIT.cols
+        for i, cell in ipairs(self.cells) do
+            local choice = choices[first + i]
+            cell.choice = choice
+            cell:SetShown(choice ~= nil)
+            if choice then
+                cell.picked = choice.id == current
+                cell.name:SetText(choice.name)
+                cell.name:SetTextColor(unpack(choice.color))
+                cell.thumb:SetTexture(choice.texture or "Interface\\Buttons\\WHITE8X8")
+                if choice.swatch then cell.thumb:SetVertexColor(0.08, 0.05, 0.03) else cell.thumb:SetVertexColor(1, 1, 1) end
+                cell.swatch:SetShown(choice.swatch ~= nil)
+                if choice.swatch then cell.swatch:SetTextColor(unpack(choice.swatch)) end
+                self:PaintCell(cell)
+            end
+        end
+    end
+    return panel
+end
+
 local OVERVIEW  -- the page's registration, for its refresh
 OVERVIEW = {
     key = "overview", label = "Overview", section = "me", order = 1,
@@ -589,7 +1271,7 @@ OVERVIEW = {
             fill:SetSize(under.middle - under.left, band[1] - bandTop)
             if band.beam then
                 fill:SetColorTexture(0.06, 0.04, 0.03)  -- behind the beam's ragged edges
-                UI.CrossBeam(book, LEFT.left, LEFT.right, bandTop, nil, band[1] - bandTop, true)
+                page.feedBeam = UI.CrossBeam(book, LEFT.left, LEFT.right, bandTop, nil, band[1] - bandTop, true)
             else
                 fill:SetColorTexture(band[2], band[3], band[4])
             end
@@ -665,7 +1347,7 @@ OVERVIEW = {
         photo:SetScript("OnMouseUp", function(self, button)
             if not page.portraitMint then return end
             if page.portraitMint.ogre then  -- an ogre (built, Minting.lua): yours opens the builder
-                if not page.key and button == "LeftButton" and not page.building then UI.ClickSound() page.OpenBuilder() end
+                if not page.key and button == "LeftButton" then UI.ClickSound() page.ShowPanel("edit") end
                 return
             end
             if button == "RightButton" and not page.key then
@@ -717,7 +1399,7 @@ OVERVIEW = {
         page.makePrompt.note:SetPoint("TOP", page.makePrompt, "BOTTOM", 0, -8)
         page.makePrompt.note:SetWidth(card.photo.w - 30)
         page.makePrompt.note:SetText("Dress up your ogre: it's your picture here, for the whole guild to see")
-        page.makePrompt:SetScript("OnClick", function() UI.ClickSound() page.OpenBuilder() end)
+        page.makePrompt:SetScript("OnClick", function() UI.ClickSound() page.ShowPanel("edit") end)
         page.makePrompt:Hide()
 
         -- The frame over the photo's edges, and their first name on its plaque.
@@ -889,13 +1571,17 @@ OVERVIEW = {
         left:SetFrameLevel(book:GetFrameLevel() + 2)
         page.left = left
 
-        -- The showcase's pictures, side by side, each in its rarity's colour.
+        -- The showcase's pictures, side by side: no box round them, each hanging in its own frame (Minting.lua), a touch
+        -- crooked. An empty one of yours: a chalk outline with a +. A spot a picture is dragged over glows gold.
         local pictures = LEFT.pictures
         page.polaroids = {}
         for i, x in ipairs(pictures.lefts) do
             local holder = CreateFrame("Button", nil, left)
             holder:SetSize(pictures.size, pictures.size)
             At(holder, "TOPLEFT", x, pictures.top)
+            holder:SetFrameLevel(left:GetFrameLevel() + 2 + pictures.levels[i] * 3)
+            local tilt = pictures.tilts[i]
+            holder.tilt = tilt
             -- A little shake (a picture dragged onto it, Gallery.lua): side to side, dying down.
             function holder:Shake()
                 self.shaking = 0
@@ -905,38 +1591,45 @@ OVERVIEW = {
                     s:ClearAllPoints()
                     if left <= 0 then
                         At(s, "TOPLEFT", x, pictures.top)
-                        if s.mint then ns.DrawMint(s.canvas, s.mint) end
+                        if s.mint then ns.DrawMint(s.canvas, s.mint, tilt) end
                         s:SetScript("OnUpdate", nil)
                     else
                         local wobble = math.sin(s.shaking * 55) * left
                         At(s, "TOPLEFT", x + wobble * 2, pictures.top)
-                        if s.mint then ns.DrawMint(s.canvas, s.mint, math.floor(wobble * 3 + 0.5) / 2) end  -- (rocking, up to 1.5 degrees)
+                        if s.mint then ns.DrawMint(s.canvas, s.mint, tilt + math.floor(wobble * 3 + 0.5) / 2) end  -- (rocking, up to 1.5 degrees)
                     end
                 end)
             end
             holder.slot = i
-            holder.border = holder:CreateTexture(nil, "BACKGROUND")
-            holder.border:SetAllPoints()
-            holder.border:SetColorTexture(1, 1, 1)
-            local inside = holder:CreateTexture(nil, "BORDER")
-            inside:SetPoint("TOPLEFT", pictures.rim, -pictures.rim)
-            inside:SetPoint("BOTTOMRIGHT", -pictures.rim, pictures.rim)
-            inside:SetColorTexture(0.06, 0.06, 0.06)
+            holder.glow = holder:CreateTexture(nil, "BACKGROUND")
+            holder.glow:SetPoint("CENTER")
+            holder.glow:SetSize(pictures.size * 1.25, pictures.size * 1.25)
+            holder.glow:SetTexture(ART .. "Glow")
+            holder.glow:SetVertexColor(1, 0.82, 0.3, 0.8)
+            holder.glow:SetBlendMode("ADD")
+            holder.glow:Hide()
             holder.canvas = CreateFrame("Frame", nil, holder)
-            holder.canvas:SetPoint("TOPLEFT", pictures.rim, -pictures.rim)
-            holder.canvas:SetPoint("BOTTOMRIGHT", -pictures.rim, pictures.rim)
+            holder.canvas:SetAllPoints()
+            holder.outline = holder:CreateTexture(nil, "ARTWORK")  -- (an empty spot: chalk)
+            holder.outline:SetPoint("CENTER")
+            holder.outline:SetSize(pictures.size * 0.82, pictures.size * 0.82)
+            holder.outline:SetTexture(ART .. "Dashed")
+            holder.outline:SetVertexColor(0.86, 0.82, 0.74, 0.4)
+            holder.outline:SetRotation(-math.rad(tilt))
             holder.empty = holder:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
             holder.empty:SetPoint("CENTER")
             holder.empty:SetText("+")
-            holder.empty:SetTextColor(0.5, 0.5, 0.5)
+            holder.empty:SetTextColor(0.86, 0.82, 0.74, 0.55)
             holder:RegisterForDrag("LeftButton")
-            function holder:paint()  -- its border back to its picture's rarity (after a drag lit it)
-                self.border:SetVertexColor(unpack(self.borderColor or { 0.35, 0.35, 0.35 }))
+            function holder:paint(lit)  -- lit: a picture being dragged over it (Gallery.lua)
+                self.glow:SetShown(lit and true or false)
             end
             holder:SetScript("OnClick", function(self)
                 UI.ClickSound()
-                if not self.key then
-                    page.OpenGallery()  -- yours: your gallery on the right page, to drag pictures in (Gallery.lua)
+                if not self.key and self.mint then
+                    page.OpenView(self.mint, false, self.slot)  -- yours: it, big, in the portrait's place
+                elseif not self.key then
+                    page.OpenGallery()  -- an empty spot of yours: your gallery, to drag a picture in (Gallery.lua)
                 elseif self.mint then
                     ns.ShowMint(self.mint, Ambiguate(self.key, "short"))
                 end
@@ -1037,18 +1730,18 @@ OVERVIEW = {
         -- Your gallery over the right page instead of the photo (Gallery.lua), from your showcase.
         page.gallery = UI.Gallery(page)
         -- One of your pictures, opened to look at (on the photo's place, with its buttons). fromGallery: BACK reopens it.
-        function page.OpenView(mint, fromGallery)
+        function page.OpenView(mint, fromGallery, slot)
             page.CloseDetail()
             page.gallery:Hide()
             page.building, page.buildingFromGallery = nil, nil
-            page.viewing, page.viewingFromGallery = mint, fromGallery
+            page.viewing, page.viewingFromGallery, page.viewingSlot = mint, fromGallery, slot
             page.photo:Show()
             page.hung:Show()
             OVERVIEW.refresh(page)
         end
         function page.CloseView()
             local fromGallery = page.viewingFromGallery
-            page.viewing, page.viewingFromGallery = nil, nil
+            page.viewing, page.viewingFromGallery, page.viewingSlot = nil, nil, nil
             if fromGallery then page.OpenGallery() else OVERVIEW.refresh(page) end
         end
         -- Building your ogre (on the photo's place): from the one you have, else your photo's picture, else a plain one.
@@ -1075,6 +1768,7 @@ OVERVIEW = {
             page.gallery:Refresh()
             page.photo:Hide()
             page.hung:Hide()
+            page.portraitTop:Hide()
             if UI.SetTab then UI.SetTab("overview", "Gallery", "PIX") end
         end
         function page.CloseGallery()
@@ -1083,12 +1777,14 @@ OVERVIEW = {
             page.photo:SetShown(page.panel ~= "crafts")
             page.hung:SetShown(page.panel ~= "crafts")
             if UI.SetTab then UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end
+            if page.loaded then OVERVIEW.refresh(page) end  -- (the portrait back)
         end
         function page.OpenDetail(item)
             page.gallery:Hide()
             page.detail:ShowItem(item)
             page.photo:Hide()
             page.hung:Hide()
+            page.portraitTop:Hide()
             PaintFeed()
         end
         function page.CloseDetail()
@@ -1097,12 +1793,36 @@ OVERVIEW = {
             page.photo:SetShown(page.panel ~= "crafts")
             page.hung:SetShown(page.panel ~= "crafts")
             PaintFeed()
+            if page.loaded then OVERVIEW.refresh(page) end  -- (the portrait back)
         end
+        -- The portrait (ME, nothing else open): click it (yours) to change your look, right-click for its frame and
+        -- your motto; someone else's picture opens.
+        BuildPortrait(page, function(button)
+            local mint = page.portraitMint
+            if not mint then return end
+            if page.viewing and mint == page.viewing then  -- (an opened picture: turn it over, right-click its menu)
+                if button == "RightButton" then return PictureMenu(page.portraitTop.picture, mint, function() OVERVIEW.refresh(page) end) end
+                UI.ClickSound()
+                page.reading = not page.reading
+                return OVERVIEW.refresh(page)
+            end
+            if not page.key then
+                if button == "RightButton" then return PortraitMenu(page.portraitTop.picture) end
+                UI.ClickSound()
+                if page.panel ~= "edit" then page.ShowPanel("edit") end
+            elseif not mint.ogre then
+                UI.ClickSound()
+                ns.ShowMint(mint, Ambiguate(page.key, "short"))
+            end
+        end)
 
         page.gearPanel = GearPage(page)
         page.gearPanel:SetFrameLevel(left:GetFrameLevel() + 20)
         page.craftsPanel = CraftsPage(page)
         page.craftsPanel:SetFrameLevel(left:GetFrameLevel() + 20)
+        page.RefreshNow = function() OVERVIEW.refresh(page) end
+        page.editPanel = BuildEditor(page, page)
+        page.editPanel:SetFrameLevel(left:GetFrameLevel() + 20)
 
         -- The tabs: ME (the pictures and the feed), GEARZ, CRAFTS.
         local tabs = CreateFrame("Frame", nil, page)
@@ -1110,7 +1830,16 @@ OVERVIEW = {
         tabs:SetFrameLevel(left:GetFrameLevel() + 25)
         page.tabs = {}
         local function ShowPanel(which)
+            if which == "edit" and page.key then which = nil end  -- (only yours)
+            if which ~= "edit" then page.edit = nil end  -- (left: not saved)
+            if which == "edit" and not page.edit then
+                local card = KillTrackerDB.card or {}
+                page.edit = { traits = ns.BaseTraits(), frame = card.frame or DEFAULT_PORTRAIT_FRAME, nameColor = card.nameColor or "white",
+                    tab = "outfit", offset = 0 }
+            end
             page.panel = which
+            page.editPanel:SetShown(which == "edit")
+            if page.feedBeam then page.feedBeam:SetShown(which ~= "edit") end  -- (the editor's board covers it all)
             page.detail:Hide()
             page.gallery:Hide()
             page.viewing, page.viewingFromGallery = nil, nil
@@ -1129,6 +1858,7 @@ OVERVIEW = {
             function tab:Redraw()
                 local word = KillTrackerDB and KillTrackerDB.ogreMode and spec[3] or spec[2]
                 if spec[1] == nil and page.key then word = PRONOUNS[UI.Profile(page.key).gender or ""] or "THEY" end
+                self:SetShown(spec[1] ~= "edit" or not page.key)  -- (EDIT: yours only)
                 self:SetTab(word, page.panel == spec[1])
             end
             tab:SetScript("OnClick", function()
@@ -1193,6 +1923,9 @@ OVERVIEW = {
         end
         page.noPicture = not key and not portrait and page.panel == nil  -- (you, none: MAKE YOUR OGRE)
         if page.panel == "gear" then portrait = nil end  -- their gear goes round their character
+        if page.panel == "edit" and page.edit and not key then  -- (your look being changed: the draft)
+            portrait = { traits = page.edit.traits, ogre = true, style = cardData and cardData.ogreStyle }
+        end
         -- One of your pictures opened to look at: it, instead (with its buttons), until BACK.
         if page.viewing and (key or page.panel ~= nil or not ns.FindMint(nil, page.viewing.number)) then
             page.viewing, page.viewingFromGallery = nil, nil
@@ -1309,6 +2042,23 @@ OVERVIEW = {
             page.portraitInfo:SetText(("|c%s%s|r  |cff999999%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff",
                 (rarity:gsub("^%l", string.upper)), what))
         end
+        -- The portrait instead of the photo (ME, their ogre or picture, nothing else open: not a picture opened, not
+        -- the builder, not the gallery or a feed line's details).
+        local hanging = portrait ~= nil and (page.panel == nil or page.panel == "edit") and not page.building and not galleryOpen
+            and not (page.detail and page.detail:IsShown())
+        if hanging then
+            page.photo:Hide()
+            page.hung:Hide()
+            local edit = page.panel == "edit" and page.edit
+            local entry = edit and ns.FindNameColor(edit.nameColor)
+            ShowPortrait(page, portrait, edit and { frame = edit.frame, motto = cardData and cardData.motto } or cardData,
+                (p.name or ""):match("^(%S+)") or "", entry and entry.value or ns.GetNameColor(key), not key,
+                page.viewing ~= nil and portrait == page.viewing)
+        elseif page.panel ~= "crafts" and not galleryOpen and not (page.detail and page.detail:IsShown()) then
+            page.photo:Show()
+            page.hung:Show()
+        end
+        page.portraitTop:SetShown(hanging)
         -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
         -- refreshes.
         if key ~= page.key then page.CloseDetail() end  -- someone else's feed
@@ -1328,9 +2078,9 @@ OVERVIEW = {
             holder:SetShown(mint ~= nil or key == nil)
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
-            holder.borderColor = mint and { ns.RarityRGB(ns.MintRarity(mint.traits, mint.asked)) } or nil
-            if mint then ns.DrawMint(holder.canvas, mint) end
-            holder:paint()
+            holder.outline:SetShown(mint == nil)
+            if mint then ns.DrawMint(holder.canvas, mint, holder.tilt) end
+            holder:paint(false)
         end
 
         -- What happened to them lately (WHAT HAPPEN TO ME? on yours, their first name on someone else's).
@@ -1358,6 +2108,7 @@ OVERVIEW = {
 
         page.gearPanel:SetPlayer(key)
         page.craftsPanel:SetPlayer(key)
+        if page.panel == "edit" then page.editPanel:Refresh() if page.PaintEditButtons then page.PaintEditButtons() end end
         for _, tab in ipairs(page.tabs) do tab:Redraw() end
 
         -- The first name on the frame's plaque, as big as fits.

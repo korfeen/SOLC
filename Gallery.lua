@@ -251,7 +251,7 @@ function UI.Gallery(page)
             if not entry then return end
             UI.ClickSound()
             if entry.mintAction then return ns.ConfirmMint() end
-            if entry.ogre then return page.OpenBuilder(true) end
+            if entry.ogre then return page.ShowPanel("edit") end  -- (your ogre: changed in place, EDIT)
             if entry.chest then return ns.ShowChest(entry.chest) end
             if page.OpenView then page.OpenView(entry.mint, true) end
         end)
@@ -364,6 +364,12 @@ function UI.Gallery(page)
         ns.DrawMint(ghost.canvas, mint, 0)
         ghost.outline:SetVertexColor(ns.RarityRGB(ns.MintRarity(mint.traits, mint.asked)))
         ghost.outline:SetRotation(0)
+        -- (the pictures already in the showcase dim while it's dragged)
+        local shown = {}
+        for _, m in ipairs(ns.GetShowcase()) do shown[m.number] = true end
+        for _, thumb in ipairs(gallery.thumbs) do
+            thumb:SetAlpha(thumb.mint and thumb.mint.number and shown[thumb.mint.number] and 0.3 or 1)
+        end
     end
     local function SlotUnderCursor()
         for _, holder in ipairs(page.polaroids) do
@@ -397,7 +403,7 @@ function UI.Gallery(page)
         if over and over ~= ghost.over and over.Shake then over:Shake() end
         ghost.over = over
         for _, holder in ipairs(page.polaroids) do
-            if holder == over then holder.border:SetVertexColor(unpack(GOLD)) elseif holder.paint then holder:paint() end
+            if holder.paint then holder:paint(holder == over) end
         end
     end)
     function gallery:StopDrag()
@@ -405,6 +411,7 @@ function UI.Gallery(page)
         if not mint then return end
         dragging, dragFrom, dragPhoto = nil, nil, nil
         ghost:Hide()
+        for _, thumb in ipairs(self.thumbs) do thumb:SetAlpha(1) end
         photo:paint(false)
         -- Onto the photo's slot: the big photo shows it. From it, anywhere but a showcase slot: your character again.
         if photo:IsMouseOver() then

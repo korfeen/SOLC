@@ -664,7 +664,12 @@ if buttons then
     local close = setmetatable({ x = BUTTONS_RIGHT - buttons.close.w, y = BEAM_MIDDLE - buttons.close.h / 2 }, { __index = buttons.close })
     local settings = setmetatable({ x = close.x - buttons.settings.w + 4, y = BEAM_MIDDLE - buttons.settings.h / 2 }, { __index = buttons.settings })
     settingsButton = HeaderButton(settings, "Settings", function() ns.OpenPage("settings") end)
-    HeaderButton(close, "Close", function() frame:Hide() end)
+    local closeButton = HeaderButton(close, "Close", function() frame:Hide() end)
+    -- Hidden on the Overview, whose portrait hangs over the top beam there (OverviewCard.lua); Escape still closes.
+    function ns.UI.SetHeaderButtonsShown(shown)
+        settingsButton:SetShown(shown)
+        closeButton:SetShown(shown)
+    end
 end
 
 -- The menu column: no box of its own, the wooden planks hang straight on the window.
