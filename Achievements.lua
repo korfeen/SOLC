@@ -588,7 +588,7 @@ BuildProgress = function(source)
         for i, t in ipairs(list) do
             local time = earnedTimes and earnedTimes[t[1]]
             local earned = time ~= nil or (not earnedTimes and row.kills >= t[3])
-            row.tiers[i] = { name = t[2], kills = t[3], points = t[4], earned = earned, time = time }
+            row.tiers[i] = { id = t[1], name = t[2], kills = t[3], points = t[4], earned = earned, time = time }
             if earned then
                 row.earned = row.earned + 1
             elseif not row.next then

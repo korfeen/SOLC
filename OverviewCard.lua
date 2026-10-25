@@ -959,6 +959,40 @@ local CREAM, GOLD_TEXT = { 0.93, 0.88, 0.78 }, { 1, 0.82, 0 }
 -- (the header's choices, changed as you pick in its panel: kept when EDIT opens, put back by CANCEL)
 local HEADER_FIELDS = { "headerBg", "cropX", "cropY", "cropZoom", "nameColor", "bgColor" }
 
+-- Where a piece you don't have comes from (its unlock key, Unlocks.lua), in a few words.
+local function HowToGet(option, nextDeed)
+    local kind, a, b = tostring(option.unlock or ""):match("^(%w+):([^:]*):?(.*)$")
+    local d = a and ns.DungeonByKey and ns.DungeonByKey(a)
+    if kind == "clear" then return (d and d.name or "A dungeon") .. " chests"
+    elseif kind == "chase" then return "Chase: " .. (d and d.name or "a dungeon") .. " chests"
+    elseif kind == "deed" then
+        local title = ns.AchievementTitle and ns.AchievementTitle(option.unlock:sub(6))
+        return (nextDeed and ("Next deed (" .. nextDeed .. "): ") or "Deed: ") .. (title or "a deed")
+    elseif kind == "rank" then return "Ogre Rank " .. a
+    elseif kind == "combine" then return "Combine its pieces"
+    elseif kind == "loot" then return "Loot it"
+    elseif kind == "shop" then return "Pro Shop" end
+    return "Not yours yet"
+end
+-- The pieces you've seen: on guildmates (their ogre on their Overview, a picture of theirs opened), in the Pro Shop, and your
+-- next deed step's rewards (each ladder's lowest step you haven't earned): "layer:id" = true. Built when it's turned on.
+local function SeenPieces()
+    local seen, nextDeed = {}, {}
+    for _, row in ipairs(ns.GetAchievementProgress and ns.GetAchievementProgress() or {}) do  -- (your next tier on each ladder you've started)
+        if row.next and row.next.id then nextDeed[row.next.id] = ("%d/%d"):format(row.kills or 0, row.next.kills or 0) end
+    end
+    for _, layer in ipairs(ns.MintLayers or {}) do
+        for _, option in ipairs(layer.options) do
+            local unlock = option.unlock or ""
+            if unlock:find("^shop:") then seen[layer.key .. ":" .. option.id] = true end
+            local progress = unlock:find("^deed:") and nextDeed[unlock:sub(6)]
+            if progress then seen[layer.key .. ":" .. option.id] = progress end
+        end
+    end
+    for piece in pairs(KillTrackerDB.seenPieces or {}) do seen[piece] = seen[piece] or true end  -- (on guildmates: ns.SeePieces)
+    return seen
+end
+
 -- The choices for one of the editor's tabs: { id, name, color (RGB, for the name), texture (its thumbnail) or swatch }.
 local function EditChoices(tab, draft)
     local list = {}
@@ -980,14 +1014,40 @@ local function EditChoices(tab, draft)
             if ns.HasNameColor(entry) then list[#list + 1] = { id = "c:" .. entry.id, name = entry.name .. " wash", color = CREAM, fill = entry.base } end
         end
     else
-        for _, option in ipairs(ns.OwnedOptions(tab)) do
+        local owned = {}
+        local function Add(option, extra)
             local hex = ns.RARITY_COLORS[option.rarity] or "ffffffff"
-            list[#list + 1] = { id = option.id, name = option.name,
+            local choice = { id = option.id, name = option.name,
                 color = { tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255 },
                 texture = ns.MintTexture(option, draft.traits) }
+            for k, v in pairs(extra or {}) do choice[k] = v end
+            list[#list + 1] = choice
+        end
+        for _, option in ipairs(ns.OwnedOptions(tab)) do owned[option.id] = true Add(option) end
+        if draft.seenToo then
+            local layer
+            for _, l in ipairs(ns.MintLayers or {}) do if l.key == tab then layer = l end end
+            local seen = draft.seenPieces or {}
+            for _, option in ipairs(layer and layer.options or {}) do
+                if not owned[option.id] and not option.retired then
+                    local why = seen[tab .. ":" .. option.id]
+                    if why then Add(option, { notMine = true, how = HowToGet(option, why ~= true and why or nil) }) end  -- (unseen: not shown at all)
+                end
+            end
         end
     end
     return list
+end
+local function WearsNotMine(draft)
+    for _, layer in ipairs(ns.MintLayers or {}) do
+        local id = draft.traits[layer.key]
+        if id then
+            local mine = false
+            for _, option in ipairs(ns.OwnedOptions(layer.key)) do if option.id == id then mine = true end end
+            if not mine then return true end
+        end
+    end
+    return false
 end
 local function EditCurrent(tab, draft)
     local card = KillTrackerDB.card or {}
@@ -1041,6 +1101,20 @@ local function BuildEditor(page, parent)
     hint:SetTextColor(0.62, 0.56, 0.48)
     hint:SetText("Changes show on your portrait as you pick")
     panel.hint = hint
+    local seenToggle = SmallButton(panel, 96, "MINE")
+    seenToggle:SetPoint("TOPRIGHT", 0, 2)
+    seenToggle:SetScript("OnClick", function(self)
+        local edit = page.edit
+        if not edit then return end
+        UI.ClickSound()
+        edit.seenToo = not edit.seenToo
+        if edit.seenToo then edit.seenPieces = SeenPieces() end
+        edit.offset = 0
+        panel:Refresh()
+    end)
+    seenToggle:SetScript("OnEnter", function(self) self:Paint(true) SetTooltip(self, { "Mine / Mine + seen",
+        "Also show what you've seen: on guildmates' ogres and pictures, in the Pro Shop, your next deeds' rewards" }) end)
+    panel.seenToggle = seenToggle
     -- The groups' tabs.
     panel.tabs = {}
     for g, group in ipairs(EDIT_GROUPS) do
@@ -1109,18 +1183,30 @@ local function BuildEditor(page, parent)
         cell.name:SetPoint("LEFT", cell.thumb, "RIGHT", 6, 0)
         cell.name:SetPoint("RIGHT", -18, 0)
         cell.name:SetJustifyH("LEFT")
-        cell.name:SetWordWrap(true)
-        cell.name:SetMaxLines(2)
+        cell.name:SetWordWrap(false)
         UI.OutlineText(cell.name, { 0, 0, 0 })
+        cell.how = cell:CreateFontString(nil, "OVERLAY")
+        cell.how:SetFont(NAME_FONT, 11, "")
+        cell.how:SetPoint("TOPLEFT", cell.name, "BOTTOMLEFT", 0, -1)
+        cell.how:SetPoint("RIGHT", -4, 0)
+        cell.how:SetJustifyH("LEFT")
+        cell.how:SetWordWrap(false)
+        cell.how:SetTextColor(0.91, 0.65, 0.42)
+        UI.OutlineText(cell.how, { 0, 0, 0 })
         cell.tick = cell:CreateTexture(nil, "OVERLAY")
         cell.tick:SetSize(16, 16)
         cell.tick:SetPoint("TOPRIGHT", -2, -2)
         cell.tick:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-        cell:SetScript("OnEnter", function(self) self.hover = true panel:PaintCell(self) end)
-        cell:SetScript("OnLeave", function(self) self.hover = false panel:PaintCell(self) end)
+        cell:SetScript("OnEnter", function(self)
+            self.hover = true
+            panel:PaintCell(self)
+            local c = self.choice
+            if c and (c.notMine or c.mystery) then SetTooltip(self, { c.mystery and "???" or c.name, c.how, c.notMine and "Try it on: not yours to keep yet" or nil }) end
+        end)
+        cell:SetScript("OnLeave", function(self) self.hover = false panel:PaintCell(self) GameTooltip_Hide() end)
         cell:SetScript("OnClick", function(self)
             local edit, choice = page.edit, self.choice
-            if not choice then return end
+            if not choice or choice.mystery then return end
             UI.ClickSound()
             if edit.tab == "frame" then edit.frame = choice.id
             elseif edit.tab == "name" or edit.tab == "header" then  -- (your card, live; CANCEL puts it back)
@@ -1151,10 +1237,16 @@ local function BuildEditor(page, parent)
     panel.cropHint:SetText("Drag your header's picture to move it, scroll to zoom")
     panel.cropHint:Hide()
     function panel:PaintCell(cell)
-        local picked = cell.picked
-        cell.back:SetColorTexture(unpack(picked and { 0.35, 0.27, 0.09, 0.9 } or cell.hover and { 1, 1, 1, 0.1 } or { 1, 1, 1, 0.04 }))
-        for _, edge in ipairs(cell.rim) do edge:SetShown(picked) end
-        cell.tick:SetShown(picked)
+        local picked, c = cell.picked, cell.choice or {}
+        local trying = picked and c.notMine
+        cell.back:SetColorTexture(unpack(trying and { 0.4, 0.22, 0.08, 0.6 } or picked and { 0.35, 0.27, 0.09, 0.9 }
+            or cell.hover and { 1, 1, 1, 0.1 } or { 1, 1, 1, 0.04 }))
+        for _, edge in ipairs(cell.rim) do
+            edge:SetShown(picked)
+            edge:SetColorTexture(unpack(trying and { 0.91, 0.65, 0.42 } or { 1, 0.82, 0.3 }))
+        end
+        cell.tick:SetShown(picked and not trying)
+        cell:SetAlpha((c.notMine and not picked or c.mystery) and 0.55 or 1)
     end
     -- CANCEL and SAVE.
     -- CANCEL and SAVE: big, under your portrait in the motto's place (shown by ShowPortrait while editing).
@@ -1208,11 +1300,16 @@ local function BuildEditor(page, parent)
         self.icon:SetAlpha(awake and 1 or 0.4)
         self.glow:SetShown(awake)
     end
+    save:SetScript("OnEnter", function(self)
+        self.hover = true self:Paint(true)
+        if page.edit and WearsNotMine(page.edit) then SetTooltip(self, { "Not yet", "Take off what isn't yours first" }) end
+    end)
+    save:SetScript("OnLeave", function(self) self.hover, self.pressed = false, false self:Dip(false) self:Paint(false) GameTooltip_Hide() end)
     save:SetScript("OnUpdate", function(self)
         if self.glow:IsShown() then self.glow:SetAlpha(0.18 + 0.22 * (0.5 + 0.5 * math.sin(GetTime() * 4))) end
     end)
     function page.PaintEditButtons()
-        save:SetEnabled(Changed())
+        save:SetEnabled(Changed() and not (page.edit and WearsNotMine(page.edit)))
         save:Paint(false)
         cancel:Paint(false)
         cancel.text:SetTextColor(0.8, 0.75, 0.66)
@@ -1231,7 +1328,7 @@ local function BuildEditor(page, parent)
     end
     save:SetScript("OnClick", function()
         local edit = page.edit
-        if not edit or not Changed() then return end
+        if not edit or not Changed() or WearsNotMine(edit) then return end
         UI.ClickSound()
         local card = KillTrackerDB.card or {}
         KillTrackerDB.card = card
@@ -1255,6 +1352,10 @@ local function BuildEditor(page, parent)
         local edit = page.edit
         if not edit then return end
         for _, button in ipairs(self.tabs) do button.selected = button.tab == edit.tab button:Paint(false) end
+        self.seenToggle.text:SetText(edit.seenToo and "MINE + SEEN" or "MINE")
+        self.seenToggle.selected = edit.seenToo
+        self.seenToggle:Paint(false)
+        self.seenToggle:SetShown(edit.tab ~= "frame" and edit.tab ~= "name" and edit.tab ~= "header")
         local onHeader = edit.tab == "header"
         if UI.SetHeaderCropping then UI.SetHeaderCropping(onHeader) end
         self.cropHint:SetShown(onHeader)
@@ -1268,8 +1369,14 @@ local function BuildEditor(page, parent)
             if choice then
                 cell.picked = choice.id == current
                 cell.name:SetText(choice.name)
+                cell.how:SetText(choice.how or "")
+                cell.how:SetShown(choice.how ~= nil)
+                cell.name:ClearAllPoints()  -- (with a second line: the name up a little)
+                cell.name:SetPoint("LEFT", cell.thumb, "RIGHT", 6, choice.how and 6 or 0)
+                cell.name:SetPoint("RIGHT", -18, 0)
                 cell.name:SetTextColor(unpack(choice.color))
                 cell.thumb:SetTexture(choice.texture or "Interface\\Buttons\\WHITE8X8")
+                cell.thumb:SetShown(not choice.mystery)
                 if choice.swatch then cell.thumb:SetVertexColor(0.08, 0.05, 0.03)
                 elseif choice.fill then cell.thumb:SetVertexColor(unpack(choice.fill))
                 else cell.thumb:SetVertexColor(1, 1, 1) end
@@ -1877,7 +1984,8 @@ OVERVIEW = {
             end
             if which == "edit" and not page.edit then
                 local card = KillTrackerDB.card or {}
-                page.edit = { traits = ns.BaseTraits(), frame = card.frame or DEFAULT_PORTRAIT_FRAME, header = {}, tab = "outfit", offset = 0 }
+                page.edit = { traits = ns.BaseTraits(), frame = card.frame or DEFAULT_PORTRAIT_FRAME, header = {}, tab = "outfit", offset = 0,
+                    seenToo = true, seenPieces = SeenPieces() }  -- (what you've seen shows by default, after yours)
                 for _, field in ipairs(HEADER_FIELDS) do page.edit.header[field] = card[field] end
             end
             page.panel = which
@@ -2089,6 +2197,7 @@ OVERVIEW = {
         -- the builder, not the gallery or a feed line's details).
         local hanging = portrait ~= nil and (page.panel == nil or page.panel == "edit") and not page.building and not galleryOpen
             and not (page.detail and page.detail:IsShown())
+        if hanging and key and portrait.ogre and ns.SeePieces then ns.SeePieces(portrait.traits) end  -- (their ogre: seen)
         if hanging then
             page.photo:Hide()
             page.hung:Hide()

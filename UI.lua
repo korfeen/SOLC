@@ -1450,6 +1450,7 @@ ns.UI.List = { state = state, BuildRows = BuildRows, FillRow = FillRow, RowToolt
 -- the Guild page's Pictures tab.
 function ns.ShowMint(mint, owner)
     if not owner and ns.UI.ShowOwnPicture then return ns.UI.ShowOwnPicture(mint) end
+    if owner and ns.SeePieces then ns.SeePieces(mint.traits) end  -- (a guildmate's picture looked at: its pieces seen)
     if ns.UI.PixShow then ns.UI.PixShow(mint, owner) end
 end
 

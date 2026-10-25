@@ -1400,6 +1400,14 @@ end
 -- Someone's showcased pictures, in order: yours (key nil) or a synced guildmate's. Pictures that no
 -- longer exist are skipped.
 -- Someone's picture by its number: yours (key nil) or a synced guildmate's; nil if they don't have it (any more).
+-- Pieces you've seen on a guildmate: on their ogre (their Overview open) or in a picture of theirs you opened.
+-- KillTrackerDB.seenPieces = { ["layer:id"] = true }: what the Overview's EDIT shows you to try on (Mine + seen).
+function ns.SeePieces(traits)
+    if not traits then return end
+    KillTrackerDB.seenPieces = KillTrackerDB.seenPieces or {}
+    for k, id in pairs(traits) do KillTrackerDB.seenPieces[k .. ":" .. id] = true end
+end
+
 function ns.FindMint(key, number)
     local source = key and KillTrackerFriends[key] or KillTrackerDB
     if not source or not number then return end

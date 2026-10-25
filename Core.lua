@@ -637,6 +637,21 @@ SlashCmdList.SOLC = function(input)
         Print("Kill announcements " .. (db.announce and "on." or "off."))
     elseif msg == "probe" then
         ns.ToggleProbe()
+    elseif msg == "seenrandom" and ns.IsDev() then  -- (dev: a handful of pieces you don't have, as if seen on guildmates)
+        local pool = {}
+        for _, layer in ipairs(ns.MintLayers or {}) do
+            local owned = {}
+            for _, option in ipairs(ns.OwnedOptions(layer.key)) do owned[option.id] = true end
+            for _, option in ipairs(layer.options) do
+                if not owned[option.id] and not option.retired then pool[#pool + 1] = { [layer.key] = option.id } end
+            end
+        end
+        local n = 0
+        for _ = 1, math.min(tonumber(arg) or 20, #pool) do
+            ns.SeePieces(table.remove(pool, math.random(#pool)))
+            n = n + 1
+        end
+        ns.Print(("%d pieces you don't have marked as seen (EDIT: Mine + seen)"):format(n))
     elseif msg == "supersafesolcdev" and ns.IsDev() then
         ns.ToggleDev()  -- the dev menu (Dev.lua): only on the dev characters (Config.lua), not in /solc help
     elseif msg == "debug" then
