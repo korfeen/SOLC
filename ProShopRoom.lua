@@ -24,7 +24,7 @@ local VELVET_LIT, VELVET_DARK = { 0.55, 0.1, 0.13 }, { 0.22, 0.03, 0.05 }
 -- The room's painting is 827 x 584 (the page's size): everything is placed in its pixels and scaled to the page.
 local SCENE_W, SCENE_H = 827, 584
 local BLEED = 14  -- (the painting, and the zoomed view, run this far under the wooden frame on every side)
-local EASEL = { x = 650, bottom = 548, height = 370 }  -- (its middle, where its feet stand: by the sewing table)
+local EASEL = { x = 680, bottom = 548, height = 370 }  -- (its middle, where its feet stand: by the sewing table)
 local PICTURE = { x = 413, y = 255, size = 340 }  -- zoomed in: its middle and size
 local CURTAIN_W, VALANCE_H = 200, 58
 local OPEN_TIME = 0.55
