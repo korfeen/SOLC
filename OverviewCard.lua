@@ -951,7 +951,7 @@ end
 local EDIT = { left = 247, top = 327, width = 370, height = 397, row = 24, cell = 42, cols = 2, rows = 6, thumb = 34 }
 local EDIT_GROUPS = {
     { "OGRE", { { "skin", "Skin" }, { "eyes", "Eyes" }, { "expression", "Expression" } } },
-    { "WEAR", { { "outfit", "Outfit" }, { "headwear", "Headwear" }, { "accessory", "Accessory" } } },
+    { "WEAR", { { "outfit", "Clothes" }, { "headwear", "Headwear" }, { "accessory", "Accessory" } } },
     { "PICTURE", { { "background", "Background" }, { "frame", "Frame" } } },
     { "ME", { { "name", "Name colour" }, { "header", "Header" } } },
 }

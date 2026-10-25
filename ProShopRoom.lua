@@ -5,7 +5,7 @@
 -- Click the easel -> ZOOMED IN: the room blurs and dims (it crossfades to a pre-blurred twin, Media/ProShop/Room-blur),
 -- the easel's picture comes forward to the middle in a gilt and burgundy border, red velvet curtains slide in from the
 -- sides and a valance drops in on top. The left curtain: a brass plaque per layer in stock, in the mockup's words and
--- groups (WEAR: Outfit, Headwear, Accessory; you walk in on Outfit); the right: the piece's name, rarity, price (or "In
+-- groups (WEAR: Clothes, Headwear, Accessory; you walk in on Clothes); the right: the piece's name, rarity, price (or "In
 -- your wardrobe") and your cart (a piece a layer, the total, your points, Checkout: bought at once for now, the steward
 -- rings it up later). Under the picture: knobs either side of Add to cart and a count. The mannequin wears the display
 -- set, the cart over it, the piece looked at over that (headwear zoomed further in). Keys: W/S or Up/Down tabs, A/D or
@@ -167,9 +167,9 @@ end
 
 -- The dressing (zoomed in): the layers the shop stocks as tabs, the piece looked at on each, the cart (one piece a
 -- layer; kept while you're logged in).
--- (the mockup's words and groups; you walk in on Outfit, so not zoomed in)
+-- (the mockup's words and groups, but Clothes for the outfit layer; you walk in on Clothes, so not zoomed in)
 local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background" }
-local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", outfit = "Outfit", headwear = "Headwear", accessory = "Accessory", background = "Background" }
+local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory", background = "Background" }
 local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE" }
 local FIRST_TAB = "outfit"
 local CLOSE_LAYERS = { headwear = true, eyes = true, expression = true }
@@ -200,7 +200,7 @@ local function Tabs()
         view.cart[key] = found
     end
     view.tabs = tabs
-    if not view.tab then  -- (walking in: Outfit)
+    if not view.tab then  -- (walking in: Clothes)
         for i, tab in ipairs(tabs) do if tab.key == FIRST_TAB then view.tab = i end end
     end
     view.tab = math.min(view.tab or 1, math.max(1, #tabs))
@@ -275,7 +275,7 @@ end
 
 local Redraw  -- (further down)
 
--- Zooms in on the easel (true) or back out to the room. Walking in, you start on Outfit (not zoomed in).
+-- Zooms in on the easel (true) or back out to the room. Walking in, you start on Clothes (not zoomed in).
 local function Zoom(open)
     local zoom = room.zoom
     if open then

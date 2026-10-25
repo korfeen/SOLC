@@ -529,7 +529,7 @@ ns.RegisterPage({
         inviteGlow:SetColorTexture(1, 0.85, 0.3, 0.08)
         page.invite:SetScript("OnClick", function() UI.ClickSound() ns.ConfirmMint() end)
         page.invite:SetScript("OnEnter", function(self)
-            Tooltip(self, { "Mint a picture", "Rolls a random background, skin, outfit, expression, eyes, accessory and headwear. Rarer traits make a rarer picture." })
+            Tooltip(self, { "Mint a picture", "Rolls a random background, skin, clothes, expression, eyes, accessory and headwear. Rarer traits make a rarer picture." })
         end)
         page.invite:SetScript("OnLeave", GameTooltip_Hide)
         page.invite:Hide()

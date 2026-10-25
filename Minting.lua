@@ -37,7 +37,7 @@ ns.MintLayers = {}
 for _, layer in ipairs({
     { key = "background", name = "Background" },
     { key = "skin", name = "Skin" },
-    { key = "outfit", name = "Outfit" },
+    { key = "outfit", name = "Clothes" },
     { key = "expression", name = "Expression" },
     { key = "eyes", name = "Eyes" },
     { key = "accessory", name = "Accessory" },

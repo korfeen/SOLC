@@ -1314,7 +1314,7 @@ local function RowTooltip(self)
     elseif self.data.mintAction then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Mint a picture")
-        GameTooltip:AddLine("Rolls a random background, skin, outfit, expression, eyes, accessory and headwear. Rarer traits make a rarer picture.", 1, 1, 1, true)
+        GameTooltip:AddLine("Rolls a random background, skin, clothes, expression, eyes, accessory and headwear. Rarer traits make a rarer picture.", 1, 1, 1, true)
         GameTooltip:Show()
     elseif self.data.pointsPart then
         return
