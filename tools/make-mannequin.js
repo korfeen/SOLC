@@ -53,3 +53,28 @@ const scene = decodePng(SCENE), room = Buffer.alloc(1024 * 1024 * 4);
 for (let y = 0; y < scene.height; y++) scene.rgba.copy(room, y * 1024 * 4, y * scene.width * 4, (y + 1) * scene.width * 4);
 writeBlp(path.join(path.dirname(OUT), "Room.blp"), 1024, 1024, room);
 console.log("Wrote Room.blp (" + scene.width + " x " + scene.height + ")");
+
+// Its blurred twin (Media/ProShop/Room-blur.blp): what the room looks like behind the curtains when you zoom in (WoW
+// can't blur live, so it crossfades to this). Three box blurs of radius 3 ~ a gaussian of about 3 px.
+function boxBlur(src, w, h, r) {
+  const out = Buffer.alloc(src.length), tmp = Buffer.alloc(src.length);
+  for (const [from, to, horizontal] of [[src, tmp, true], [tmp, out, false]]) {
+    for (let a = 0; a < (horizontal ? h : w); a++) for (let b = 0; b < (horizontal ? w : h); b++) {
+      const sum = [0, 0, 0, 0];
+      for (let k = -r; k <= r; k++) {
+        const c = Math.max(0, Math.min((horizontal ? w : h) - 1, b + k));
+        const i = horizontal ? (a * w + c) * 4 : (c * w + a) * 4;
+        for (let ch = 0; ch < 4; ch++) sum[ch] += from[i + ch];
+      }
+      const o = horizontal ? (a * w + b) * 4 : (b * w + a) * 4;
+      for (let ch = 0; ch < 4; ch++) to[o + ch] = Math.round(sum[ch] / (2 * r + 1));
+    }
+  }
+  return out;
+}
+let blurred = Buffer.from(scene.rgba);
+for (let pass = 0; pass < 3; pass++) blurred = boxBlur(blurred, scene.width, scene.height, 3);
+const blurRoom = Buffer.alloc(1024 * 1024 * 4);
+for (let y = 0; y < scene.height; y++) blurred.copy(blurRoom, y * 1024 * 4, y * scene.width * 4, (y + 1) * scene.width * 4);
+writeBlp(path.join(path.dirname(OUT), "Room-blur.blp"), 1024, 1024, blurRoom);
+console.log("Wrote Room-blur.blp");

@@ -2,9 +2,9 @@
 -- The ROOM: a stand-in until the shop floor is repainted - the concept painting (Media/ProShop/Room: the steward
 -- behind his counter, the shelves; tools/make-mannequin.js) with the Dream Bed's easel standing on the floor, the display
 -- set painted on its canvas: the walnut mannequin (Media/ProShop/Mannequin, the moss ogre in walnut) wearing it.
--- Click the easel -> ZOOMED IN: the room dims, the picture comes forward to the middle in a gilt and burgundy border,
--- red velvet curtains slide in from the sides and a valance drops in on top (empty for now: the tabs, the piece's info
--- and the cart come next). Back or Escape -> the room. The wares and buying: ProShop.lua.
+-- Click the easel -> ZOOMED IN: the room blurs and dims (it crossfades to a pre-blurred twin, Media/ProShop/Room-blur),
+-- the easel's picture comes forward to the middle in a gilt and burgundy border, red velvet curtains slide in from the
+-- sides and a valance drops in on top (empty for now: the tabs, the piece's info and the cart come next). Back or Escape -> the room. The wares and buying: ProShop.lua.
 
 local _, ns = ...
 local UI = ns.UI
@@ -150,6 +150,8 @@ local function PlaceZoom()
     zoom.valance:SetPoint("TOPLEFT", 0, (vh + 10) * (1 - t)) zoom.valance:SetPoint("TOPRIGHT", 0, (vh + 10) * (1 - t))
     zoom.valance:SetHeight(vh)
     zoom.dim:SetAlpha(t)
+    room.blur:SetAlpha(t)
+    room.easel:SetAlpha(1 - t)  -- (its picture comes forward; the easel goes with the sharp room)
     local size = math.floor(PICTURE.size * math.min(sx, sy))
     zoom.frame:ClearAllPoints()
     zoom.frame:SetPoint("CENTER", room, "TOPLEFT", PICTURE.x * sx, -PICTURE.y * sy)
@@ -184,6 +186,11 @@ local function Build(holder)
     room.scene:SetAllPoints()
     room.scene:SetTexture(MEDIA .. "Room")
     room.scene:SetTexCoord(0, SCENE_W / 1024, 0, SCENE_H / 1024)
+    room.blur = room:CreateTexture(nil, "BACKGROUND", nil, 1)  -- (zoomed in: the room crossfades to its blurred twin)
+    room.blur:SetAllPoints()
+    room.blur:SetTexture(MEDIA .. "Room-blur")
+    room.blur:SetTexCoord(0, SCENE_W / 1024, 0, SCENE_H / 1024)
+    room.blur:SetAlpha(0)
 
     -- The easel, the display set painted on its canvas (square, cut at the canvas's edges, as the Dream Bed does).
     local art = ns.DreamBedArt or {}
@@ -232,7 +239,7 @@ local function Build(holder)
     zoom:Hide()
     zoom.dim = zoom:CreateTexture(nil, "BACKGROUND")
     zoom.dim:SetAllPoints()
-    zoom.dim:SetColorTexture(0, 0, 0, 0.6)
+    zoom.dim:SetColorTexture(0, 0, 0, 0.5)
     zoom.frame = CreateFrame("Frame", nil, zoom)  -- the border: a shadow, gilt, burgundy, then the picture
     local shadow = zoom.frame:CreateTexture(nil, "BACKGROUND", nil, -2)
     shadow:SetPoint("TOPLEFT", -2, -6) shadow:SetPoint("BOTTOMRIGHT", 6, -10)
@@ -319,6 +326,8 @@ ns.RegisterPage({
         holder:SetScript("OnHide", function()  -- (leaving the page: back in the room next time)
             room.zoom:Hide()
             room.zoom.goal, room.zoom.t = nil, 0
+            room.blur:SetAlpha(0)
+            room.easel:SetAlpha(1)
             if not InCombatLockdown() then room.zoom:EnableKeyboard(false) end
         end)
         return holder
