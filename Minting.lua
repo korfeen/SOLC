@@ -148,7 +148,7 @@ end
 -- Whether you have this frame (nil: free), and how to get it if not.
 function ns.FrameUnlocked(frame)
     local unlock = frame and frame.unlock
-    if not unlock then return true end
+    if not unlock or (ns.IsDev and ns.IsDev()) then return true end  -- (dev characters: all of them, to try)
     local rank = unlock:match("^rank:(%d+)$")
     if rank then return ns.GetRank().rank >= tonumber(rank), ("Ogre Rank %s"):format(rank) end
     local deed = unlock:match("^deed:(.+)$")

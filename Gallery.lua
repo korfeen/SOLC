@@ -18,8 +18,8 @@ local function Hue(h)  -- a crayon rainbow colour, h going round 0..1 (as the ch
     return rgb[1] * 0.6 + 0.4, rgb[2] * 0.6 + 0.4, rgb[3] * 0.6 + 0.4
 end
 -- In window pixels (from its top-left, y down), on the right page (UI.SPLIT.right: x 674..1064, y 146..730).
-local G = { heading = { x = 692, y = 172 }, hint = { x = 692, y = 196 }, grid = { top = 214, cols = 4, cell = 90, gap = 8 },
-    footer = 716 }
+local G = { heading = { x = 692, y = 172 }, hint = { x = 692, y = 196 }, grid = { top = 214, cols = 3, cell = 112, gap = 14 },
+    footer = 716, tilts = { -2, 1.5, -1, 2.5, -2.5, 1 } }
 
 -- A picture being dragged (from the gallery or a showcase slot), following the cursor; the slot under it lit.
 local ghost = CreateFrame("Frame", nil, UIParent)
@@ -62,7 +62,7 @@ function UI.Gallery(page)
     hint:SetFont(NAME_FONT, 13, "")
     hint:SetTextColor(unpack(CREAM))
     At(hint, "LEFT", G.hint.x, G.hint.y)
-    hint:SetText("Click to look, drag onto your showcase or photo")
+    hint:SetText("Click to look, drag onto your showcase")
     local footer = gallery:CreateFontString(nil, "OVERLAY")
     footer:SetFont(NAME_FONT, 12, "")
     footer:SetTextColor(0.62, 0.56, 0.48)
@@ -119,6 +119,9 @@ function UI.Gallery(page)
     photo:SetScript("OnLeave", GameTooltip_Hide)
     photo:paint(false)
     gallery.photoSlot = photo
+    photo:Hide()  -- (no PHOTO slot any more: the Overview's portrait is your ogre; the code stays for the drop rules)
+    photo.Show = function() end
+    photoLabel:Hide()
     -- Your photo: a picture's number, or nil for your character (as the Pictures page's AS PHOTO sets it).
     local function SetPhoto(number)
         KillTrackerDB.card = KillTrackerDB.card or {}
@@ -140,6 +143,7 @@ function UI.Gallery(page)
         thumb:SetSize(g.cell, g.cell)
         local tx, ty = left + col * (g.cell + g.gap), g.top + row * (g.cell + g.gap)
         At(thumb, "TOPLEFT", tx, ty)
+        thumb.tilt = G.tilts[(i - 1) % #G.tilts + 1]
         -- A little shake (a picture dragged over it), as the showcase's slots do (OverviewCard.lua).
         function thumb:Shake()
             self.shaking = 0
@@ -149,12 +153,12 @@ function UI.Gallery(page)
                 t:ClearAllPoints()
                 if fade <= 0 then
                     At(t, "TOPLEFT", tx, ty)
-                    if t.mint then ns.DrawMint(t.canvas, t.mint) end
+                    if t.mint then ns.DrawMint(t.canvas, t.mint, t.tilt) end
                     t:SetScript("OnUpdate", nil)
                 else
                     local wobble = math.sin(t.shaking * 55) * fade
                     At(t, "TOPLEFT", tx + wobble * 2, ty)
-                    if t.mint then ns.DrawMint(t.canvas, t.mint, math.floor(wobble * 3 + 0.5) / 2) end  -- (rocking, up to 1.5 degrees)
+                    if t.mint then ns.DrawMint(t.canvas, t.mint, t.tilt + math.floor(wobble * 3 + 0.5) / 2) end  -- (rocking, up to 1.5 degrees)
                 end
             end)
         end
@@ -178,6 +182,11 @@ function UI.Gallery(page)
         UI.OutlineText(thumb.badge, { 0, 0, 0 })
         thumb.badge:SetPoint("CENTER", 0, 2)
         thumb.cover:Hide()
+        thumb.num = thumb:CreateFontString(nil, "OVERLAY")
+        thumb.num:SetFont(NAME_FONT, 12, "")
+        thumb.num:SetTextColor(unpack(CREAM))
+        UI.OutlineText(thumb.num, { 0, 0, 0 })
+        thumb.num:SetPoint("TOP", thumb, "BOTTOM", 0, 2)
         -- A tile that isn't a picture: MINT (a big +) or a dungeon's chests (the chest, how many), with a caption.
         thumb.tile = CreateFrame("Frame", nil, thumb)
         thumb.tile:SetAllPoints(thumb.canvas)
@@ -289,7 +298,7 @@ function UI.Gallery(page)
         local mints = {}
         for _, mint in ipairs(KillTrackerDB.mints or {}) do mints[#mints + 1] = mint end
         table.sort(mints, function(a, b) return a.number > b.number end)
-        local entries = { { mintAction = true }, { ogre = true, ogreMint = { traits = ns.BaseTraits(), ogre = true, style = KillTrackerDB.card and KillTrackerDB.card.ogreStyle } } }
+        local entries = { { mintAction = true } }  -- (your ogre isn't here: it's changed in the Overview's EDIT)
         local counts, order = ns.ChestCounts()
         for _, key in ipairs(order or {}) do entries[#entries + 1] = { chest = key, count = counts[key] } end
         for _, mint in ipairs(mints) do entries[#entries + 1] = { mint = mint } end
@@ -331,9 +340,11 @@ function UI.Gallery(page)
                     thumb.border:SetColorTexture(0.5, 0.4, 0.2)
                 end
             end
+            thumb.border:SetShown(mint == nil)  -- (a picture: no box, its own frame)
+            thumb.num:SetShown(mint ~= nil)
             if mint then
-                ns.DrawMint(thumb.canvas, mint)
-                thumb.border:SetColorTexture(ns.RarityRGB(ns.MintRarity(mint.traits, mint.asked)))
+                ns.DrawMint(thumb.canvas, mint, thumb.tilt)
+                thumb.num:SetText(("#%d"):format(mint.number))
                 local isPhoto = photoNumber == mint.number
                 local slot = slotOf[mint.number]
                 thumb.cover:SetShown(slot ~= nil or isPhoto)
@@ -393,7 +404,7 @@ function UI.Gallery(page)
             ns.DrawMint(ghost.canvas, ghost.mint, shown)
             ghost.outline:SetRotation(-math.rad(shown))  -- (as the picture's layers turn: Minting.lua's Place)
         end
-        local over = SlotUnderCursor() or (photo:IsMouseOver() and photo) or nil
+        local over = SlotUnderCursor() or (photo:IsShown() and photo:IsMouseOver() and photo) or nil
         photo:paint(over == photo)
         if not over then  -- (or a picture in the gallery: it shakes too)
             for _, thumb in ipairs(gallery.thumbs) do
@@ -414,7 +425,7 @@ function UI.Gallery(page)
         for _, thumb in ipairs(self.thumbs) do thumb:SetAlpha(1) end
         photo:paint(false)
         -- Onto the photo's slot: the big photo shows it. From it, anywhere but a showcase slot: your character again.
-        if photo:IsMouseOver() then
+        if photo:IsShown() and photo:IsMouseOver() then
             if not fromPhoto then
                 if mint.ogre then ns.SetOgre(mint.traits, true) else SetPhoto(mint.number) end
                 UI.ClickSound()
