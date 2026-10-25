@@ -28,6 +28,7 @@ local EASEL = { x = 655, bottom = 574, height = 300 }  -- (its middle, the floor
 local PICTURE = { x = 413, y = 255, size = 340 }  -- zoomed in: its middle and size
 local CURTAIN_W, VALANCE_H = 200, 58
 local OPEN_TIME = 0.55
+local ZOOM_TIME, CLOSE_ZOOM = 0.4, 1.6  -- (switching to a head layer's tab: how long the zoom takes, how far in)
 
 -- What the mannequin wears when you walk in.
 ns.SHOP_DISPLAY = { headwear = "shop_flat_cap", outfit = "shop_argyle_vest" }
@@ -57,30 +58,27 @@ local function Worn(traits)
     return worn
 end
 
--- A picture of the mannequin: a velvet backdrop, the walnut body and the pieces it wears. picture:Dress(traits, size,
--- close) draws it at that size (the pieces are placed by it); close: zoomed further in, keeping the picture's top (a
--- whole hat).
+-- A picture of the mannequin: a velvet backdrop, the walnut body and the pieces it wears. picture:Dress(traits, size)
+-- draws it at that size (the pieces are placed by it); picture:SetZoom(z, instant) zooms it in (z > 1) keeping its top
+-- (a whole hat), easing in and out over ZOOM_TIME - the drawing only scaled, not drawn again.
 local function NewPicture(parent)
     local picture = CreateFrame("Frame", nil, parent)
     local backdrop = picture:CreateTexture(nil, "BACKGROUND")
     backdrop:SetAllPoints()
     Gradient(backdrop, "VERTICAL", { 0.16, 0.05, 0.04 }, { 0.42, 0.17, 0.12 })
     picture.canvas = CreateFrame("Frame", nil, picture)
-    picture.canvas:SetPoint("CENTER")
+    picture.canvas:SetPoint("TOP")  -- (unzoomed it fills the picture; zoomed in, the top stays put)
     picture.body = picture.canvas:CreateTexture(nil, "ARTWORK", nil, -4)  -- (the skin's sublevel: Minting.lua)
     picture.body:SetAllPoints()
     picture.body:SetTexture(MEDIA .. "Mannequin")
     picture.masks = {}
     -- The pieces drawn as a picture with no skin (ns.RenderMint), the walnut body in the skin's place under them, cut
     -- where the pieces hide the body (their masks, as RenderMint puts them on a skin).
-    function picture:Dress(traits, size, close)
-        local key = size .. (close and "close" or "")
+    function picture:Dress(traits, size)
+        local key = tostring(size)
         for _, layer in ipairs(ns.MintLayers or {}) do key = key .. "|" .. (traits[layer.key] or "") end
         if self.key == key then return end
-        local side = close and math.floor(size * 1.6) or size
-        self.canvas:ClearAllPoints()
-        self.canvas:SetPoint(close and "TOP" or "CENTER")
-        self.canvas:SetSize(side, side)
+        self.canvas:SetSize(size, size)
         ns.RenderMint(self.canvas, traits)
         for _, mask in ipairs(self.masks) do self.body:RemoveMaskTexture(mask) end
         wipe(self.masks)
@@ -95,6 +93,23 @@ local function NewPicture(parent)
         end
         self.key = key
     end
+    picture.z = 1
+    function picture:SetZoom(z, instant)
+        if instant then
+            self.z, self.zTo, self.zT = z, z, nil
+            self.canvas:SetScale(z)
+        elseif z ~= self.zTo then
+            self.zFrom, self.zTo, self.zT = self.z, z, 0
+        end
+    end
+    picture:SetScript("OnUpdate", function(self, elapsed)
+        if not self.zT then return end
+        self.zT = math.min(1, self.zT + elapsed / ZOOM_TIME)
+        local e = self.zT * self.zT * (3 - 2 * self.zT)  -- (smoothstep: eases in and out)
+        self.z = self.zFrom + (self.zTo - self.zFrom) * e
+        self.canvas:SetScale(self.z)
+        if self.zT == 1 then self.zT = nil end
+    end)
     return picture
 end
 
@@ -242,7 +257,8 @@ local function PlaceZoom()
     zoom.frame:SetSize(size, size)
     zoom.frame:SetAlpha(math.max(0, (zoom.t or 0) * 2 - 1))  -- (comes in once the curtains are half way)
     local _, tab = Looked()
-    zoom.picture:Dress(ShownTraits(), size, tab and CLOSE_LAYERS[tab.key])
+    zoom.picture:Dress(ShownTraits(), size)
+    zoom.picture:SetZoom(tab and CLOSE_LAYERS[tab.key] and CLOSE_ZOOM or 1, (zoom.t or 0) < 1)  -- (opening: no zoom on top)
     zoom.controls:SetAlpha(math.max(0, (zoom.t or 0) * 2 - 1))
     zoom.back:ClearAllPoints()
     zoom.back:SetPoint("BOTTOM", room, "BOTTOM", 0, 12)
