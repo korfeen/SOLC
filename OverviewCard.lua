@@ -947,15 +947,17 @@ end
 
 -- EDIT (yours): your look, changed in place - every pick shows on your portrait at once, kept with SAVE (CANCEL, or
 -- another tab, drops it). On the left slot under the tabs: the groups' tabs, then what you have for the one picked
--- (two columns; the mouse wheel scrolls), then CANCEL and SAVE. page.edit = the draft { traits, frame, nameColor, tab }.
+-- (two columns; the mouse wheel scrolls), then CANCEL and SAVE. page.edit = the draft { traits, frame, header (the header choices to put back), tab }.
 local EDIT = { left = 247, top = 327, width = 370, height = 397, row = 24, cell = 42, cols = 2, rows = 6, thumb = 34 }
 local EDIT_GROUPS = {
     { "OGRE", { { "skin", "Skin" }, { "eyes", "Eyes" }, { "expression", "Expression" } } },
     { "WEAR", { { "outfit", "Outfit" }, { "headwear", "Headwear" }, { "accessory", "Accessory" } } },
     { "PICTURE", { { "background", "Background" }, { "frame", "Frame" } } },
-    { "ME", { { "name", "Name colour" } } },
+    { "ME", { { "name", "Name colour" }, { "header", "Header" } } },
 }
 local CREAM, GOLD_TEXT = { 0.93, 0.88, 0.78 }, { 1, 0.82, 0 }
+-- (the header's choices, changed as you pick in its panel: kept when EDIT opens, put back by CANCEL)
+local HEADER_FIELDS = { "headerBg", "cropX", "cropY", "cropZoom", "nameColor", "bgColor" }
 
 -- The choices for one of the editor's tabs: { id, name, color (RGB, for the name), texture (its thumbnail) or swatch }.
 local function EditChoices(tab, draft)
@@ -968,6 +970,15 @@ local function EditChoices(tab, draft)
         for _, entry in ipairs(ns.Colors()) do
             if ns.HasNameColor(entry) then list[#list + 1] = { id = entry.id, name = entry.name, color = entry.value, swatch = entry.value } end
         end
+    elseif tab == "header" then  -- (a background picture you have, then a plain colour: your skins' own)
+        for _, option in ipairs(ns.OwnedBackgrounds()) do
+            local hex = ns.RARITY_COLORS[option.rarity] or "ffffffff"
+            list[#list + 1] = { id = option.id, name = option.name, texture = ns.MintTexture(option, {}),
+                color = { tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255 } }
+        end
+        for _, entry in ipairs(ns.Colors()) do
+            if ns.HasNameColor(entry) then list[#list + 1] = { id = "c:" .. entry.id, name = entry.name .. " wash", color = CREAM, fill = entry.base } end
+        end
     else
         for _, option in ipairs(ns.OwnedOptions(tab)) do
             local hex = ns.RARITY_COLORS[option.rarity] or "ffffffff"
@@ -979,7 +990,9 @@ local function EditChoices(tab, draft)
     return list
 end
 local function EditCurrent(tab, draft)
-    if tab == "frame" then return draft.frame elseif tab == "name" then return draft.nameColor end
+    local card = KillTrackerDB.card or {}
+    if tab == "frame" then return draft.frame elseif tab == "name" then return card.nameColor or "white" end
+    if tab == "header" then return ns.BackgroundOption(nil, card.headerBg) and card.headerBg or ("c:" .. (card.bgColor or "white")) end
     return draft.traits[tab]
 end
 
@@ -1027,6 +1040,7 @@ local function BuildEditor(page, parent)
     hint:SetPoint("TOPLEFT", 2, -2)
     hint:SetTextColor(0.62, 0.56, 0.48)
     hint:SetText("Changes show on your portrait as you pick")
+    panel.hint = hint
     -- The groups' tabs.
     panel.tabs = {}
     for g, group in ipairs(EDIT_GROUPS) do
@@ -1109,7 +1123,16 @@ local function BuildEditor(page, parent)
             if not choice then return end
             UI.ClickSound()
             if edit.tab == "frame" then edit.frame = choice.id
-            elseif edit.tab == "name" then edit.nameColor = choice.id
+            elseif edit.tab == "name" or edit.tab == "header" then  -- (your card, live; CANCEL puts it back)
+                local card = KillTrackerDB.card or {}
+                KillTrackerDB.card = card
+                if edit.tab == "name" then card.nameColor = choice.id ~= "white" and choice.id or nil
+                elseif choice.id:find("^c:") then card.headerBg, card.bgColor = nil, choice.id:sub(3) ~= "white" and choice.id:sub(3) or nil
+                else
+                    if card.headerBg ~= choice.id then card.cropX, card.cropY, card.cropZoom = nil, nil, nil end
+                    card.headerBg = choice.id
+                end
+                if UI.RedrawHeader then UI.RedrawHeader() end
             else  -- (a new table: the portrait is redrawn only for different traits, ns.DrawMint)
                 local traits = {}
                 for k, id in pairs(edit.traits) do traits[k] = id end
@@ -1120,6 +1143,13 @@ local function BuildEditor(page, parent)
         end)
         panel.cells[i] = cell
     end
+    panel:SetScript("OnHide", function() if UI.SetHeaderCropping then UI.SetHeaderCropping(false) end end)
+    panel.cropHint = panel:CreateFontString(nil, "OVERLAY")  -- (Header: what the board does meanwhile)
+    panel.cropHint:SetFont(NAME_FONT, 12, "")
+    panel.cropHint:SetPoint("TOPLEFT", 2, -2)
+    panel.cropHint:SetTextColor(1, 0.82, 0.3)
+    panel.cropHint:SetText("Drag your header's picture to move it, scroll to zoom")
+    panel.cropHint:Hide()
     function panel:PaintCell(cell)
         local picked = cell.picked
         cell.back:SetColorTexture(unpack(picked and { 0.35, 0.27, 0.09, 0.9 } or cell.hover and { 1, 1, 1, 0.1 } or { 1, 1, 1, 0.04 }))
@@ -1161,7 +1191,8 @@ local function BuildEditor(page, parent)
     local function Changed()
         local edit, card = page.edit, KillTrackerDB.card or {}
         if not edit then return false end
-        if edit.frame ~= (card.frame or DEFAULT_PORTRAIT_FRAME) or edit.nameColor ~= (card.nameColor or "white") then return true end
+        if edit.frame ~= (card.frame or DEFAULT_PORTRAIT_FRAME) then return true end
+        for _, field in ipairs(HEADER_FIELDS) do if card[field] ~= edit.header[field] then return true end end
         local saved = ns.BaseTraits()
         for k, id in pairs(edit.traits) do if saved[k] ~= id then return true end end
         for k, id in pairs(saved) do if edit.traits[k] ~= id then return true end end
@@ -1205,13 +1236,12 @@ local function BuildEditor(page, parent)
         local card = KillTrackerDB.card or {}
         KillTrackerDB.card = card
         card.frame = edit.frame ~= DEFAULT_PORTRAIT_FRAME and edit.frame or nil
-        card.nameColor = edit.nameColor ~= "white" and edit.nameColor or nil
         page.edit = nil
         ns.SetOgre(edit.traits)  -- (syncs the card, all of it)
         page.ShowPanel(nil)
         Flash()
     end)
-    cancel:SetScript("OnClick", function() UI.ClickSound() page.edit = nil page.ShowPanel(nil) end)
+    cancel:SetScript("OnClick", function() UI.ClickSound() page.ShowPanel(nil) end)  -- (ShowPanel drops the draft)
     -- Enter saves, Escape cancels (out of combat: keys can't be caught in it); other keys go on to the game.
     buttons:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end
@@ -1225,6 +1255,10 @@ local function BuildEditor(page, parent)
         local edit = page.edit
         if not edit then return end
         for _, button in ipairs(self.tabs) do button.selected = button.tab == edit.tab button:Paint(false) end
+        local onHeader = edit.tab == "header"
+        if UI.SetHeaderCropping then UI.SetHeaderCropping(onHeader) end
+        self.cropHint:SetShown(onHeader)
+        self.hint:SetShown(not onHeader)
         local choices, current = EditChoices(edit.tab, edit), EditCurrent(edit.tab, edit)
         local first = (edit.offset or 0) * EDIT.cols
         for i, cell in ipairs(self.cells) do
@@ -1236,7 +1270,9 @@ local function BuildEditor(page, parent)
                 cell.name:SetText(choice.name)
                 cell.name:SetTextColor(unpack(choice.color))
                 cell.thumb:SetTexture(choice.texture or "Interface\\Buttons\\WHITE8X8")
-                if choice.swatch then cell.thumb:SetVertexColor(0.08, 0.05, 0.03) else cell.thumb:SetVertexColor(1, 1, 1) end
+                if choice.swatch then cell.thumb:SetVertexColor(0.08, 0.05, 0.03)
+                elseif choice.fill then cell.thumb:SetVertexColor(unpack(choice.fill))
+                else cell.thumb:SetVertexColor(1, 1, 1) end
                 cell.swatch:SetShown(choice.swatch ~= nil)
                 if choice.swatch then cell.swatch:SetTextColor(unpack(choice.swatch)) end
                 self:PaintCell(cell)
@@ -1831,11 +1867,18 @@ OVERVIEW = {
         page.tabs = {}
         local function ShowPanel(which)
             if which == "edit" and page.key then which = nil end  -- (only yours)
-            if which ~= "edit" then page.edit = nil end  -- (left: not saved)
+            if which ~= "edit" and page.edit then  -- (left: not saved; the header's choices put back)
+                local card, kept, changed = KillTrackerDB.card or {}, page.edit.header, false
+                for _, field in ipairs(HEADER_FIELDS) do
+                    if card[field] ~= kept[field] then card[field], changed = kept[field], true end
+                end
+                page.edit = nil
+                if changed and UI.RedrawHeader then UI.RedrawHeader() end
+            end
             if which == "edit" and not page.edit then
                 local card = KillTrackerDB.card or {}
-                page.edit = { traits = ns.BaseTraits(), frame = card.frame or DEFAULT_PORTRAIT_FRAME, nameColor = card.nameColor or "white",
-                    tab = "outfit", offset = 0 }
+                page.edit = { traits = ns.BaseTraits(), frame = card.frame or DEFAULT_PORTRAIT_FRAME, header = {}, tab = "outfit", offset = 0 }
+                for _, field in ipairs(HEADER_FIELDS) do page.edit.header[field] = card[field] end
             end
             page.panel = which
             page.editPanel:SetShown(which == "edit")
@@ -2050,9 +2093,8 @@ OVERVIEW = {
             page.photo:Hide()
             page.hung:Hide()
             local edit = page.panel == "edit" and page.edit
-            local entry = edit and ns.FindNameColor(edit.nameColor)
             ShowPortrait(page, portrait, edit and { frame = edit.frame, motto = cardData and cardData.motto } or cardData,
-                (p.name or ""):match("^(%S+)") or "", entry and entry.value or ns.GetNameColor(key), not key,
+                (p.name or ""):match("^(%S+)") or "", ns.GetNameColor(key), not key,
                 page.viewing ~= nil and portrait == page.viewing)
         elseif page.panel ~= "crafts" and not galleryOpen and not (page.detail and page.detail:IsShown()) then
             page.photo:Show()

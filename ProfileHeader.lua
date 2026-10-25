@@ -301,6 +301,22 @@ local function PanelBacking(texture)
     texture:SetPoint("BOTTOMRIGHT", UI.window, "TOPLEFT", SPLIT.under.middle, -SPLIT.under.bottom)
     texture:SetColorTexture(0.05, 0.03, 0.02)
 end
+-- Your header's editing inside the Overview's EDIT (OverviewCard.lua, ME: Header): the panel in the rect given (window
+-- pixels), without its own backing, heading and Done (EDIT's SAVE and CANCEL instead). UI.HideHeaderEditor closes it.
+function UI.ShowHeaderEditor(left, top, width, height)
+    if not header then return end
+    local e = header.editor
+    e:ClearAllPoints()
+    e:SetPoint("TOPLEFT", UI.window, "TOPLEFT", left, -top)
+    e:SetSize(width, height)
+    e.shade:Hide()
+    e.title:Hide()
+    e.done:Hide()
+    e.scroll:SetPoint("TOPLEFT", 0, 28)  -- (its heading's room taken back)
+    e:Show()
+    e:Refresh()
+end
+function UI.HideHeaderEditor() if header then header.editor:Hide() end end
 -- Closes the rank and edit panels (a page's tab clicked).
 function UI.CloseHeaderPanels()
     if not header then return end
@@ -591,6 +607,16 @@ local function Changed()
     if header.editor:IsShown() then header.editor:Refresh() end
 end
 
+-- The Overview's EDIT: your header redrawn as you pick (not synced till SAVE), and its cropper on the board (drag the
+-- picture to move it, scroll to zoom) while EDIT's Header tab is open.
+function UI.RedrawHeader()
+    if not header or header.key then return end
+    ShowBackdrop(nil)
+    header.name:SetTextColor(unpack(ns.GetNameColor(nil)))
+    if Fill then Fill(nil) end
+end
+function UI.SetHeaderCropping(on) if header then header.cropper:SetShown(on and not header.key or false) end end
+
 StaticPopupDialogs["SOLC_BUY_NAME_COLOR"] = {
     text = "Buy %s for your name for %d points?",
     button1 = YES or "Yes",
@@ -674,6 +700,7 @@ function BuildEditor(W, h, At)
     editor:Hide()
     local shade = editor:CreateTexture(nil, "BACKGROUND")
     PanelBacking(shade)
+    editor.shade = shade
     -- (its contents scroll - the mouse wheel - above the buttons at the bottom, which stay put)
     local scroll = CreateFrame("ScrollFrame", nil, editor)
     scroll:SetPoint("TOPLEFT", 0, 0)
@@ -695,7 +722,7 @@ function BuildEditor(W, h, At)
         line:SetText(text)
         return line
     end
-    Heading("Edit your header", 2, 18)
+    editor.title = Heading("Edit your header", 2, 18)
     Heading("Background", 32)
     Heading("Crop", 184)
     local hint = body:CreateFontString(nil, "OVERLAY")
@@ -894,6 +921,7 @@ function BuildEditor(W, h, At)
         Changed()
     end)
     local done = UI.PlankButton(editor, slot.right - 10 - 110, buttons, 110)
+    editor.done = done
     done:SetTab("Done", false)
     done:SetScript("OnClick", function()
         UI.ClickSound()
@@ -1015,7 +1043,7 @@ function Fill(key)
     local p = UI.Profile(key)
     header.key = key
     for _, arrow in ipairs(header.arrows) do arrow:SetShown(next(KillTrackerFriends) ~= nil) end
-    header.editButton:SetShown(key == nil)
+    header.editButton:SetShown(false)  -- (your header's edited in the Overview's EDIT now: UI.ShowHeaderEditor)
     if key then header.editor:Hide() end
     ShowBackdrop(key)
 
