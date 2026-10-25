@@ -561,9 +561,8 @@ function ns.UI.CrossBeam(parent, left, right, y, shade, thick, under)
 end
 
 -- Header ------------------------------------------------------------------------------------------------
--- The top beam (the skeleton's, above) moves the window, and the two square buttons (Settings and Close, sized
--- in HeaderLayout.lua) sit on its right end.
-local WOOD = "Interface\\AddOns\\SOLC\\Media\\Wood\\"
+-- The top beam (the skeleton's, above) moves the window, and two buttons (Settings and Close, placed by
+-- HeaderLayout.lua) sit on its right end.
 local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
 local TOP_BEAM = SKELETON.topBeam
 local BEAM_MIDDLE = (TOP_BEAM.top + TOP_BEAM.bottom) / 2
@@ -576,9 +575,9 @@ headerGrip:RegisterForDrag("LeftButton")
 headerGrip:SetScript("OnDragStart", function() frame:StartMoving() end)
 headerGrip:SetScript("OnDragStop", function() frame:GetScript("OnDragStop")(frame) end)
 
--- A square wooden button with a painted icon, behaving like the sidebar's planks: dimmed at rest, lit while
--- hovered or pressed, shrinking a little when pressed (as much as the sidebar's pushed art) with the icon
--- dipping, and lit with a gold icon while selected (button:SetSelected, the Settings page being open).
+-- A button on the top beam: its icon (cream, outlined) right on the wood with a soft shadow, no box (the look picked in
+-- the Overview mock), gold while hovered or selected (button:SetSelected, the Settings page being open), shrinking a
+-- little and dipping when pressed.
 -- Click sounds for the wooden buttons: the game's own clack of putting down a small wooden item, and now and
 -- then (1 in 30, 1 in 10 in ogre mode) an ogre's grunt or battle cry instead. Off with /solc sounds
 -- (KillTrackerDB.clickSounds = false). Game sound files by id (the original ogre and item sounds).
@@ -598,42 +597,26 @@ end
 local HEADER_DIMMED = 0.55  -- as the sidebar's unselected planks (DIMMED, further down)
 local HEADER_PUSHED = ns.ButtonArt and ns.ButtonArt.pushed.width / ns.ButtonArt.normal.width or 0.96
 ns.UI.HEADER_DIMMED, ns.UI.HEADER_PUSHED = HEADER_DIMMED, HEADER_PUSHED  -- the GEARZ button behaves the same (OverviewCard.lua)
+local PLAIN_ICON_SIZE = { Settings = 30, Close = 27 }  -- (the X's art fills more of its square than the gear's)
 local function HeaderButton(spec, tooltip, onClick)
     local button = CreateFrame("Button", nil, woodHeader)
     button:SetFrameLevel(woodHeader:GetFrameLevel() + 2)
     button:SetSize(spec.w, spec.h)
     button:SetPoint("TOPLEFT", frame, "TOPLEFT", spec.x, -spec.y)
-    local wood = button:CreateTexture(nil, "ARTWORK")
-    wood:SetPoint("CENTER")
-    wood:SetTexture(WOOD .. "Square")
+    local size = PLAIN_ICON_SIZE[spec.icon] or spec.iconSize
+    local shadow = button:CreateTexture(nil, "ARTWORK")  -- (a soft shadow on the beam under it)
+    shadow:SetTexture(ICONS .. spec.icon)
+    shadow:SetVertexColor(0, 0, 0, 0.7)
     local icon = button:CreateTexture(nil, "OVERLAY")
     icon:SetTexture(ICONS .. spec.icon)
-    -- Runes as on the sidebar planks, one at each side: blue, yellow while selected.
-    local runes = {}
-    if spec.runes then
-        local runeHeight = spec.h * (ns.HeaderLayout.runeHeight or 0.6)
-        for side = 1, 2 do
-            local rune = button:CreateTexture(nil, "OVERLAY")
-            rune:SetTexture(WOOD .. "Rune")
-            rune:SetSize(runeHeight / 2, runeHeight)
-            rune:SetPoint("CENTER", button, side == 1 and "LEFT" or "RIGHT", (side == 1 and 1 or -1) * (3 + runeHeight / 4), 0)
-            if side == 2 then rune:SetTexCoord(1, 0, 0, 1) end  -- mirrored, as the plank's right end
-            runes[side] = rune
-        end
-    end
     local hovered, pressed, selected = false, false, false
     local function Redraw()
-        local lit = hovered or pressed or selected
-        local shade = lit and 1 or HEADER_DIMMED
-        wood:SetVertexColor(shade, shade, shade)
         local scale = pressed and HEADER_PUSHED or 1
-        wood:SetSize(spec.w * scale, spec.h * scale)
-        icon:SetSize(spec.iconSize * scale, spec.iconSize * scale)
+        icon:SetSize(size * scale, size * scale)
         icon:SetPoint("CENTER", pressed and 1 or 0, pressed and -2 or 0)
-        if selected then icon:SetVertexColor(1, 0.82, 0) else icon:SetVertexColor(lit and 1 or 0.85, lit and 1 or 0.85, lit and 1 or 0.85) end
-        for _, rune in ipairs(runes) do
-            if selected then rune:SetVertexColor(0.92, 0.82, 0.14) else rune:SetVertexColor(0.22 * shade, 0.36 * shade, 0.78 * shade) end
-        end
+        shadow:SetSize(size * scale + 2, size * scale + 2)
+        shadow:SetPoint("CENTER", icon, "CENTER", 0, -2)
+        if selected or hovered then icon:SetVertexColor(1, 0.8, 0.32) else icon:SetVertexColor(0.94, 0.89, 0.78) end
     end
     function button:SetSelected(value)
         selected = value and true or false
