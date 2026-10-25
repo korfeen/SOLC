@@ -566,10 +566,11 @@ end
 local ICONS = "Interface\\AddOns\\SOLC\\Media\\Icons\\"
 local TOP_BEAM = SKELETON.topBeam
 local BEAM_MIDDLE = (TOP_BEAM.top + TOP_BEAM.bottom) / 2
-local BUTTONS_RIGHT = TOP_BEAM.right - 22  -- clear of the beam's nails
+local POST_MIDDLE = 1087  -- the right post's middle (its painted part: x 1066-1108 of the window)
+local HEADER_BOX, HEADER_GAP = 34, 34  -- the gear and the X: their square, middle to middle
 local headerGrip = CreateFrame("Frame", nil, woodHeader)
 headerGrip:SetPoint("TOPLEFT", frame, "TOPLEFT", TOP_BEAM.left, -TOP_BEAM.top)
-headerGrip:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", BUTTONS_RIGHT - 140, -TOP_BEAM.bottom)
+headerGrip:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", POST_MIDDLE - HEADER_GAP - HEADER_BOX / 2 - 4, -TOP_BEAM.bottom)  -- (up to the gear)
 headerGrip:EnableMouse(true)
 headerGrip:RegisterForDrag("LeftButton")
 headerGrip:SetScript("OnDragStart", function() frame:StartMoving() end)
@@ -643,9 +644,13 @@ end
 local settingsButton  -- lit while the Settings page is open (Refresh)
 local buttons = ns.HeaderLayout and ns.HeaderLayout.buttons
 if buttons then
-    -- On the top beam's right end, centred on it: Close last, Settings just left of it.
-    local close = setmetatable({ x = BUTTONS_RIGHT - buttons.close.w, y = BEAM_MIDDLE - buttons.close.h / 2 }, { __index = buttons.close })
-    local settings = setmetatable({ x = close.x - buttons.settings.w + 4, y = BEAM_MIDDLE - buttons.settings.h / 2 }, { __index = buttons.settings })
+    -- On the top beam's right end, centred on it: Close over the middle of the right post (the bar going up), Settings
+    -- right beside it; each a small square round its icon.
+    local function At(spec, middle)
+        return setmetatable({ x = middle - HEADER_BOX / 2, y = BEAM_MIDDLE - HEADER_BOX / 2, w = HEADER_BOX, h = HEADER_BOX }, { __index = spec })
+    end
+    local close = At(buttons.close, POST_MIDDLE)
+    local settings = At(buttons.settings, POST_MIDDLE - HEADER_GAP)
     settingsButton = HeaderButton(settings, "Settings", function() ns.OpenPage("settings") end)
     local closeButton = HeaderButton(close, "Close", function() frame:Hide() end)
     -- Hidden on the Overview, whose portrait hangs over the top beam there (OverviewCard.lua); Escape still closes.
