@@ -1,7 +1,7 @@
-// The Pro Shop's walnut mannequin (ProShop.lua): the moss ogre skin (killtracker-art\Skin\Uncommon\moss.png) recoloured
+// The Pro Shop's stand-in art (ProShopRoom.lua). The walnut mannequin: the moss ogre skin (killtracker-art\Skin\Uncommon\moss.png) recoloured
 // to polished walnut, with a faint grain running down it. Its olive skin tones turn walnut; the tusks, the eyes' whites
 // and the loincloth (a redder brown) stay. Writes Media/ProShop/Mannequin.blp (512, like the skins) and a preview PNG
-// beside the source art (killtracker-art-extra\ProShop\mannequin.png).
+// beside the source art (killtracker-art-extra\ProShop\mannequin.png). And the room, below.
 // Run: node tools/make-mannequin.js   (restart WoW after: new texture)
 const fs = require("fs");
 const os = require("os");
@@ -46,43 +46,10 @@ fs.mkdirSync(path.dirname(OUT), { recursive: true });
 writeBlp(OUT, 512, 512, resize({ width: img.width, height: img.height, rgba: px }, 512));
 console.log("Wrote " + OUT + " and " + PREVIEW);
 
-// Its stand (Media/ProShop/Stand.blp, 256 square): a brass pole down the middle onto a round walnut base with a
-// brass rim, its shadow on the floor. Sampled 4x4 per pixel so the edges come out soft.
-const S = 256;
-const mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
-const BRASS_LIT = [0.93, 0.78, 0.42], BRASS_DARK = [0.45, 0.31, 0.12], WALNUT_LIT = [0.42, 0.25, 0.13], WALNUT_DARK = [0.16, 0.09, 0.05];
-function stand(x, y) {
-  const cx = S / 2, baseY = 214, rx = 92, ry = 24, depth = 12;
-  const dx = (x - cx) / rx;
-  const top = dx * dx + ((y - baseY) / ry) ** 2;  // (the base's top face)
-  const bottom = dx * dx + ((y - baseY - depth) / ry) ** 2;  // (its underside's edge)
-  if (Math.abs(x - cx) <= 7 && y < baseY) {  // the pole, lit on its left
-    const t = (x - cx + 7) / 14;
-    return [...mix(BRASS_LIT, BRASS_DARK, Math.min(1, Math.abs(t - 0.3) * 1.6)), 1];
-  }
-  if (top <= 1) {
-    if (top > 0.82) return [...mix(BRASS_LIT, BRASS_DARK, (y - baseY + ry) / (2 * ry)), 1];  // the brass rim
-    return [...mix(WALNUT_LIT, WALNUT_DARK, 0.35 + 0.3 * (y - baseY + ry) / (2 * ry) + 0.03 * grain(x * 3, y * 9)), 1];
-  }
-  if (Math.abs(dx) <= 1 && (bottom <= 1 || (y > baseY && y < baseY + depth))) {  // its brass side, darker round the back
-    return [...mix(BRASS_DARK, [0.25, 0.16, 0.06], Math.abs(dx)), 1];
-  }
-  const shadow = (dx / 1.25) ** 2 + ((y - baseY - depth - 4) / (ry * 1.25)) ** 2;
-  if (shadow <= 1) return [0, 0, 0, 0.45 * (1 - shadow)];
-  return null;
-}
-const rgba = Buffer.alloc(S * S * 4);
-for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-  let r = 0, g = 0, b = 0, a = 0;
-  for (let sy = 0; sy < 4; sy++) for (let sx = 0; sx < 4; sx++) {
-    const c = stand(x + (sx + 0.5) / 4, y + (sy + 0.5) / 4);
-    if (!c) continue;
-    r += c[0] * c[3]; g += c[1] * c[3]; b += c[2] * c[3]; a += c[3];
-  }
-  const i = (y * S + x) * 4;
-  if (a > 0) { rgba[i] = Math.round(r / a * 255); rgba[i + 1] = Math.round(g / a * 255); rgba[i + 2] = Math.round(b / a * 255); }
-  rgba[i + 3] = Math.round(a / 16 * 255);
-}
-writePng(PREVIEW.replace(/\.png$/, "-stand.png"), S, S, rgba);
-writeBlp(path.join(path.dirname(OUT), "Stand.blp"), S, S, rgba);
-console.log("Wrote Stand.blp");
+// The room until the shop floor is repainted: the concept painting (tools/proshop-mock/img/scene1.png, 827 x 584, the
+// page's size) in the top-left of a 1024 square (ProShopRoom.lua shows that part): Media/ProShop/Room.blp.
+const SCENE = path.join(__dirname, "proshop-mock", "img", "scene1.png");
+const scene = decodePng(SCENE), room = Buffer.alloc(1024 * 1024 * 4);
+for (let y = 0; y < scene.height; y++) scene.rgba.copy(room, y * 1024 * 4, y * scene.width * 4, (y + 1) * scene.width * 4);
+writeBlp(path.join(path.dirname(OUT), "Room.blp"), 1024, 1024, room);
+console.log("Wrote Room.blp (" + scene.width + " x " + scene.height + ")");
