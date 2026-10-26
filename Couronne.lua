@@ -656,7 +656,7 @@ local function Build()
     end
 
     -- the right side
-    local x0 = 20 + K.S + 2 * K.RIM + 22
+    local x0 = 602  -- (right of the board, in either view)
     local title = Text(panel, 26, { 0.95, 0.76, 0.3 })
     title:SetPoint("TOPLEFT", x0, -22)
     title:SetText("Couronne")
