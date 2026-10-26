@@ -74,6 +74,7 @@ ns.StewardLines = {
         shop_gopher = { "The course gopher. We've been trying to get rid of him. Thank you.", "He's asleep on a stolen ball. You two will get on." },
         shop_lapdog = { "The poodle. Better groomed than the buyer, I'm afraid.", "A pampered poodle. Do not wake her. She bites members." },
         shop_club_key = { "The golden club key. Please do not let yourself in.", "A key to the club. I shall be changing the locks." },
+        shop_golf_glove_ball = { "The golf glove. For hands that need all the help they can get.", "A lucky ball on a tee. It floats. Your game, sadly, won't." },
         shop_trophy_cup = { "The champion's cup. Bought, not won. I shall tell no one. Much.", "A golden cup. The little golfer on the lid looks disappointed too." },
     },
 }
