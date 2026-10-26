@@ -31,7 +31,7 @@ local COL = { white = { 0.93, 0.9, 0.82 }, black = { 0.16, 0.14, 0.13 }, queen =
 
 -- ---- the angled view (like Couronne Deluxe's): the board seen from in front and above, fitted once into A.VW x A.VH ----
 -- A point on the board (x, y as the physics has them, y towards you) at height h -> view x, y (down), scale, depth.
-local A = { ELEV = 0.62, DIST = 1400, VW = K.S + 2 * K.RIM, VH = K.S + 2 * K.RIM, RIMH = 18, T = 7, ST = 8, f = 1, cx = 0, cy = 0 }
+local A = { ELEV = 0.8, DIST = 1500, VW = 580, VH = 560, RIMH = 11, T = 7, ST = 8, f = 1, cx = 0, cy = 0 }
 A.cos, A.sin = math.cos(A.ELEV), math.sin(A.ELEV)
 local function PA(x, y, h)
     local wx, wz = x - K.S / 2, K.S / 2 - y
@@ -542,7 +542,7 @@ local function Build()
     -- The angled view: the board, its rim (inner faces, tops; the near rim in front of the rings), lines, pockets.
     persp = CreateFrame("Frame", nil, panel)
     persp:SetSize(A.VW, A.VH)
-    persp:SetPoint("TOPLEFT", 20, -20)
+    persp:SetPoint("TOPLEFT", 10, -12)
     persp:SetClipsChildren(true)
     local function Quad(tex, p1, p2, p3, p4)  -- a texture bent onto four board points {x, y, h}, going round
         local x1, y1 = PA(p1[1], p1[2], p1[3])

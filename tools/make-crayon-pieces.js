@@ -19,7 +19,11 @@ crayon.setSize(S);
 const { canvas, stroke, crayonShape, hex, OUTLINE, rng, writePng } = crayon;
 const GEN = path.join(os.homedir(), "killtracker-art-extra", "Unlocks", "generated");
 const args = process.argv.slice(2), force = args.includes("--force");
-const filter = args.find((a) => !a.startsWith("--")) || "";
+// (--sheet <name>: the review goes to crayon-pieces-<name>.png, so several can work at once; filter: ids containing
+// any of its comma-separated parts)
+const sheetAt = args.indexOf("--sheet"), sheetName = sheetAt >= 0 ? args[sheetAt + 1] : null;
+const filter = args.find((a, i) => !a.startsWith("--") && (sheetAt < 0 || i !== sheetAt + 1)) || "";
+const filters = filter.split(",").filter(Boolean);
 
 // k-means on colours: the centres.
 function kmeans(px, k, r) {
@@ -766,6 +770,13 @@ const RECIPES = {
     for (const x of [0.27, 0.73]) for (const y of [0.3, 0.45, 0.6]) d.circle(x, y, 0.02, GOLD);
     d.rect(0.0, 0.75, 0.12, 0.88, "#a82a2a"); d.rect(0.88, 0.75, 1.0, 0.88, "#a82a2a"); } },
 };
+// More recipes, one file a batch (tools/crayon-recipes/*.js): each exports (H) => ({ [painted id]: recipe }), H = the
+// helpers above.
+const H = { GREY, BONE, GOLD, INK, eyes, googly, teeth, tri, belly, buttons };
+const RECIPE_DIR = path.join(__dirname, "crayon-recipes");
+for (const f of fs.existsSync(RECIPE_DIR) ? fs.readdirSync(RECIPE_DIR).filter((f) => f.endsWith(".js")).sort() : []) {
+  Object.assign(RECIPES, require(path.join(RECIPE_DIR, f))(H));
+}
 
 function draw(id) {
   const img = decodePng(path.join(GEN, "painted", id + ".png"));
@@ -848,8 +859,12 @@ function keepHoles(id, rgba) {
   for (let i = 0; i < S * S; i++) if (clear(i) && !outside[i]) rgba[i * 4 + 3] = 0;
 }
 
-const all = fs.readdirSync(path.join(GEN, "painted")).filter((f) => /^(gear|chase|crit|fac|hunt)_.*\.png$/.test(f) && !/_suit\.png$/.test(f))
-  .map((f) => f.slice(0, -4)).filter((id) => id.includes(filter));
+// (and the Pro Shop's pieces, the bounty props, and the claw machine's series: tools/gen-art-gacha<n>.json, ids as painted)
+const gachaIds = new Set(fs.readdirSync(__dirname).filter((f) => /^gen-art-gacha\d+\.json$/.test(f))
+  .flatMap((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), "utf8")).map((j) => j.id)));
+const all = fs.readdirSync(path.join(GEN, "painted")).map((f) => f.slice(0, -4))
+  .filter((id) => (/^(gear|chase|crit|fac|hunt|shop|prop)_/.test(id) || gachaIds.has(id)) && !/_suit$/.test(id))
+  .filter((id) => !filters.length || filters.some((f) => id.includes(f)));
 fs.mkdirSync(path.join(GEN, "crayon"), { recursive: true });
 const shown = [];
 all.forEach((id, n) => {
@@ -875,8 +890,19 @@ if (shown.length) {
       const ox = (n % cols) * T, oy = (Math.floor(n / cols) * 2 + row) * T;
       for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const i = (y * T + x) * 4, o = ((oy + y) * T * cols + ox + x) * 4, a = s[i + 3] / 255;
         sheet[o] = Math.round(s[i] * a + 226 * (1 - a)); sheet[o + 1] = Math.round(s[i + 1] * a + 216 * (1 - a)); sheet[o + 2] = Math.round(s[i + 2] * a + 196 * (1 - a)); sheet[o + 3] = 255; }
+      // (--grid: the recipe's tenths over the painting - its box 0..1 across and down; the 0.5 lines stronger)
+      if (row === 0 && args.includes("--grid")) {
+        const k = T / Math.min(side, S), sx0 = Math.max(0, cx - side / 2), sy0 = Math.max(0, cy - side / 2);
+        const mark = (x, y, strong) => { if (x < 0 || y < 0 || x >= T || y >= T) return; const o = ((oy + y) * T * cols + ox + x) * 4;
+          sheet[o] = 230; sheet[o + 1] = strong ? 20 : 60; sheet[o + 2] = strong ? 140 : 200; };
+        for (let t = 0; t <= 10; t++) {
+          const gx = Math.round((x0 + (x1 - x0) * t / 10 - sx0) * k), gy = Math.round((y0 + (y1 - y0) * t / 10 - sy0) * k);
+          for (let q = Math.round((y0 - sy0) * k); q <= Math.round((y1 - sy0) * k); q++) if (t === 5 || q % 2 === 0) mark(gx, q, t === 5);
+          for (let q = Math.round((x0 - sx0) * k); q <= Math.round((x1 - sx0) * k); q++) if (t === 5 || q % 2 === 0) mark(q, gy, t === 5);
+        }
+      }
     });
   });
-  try { writePng(path.join(GEN, "crayon-pieces.png"), T * cols, T * 2 * rows, sheet); } catch (e) { console.log("(crayon-pieces.png is open: not updated)"); }
+  try { writePng(path.join(GEN, sheetName ? "crayon-pieces-" + sheetName + ".png" : "crayon-pieces.png"), T * cols, T * 2 * rows, sheet); } catch (e) { console.log("(crayon-pieces.png is open: not updated)"); }
 }
 console.log(`Drew ${shown.length} crayon pieces into ${path.join(GEN, "crayon")}`);
