@@ -7,6 +7,7 @@
 //   Panel              a curtain's panel frame: rounded, gilt border, a dark band, a faint gilt line (9 slices;
 //                      its fill is a gradient in the game); Rivet = the brass pin on its top
 //   Stripes            the curtains' velvet folds, a tile repeated across; CurtainMask(Right) = the curved inner bottom
+//   CurtainShadow(Right) the curtains' shadow on the room, round the inner edge and the curve
 //   Fringe             the valance's gold fringe, a tile repeated across
 //   Vignette           the room's edges darkened while zoomed in
 // Drawn 4x4 sampled per pixel, so the edges come out soft. Run: node tools/make-shop-ui.js   (restart WoW after)
@@ -158,3 +159,25 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
   const t = Math.max(0, Math.min(1, (d - 0.45) / 0.55));
   return [20 / 255, 8 / 255, 4 / 255, 0.75 * t];
 }));
+
+// --- the curtains' shadow on the room (the mock's box-shadow 0 0 22px), following the curtain's outline: its straight
+// inner edge and the curve at the bottom. Drawn for a curtain of about 214 x 612 px with 22 px of shadow beside it
+// (stretched to the real size), the curtain on the left of the texture; ...Right mirrored.
+{
+  const W = 128, H = 256, CW = 214, CH = 612, SH = 22, NW = CW + SH;
+  const rx = 0.6 * CW, ry = 0.12 * CH, cx = CW - rx, cy = CH - ry;
+  const away = (x, y) => {  // how far outside the curtain's outline (0 inside)
+    if (y < cy || x < cx) return Math.max(0, x - CW);
+    const dx = x - cx, dy = y - cy, r = Math.hypot(dx / rx, dy / ry);
+    return r <= 1 ? 0 : Math.hypot(dx, dy) * (1 - 1 / r);
+  };
+  for (const [name, flip] of [["CurtainShadow", false], ["CurtainShadowRight", true]]) {
+    save(name, W, H, paint(W, H, (px, py) => {
+      const x = (flip ? W - px : px) * NW / W, y = py * CH / H;
+      const d = away(x, y);
+      if (d <= 0) return [0, 0, 0, 0.6];  // (under the curtain: hidden by it, but no seam at its edge)
+      const t = Math.max(0, 1 - d / SH);
+      return [0, 0, 0, 0.6 * t * t];
+    }));
+  }
+}

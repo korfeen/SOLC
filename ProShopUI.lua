@@ -177,7 +177,7 @@ function ShopUI.Panel(parent)
 end
 
 -- A velvet curtain: the folds (a tile repeated across), lighter at the top and darker at the bottom, its inner bottom
--- corner curved (a mask), a shadow along its inner edge. side "left" or "right".
+-- corner curved (a mask), its shadow on the room following that outline. side "left" or "right".
 function ShopUI.Curtain(parent, side)
     local curtain = CreateFrame("Frame", nil, parent)
     local folds = curtain:CreateTexture(nil, "BACKGROUND")
@@ -191,16 +191,12 @@ function ShopUI.Curtain(parent, side)
     mask:SetAllPoints()
     folds:AddMaskTexture(mask)
     wash:AddMaskTexture(mask)
-    local shadow = curtain:CreateTexture(nil, "BACKGROUND", nil, -1)  -- (on the room, beside its inner edge)
-    shadow:SetPoint("TOP") shadow:SetPoint("BOTTOM")
-    shadow:SetWidth(22)
-    shadow:SetColorTexture(1, 1, 1)
+    local shadow = curtain:CreateTexture(nil, "BACKGROUND", nil, -1)  -- (on the room, round its inner edge and curve)
+    shadow:SetTexture(ART .. (side == "right" and "CurtainShadowRight" or "CurtainShadow"))
     if side == "left" then
-        shadow:SetPoint("LEFT", curtain, "RIGHT")
-        shadow:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.55), CreateColor(0, 0, 0, 0))
+        shadow:SetPoint("TOPLEFT") shadow:SetPoint("BOTTOMRIGHT", 22, 0)
     else
-        shadow:SetPoint("RIGHT", curtain, "LEFT")
-        shadow:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.55))
+        shadow:SetPoint("TOPLEFT", -22, 0) shadow:SetPoint("BOTTOMRIGHT")
     end
     function curtain:Layout(width)
         folds:SetTexCoord(0, width / 32, 0, 1)  -- (one fold every 32 px)
