@@ -29,7 +29,7 @@ local PICTURE = { x = 413, y = 260, size = 340 }  -- zoomed in: its middle and s
 local CURTAIN_W, VALANCE_H = 200, 58
 local POST_REACH = 18  -- (how far the window's posts reach over the page's sides)
 local OPEN_TIME = 0.55
-local ZOOM_TIME, CLOSE_ZOOM = 0.4, 1.6  -- (switching to a head layer's tab: how long the zoom takes, how far in)
+local ZOOM_TIME, CLOSE_ZOOM = 0.4, 1.92  -- (switching to a head layer's tab: how long the zoom takes, how far in)
 
 -- What the mannequin wears when you walk in.
 ns.SHOP_DISPLAY = { headwear = "shop_flat_cap", outfit = "shop_argyle_vest" }
