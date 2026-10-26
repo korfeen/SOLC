@@ -23,7 +23,7 @@ local K = {
     R = 12, SR = 17, QR = 12,  -- (puck, striker, queen radii)
     BASE_Y = 440, BASE_X1 = 120, BASE_X2 = 380,  -- (your baseline: where the striker may sit)
     DECEL = 280, DRAG = 0.4, STOP = 5, BOUNCE = 0.9, RAIL = 0.72, STEP = 1 / 240,
-    PULL = 300, SPEED = 1500, CURVE = 1.6,  -- (a full pull back, the speed it gives; power = pull ^ CURVE: soft shots get
+    PULL = 220, SPEED = 1500, CURVE = 1.6,  -- (a full pull back, the speed it gives; power = pull ^ CURVE: soft shots get
                                             -- most of the pull, so they can be fine-tuned)
     STRIKER_MASS = 1.6, QUEEN_BONUS = 3,
 }
