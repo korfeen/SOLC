@@ -32,7 +32,8 @@ local K = {
     TILTS = { 5, 12, 22, 35, 50, 65, 80 }, POWER = 1,
 }
 K.TOPY = K.H - 30
-K.HOME_X, K.HOME_Z = K.CX / 2, K.CZ / 2
+K.HOME_X, K.HOME_Z = K.CX / 2, K.CZ / 2  -- (where it lets go: over the chute's middle)
+K.START_Z = 26  -- (where a go starts: right at the front glass, still over the chute, so the front row can be reached)
 local COLORS = { uncommon = { 0.12, 1, 0 }, rare = { 0.23, 0.61, 1 }, epic = { 0.64, 0.21, 0.93 }, legendary = { 1, 0.5, 0 } }
 
 -- Series 1 (tools/gacha-series1-picks.json) as labels only, until the pieces are in MintArt.lua: { id, name, rarity }.
@@ -136,7 +137,7 @@ local panel, view
 local caps, owned = {}, {}
 local S = { state = "idle", t = 0, meter = 0, smashes = 0, shake = 0, tilt = 0, timer = 0, phase = "x", moved = false,
     points = 3000, msg = "Insert 150 points to play.", go = nil, calm = 0, asleep = false, acc = 0, keys = {}, cost = 0 }
-local C = { x = K.HOME_X, z = K.HOME_Z, y = K.TOPY, vx = 0, vz = 0, open = 1, ax = 0, wx = 0, az = 0, wz = 0,
+local C = { x = K.HOME_X, z = K.START_Z, y = K.TOPY, vx = 0, vz = 0, open = 1, ax = 0, wx = 0, az = 0, wz = 0,
     held = nil, dropAt = -1, travelled = 0, path = 1 }
 
 local function Tilt(k) return K.TILTS[math.min(k + 1, #K.TILTS)] end
@@ -331,7 +332,7 @@ local function Insert()
     S.points = S.points - K.PRICE
     S.go = { wins = {}, held = false }
     S.smashes, S.timer, S.state, S.phase, S.moved = 0, K.STEER, "steer", "x", false
-    C.x, C.z, C.y, C.open, C.held = K.HOME_X, K.HOME_Z, K.TOPY, 1, nil
+    C.x, C.z, C.y, C.open, C.held = K.HOME_X, K.START_Z, K.TOPY, 1, nil
     Say("Hold RIGHT to move the claw across...")
 end
 local function Drop() if S.state == "steer" then S.state = "drop" C.open = 1 Wake() end end
