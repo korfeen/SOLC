@@ -367,9 +367,9 @@ local function ToggleCart()
     Redraw()
 end
 
--- The till's camera (ProShopTill.lua): p 0 = the whole room .. 1 = on the steward behind his counter (the mock's 1.75x
--- on x 395, y 260 of the painting, put at 413, 300), the easel and the corner's bits fading away.
-local STEWARD_VIEW = { scale = 1.75, x = 395, y = 260, at = { 413, 300 } }
+-- The till's camera (ProShopTill.lua): p 0 = the whole room .. 1 = on the steward behind his counter (the mock's 1.75x,
+-- on x 395, y 215 of the painting, put at 413, 300), the easel and the corner's bits fading away.
+local STEWARD_VIEW = { scale = 1.75, x = 395, y = 215, at = { 413, 300 } }  -- (his face under the bubble)
 local function Camera(p)
     local v = STEWARD_VIEW
     local w, h = SCENE_W / v.scale, SCENE_H / v.scale

@@ -1,10 +1,13 @@
--- The Pro Shop's till (the mockup's checkout, tools/proshop-mock/index.html): the view pans in on the steward behind his
--- counter, the till's brass box at the top left (THE TILL n / N over a dark screen with the running sum), his speech
--- bubble beside him, and each piece of the cart rung up a click at a time: his line about it (StewardLines.lua), its
--- card sliding in (the piece, its name, *ka-ching*), the till counting up. Then the total: "It's for me" pays (the
--- posh green S.O.L.C. paper bag drops in) or "Not yet". An empty cart gets a quip. Gifts and the postcard rack come
--- later. ns.ShopUI.Till(room, hooks) makes it; hooks = { camera(p) (0 the room .. 1 on the steward), buy(keys) -> ok,
--- result or reason, done(bought) }; till:Start(items, total) rings up a cart (items: ProShopRoom.lua's stock items).
+-- The Pro Shop's till (after the mockup's checkout, tools/proshop-mock/index.html): the view pans in on the steward
+-- behind his counter. Top left, his brass cash register: S.O.L.C. on its crest, the sum on rolling number drums, a
+-- velvet price flag popping up out of its top on each ring, and a receipt printing out under it, a line a piece (the
+-- total and a torn edge at the end). On the counter, under a soft spotlight, a velvet cushion he presents each piece
+-- on, its brass plaque in front (name and price). His speech bubble beside him, its tail at his mouth: a line about
+-- each piece (StewardLines.lua), rung up a click at a time with a coin clink. Then the total (the register's bell):
+-- "It's for me" pays (the posh green S.O.L.C. paper bag drops in) or "Not yet". An empty cart gets a quip. Gifts and
+-- the postcard rack come later. ns.ShopUI.Till(room, hooks) makes it; hooks = { camera(p) (0 the room .. 1 on the
+-- steward), buy(keys) -> ok, result or reason, done(bought) }; till:Start(items) rings up a cart (items:
+-- ProShopRoom.lua's stock items). Art: tools/make-shop-ui.js.
 
 local _, ns = ...
 local UI = ns.UI
@@ -12,14 +15,26 @@ local S = ns.ShopUI
 if not UI or not S then return end
 
 local ART = "Interface\\AddOns\\SOLC\\Media\\ProShop\\UI\\"
-local CAMERA_TIME, CARD_TIME, COUNT_TIME, BAG_TIME = 0.6, 0.4, 0.4, 1.0
--- (the mock's places, page pixels from the top left)
-local BOX = { x = 22, y = 30, w = 214 }
+local CAMERA_TIME, DROP_TIME, COUNT_TIME, FLAG_TIME, PRINT_TIME, BAG_TIME = 0.6, 0.45, 0.6, 0.5, 0.3, 1.0
+-- (places in page pixels from the top left)
+local REGISTER = { x = 20, y = 18, size = 210 }  -- (its art: crest, body with the drum panel at 22,76 166x52, base)
+local DRUMS, DRUM_W, DRUM_H = 5, 28, 40
+local RECEIPT = { x = 50, y = 214, w = 150, line = 16 }
 local BUBBLE = { x = 470, y = 34, w = 332, pad = 14 }
-local CARD = { x = 300, y = 360, w = 254 }
+local CUSHION = { x = 413, y = 465, w = 220, h = 110 }
+local PIECE = { x = 413, y = 380, size = 150 }
+local PLAQUE = { x = 413, y = 538, w = 230, h = 28 }
+-- The game's own sounds (if this client has them): a coin clink, the bell, paper.
+local SOUNDS = { ring = "LOOT_WINDOW_COIN_SOUND", bell = "AUCTION_WINDOW_OPEN", paper = "IG_QUEST_LOG_OPEN" }
 
 local function Pick(list) return list and list[math.random(#list)] end
 local function Ease(p) return p * p * (3 - 2 * p) end
+local function Back(p) local s = 1.7 return 1 + (s + 1) * (p - 1) ^ 3 + s * (p - 1) ^ 2 end  -- (overshoots, settles)
+local function Sound(name)
+    if KillTrackerDB and KillTrackerDB.clickSounds == false then return end
+    local id = SOUNDKIT and SOUNDKIT[SOUNDS[name]]
+    if id then PlaySound(id, "SFX") end
+end
 
 -- What the steward says about a piece: its own line, or his line for its layer and rarity, or just its name.
 local function LineFor(item)
@@ -60,52 +75,177 @@ local function Nine(frame, art, corner, layer)
     frame:HookScript("OnSizeChanged", Place)
 end
 
+-- The register: its art, the crest's S.O.L.C., the drums (register:Show(value): the number, rolling like an
+-- odometer: each drum turns as the one to its right goes from 9 to 0), the count on its base, the flag behind it.
+local function Register(till)
+    local register = CreateFrame("Frame", nil, till)
+    register:SetSize(REGISTER.size, REGISTER.size)
+    register:SetFrameLevel(till:GetFrameLevel() + 3)
+    local art = register:CreateTexture(nil, "ARTWORK")
+    art:SetAllPoints()
+    art:SetTexture(ART .. "Register")
+    local crest = register:CreateFontString(nil, "OVERLAY")
+    crest:SetFont(S.DISPLAY_FONT, 17, "")
+    crest:SetTextColor(S.C("#5c3d10"))
+    crest:SetShadowOffset(0, -1)
+    crest:SetShadowColor(1, 0.95, 0.75, 0.6)  -- (engraved: a light edge under it)
+    crest:SetPoint("CENTER", register, "TOPLEFT", 105, -40)
+    crest:SetText("S.O.L.C.")
+    register.count = register:CreateFontString(nil, "OVERLAY")
+    register.count:SetFont(S.DISPLAY_FONT, 12, "")
+    register.count:SetTextColor(S.C("#f3dc9a"))
+    register.count:SetPoint("CENTER", register, "TOPLEFT", 105, -185)
+    -- The drums: a window each, two digits in it (the one showing and the next, rolling up).
+    register.drums = {}
+    local left = 22 + (166 - (DRUMS * DRUM_W + (DRUMS - 1) * 4)) / 2
+    for i = 1, DRUMS do
+        local window = CreateFrame("Frame", nil, register)
+        window:SetSize(DRUM_W, DRUM_H)
+        window:SetPoint("TOPLEFT", left + (i - 1) * (DRUM_W + 4), -82)
+        window:SetClipsChildren(true)
+        local face = window:CreateTexture(nil, "BACKGROUND")
+        face:SetAllPoints()
+        face:SetTexture(ART .. "Drum")
+        window.digits = {}
+        for d = 1, 2 do
+            local digit = window:CreateFontString(nil, "ARTWORK")
+            digit:SetFont(S.BODY_FONT, 26, "")
+            digit:SetTextColor(S.C("#f6e3b0"))
+            digit:SetSize(DRUM_W, DRUM_H)
+            window.digits[d] = digit
+        end
+        local shine = window:CreateTexture(nil, "OVERLAY")  -- (the glass: darker top and bottom)
+        shine:SetAllPoints()
+        S.Gradient(shine, { 0, 0, 0, 0.55 }, { 0, 0, 0, 0 })
+        shine:SetHeight(DRUM_H * 0.3)
+        shine:ClearAllPoints() shine:SetPoint("TOPLEFT") shine:SetPoint("TOPRIGHT")
+        register.drums[i] = window
+    end
+    function register:ShowValue(v)
+        v = math.max(0, v)
+        for i, window in ipairs(self.drums) do
+            local place = 10 ^ (DRUMS - i)
+            local base = math.floor(v / place)
+            local rest = v - base * place  -- (what the drums to its right show)
+            local turn = place == 1 and (v - math.floor(v)) or math.max(0, rest - (place - 1))
+            local a, b = window.digits[1], window.digits[2]
+            a:SetText((base == 0 and i < DRUMS) and "" or tostring(base % 10))  -- (no leading zeros)
+            b:SetText(tostring((base + 1) % 10))  -- (below it, out of the window until it rolls)
+            a:ClearAllPoints() a:SetPoint("TOP", 0, DRUM_H * turn)
+            b:ClearAllPoints() b:SetPoint("TOP", a, "BOTTOM")
+        end
+    end
+    -- The price flag: behind the crest, popping up out of it.
+    local flag = CreateFrame("Frame", nil, till)
+    flag:SetSize(76, 38)
+    flag:SetFrameLevel(register:GetFrameLevel() - 1)
+    local cloth = flag:CreateTexture(nil, "ARTWORK")
+    cloth:SetAllPoints()
+    cloth:SetTexture(ART .. "PriceFlag")
+    flag.text = S.Text(flag, S.DISPLAY_FONT, 18, "#f6d98a")
+    flag.text:SetPoint("CENTER", 0, 1)
+    flag:Hide()
+    register.flag = flag
+    function register:Flag(p)  -- 0 hidden in the crest .. 1 up
+        flag:ClearAllPoints()
+        flag:SetPoint("BOTTOM", self, "TOPLEFT", 105, -30 + 44 * p)
+    end
+    return register
+end
+
+-- The receipt: paper hanging from the register, a line a piece, then the total and a torn edge.
+local function Receipt(till)
+    local receipt = CreateFrame("Frame", nil, till)
+    receipt:SetWidth(RECEIPT.w)
+    receipt:SetFrameLevel(till:GetFrameLevel() + 2)
+    receipt:SetClipsChildren(true)
+    local paper = receipt:CreateTexture(nil, "BACKGROUND")
+    paper:SetPoint("TOPLEFT") paper:SetPoint("BOTTOMRIGHT", 0, 8)
+    paper:SetColorTexture(S.C("#f6ecd2"))
+    local edge = receipt:CreateTexture(nil, "BACKGROUND")
+    edge:SetPoint("BOTTOMLEFT") edge:SetPoint("BOTTOMRIGHT")
+    edge:SetHeight(8)
+    edge:SetTexture(ART .. "ReceiptEdge", "REPEAT", "CLAMP")
+    edge:SetTexCoord(0, RECEIPT.w / 16, 0, 1)
+    local shade = receipt:CreateTexture(nil, "BORDER")  -- (curling out of the slot: shaded at the top)
+    shade:SetPoint("TOPLEFT") shade:SetPoint("TOPRIGHT")
+    shade:SetHeight(10)
+    S.Gradient(shade, { 0, 0, 0, 0.35 }, { 0, 0, 0, 0 })
+    receipt.lines = {}
+    function receipt:Line(i, left, right, big)
+        local line = self.lines[i]
+        if not line then
+            line = {
+                left = S.Text(self, S.BODY_FONT, 11, "#3b2412"),
+                right = S.Text(self, S.BODY_FONT, 11, "#3b2412"),
+            }
+            line.left:SetShadowOffset(0, 0) line.right:SetShadowOffset(0, 0)
+            line.left:SetJustifyH("LEFT")
+            line.left:SetWordWrap(false)
+            self.lines[i] = line
+        end
+        local font = big and S.DISPLAY_FONT or S.BODY_FONT
+        line.left:SetFont(font, big and 13 or 11, "") line.right:SetFont(font, big and 13 or 11, "")
+        line.left:ClearAllPoints() line.left:SetPoint("TOPLEFT", 8, -(8 + (i - 1) * RECEIPT.line))
+        line.left:SetPoint("RIGHT", self, "RIGHT", -52, 0)
+        line.right:ClearAllPoints() line.right:SetPoint("TOPRIGHT", -8, -(8 + (i - 1) * RECEIPT.line))
+        line.left:SetText(left) line.right:SetText(right)
+        line.left:Show() line.right:Show()
+    end
+    function receipt:Clear()
+        for _, line in ipairs(self.lines) do line.left:Hide() line.right:Hide() end
+        self:SetHeight(0.1)
+    end
+    function receipt:Height(n) return 8 + n * RECEIPT.line + 10 end
+    return receipt
+end
+
 function S.Till(room, hooks)
     local till = CreateFrame("Button", nil, room)
     till:SetAllPoints()
-    till:SetFrameLevel(UI.window:GetFrameLevel() + UI.FRAME_LEVEL.wood - 8)  -- (under the window's wood, as the curtains)
+    till:SetFrameLevel(UI.window:GetFrameLevel() + UI.FRAME_LEVEL.wood - 9)  -- (under the window's wood, as the curtains)
     till:RegisterForClicks("LeftButtonUp")
     till:Hide()
     local vignette = till:CreateTexture(nil, "BACKGROUND")
     vignette:SetPoint("TOPLEFT", -14, 14) vignette:SetPoint("BOTTOMRIGHT", 14, -14)
     vignette:SetTexture(ART .. "Vignette")
+    local function At(region, x, y) region:ClearAllPoints() region:SetPoint("CENTER", till, "TOPLEFT", x, -y) end
 
-    -- The till's box: brass, THE TILL and the count over a dark screen with the sum.
-    local box = CreateFrame("Frame", nil, till)
-    box:SetSize(BOX.w, 76)
-    local fill = box:CreateTexture(nil, "BACKGROUND")
-    fill:SetPoint("TOPLEFT", 2, -2) fill:SetPoint("BOTTOMRIGHT", -2, 2)
-    S.Gradient(fill, { S.C("#e7c66c") }, { S.C("#a87d2c") })
-    Nine(box, "TillFrame", 16, "BORDER")
-    local label = box:CreateFontString(nil, "OVERLAY")
-    label:SetFont(S.DISPLAY_FONT, 12, "")
-    label:SetTextColor(S.C("#3a2610"))
-    label:SetPoint("TOPLEFT", 12, -10)
-    label:SetText("THE TILL")
-    local count = box:CreateFontString(nil, "OVERLAY")
-    count:SetFont(S.DISPLAY_FONT, 12, "")
-    count:SetTextColor(S.C("#3a2610"))
-    count:SetPoint("TOPRIGHT", -12, -10)
-    local screen = box:CreateTexture(nil, "ARTWORK")
-    screen:SetPoint("TOPLEFT", 12, -28) screen:SetPoint("BOTTOMRIGHT", -12, 10)
-    screen:SetColorTexture(S.C("#1d1408"))
-    local glass = box:CreateTexture(nil, "ARTWORK", nil, 1)  -- (its inner shadow along the top)
-    glass:SetPoint("TOPLEFT", screen) glass:SetPoint("TOPRIGHT", screen)
-    glass:SetHeight(6)
-    S.Gradient(glass, { 0, 0, 0, 0.8 }, { 0, 0, 0, 0 })
-    local sum = box:CreateFontString(nil, "OVERLAY")
-    sum:SetFont(S.BODY_FONT, 22, "")
-    sum:SetTextColor(S.C("#ffcf5a"))
-    sum:SetPoint("RIGHT", screen, "RIGHT", -8, 0)
+    local register = Register(till)
+    register:SetPoint("TOPLEFT", REGISTER.x, -REGISTER.y)
+    local receipt = Receipt(till)
+    receipt:SetPoint("TOPLEFT", RECEIPT.x, -RECEIPT.y)
 
-    -- His bubble: parchment in gilt, its tail pointing at him; what he says, who it's about, buttons.
+    -- The counter: a spotlight, the cushion, the piece on it, its plaque.
+    local stage = CreateFrame("Frame", nil, till)
+    stage:SetAllPoints()
+    stage:SetFrameLevel(till:GetFrameLevel() + 1)
+    local spot = stage:CreateTexture(nil, "BACKGROUND")
+    spot:SetSize(340, 260)
+    spot:SetTexture(ART .. "Spot")
+    spot:SetBlendMode("ADD")
+    spot:SetAlpha(0.45)
+    At(spot, CUSHION.x, CUSHION.y - 50)
+    local cushion = stage:CreateTexture(nil, "BORDER")
+    cushion:SetSize(CUSHION.w, CUSHION.h)
+    cushion:SetTexture(ART .. "Cushion")
+    At(cushion, CUSHION.x, CUSHION.y)
+    local piece = CreateFrame("Frame", nil, stage)
+    piece:SetSize(PIECE.size, PIECE.size)
+    local plaque = S.Plaque(stage, PLAQUE.w, PLAQUE.h, 14)
+    plaque:EnableMouse(false)
+    At(plaque, PLAQUE.x, PLAQUE.y)
+
+    -- His bubble: parchment in gilt, its tail down at his mouth; what he says, who it's about, buttons.
     local bubble = CreateFrame("Frame", nil, till)
     bubble:SetWidth(BUBBLE.w)
+    bubble:SetFrameLevel(till:GetFrameLevel() + 4)
     Nine(bubble, "Bubble", 20, "BACKGROUND")
     local tail = bubble:CreateTexture(nil, "BORDER")
-    tail:SetSize(16, 16)
-    tail:SetPoint("TOPRIGHT", bubble, "TOPLEFT", 2, -34)
+    tail:SetSize(22, 22)
+    tail:SetPoint("CENTER", bubble, "BOTTOMLEFT", 6, 4)
     tail:SetTexture(ART .. "BubbleTail")
+    tail:SetRotation(math.rad(40))  -- (it points left; turned to point down and left, at him)
     local words = S.Text(bubble, S.DISPLAY_FONT, 18, "#3b2412")
     words:SetShadowOffset(0, 0)
     words:SetWidth(BUBBLE.w - 2 * BUBBLE.pad)
@@ -126,7 +266,6 @@ function S.Till(room, hooks)
     bag.tissue = bag:CreateTexture(nil, "ARTWORK", nil, 1)
     bag.tissue:SetSize(64, 22)
     bag.tissue:SetTexture(ART .. "BagTissue")
-    bag.tissue:SetTexCoord(0, 1, 0, 1)
     bag.handle = bag:CreateTexture(nil, "ARTWORK", nil, 1)
     bag.handle:SetSize(50, 50)
     bag.handle:SetTexture(ART .. "BagHandle")
@@ -136,35 +275,16 @@ function S.Till(room, hooks)
     bag.mark:SetText("S.O.L.C.")
     bag:Hide()
 
-    -- The piece's card: cream, the piece, its name, *ka-ching*.
-    local card = CreateFrame("Frame", nil, till)
-    card:SetSize(CARD.w, 172)
-    Nine(card, "Card", 8, "BACKGROUND")
-    card.pic = CreateFrame("Frame", nil, card)
-    card.pic:SetSize(110, 110)
-    card.pic:SetPoint("TOP", 0, -10)
-    card.name = S.Text(card, S.DISPLAY_FONT, 18, "#3b2412")
-    card.name:SetShadowOffset(0, 0)
-    card.name:SetPoint("TOP", card.pic, "BOTTOM", 0, -4)
-    card.ching = S.Text(card, S.BODY_FONT, 12, "#6b4a2c")
-    card.ching:SetShadowOffset(0, 0)
-    card.ching:SetPoint("TOP", card.name, "BOTTOM", 0, -4)
-    card.ching:SetText("*ka-ching*")
-    card:Hide()
-
     local skip = S.Text(till, S.BODY_FONT, 12, "#e8cf9a")
-    skip:SetPoint("BOTTOM", 0, 14)
+    skip:SetPoint("BOTTOM", 0, 6)
     skip:SetText("Click to go on")
 
     -- The sale so far.
-    local sale = { items = {}, i = 0, sum = 0, shown = 0, camera = 0 }
+    local sale = { items = {}, i = 0, sum = 0, shown = 0 }
     local tweens = {}
     local function Tween(duration, fn, after) tweens[#tweens + 1] = { t = 0, d = duration, fn = fn, after = after } end
+    local function Count() register.count:SetText(("%d / %d"):format(math.min(sale.i, #sale.items), #sale.items)) end
 
-    local function Box()
-        count:SetText(("%d / %d"):format(math.min(sale.i, #sale.items), #sale.items))
-        sum:SetText(BreakUpLargeNumbers(math.floor(sale.shown + 0.5)))
-    end
     -- His bubble: text, who (optional), up to two buttons { label, onClick }, the bag on top (optional).
     local function Bubble(text, whoText, choices, withBag)
         local y = BUBBLE.pad
@@ -198,17 +318,18 @@ function S.Till(room, hooks)
         end
         if choices then y = y + 10 + 32 end
         bubble:SetHeight(y + BUBBLE.pad)
+        bubble:Show()
         skip:SetShown(choices == nil)
     end
 
     local function End(bought)
         sale.ending = true
-        card:Hide()
-        bubble:Hide()
-        box:Hide()
-        skip:Hide()
+        bubble:Hide() skip:Hide()
         if not InCombatLockdown() then till:EnableKeyboard(false) end
-        Tween(CAMERA_TIME, function(p) sale.camera = 1 - Ease(p) hooks.camera(sale.camera) end, function()
+        Tween(CAMERA_TIME, function(p)
+            hooks.camera(1 - Ease(p))
+            till:SetAlpha(1 - p)
+        end, function()
             till:Hide()
             sale.ending = false
             hooks.done(bought)
@@ -223,6 +344,7 @@ function S.Till(room, hooks)
             Bubble(result, "The steward, unmoved", { { "Back to the shop", function() End(false) end } })
             return
         end
+        Sound("paper")
         Bubble(Say("bag", "Splendid."), "All of it is in your wardrobe now.", { { "Thank you", function() End(true) end } }, true)
         -- (the bag drops in, then its tissue, then its handle)
         bag.body:ClearAllPoints() bag.body:SetPoint("BOTTOM", 0, 0)
@@ -240,7 +362,14 @@ function S.Till(room, hooks)
     end
 
     local function Ask()
-        card:Hide()
+        -- (the receipt's total and torn edge; the register's bell; the cushion cleared)
+        Sound("bell")
+        local n = #sale.items
+        receipt:Line(n + 1, "TOTAL", BreakUpLargeNumbers(sale.sum), true)
+        local from = receipt:GetHeight()
+        Tween(PRINT_TIME, function(p) receipt:SetHeight(from + (receipt:Height(n + 1) + 4 - from) * Ease(p)) end)
+        Tween(DROP_TIME, function(p) piece:SetAlpha(1 - p) plaque:SetAlpha(1 - p) end)
+        register:Flag(0) register.flag:Hide()
         local balance = ns.GetPoints().balance
         if balance < sale.sum then
             Bubble(("That comes to %s points. You have %s. Do come back when you are... solvent."):format(
@@ -259,23 +388,26 @@ function S.Till(room, hooks)
         local item = sale.items[sale.i]
         local from = sale.sum
         sale.sum = sale.sum + item.price
+        Sound("ring")
         Bubble(LineFor(item), ("%s  ·  %s points"):format(item.option.name, BreakUpLargeNumbers(item.price)))
-        ns.DrawPiece(card.pic, item.layer.key, item.option)
-        card.name:SetText(item.option.name)
-        card.name:SetTextColor(ns.RarityRGB(item.option.rarity))
-        card:Show()
-        Tween(CARD_TIME, function(p)  -- (slides in from the left)
-            local e = Ease(p)
-            card:ClearAllPoints()
-            card:SetPoint("TOPLEFT", till, "TOPLEFT", CARD.x - 260 * (1 - e), -CARD.y)
-            card:SetAlpha(e)
+        Count()
+        -- (on the cushion: it drops onto it, its plaque under it)
+        ns.DrawPiece(piece, item.layer.key, item.option)
+        plaque.text:SetText(("%s  ·  %s"):format(item.option.name, BreakUpLargeNumbers(item.price)))
+        plaque:SetWidth(math.max(PLAQUE.w, plaque.text:GetStringWidth() + 40))
+        plaque:SetAlpha(1)
+        Tween(DROP_TIME, function(p)
+            At(piece, PIECE.x, PIECE.y - 40 * (1 - Back(p)))
+            piece:SetAlpha(math.min(1, p * 2))
         end)
-        Tween(COUNT_TIME, function(p)  -- (the till counts up, its box jumps)
-            sale.shown = from + (sale.sum - from) * Ease(p)
-            box:SetPoint("TOPLEFT", till, "TOPLEFT", BOX.x, -BOX.y + 4 * math.sin(math.pi * math.min(1, p / 0.6)))
-            Box()
-        end)
-        Box()
+        -- (the register: the flag pops up with the price, the drums roll on, the receipt prints a line)
+        register.flag.text:SetText(BreakUpLargeNumbers(item.price))
+        register.flag:Show()
+        Tween(FLAG_TIME, function(p) register:Flag(Back(p)) end)
+        Tween(COUNT_TIME, function(p) register:ShowValue(from + (sale.sum - from) * Ease(p)) end)
+        receipt:Line(sale.i, item.option.name, BreakUpLargeNumbers(item.price))
+        local height = receipt:GetHeight()
+        Tween(PRINT_TIME, function(p) receipt:SetHeight(height + (receipt:Height(sale.i) - height) * Ease(p)) end)
     end
 
     till:SetScript("OnClick", Next)
@@ -298,31 +430,35 @@ function S.Till(room, hooks)
 
     function till:Start(items)
         wipe(tweens)
-        sale.items, sale.i, sale.sum, sale.shown, sale.ending = items, 0, 0, 0, false
-        box:ClearAllPoints()
-        box:SetPoint("TOPLEFT", BOX.x, -BOX.y)
+        sale.items, sale.i, sale.sum, sale.ending = items, 0, 0, false
         bubble:ClearAllPoints()
         bubble:SetPoint("TOPLEFT", BUBBLE.x, -BUBBLE.y)
-        card:Hide()
-        bubble:Hide() box:Hide() skip:Hide()
-        self:SetAlpha(1)
+        bubble:Hide() skip:Hide()
+        receipt:Clear()
+        register:ShowValue(0)
+        register.flag:Hide()
+        Count()
+        piece:SetAlpha(0) plaque:SetAlpha(0)
+        local any = #items > 0
+        register:SetShown(any) receipt:SetShown(any) stage:SetShown(any)
+        self:SetAlpha(0)
         self:Show()
         if not InCombatLockdown() then self:EnableKeyboard(true) end
-        Tween(CAMERA_TIME, function(p) sale.camera = Ease(p) hooks.camera(sale.camera) end, function()
-            bubble:Show()
-            if #items == 0 then
+        Tween(CAMERA_TIME, function(p)
+            hooks.camera(Ease(p))
+            self:SetAlpha(p)
+        end, function()
+            if not any then
                 Bubble(Say("empty", "Nothing to ring up?"), nil, { { "Back to the shop", function() End(false) end } })
                 return
             end
-            box:Show()
-            Box()
             Bubble(Say("open", "Ahem."), "The steward")
         end)
     end
     -- Leaving the page: gone at once, the room as it was.
     function till:Reset()
         wipe(tweens)
-        sale.camera, sale.ending = 0, false
+        sale.ending = false
         hooks.camera(0)
         if not InCombatLockdown() then self:EnableKeyboard(false) end
         self:Hide()

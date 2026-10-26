@@ -194,19 +194,12 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
 }
 
 // --- the till (the steward ringing up the cart), 128 squares standing for 64 px (S = 2) unless said:
-//   TillFrame   the till box's frame: rounded 6, a 2 px dark brass border, clear inside (its fill is a gradient in game)
 //   Bubble      the steward's speech bubble: parchment, a 2 px gilt border, rounded 14 (9 slices, corners 20 px)
 //   BubbleTail  its tail, pointing left at him: a gilt triangle, 32 x 32 for 16 x 16 px
-//   Card        the piece being rung up: cream card, a 1 px brown border, rounded 4
 //   BagBody, BagTissue, BagHandle   the posh green S.O.L.C. paper bag's parts (the bag drops in, then the tissue,
 //               then the handle), each drawn at 2x its size in px
 {
   const N = 128, S = 2;
-  save("TillFrame", N, N, paint(N, N, (x, y) => {
-    const d = inside(x, y, N, N, 6 * S) / S;
-    if (d < 0) return null;
-    return d < 2 ? hex("#5c3d10") : null;
-  }));
   save("Bubble", N, N, paint(N, N, (x, y) => {
     const d = inside(x, y, N, N, 14 * S) / S;
     if (d < 0) return null;
@@ -216,11 +209,6 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
     // (16 x 16 px: the point at the left, the base along the right edge)
     const px = x / 2, py = y / 2;
     return Math.abs(py - 8) <= (px / 16) * 8 ? hex("#c9a14a") : null;
-  }));
-  save("Card", N, N, paint(N, N, (x, y) => {
-    const d = inside(x, y, N, N, 4 * S) / S;
-    if (d < 0) return null;
-    return d < 1 ? hex("#8a6a3a") : hex("#f6ecd2");
   }));
   // The bag: its body 100 x 96 px (a green gradient, rounded 2 at the top and 6 at the bottom, a darker band at the
   // bottom), the tissue 64 x 22 (a cream zigzag), the handle 50 x 34 (a gold arch, 4 px thick).
@@ -247,4 +235,87 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
     const d = Math.hypot((px - 25) / 25, (py - 34) / 34);
     return d <= 1 && d >= 1 - 4 / 25 ? hex("#f2c14e") : null;
   }));
+}
+
+// --- the till, take two (a proper shop counter):
+//   Cushion     the burgundy velvet cushion the steward presents each piece on: puffy, gold piping, a tassel at each
+//               end (256 x 128 for 220 x 110 px)
+//   Spot        a soft spotlight (white, fading out; drawn added)
+//   Register    the brass cash register: an arched top with room for the price flag behind it, a panel for the number
+//               drums, a darker base (256 square for 210 x 210 px)
+//   Drum        one number drum's window: dark, shaded top and bottom like a turning drum (32 x 64)
+//   PriceFlag   the flag that pops up out of the register's top on each ring: velvet with a gilt rim (128 x 64)
+//   ReceiptEdge the receipt's torn bottom: a zigzag tile (16 x 8)
+{
+  const brass = (t) => along([[0, hex("#fff0b8")], [0.25, hex("#e7c66c")], [0.6, hex("#b88c3a")], [1, hex("#7a5418")]], t);
+  save("Cushion", 256, 128, paint(256, 128, (x, y) => {
+    const px = x * 220 / 256, py = y * 110 / 128;
+    // (the pillow: a puffy rounded shape, its edges pinched in a little between the corners)
+    const cx = 110, cy = 52, ax = 92, ay = 40;
+    const nx = (px - cx) / ax, ny = (py - cy) / ay;
+    const pinch = 1 - 0.08 * Math.cos(nx * Math.PI);  // (pinched at the middle of each side)
+    const r = Math.pow(Math.abs(nx), 3) + Math.pow(Math.abs(ny) / pinch, 3);
+    // tassels: a cord and a gold drop hanging from each end
+    for (const sx of [-1, 1]) {
+      const tx = cx + sx * 96, ty = 64;
+      const drop = Math.hypot((px - tx) / 7, (py - (ty + 22)) / 13);
+      if (drop <= 1) return mix(hex("#f2c14e"), hex("#8a6420"), Math.min(1, Math.hypot(px - tx + 2, py - ty - 18) / 14));
+      if (Math.abs(px - tx) < 1.5 && py > ty - 6 && py < ty + 10) return hex("#c9a14a");
+    }
+    if (r > 1) {
+      const shadow = Math.hypot(nx / 1.08, (py - cy - 10) / ay / 1.08);
+      return shadow < 1 && py > cy ? [0, 0, 0, 0.35 * (1 - shadow)] : null;
+    }
+    if (r > 0.86) return mix(hex("#f2c14e"), hex("#8a6420"), (py - (cy - ay)) / (2 * ay));  // the gold piping
+    // the velvet: lit from the top left, puffed up in the middle, a soft button dimple at its centre
+    const light = 0.55 + 0.45 * (1 - Math.min(1, Math.hypot(nx + 0.3, ny + 0.45)));
+    const dimple = Math.max(0, 1 - Math.hypot(px - cx, (py - cy) * 1.4) / 9);
+    return mix(mix(hex("#4d1016"), hex("#b23a46"), light), hex("#3a0a10"), dimple * 0.7);
+  }));
+  save("Spot", 128, 128, paint(128, 128, (x, y) => {
+    const d = Math.hypot(x - 64, y - 64) / 64;
+    return d >= 1 ? null : [1, 0.94, 0.8, Math.pow(1 - d, 1.8)];
+  }));
+  save("Register", 256, 256, paint(256, 256, (x, y) => {
+    const px = x * 210 / 256, py = y * 210 / 256;
+    // the crest: an arch over the top, 60 px tall, narrower than the body
+    const crest = Math.hypot((px - 105) / 70, (py - 62) / 50);
+    if (py < 62 && crest <= 1) {
+      if (crest > 0.9) return hex("#5c3d10");
+      const t = 1 - crest;
+      return mix(brass(py / 62), hex("#fff3c4"), Math.max(0, t - 0.6));
+    }
+    // the body: 190 x 110 from y 60, rounded 8; a recessed panel for the drums; rivets
+    const body = inside(px - 10, py - 60, 190, 110, 8);
+    if (body >= 0 && py < 170) {
+      if (body < 2) return hex("#5c3d10");
+      const panel = inside(px - 22, py - 76, 166, 52, 5);
+      if (panel >= 0) return panel < 2 ? hex("#7a5418") : hex("#2a1a0a");
+      for (const [rx, ry] of [[22, 70], [188, 70], [22, 160], [188, 160]]) {
+        const d = Math.hypot(px - rx, py - ry);
+        if (d < 4) return RIVET(Math.hypot(px - rx + 1.2, py - ry + 1.2) / 4.5);
+      }
+      // engraved lines under the panel
+      if (py > 134 && py < 136 || py > 140 && py < 141) return hex("#8a6420");
+      return brass((py - 60) / 110 * 0.8);
+    }
+    // the base: wider, darker, rounded 4
+    const base = inside(px - 2, py - 168, 206, 34, 4);
+    if (base >= 0) return base < 2 ? hex("#3a2610") : mix(hex("#8a6420"), hex("#4d3410"), (py - 168) / 34);
+    // its shadow on the counter
+    if (py > 196) { const s = Math.abs(px - 105) / 110; return s < 1 ? [0, 0, 0, 0.4 * (1 - s)] : null; }
+    return null;
+  }));
+  save("Drum", 32, 64, paint(32, 64, (x, y) => {
+    const t = y / 64;
+    const shade = 1 - Math.pow(Math.abs(t - 0.5) * 2, 2);  // (lit across the middle, dark top and bottom)
+    return mix(hex("#0e0904"), hex("#3b2a14"), shade);
+  }));
+  save("PriceFlag", 128, 64, paint(128, 64, (x, y) => {
+    const d = inside(x, y, 128, 64, 8);
+    if (d < 0) return null;
+    if (d < 3) return hex("#c9a14a");
+    return mix(hex("#8e2a33"), hex("#5c141b"), y / 64);
+  }));
+  save("ReceiptEdge", 16, 8, paint(16, 8, (x, y) => (y < 8 - Math.abs(x - 8) ? hex("#f6ecd2") : null)));
 }
