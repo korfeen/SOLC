@@ -368,8 +368,21 @@ local function ToggleCart()
 end
 
 -- The till's camera (ProShopTill.lua): p 0 = the whole room .. 1 = on the steward behind his counter (the mock's 1.75x,
--- on x 395, y 215 of the painting, put at 413, 300), the easel and the corner's bits fading away.
+-- on x 395, y 215 of the painting, put at 413, 300), the easel moving with the painting, the corner's bits fading away.
 local STEWARD_VIEW = { scale = 1.75, x = 395, y = 215, at = { 413, 300 } }  -- (his face under the bubble)
+-- Puts the easel where it stands in the painting while x0..x1, y0..y1 of the painting fill the page (the whole of it,
+-- or the till camera's close-up): scaled with the painting, not drawn again.
+local function PlaceEasel(x0, y0, x1, y1)
+    local w, h = room:GetSize()
+    if w == 0 or h == 0 then return end
+    local k = SCENE_W / (x1 - x0)
+    local fx = (EASEL.x - x0) / (x1 - x0) * (w + 2 * BLEED) - BLEED
+    local fy = (EASEL.bottom - y0) / (y1 - y0) * (h + 2 * BLEED) - BLEED
+    room.easel:SetScale(k)
+    room.easel:ClearAllPoints()
+    room.easel:SetPoint("BOTTOM", room, "TOPLEFT", fx / k, -fy / k)  -- (a scaled frame's offsets are in its own scale)
+end
+
 local function Camera(p)
     local v = STEWARD_VIEW
     local w, h = SCENE_W / v.scale, SCENE_H / v.scale
@@ -377,7 +390,7 @@ local function Camera(p)
     local x0, y0 = left * p, top * p
     local x1, y1 = SCENE_W + (left + w - SCENE_W) * p, SCENE_H + (top + h - SCENE_H) * p
     room.scene:SetTexCoord(x0 / 1024, x1 / 1024, y0 / 1024, y1 / 1024)
-    room.easel:SetAlpha(1 - p)
+    PlaceEasel(x0, y0, x1, y1)  -- (moving with the painting: off to the right as it zooms in)
     room.corner:SetAlpha(1 - p)
     room.steward:SetShown(p == 0)
 end
@@ -653,9 +666,8 @@ local function Layout()
     local easel = room.easel
     local eh = EASEL.height * sy
     local ew = eh * easel.box.w / easel.box.h
-    easel:ClearAllPoints()
-    easel:SetPoint("BOTTOM", room, "BOTTOMLEFT", EASEL.x * sx - BLEED, (SCENE_H - EASEL.bottom) * sy - BLEED)
     easel:SetSize(ew, eh)
+    PlaceEasel(0, 0, SCENE_W, SCENE_H)
     local cv = easel.cv
     easel.blank:ClearAllPoints()
     easel.blank:SetPoint("TOPLEFT", cv.x * ew, -cv.y * eh)
