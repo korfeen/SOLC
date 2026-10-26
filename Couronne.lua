@@ -23,7 +23,8 @@ local K = {
     R = 12, SR = 17, QR = 12,  -- (puck, striker, queen radii)
     BASE_Y = 440, BASE_X1 = 120, BASE_X2 = 380,  -- (your baseline: where the striker may sit)
     DECEL = 280, DRAG = 0.4, STOP = 5, BOUNCE = 0.9, RAIL = 0.72, STEP = 1 / 240,
-    PULL = 130, SPEED = 1500,  -- (a full pull back, and the speed it gives)
+    PULL = 300, SPEED = 1500, CURVE = 1.6,  -- (a full pull back, the speed it gives; power = pull ^ CURVE: soft shots get
+                                            -- most of the pull, so they can be fine-tuned)
     STRIKER_MASS = 1.6, QUEEN_BONUS = 3,
 }
 local WOOD = { 0.86, 0.7, 0.47 }  -- (the board, also seen through the pucks' holes)
@@ -363,8 +364,9 @@ end
 local function Shoot()
     local dx, dy = striker.x - G.pullX, striker.y - G.pullY
     local len = math.sqrt(dx * dx + dy * dy)
-    local power = math.min(1, len / K.PULL)
-    if power < 0.04 then return end
+    local pull = math.min(1, len / K.PULL)
+    local power = pull ^ K.CURVE
+    if pull < 0.03 then return end  -- (a click, not a pull)
     striker.vx, striker.vy = dx / len * power * K.SPEED, dy / len * power * K.SPEED
     G.state, G.shots = "moving", G.shots + 1
     pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB or 841)
@@ -391,10 +393,11 @@ local function DrawAim()
     G.pullX, G.pullY = Cursor()
     local dx, dy = striker.x - G.pullX, striker.y - G.pullY
     local len = math.max(0.001, math.sqrt(dx * dx + dy * dy))
-    local power = math.min(1, len / K.PULL)
+    local pull = math.min(1, len / K.PULL)
+    local power = pull ^ K.CURVE
     local ux, uy = dx / len, dy / len
     -- the cue: its tip behind the striker (further the harder you pull), its butt off towards you, rising
-    local back = striker.r + 4 + power * K.PULL * 0.6
+    local back = striker.r + 4 + pull * 110
     local tx, ty = striker.x - ux * back, striker.y - uy * back
     local bx, by = tx - ux * 340, ty - uy * 340
     local ax1, ay1 = At(tx, ty, A.ST * 0.6)
