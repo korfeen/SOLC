@@ -505,7 +505,11 @@ local function Build(holder)
     -- The easel, the display set painted on its canvas (square, cut at the canvas's edges, as the Dream Bed does).
     local art = ns.DreamBedArt or {}
     local box = art.pieces and art.pieces.easel and art.pieces.easel.box or { x = 0.2246, y = 0.0117, w = 0.5508, h = 0.9355 }
-    local easel = CreateFrame("Button", nil, room)
+    -- (inside a frame the painting's size that clips: scaled up by the till camera, it never shows past the painting)
+    room.inPainting = CreateFrame("Frame", nil, room)
+    room.inPainting:SetAllPoints(room.scene)
+    room.inPainting:SetClipsChildren(true)
+    local easel = CreateFrame("Button", nil, room.inPainting)
     easel.box, easel.cv = box, art.easelCanvas or { x = 0.0815, y = 0.1232, w = 0.8226, h = 0.4489 }
     easel.board = easel:CreateTexture(nil, "ARTWORK")
     easel.board:SetAllPoints()
