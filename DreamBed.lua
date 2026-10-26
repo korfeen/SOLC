@@ -20,7 +20,7 @@ local PARCH, INK = { 0.96, 0.93, 0.86 }, { 0.16, 0.11, 0.06 }
 local RIM = { uncommon = { 0.6, 0.6, 0.6 }, rare = { 0.23, 0.54, 0.88 }, epic = { 0.6, 0.29, 0.88 }, legendary = { 0.88, 0.63, 0.13 } }
 local MILK_WORDS, MILK_OGRE = { "empty", "a sip", "a mug", "brimming" }, { "NONE", "SIP", "MUG", "LOTS" }
 local CHAPTERS = { { "headwear", "Hats", "HATS" }, { "outfit", "Clothes", "CLOTH" }, { "accessory", "Things he holds", "STUFF" },
-    { "background", "Places", "PLACE" }, { "skin", "Ogres", "OGRE" }, { "eyes", "Eyes", "EYES" }, { "expression", "Faces", "FACE" } }
+    { "background", "Places", "PLACE" }, { "skin", "Ogres", "OGRE" }, { "eyes", "Eyes", "EYES" }, { "expression", "Mouths", "MOUTH" } }
 local CARDS_PER_PAGE = 8
 -- Your ogre's face for each moment: eyes and expression option ids (the minting art's own).
 local FACES = { asleep = { "fully_asleep", "snoring_zzz_bubble" }, yawn = { "heavy_bags", "mid_yawn" }, talk = { nil, "mouth_hanging_open" } }

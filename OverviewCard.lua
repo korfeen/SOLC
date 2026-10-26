@@ -11,7 +11,7 @@
 
 local _, ns = ...
 -- Shorter names for the long layer labels, for a trait that doesn't fit even in a smaller font.
-local SHORT_LABELS = { Background = "Back", Expression = "Face", Accessory = "Extra", Headwear = "Hat" }
+local SHORT_LABELS = { Background = "Back", Accessory = "Extra", Headwear = "Hat" }
 local UI = ns.UI
 local Fit, SetTooltip = UI.FitText, UI.Tooltip
 
@@ -950,7 +950,7 @@ end
 -- (two columns; the mouse wheel scrolls), then CANCEL and SAVE. page.edit = the draft { traits, frame, header (the header choices to put back), tab }.
 local EDIT = { left = 247, top = 327, width = 370, height = 397, row = 24, cell = 42, cols = 2, rows = 6, thumb = 34 }
 local EDIT_GROUPS = {
-    { "OGRE", { { "skin", "Skin" }, { "eyes", "Eyes" }, { "expression", "Expression" } } },
+    { "OGRE", { { "skin", "Skin" }, { "eyes", "Eyes" }, { "expression", "Mouth" } } },
     { "WEAR", { { "outfit", "Clothes" }, { "headwear", "Headwear" }, { "accessory", "Accessory" } } },
     { "PICTURE", { { "background", "Background" }, { "frame", "Frame" } } },
     { "ME", { { "name", "Name colour" }, { "header", "Header" } } },

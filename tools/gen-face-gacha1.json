@@ -1,0 +1,11 @@
+[
+  {"layer":"expression","id":"face_handlebar","rarity":"rare","gacha":1,"desc":"Handlebar Moustache: a big waxed handlebar moustache with curled tips (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_walrus","rarity":"uncommon","gacha":1,"desc":"Walrus Moustache: a bushy droopy walrus moustache hanging over the lip (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_pencil","rarity":"uncommon","gacha":1,"desc":"Pencil Moustache: a thin dashing pencil moustache, very suave (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_muttonchops","rarity":"rare","gacha":1,"desc":"Mutton Chops: huge bushy mutton-chop sideburns down both cheeks (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_imperial","rarity":"epic","gacha":1,"desc":"Imperial Moustache: an enormous waxed imperial moustache, its tips curled up past the cheeks (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_cigar","rarity":"rare","gacha":1,"desc":"Fat Cigar: a fat lit cigar clamped in the corner of the mouth between the tusks, a curl of smoke (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_pipe","rarity":"rare","gacha":1,"desc":"Briar Pipe: a curved briar pipe in the mouth, a wisp of smoke (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_cigarette","rarity":"uncommon","gacha":1,"desc":"Dangling Cigarette: a cigarette dangling from the lower lip, a long ash about to fall (painted as the WHOLE mouth, tusks included, drawn per skin)"},
+  {"layer":"expression","id":"face_tusk_rings","rarity":"rare","gacha":1,"desc":"Tusk Rings: heavy gold rings on both tusks (painted as the WHOLE mouth, tusks included, drawn per skin)"}
+]

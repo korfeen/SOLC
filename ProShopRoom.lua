@@ -119,7 +119,7 @@ end
 -- layer; kept while you're logged in).
 -- (the mockup's words and groups, but Clothes for the outfit layer; you walk in on Clothes, so not zoomed in)
 local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background" }
-local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory", background = "Background" }
+local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Mouth", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory", background = "Background" }
 local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE" }
 local FIRST_TAB = "outfit"
 local CLOSE_LAYERS = { headwear = true, eyes = true, expression = true }
