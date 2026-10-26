@@ -1,9 +1,8 @@
 -- The Pro Shop's till (after the mockup's checkout, tools/proshop-mock/index.html): the view pans in on the steward
 -- behind his counter. Top left, his brass cash register: S.O.L.C. on its crest, the sum on rolling number drums, a
 -- velvet price flag popping up out of its top on each ring, and a receipt printing out under it, a line a piece (the
--- total and a torn edge at the end). On the counter, under a soft spotlight, a velvet cushion he presents each piece
--- on, its brass plaque in front (name and price). His speech bubble beside him, its tail at his mouth: a line about
--- each piece (StewardLines.lua), rung up a click at a time with a coin clink. Then the total (the register's bell):
+-- total and a torn edge at the end). His speech bubble beside him, its tail at his mouth: a line about each piece
+-- (its name and price under it; the pieces aren't shown, most look poor on their own) (StewardLines.lua), rung up a click at a time with a coin clink. Then the total (the register's bell):
 -- "It's for me" pays (the posh green S.O.L.C. paper bag drops in) or "Not yet". An empty cart gets a quip. Gifts and
 -- the postcard rack come later. ns.ShopUI.Till(room, hooks) makes it; hooks = { camera(p) (0 the room .. 1 on the
 -- steward), buy(keys) -> ok, result or reason, done(bought) }; till:Start(items) rings up a cart (items:
@@ -15,15 +14,12 @@ local S = ns.ShopUI
 if not UI or not S then return end
 
 local ART = "Interface\\AddOns\\SOLC\\Media\\ProShop\\UI\\"
-local CAMERA_TIME, DROP_TIME, COUNT_TIME, FLAG_TIME, PRINT_TIME, BAG_TIME = 0.6, 0.45, 0.6, 0.5, 0.3, 1.0
+local CAMERA_TIME, COUNT_TIME, FLAG_TIME, PRINT_TIME, BAG_TIME = 0.6, 0.45, 0.6, 0.5, 0.3, 1.0
 -- (places in page pixels from the top left)
 local REGISTER = { x = 20, y = 18, size = 210 }  -- (its art: crest, body with the drum panel at 22,76 166x52, base)
 local DRUMS, DRUM_W, DRUM_H = 5, 28, 40
 local RECEIPT = { x = 50, y = 214, w = 150, line = 16 }
 local BUBBLE = { x = 470, y = 34, w = 332, pad = 14 }
-local CUSHION = { x = 413, y = 465, w = 220, h = 110 }
-local PIECE = { x = 413, y = 380, size = 150 }
-local PLAQUE = { x = 413, y = 538, w = 230, h = 28 }
 -- The game's own sounds (if this client has them): a coin clink, the bell, paper.
 local SOUNDS = { ring = "LOOT_WINDOW_COIN_SOUND", bell = "AUCTION_WINDOW_OPEN", paper = "IG_QUEST_LOG_OPEN" }
 
@@ -209,32 +205,11 @@ function S.Till(room, hooks)
     local vignette = till:CreateTexture(nil, "BACKGROUND")
     vignette:SetPoint("TOPLEFT", -14, 14) vignette:SetPoint("BOTTOMRIGHT", 14, -14)
     vignette:SetTexture(ART .. "Vignette")
-    local function At(region, x, y) region:ClearAllPoints() region:SetPoint("CENTER", till, "TOPLEFT", x, -y) end
 
     local register = Register(till)
     register:SetPoint("TOPLEFT", REGISTER.x, -REGISTER.y)
     local receipt = Receipt(till)
     receipt:SetPoint("TOPLEFT", RECEIPT.x, -RECEIPT.y)
-
-    -- The counter: a spotlight, the cushion, the piece on it, its plaque.
-    local stage = CreateFrame("Frame", nil, till)
-    stage:SetAllPoints()
-    stage:SetFrameLevel(till:GetFrameLevel() + 1)
-    local spot = stage:CreateTexture(nil, "BACKGROUND")
-    spot:SetSize(340, 260)
-    spot:SetTexture(ART .. "Spot")
-    spot:SetBlendMode("ADD")
-    spot:SetAlpha(0.45)
-    At(spot, CUSHION.x, CUSHION.y - 50)
-    local cushion = stage:CreateTexture(nil, "BORDER")
-    cushion:SetSize(CUSHION.w, CUSHION.h)
-    cushion:SetTexture(ART .. "Cushion")
-    At(cushion, CUSHION.x, CUSHION.y)
-    local piece = CreateFrame("Frame", nil, stage)
-    piece:SetSize(PIECE.size, PIECE.size)
-    local plaque = S.Plaque(stage, PLAQUE.w, PLAQUE.h, 14)
-    plaque:EnableMouse(false)
-    At(plaque, PLAQUE.x, PLAQUE.y)
 
     -- His bubble: parchment in gilt, its tail down at his mouth; what he says, who it's about, buttons.
     local bubble = CreateFrame("Frame", nil, till)
@@ -368,7 +343,6 @@ function S.Till(room, hooks)
         receipt:Line(n + 1, "TOTAL", BreakUpLargeNumbers(sale.sum), true)
         local from = receipt:GetHeight()
         Tween(PRINT_TIME, function(p) receipt:SetHeight(from + (receipt:Height(n + 1) + 4 - from) * Ease(p)) end)
-        Tween(DROP_TIME, function(p) piece:SetAlpha(1 - p) plaque:SetAlpha(1 - p) end)
         register:Flag(0) register.flag:Hide()
         local balance = ns.GetPoints().balance
         if balance < sale.sum then
@@ -391,15 +365,6 @@ function S.Till(room, hooks)
         Sound("ring")
         Bubble(LineFor(item), ("%s  ·  %s points"):format(item.option.name, BreakUpLargeNumbers(item.price)))
         Count()
-        -- (on the cushion: it drops onto it, its plaque under it)
-        ns.DrawPiece(piece, item.layer.key, item.option)
-        plaque.text:SetText(("%s  ·  %s"):format(item.option.name, BreakUpLargeNumbers(item.price)))
-        plaque:SetWidth(math.max(PLAQUE.w, plaque.text:GetStringWidth() + 40))
-        plaque:SetAlpha(1)
-        Tween(DROP_TIME, function(p)
-            At(piece, PIECE.x, PIECE.y - 40 * (1 - Back(p)))
-            piece:SetAlpha(math.min(1, p * 2))
-        end)
         -- (the register: the flag pops up with the price, the drums roll on, the receipt prints a line)
         register.flag.text:SetText(BreakUpLargeNumbers(item.price))
         register.flag:Show()
@@ -438,9 +403,8 @@ function S.Till(room, hooks)
         register:ShowValue(0)
         register.flag:Hide()
         Count()
-        piece:SetAlpha(0) plaque:SetAlpha(0)
         local any = #items > 0
-        register:SetShown(any) receipt:SetShown(any) stage:SetShown(any)
+        register:SetShown(any) receipt:SetShown(any)
         self:SetAlpha(0)
         self:Show()
         if not InCombatLockdown() then self:EnableKeyboard(true) end

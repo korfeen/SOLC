@@ -238,9 +238,6 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
 }
 
 // --- the till, take two (a proper shop counter):
-//   Cushion     the burgundy velvet cushion the steward presents each piece on: puffy, gold piping, a tassel at each
-//               end (256 x 128 for 220 x 110 px)
-//   Spot        a soft spotlight (white, fading out; drawn added)
 //   Register    the brass cash register: an arched top with room for the price flag behind it, a panel for the number
 //               drums, a darker base (256 square for 210 x 210 px)
 //   Drum        one number drum's window: dark, shaded top and bottom like a turning drum (32 x 64)
@@ -248,34 +245,6 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
 //   ReceiptEdge the receipt's torn bottom: a zigzag tile (16 x 8)
 {
   const brass = (t) => along([[0, hex("#fff0b8")], [0.25, hex("#e7c66c")], [0.6, hex("#b88c3a")], [1, hex("#7a5418")]], t);
-  save("Cushion", 256, 128, paint(256, 128, (x, y) => {
-    const px = x * 220 / 256, py = y * 110 / 128;
-    // (the pillow: a puffy rounded shape, its edges pinched in a little between the corners)
-    const cx = 110, cy = 52, ax = 92, ay = 40;
-    const nx = (px - cx) / ax, ny = (py - cy) / ay;
-    const pinch = 1 - 0.08 * Math.cos(nx * Math.PI);  // (pinched at the middle of each side)
-    const r = Math.pow(Math.abs(nx), 3) + Math.pow(Math.abs(ny) / pinch, 3);
-    // tassels: a cord and a gold drop hanging from each end
-    for (const sx of [-1, 1]) {
-      const tx = cx + sx * 96, ty = 64;
-      const drop = Math.hypot((px - tx) / 7, (py - (ty + 22)) / 13);
-      if (drop <= 1) return mix(hex("#f2c14e"), hex("#8a6420"), Math.min(1, Math.hypot(px - tx + 2, py - ty - 18) / 14));
-      if (Math.abs(px - tx) < 1.5 && py > ty - 6 && py < ty + 10) return hex("#c9a14a");
-    }
-    if (r > 1) {
-      const shadow = Math.hypot(nx / 1.08, (py - cy - 10) / ay / 1.08);
-      return shadow < 1 && py > cy ? [0, 0, 0, 0.35 * (1 - shadow)] : null;
-    }
-    if (r > 0.86) return mix(hex("#f2c14e"), hex("#8a6420"), (py - (cy - ay)) / (2 * ay));  // the gold piping
-    // the velvet: lit from the top left, puffed up in the middle, a soft button dimple at its centre
-    const light = 0.55 + 0.45 * (1 - Math.min(1, Math.hypot(nx + 0.3, ny + 0.45)));
-    const dimple = Math.max(0, 1 - Math.hypot(px - cx, (py - cy) * 1.4) / 9);
-    return mix(mix(hex("#4d1016"), hex("#b23a46"), light), hex("#3a0a10"), dimple * 0.7);
-  }));
-  save("Spot", 128, 128, paint(128, 128, (x, y) => {
-    const d = Math.hypot(x - 64, y - 64) / 64;
-    return d >= 1 ? null : [1, 0.94, 0.8, Math.pow(1 - d, 1.8)];
-  }));
   save("Register", 256, 256, paint(256, 256, (x, y) => {
     const px = x * 210 / 256, py = y * 210 / 256;
     // the crest: an arch over the top, 60 px tall, narrower than the body
