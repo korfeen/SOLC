@@ -2,8 +2,8 @@
 -- behind his counter. Top left, his brass cash register: S.O.L.C. on its crest, the sum on rolling number drums, a
 -- velvet price flag popping up out of its top on each ring, and a receipt printing out under it, a line a piece (the
 -- total and a torn edge at the end). His speech bubble beside him, its tail at his mouth: a line about each piece
--- (its name and price under it; the pieces aren't shown, most look poor on their own) (StewardLines.lua), rung up a click at a time with a coin clink. Then the total (the register's bell):
--- "It's for me" pays (the posh green S.O.L.C. paper bag drops in) or "Not yet". An empty cart gets a quip. Gifts and
+-- (StewardLines.lua) with its name and price under it, rung up a click at a time with a coin clink (the pieces aren't
+-- shown: most look poor on their own). Then the total (the register's bell): "It's for me" pays (the posh green S.O.L.C. paper bag drops in) or "Not yet". An empty cart gets a quip. Gifts and
 -- the postcard rack come later. ns.ShopUI.Till(room, hooks) makes it; hooks = { camera(p) (0 the room .. 1 on the
 -- steward), buy(keys) -> ok, result or reason, done(bought) }; till:Start(items) rings up a cart (items:
 -- ProShopRoom.lua's stock items). Art: tools/make-shop-ui.js.
