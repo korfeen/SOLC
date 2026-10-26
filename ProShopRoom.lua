@@ -1,7 +1,8 @@
 -- The Pro Shop's room: its own page in the sidebar (Guild: Pro Shop; SHOP in ogre mode), the whole page area.
 -- The ROOM: a stand-in until the shop floor is repainted - the concept painting (Media/ProShop/Room: the steward
 -- behind his counter, the shelves; tools/make-mannequin.js) with the Dream Bed's easel standing on the floor, the display
--- set painted on its canvas: the walnut mannequin (Media/ProShop/Mannequin, the moss ogre in walnut) wearing it.
+-- set painted on its canvas: the walnut mannequin (Media/ProShop/Mannequin, the moss ogre in walnut) wearing it, with
+-- today's special on (ProShop.lua ns.ShopSpecial: its plaque under the canvas; clicking the easel opens on it).
 -- Click the easel -> ZOOMED IN: the room blurs and dims (it crossfades to a pre-blurred twin, Media/ProShop/Room-blur),
 -- the easel's picture comes forward to the middle in a gilt and burgundy border, red velvet curtains slide in from the
 -- sides and a valance drops in on top. The left curtain: a brass plaque per layer in stock, in the mockup's words and
@@ -176,10 +177,19 @@ local function Looked()
     return tab.items[index], tab, index
 end
 
--- What the mannequin wears: the display set, the cart over it, the piece looked at over that.
-local function ShownTraits()
+-- The display: the display set with today's special on (ProShop.lua ns.ShopSpecial), as the easel shows it.
+local function DisplayTraits()
     local traits = {}
     for key, id in pairs(ns.SHOP_DISPLAY) do traits[key] = id end
+    local special = ns.ShopSpecial and ns.ShopSpecial()
+    local layer, id = tostring(special or ""):match("^(%w+):(.+)$")
+    if layer then traits[layer] = id end
+    return traits
+end
+
+-- What the mannequin wears: the display, the cart over it, the piece looked at over that.
+local function ShownTraits()
+    local traits = DisplayTraits()
     for key, item in pairs(view.cart) do traits[key] = item.option.id end
     local item, tab = Looked()
     if item then traits[tab.key] = item.option.id end
@@ -320,6 +330,8 @@ function Redraw()
         info.price:SetShown(not item.owned)
         info.unit:SetShown(not item.owned)
         info.owned:SetShown(item.owned)
+        info.special:SetText(("Today's special, was %s"):format(BreakUpLargeNumbers(item.full or item.price)))
+        info.special:SetShown(item.special and not item.owned)
         zoom.count:SetText(("%d / %d"):format(index, #tab.items))
         zoom.add.text:SetText(item.owned and "Yours already" or view.cart[tab.key] == item and "Take it out" or "Add to cart")
         zoom.add:SetEnabled(not item.owned)
@@ -427,6 +439,8 @@ local function BuildInfo(zoom, S)
     info.owned = S.Text(info, S.DISPLAY_FONT, 15, "#9fdc8f")
     info.owned:SetPoint("TOP", 0, -72)
     info.owned:SetText("In your wardrobe")
+    info.special = S.Text(info, S.BODY_FONT, 11, "#9fdc8f")
+    info.special:SetPoint("TOP", 0, -94)
     -- The cart.
     local y = L.cartY - L.info.y
     local top = info:CreateTexture(nil, "ARTWORK")
@@ -534,7 +548,22 @@ local function Build(holder)
         self.hint:Hide()
         self.board:SetVertexColor(0.88, 0.86, 0.82)
     end)
-    easel:SetScript("OnClick", function() Zoom(true) end)
+    -- Today's special: a brass plaque hung under the canvas; clicking the easel opens the curtains on it.
+    easel.special = S.Plaque(easel, 176, 24, 12)
+    easel.special:SetPoint("TOP", easel.blank, "BOTTOM", 0, -3)
+    easel.special.text:SetText(("Today's special  ·  %d%% off"):format(ns.SHOP_SPECIAL_OFF * 100))
+    easel.special:EnableMouse(false)
+    easel.special:SetFrameLevel(easel.blank:GetFrameLevel() + 5)
+    easel:SetScript("OnClick", function()
+        local special = ns.ShopSpecial and ns.ShopSpecial()
+        local keep = false
+        for t, tab in ipairs(Tabs()) do
+            for i, item in ipairs(tab.items) do
+                if item.key == special then view.tab, view.look[tab.key], keep = t, i, true end
+            end
+        end
+        Zoom(true, keep)
+    end)
     room.easel = easel
 
     -- Over the easel: your points, and the floor cart (the mock's gold plaque, top right, while the cart has something).
@@ -679,7 +708,7 @@ local function Layout()
     easel.blank:SetSize(cv.w * ew, cv.h * eh)
     local side = math.floor(math.max(cv.w * ew, cv.h * eh))
     easel.picture:SetSize(side, side)
-    easel.picture:Dress(ns.SHOP_DISPLAY, side)
+    easel.picture:Dress(DisplayTraits(), side)
     room.steward:ClearAllPoints()  -- (the painting's steward: x 300-490, y 92-318)
     room.steward:SetPoint("TOPLEFT", room, "TOPLEFT", 300 * sx - BLEED, BLEED - 92 * sy)
     room.steward:SetSize(190 * sx, 226 * sy)

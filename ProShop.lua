@@ -8,21 +8,49 @@ local _, ns = ...
 
 ns.SHOP_PRICES = { common = 50, uncommon = 100, rare = 250, epic = 600, legendary = 1500 }
 
--- A piece's price in points, or nil if the shop doesn't sell it.
-function ns.ShopPrice(option)
-    if not option or not tostring(option.unlock or ""):find("^shop:") then return end
-    return ns.SHOP_PRICES[option.rarity] or ns.SHOP_PRICES.uncommon
+ns.SHOP_SPECIAL_OFF = 0.2  -- (the daily special: this much off)
+
+local function Sold(option) return option and not option.retired and tostring(option.unlock or ""):find("^shop:") ~= nil end
+
+-- Today's special: one piece in stock a day ("layer:id"), the same for the whole guild (picked from the day's number,
+-- UTC), worn by the mannequin on the room's easel (ProShopRoom.lua) and SHOP_SPECIAL_OFF cheaper.
+local specialDay, specialKey  -- (worked out once a day)
+function ns.ShopSpecial()
+    local day = math.floor((GetServerTime and GetServerTime() or time()) / 86400)
+    if day == specialDay then return specialKey end
+    local keys = {}
+    for _, layer in ipairs(ns.MintLayers or {}) do
+        for _, option in ipairs(layer.options) do
+            if Sold(option) then keys[#keys + 1] = ns.OptionKey(layer.key, option) end
+        end
+    end
+    if #keys == 0 then return end
+    table.sort(keys)
+    specialDay, specialKey = day, keys[(day * 7919) % #keys + 1]
+    return specialKey
 end
 
--- Everything in stock, in layer order: { key = "layer:id", layer, option, price, owned }.
+-- A piece's price in points (today's special: cheaper), or nil if the shop doesn't sell it; and its full price.
+function ns.ShopPrice(option)
+    if not Sold(option) then return end
+    local full = ns.SHOP_PRICES[option.rarity] or ns.SHOP_PRICES.uncommon
+    if option.layerKey and ns.ShopSpecial() == option.layerKey .. ":" .. option.id then
+        return math.floor(full * (1 - ns.SHOP_SPECIAL_OFF) + 0.5), full
+    end
+    return full, full
+end
+
+-- Everything in stock, in layer order: { key = "layer:id", layer, option, price, full (its price off special), special,
+-- owned }.
 function ns.ShopStock()
     local stock = {}
     for _, layer in ipairs(ns.MintLayers or {}) do
         for _, option in ipairs(layer.options) do
-            local price = not option.retired and ns.ShopPrice(option)
+            local price, full = ns.ShopPrice(option)
             if price then
                 local key = ns.OptionKey(layer.key, option)
-                stock[#stock + 1] = { key = key, layer = layer, option = option, price = price, owned = ns.IsUnlocked(key) }
+                stock[#stock + 1] = { key = key, layer = layer, option = option, price = price, full = full, special = price < full,
+                    owned = ns.IsUnlocked(key) }
             end
         end
     end
