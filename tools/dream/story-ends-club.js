@@ -54,4 +54,28 @@ Object.assign(PIECE_ENDS, {
   "chase_dmn_crown_of_the_ogre_king": ["And every ogre in the room knelt. Then asked him for tribute.", "And the {mobs} all paid him tribute, mostly in sausages."],
   "chase_gnomer_gigaflux_reactivator": ["And his helmet sparked, and every one of my spoons stuck to him.", "And it picked up gnome radio. They were singing about him."],
   "chase_smcath_whitemanes_chapeau": ["And his tall chapeau shouted 'ARISE!' and the {mobs} all stood up.", "And his chapeau was so holy that a little choir followed it about."],
+
+  // Pro Shop hats
+  "shop_bowler_hat": ["And his bowler hat stayed on through everything. Very proper.", "And he lifted his bowler and a pigeon flew out."],
+  "shop_flat_cap": ["And a gust took his flat cap and he chased it all afternoon.", "And he licked a finger and checked the wind before every step."],
+  "shop_panama": ["And he tipped his panama over his eyes and napped mid-sentence.", "And his panama was so wide the {mobs} sheltered under it."],
+  "shop_service_bell": ["And every time he nodded, somebody brought him a drink.", "And {boss} rang his head and asked for room service."],
+  "shop_smoking_cap": ["And his tassel swung into his soup, and he called it seasoning.", "And he twirled his tassel at {boss} like a very slow threat."],
+  "shop_straw_boater": ["And he did a little soft-shoe shuffle in his straw boater.", "And a hungry goat nibbled the brim of his boater."],
+  "shop_tam_pompom": ["And his tam slid off one ear, then the other, all day long.", "And he played the bagpipes. He doesn't have bagpipes."],
+  "shop_golfball_hat": ["And somebody shouted 'FORE!' and teed off from his head.", "And he rolled away downhill and nobody could find him."],
+  "shop_yacht_cap": ["And he shouted 'all hands on deck', and nobody had a deck.", "And he steered a bathtub across the room, very serious about it."],
+  "shop_putting_green_hat": ["And the ball on his head finally dropped in. He cried a bit.", "And a groundskeeper turned up to mow his head."],
+
+  // Pro Shop outfits
+  "shop_argyle_vest": ["And he said every diamond on his vest stood for a lost ball.", "And his vest shrank in the wash. He wore it anyway, as a scarf."],
+  "shop_caddie_bib": ["And he carried everybody's bags but his own.", "And he handed {boss} a club and whispered 'play it left'."],
+  "shop_tennis_whites": ["And he shouted 'OUT!' at things that were clearly in.", "And he called the score 'love-all' and hugged everyone."],
+  "shop_loud_windbreaker": ["And his windbreaker was so loud the {mobs} asked him to keep it down.", "And it rustled every step, so we never snuck up on anything."],
+  "shop_norfolk_jacket": ["And he found a tee, a pencil and a fossil in his tweed pockets.", "And he did up his belt so tight he could only waddle."],
+  "shop_smoking_jacket": ["And he sat down in a big leather chair that wasn't there before.", "And he tightened his sash and said 'we must talk about your manners'."],
+  "shop_yacht_blazer": ["And he got seasick standing perfectly still.", "And he called the floor 'the deck' and made me mop it."],
+  "shop_tuxedo": ["And he looked so smart that the {mobs} asked him for a table.", "And his carnation wilted the second {boss} looked at it."],
+  "shop_champions_jacket": ["And he told {boss} how he won it, hole by hole.", "And someone asked who the champion was, and he pointed at himself. Twice."],
+  "shop_founders_robe": ["And he banned {boss} from the club for wearing the wrong shoes.", "And he founded a club for people in purple robes. Just him so far."],
 });

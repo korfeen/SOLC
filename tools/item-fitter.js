@@ -583,7 +583,7 @@ async function list() {
 }
 // Build: what's new - fitted pieces not in the game yet (ticked; unfitted ones can't go), and pieces changed since the
 // last build (they go with it) - sent to the build (generated\build.json), which then runs (make-unlock-art.js gear,
-// convert-art.js) here.
+// convert-art.js) here; then, if the story checks list gaps, the storyteller agent writes the missing lines (runStories).
 const panel = document.getElementById("buildPanel");
 async function showBuild() {
   const items = await (await fetch("/list")).json();
@@ -615,6 +615,17 @@ async function watchBuild(once) {
   log.textContent = (st.lines || []).slice(-6).join("\\n");
   if (st.running) setTimeout(() => watchBuild(), 2000);
   else if (st.done && !once) list();  // (the dots: in game now)
+  if (!st.running) watchStories();
+}
+// The storyteller's run after a build (runStories on the server): its state under the build's, then its report.
+async function watchStories() {
+  const st = await (await fetch("/storystatus")).json();
+  const log = document.getElementById("buildLog");
+  if (!log || !st.state) return;
+  let el = document.getElementById("storyState");
+  if (!el) { el = document.createElement("div"); el.id = "storyState"; el.style.cssText = "margin-top:8px;white-space:pre-wrap"; log.after(el); }
+  el.textContent = st.state + (st.report && !st.running ? "\\n\\n" + st.report : "");
+  if (st.running) setTimeout(watchStories, 5000);
 }
 document.getElementById("buildBtn").onclick = showBuild;
 // The whole picture in the window.
@@ -688,7 +699,7 @@ function runBuild(ids) {
   const steps = [["make-unlock-art.js", "gear"], ["convert-art.js"]];
   const next = () => {
     const step = steps.shift();
-    if (!step) { Object.assign(build, { running: false, done: true, ok: true }); build.lines.push("Done: restart WoW (not just /reload)."); return; }
+    if (!step) { Object.assign(build, { running: false, done: true, ok: true }); build.lines.push("Done: restart WoW (not just /reload)."); runStories(); return; }
     const child = spawn(process.execPath, [path.join(__dirname, step[0])].concat(step.slice(1)));
     const keep = (d) => { for (const l of d.toString().split(/\r?\n/)) if (l.trim()) build.lines.push(l.trim().slice(0, 160)); build.lines = build.lines.slice(-40); };
     child.stdout.on("data", keep); child.stderr.on("data", keep);
@@ -700,6 +711,50 @@ function runBuild(ids) {
   next();
 }
 
+// The stories (after a good build): the story and steward checks (tools/dream/build-story-lua.js, check-steward-lines.js);
+// if they list gaps, the storyteller agent (.claude/agents/storyteller.md) fills them in the background, headless
+// (claude -p), allowed only to read, edit the story files and StewardLines.lua, and run the checks; it never makes art
+// or commits. One run at a time: a build during a run asks for another after it. Its report: /storystatus, the panel.
+const ROOT = path.join(__dirname, "..");
+const STORY_LOG = path.join(GEN, "stories-log.txt");
+const GAP = /^(NO STORY YET|NO SET NAME|NO OWN ENDINGS|NOT TAGGED|NO STEWARD LINE|PAYOFFS DON'T MATCH)/m;
+const stories = { running: false, done: false, ok: false, again: false, state: "", report: "" };
+function storyGaps() {
+  const { execFileSync } = require("child_process");
+  let out = "";
+  for (const script of [path.join("tools", "dream", "build-story-lua.js"), path.join("tools", "check-steward-lines.js")]) {
+    try { out += execFileSync(process.execPath, [script], { cwd: ROOT, encoding: "utf8" }); } catch (e) { out += (e.stdout || "") + (e.stderr || ""); }
+  }
+  return GAP.test(out) ? out : null;
+}
+function runStories() {
+  if (stories.running) { stories.again = true; return; }
+  const gaps = storyGaps();
+  if (!gaps) { Object.assign(stories, { done: true, ok: true, state: "Stories: every piece has its lines", report: "" }); return; }
+  Object.assign(stories, { running: true, done: false, ok: false, again: false, state: "Stories: the storyteller is writing...", report: "" });
+  const prompt = "The item fitter just built new pieces into the game. Fill the story gaps the checks list below, " +
+    "following .claude/agents/storyteller.md (including section 4b, the steward's lines for Pro Shop pieces). " +
+    "Work only in this repo; don't make art, don't commit. End with your short report.\n\n" + gaps.slice(0, 6000);
+  const { spawn } = require("child_process");
+  const child = spawn("claude", ["-p", "--agent", "storyteller", "--allowedTools",
+    '"Read"', '"Grep"', '"Glob"', '"Edit(tools/dream/**)"', '"Edit(StewardLines.lua)"',
+    '"Bash(node tools/dream/build-story-lua.js*)"', '"Bash(node tools/dream/preview.js*)"', '"Bash(node tools/check-steward-lines.js*)"'],
+    { cwd: ROOT, shell: true });
+  let out = "";
+  child.stdout.on("data", (d) => { out += d; });
+  child.stderr.on("data", (d) => { out += d; });
+  child.stdin.end(prompt);
+  child.on("close", (code) => {
+    fs.writeFileSync(STORY_LOG, new Date().toISOString() + "\n" + out);
+    const left = storyGaps();
+    Object.assign(stories, { running: false, done: true, ok: code === 0 && !left, report: out.trim().slice(-1500),
+      state: code !== 0 ? "Stories: the storyteller stopped (" + code + "), see generated/stories-log.txt"
+        : left ? "Stories: done, but some gaps are left (see the report)" : "Stories: done. Restart WoW to hear them" });
+    if (stories.again) runStories();
+  });
+  child.on("error", (e) => Object.assign(stories, { running: false, done: true, ok: false, state: "Stories: couldn't start claude (" + e.message + ")" }));
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   const send = (type, data) => { res.writeHead(200, { "Content-Type": type }); res.end(data); };
@@ -707,6 +762,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/") return send("text/html", PAGE);
   if (url.pathname === "/ogre.png") return send("image/png", ogrePng(url.searchParams.get("pajamas") === "1"));
   if (url.pathname === "/buildstatus") return send("application/json", JSON.stringify(build));
+  if (url.pathname === "/storystatus") return send("application/json", JSON.stringify(stories));
   if (url.pathname === "/build" && req.method === "POST") {
     const chunks = [];
     req.on("data", (c) => chunks.push(c));

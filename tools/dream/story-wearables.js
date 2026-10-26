@@ -104,6 +104,17 @@ const OUTFIT_MORE = {
   "gear_stratl_body": ["in Balnazzar's spiky plate, huge bat wings spread wide", "in dreadlord armour with wings that knock over lamps", "dressed as Balnazzar, pretending to be a nice paladin"],
   "gear_ubrs_body": ["in Drakkisath's black dragonscale, seams glowing red", "in the General's scale mail, warm as a forge", "in dark red dragonscale that hisses when it rains"],
   "gear_ulda_body": ["in Archaedas's stoneskin, blue cracks glowing", "in stone slabs with titan runes, slow but sturdy", "dressed as Archaedas, waking up very grumpy"],
+  // Pro Shop outfits
+  "shop_argyle_vest": ["in a burgundy and cream argyle sweater vest", "in an argyle vest over a crisp white collar", "in a knitted argyle vest, counting his own diamonds"],
+  "shop_caddie_bib": ["in a white caddie's bib with a big green 19", "in a caddie's bib, a little towel tucked in the strap", "dressed as a caddie, giving advice nobody asked for"],
+  "shop_tennis_whites": ["in tennis whites", "in a white polo, a cream jumper tied round his shoulders", "in tennis whites, shouting 'LOVE' at strangers"],
+  "shop_loud_windbreaker": ["in a very loud windbreaker", "in an orange, teal and purple zigzag windbreaker", "zipped to the chin in a windbreaker that rustled"],
+  "shop_norfolk_jacket": ["in a belted brown tweed jacket", "in a Norfolk jacket and a knitted tie", "in an old tweed golf jacket, pockets full of tees"],
+  "shop_smoking_jacket": ["in a burgundy velvet smoking jacket", "in velvet with quilted satin lapels and a cravat", "in a velvet smoking jacket, acting like he owned the place"],
+  "shop_yacht_blazer": ["in a navy and white striped blazer", "in a regatta blazer with an anchor on the pocket", "in a yacht club blazer, miles from any yacht"],
+  "shop_tuxedo": ["in a black tuxedo", "in a tuxedo with a red carnation in the buttonhole", "in a tuxedo, straightening his bow tie every minute"],
+  "shop_champions_jacket": ["in a deep green champion's jacket", "in a green blazer with a gold crest and a gold tie", "in the champion's jacket, fresh off a victory lap"],
+  "shop_founders_robe": ["in a purple velvet founder's robe", "in a heavy robe with an ermine collar and a gold chain", "in the founder's robe, founding things left and right"],
 };
 const HAT_MORE = {
   "crit_bat_head": ["a velvet bat hat with two huge pointy ears", "a bat hood, tiny fangs and all", "a purple bat hat, ears twitching at every sound"],
@@ -207,4 +218,15 @@ const HAT_MORE = {
   "gear_stratu_head": ["Rivendare's horned death knight helm", "the Baron's helm, glowing pale blue", "Rivendare's helm, horse not included"],
   "gear_thanes_head": ["Dirgehammer's braided red beard and red goggles", "a big red Dark Iron beard, goggles pushed up", "Durgen's beard, braided tight"],
   "gear_ubrs_head": ["Drakkisath's tall dragon-head headdress", "a dragon headdress with swept-back horns", "the General's headdress, fin crest and all"],
+  // Pro Shop hats
+  "shop_bowler_hat": ["a round black bowler hat", "a bowler hat, its silk band polished to a shine", "a bowler hat he kept tipping at strangers"],
+  "shop_flat_cap": ["a brown tweed flat cap", "a golfer's flat cap, the stiff brim pulled low", "a flat cap and strong opinions about the wind"],
+  "shop_panama": ["a wide cream panama hat", "a panama with a green and gold club band", "a panama hat tipped over his eyes for a nap"],
+  "shop_service_bell": ["a little brass service bell on his head", "a shiny service bell for a hat, softly glowing", "a service bell on his head that went 'ding' when he nodded"],
+  "shop_smoking_cap": ["a lounging cap with gold embroidery", "a round cap with a long gold tassel swinging", "a tasselled cap, the tassel tickling his ear"],
+  "shop_straw_boater": ["a flat straw boater", "a straw boater with a green and gold ribbon", "a straw boater, humming a barbershop tune"],
+  "shop_tam_pompom": ["a floppy tartan tam", "a red-and-green tartan tam with a fat pom-pom", "a tartan tam tilted so far it was nearly a scarf"],
+  "shop_golfball_hat": ["a giant golf ball on his head", "a dimpled golf ball helmet, a red tee on top", "a golf ball helmet, daring anyone to tee off"],
+  "shop_yacht_cap": ["a white commodore's cap", "a captain's cap with gold braid and an anchor badge", "a commodore's cap, saluting boats that weren't there"],
+  "shop_putting_green_hat": ["a tiny putting green on his head", "a grassy green hat with a red flag and a hole", "a putting green on his head, a ball rolling for the cup"],
 };

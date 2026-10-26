@@ -781,3 +781,6 @@ console.log(`Converted ${count} file(s) (twins: ${Object.entries(twinCounts).map
 // Rebuild the dream stories from the new MintArt.lua; it lists any piece with no story lines yet.
 try { require("child_process").execFileSync(process.execPath, [path.join(__dirname, "dream", "build-story-lua.js")], { stdio: "inherit" }); }
 catch (e) { console.log("Story build failed: " + e.message); }
+// And the Pro Shop steward's lines (StewardLines.lua): lists any shop piece he has no line for yet.
+try { require("./check-steward-lines").check(); }
+catch (e) { console.log("Steward line check failed: " + e.message); }

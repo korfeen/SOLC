@@ -1,6 +1,6 @@
 ---
 name: storyteller
-description: Writes the Dream Bed ogre's story lines for mint pieces (backgrounds, skins, outfits, hats, eyes, faces, accessories) that don't have any yet, or fixes lines after a piece's art changed. Use when the story build prints "NO STORY YET" or "NO SET NAME", or when an item's look changed. Give it the piece ids (or nothing: it finds the gaps itself) and any notes on how the art turned out.
+description: Writes the Dream Bed ogre's story lines for mint pieces (backgrounds, skins, outfits, hats, eyes, faces, accessories) that don't have any yet, or fixes lines after a piece's art changed; for Pro Shop pieces also the shop steward's snooty till lines (StewardLines.lua). Use when the story build prints "NO STORY YET", "NO SET NAME" or "NO STEWARD LINE", or when an item's look changed. Give it the piece ids (or nothing: it finds the gaps itself) and any notes on how the art turned out.
 tools: Read, Grep, Glob, Edit, Bash
 ---
 
@@ -80,13 +80,30 @@ neighbouring lines do.
 Guild in-jokes and running gags (not tied to one piece) go in `story-solc.js`, in the list for their slot. Never put
 them in the other files.
 
+## 4b. The steward's lines (Pro Shop pieces)
+
+A piece sold in the Pro Shop (`"shop": true` in tools/gen-art-proshop*.json, `unlock = "shop:<id>"` in MintArt.lua)
+needs, besides its dream lines, its own lines for the shop's steward, who rings it up at the till. They go in
+`StewardLines.lua` (repo root, plain Lua data; the one non-story file you edit), in the `pieces` table by **option id**:
+`shop_tuxedo = { "...", "..." },` (2 lines, one is picked at random). `node tools/check-steward-lines.js` lists the shop
+pieces with none ("NO STEWARD LINE"). The same file has his fallbacks per layer and rarity (`%s` = the piece's name) and
+his other moments (open, empty, total, bag); improve those only when asked.
+
+His voice is not the ogre's: a snooty country-club steward, an ogre in a waistcoat behind the counter, bored, dry and
+politely rude to the buyer. He judges the piece AND the person buying it. One-liners, under 80 characters, no "sir"
+in every line. Examples (from the mockup): "Tweed. You'll fit right in. From a distance." / "A crown. Do mind the
+doorframes." / "Three corners. One more than your thoughts." / "The club blazer. Do try to deserve it." Name the piece or
+a detail of it so you can tell which one he's ringing up; no lore needed. Same rules as above: family-friendly, no
+real brands, plain ASCII, British spellings.
+
 ## 5. Build and check
 
 1. Read a few dreams with your new pieces in them: `node tools/dream/preview.js 5 --with <id>,<id> --check`. Fix lines
    that read badly in the full sentence or get flagged (too long, repeats). The preview runs the addon's own
    DreamTeller.lua, so it's exactly what the game says.
 2. Run `node tools/dream/build-story-lua.js` again. Success: "Every mint piece has story lines." and no NO SET NAME
-   line. Fix what it lists and run it again.
+   line. Fix what it lists and run it again. For shop pieces also run `node tools/check-steward-lines.js` (success:
+   "every shop piece has its own").
 3. Don't run convert-art.js, gen-art.js or anything that makes art. Don't commit.
 
 ## 6. Report back

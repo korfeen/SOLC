@@ -139,4 +139,7 @@ const SHORT = { "Bald with Fly": "fly", "Nightcap with Pom Pom": "nightcap", "Lo
   "Dal'Rend's Arms": "swords", "Phoenix on Shoulder": "phoenix", "Firegut Ember Belly": "apron", "Crushridge Plunder": "furs",
   "Bazil's Locks": "hair", "Whitemane's Locks": "hair", "Tortheldrin's Locks": "hair", "Mekgineer's Mech Suit": "mech suit",
   "Electromagnetic Gigaflux Reactivator": "helmet", "Dustbelcher Wyrmhunter Gear": "leathers", "Splinter Fist Slaver Gear": "harness",
-  "Nesingwary's Safari Gear": "safari jacket", "Venture Hard Hat": "hard hat", "Tiny Top Hat": "top hat", "Boulderfist War Paint Band": "headband" };
+  "Nesingwary's Safari Gear": "safari jacket", "Venture Hard Hat": "hard hat", "Tiny Top Hat": "top hat", "Boulderfist War Paint Band": "headband",
+  // Pro Shop pieces
+  "Hole in One": "putting green", "Champagne Flute": "champagne", "Golf Ball Helmet": "golf ball", "Club Champion's Cup": "trophy",
+  "Golden Club Key": "club key", "Tennis Whites": "tennis whites" };

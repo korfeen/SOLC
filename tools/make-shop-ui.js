@@ -192,3 +192,59 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
     return [0, 0, 0, 0.55 * t * t];
   }));
 }
+
+// --- the till (the steward ringing up the cart), 128 squares standing for 64 px (S = 2) unless said:
+//   TillFrame   the till box's frame: rounded 6, a 2 px dark brass border, clear inside (its fill is a gradient in game)
+//   Bubble      the steward's speech bubble: parchment, a 2 px gilt border, rounded 14 (9 slices, corners 20 px)
+//   BubbleTail  its tail, pointing left at him: a gilt triangle, 32 x 32 for 16 x 16 px
+//   Card        the piece being rung up: cream card, a 1 px brown border, rounded 4
+//   BagBody, BagTissue, BagHandle   the posh green S.O.L.C. paper bag's parts (the bag drops in, then the tissue,
+//               then the handle), each drawn at 2x its size in px
+{
+  const N = 128, S = 2;
+  save("TillFrame", N, N, paint(N, N, (x, y) => {
+    const d = inside(x, y, N, N, 6 * S) / S;
+    if (d < 0) return null;
+    return d < 2 ? hex("#5c3d10") : null;
+  }));
+  save("Bubble", N, N, paint(N, N, (x, y) => {
+    const d = inside(x, y, N, N, 14 * S) / S;
+    if (d < 0) return null;
+    return d < 2 ? hex("#c9a14a") : hex("#efe1bd");
+  }));
+  save("BubbleTail", 32, 32, paint(32, 32, (x, y) => {
+    // (16 x 16 px: the point at the left, the base along the right edge)
+    const px = x / 2, py = y / 2;
+    return Math.abs(py - 8) <= (px / 16) * 8 ? hex("#c9a14a") : null;
+  }));
+  save("Card", N, N, paint(N, N, (x, y) => {
+    const d = inside(x, y, N, N, 4 * S) / S;
+    if (d < 0) return null;
+    return d < 1 ? hex("#8a6a3a") : hex("#f6ecd2");
+  }));
+  // The bag: its body 100 x 96 px (a green gradient, rounded 2 at the top and 6 at the bottom, a darker band at the
+  // bottom), the tissue 64 x 22 (a cream zigzag), the handle 50 x 34 (a gold arch, 4 px thick).
+  save("BagBody", 256, 256, paint(256, 256, (x, y) => {
+    const px = x * 100 / 256, py = y * 96 / 256;
+    const r = py > 48 ? 6 : 2;
+    if (inside(px, py, 100, 96, r) < 0) return null;
+    const c = mix(hex("#2f5a34"), hex("#1f3d23"), py / 96);
+    return py > 90 ? mix(c, [0, 0, 0, 1], 0.2) : c;
+  }));
+  save("BagTissue", 128, 64, paint(128, 64, (x, y) => {
+    const px = x * 64 / 128, py = y * 22 / 64;
+    const pts = [[0, 22], [9.6, 4.4], [22.4, 15.4], [32, 0], [41.6, 15.4], [54.4, 4.4], [64, 22]];
+    // (inside the zigzag: below the line through the points)
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+      if (px >= x0 && px <= x1) return py >= y0 + (y1 - y0) * (px - x0) / (x1 - x0) ? hex("#f4e9d0") : null;
+    }
+    return null;
+  }));
+  save("BagHandle", 128, 128, paint(128, 128, (x, y) => {
+    const px = x * 50 / 128, py = y * 50 / 128;  // (square: the arch is 50 wide, 34 tall, its bottom open)
+    if (py > 34) return null;
+    const d = Math.hypot((px - 25) / 25, (py - 34) / 34);
+    return d <= 1 && d >= 1 - 4 / 25 ? hex("#f2c14e") : null;
+  }));
+}

@@ -6,10 +6,10 @@
 -- the easel's picture comes forward to the middle in a gilt and burgundy border, red velvet curtains slide in from the
 -- sides and a valance drops in on top. The left curtain: a brass plaque per layer in stock, in the mockup's words and
 -- groups (WEAR: Clothes, Headwear, Accessory; you walk in on Clothes); the right: the piece's name, rarity, price (or "In
--- your wardrobe") and your cart (a piece a layer, the total, your points, Checkout: bought at once for now, the steward
--- rings it up later). Under the picture: knobs either side of Add to cart and a count. The mannequin wears the display
+-- your wardrobe") and your cart (a piece a layer, the total, your points, Checkout). Under the picture: knobs either side of Add to cart and a count. The mannequin wears the display
 -- set, the cart over it, the piece looked at over that (headwear zoomed further in). Keys: W/S or Up/Down tabs, A/D or
--- Left/Right pieces, Enter adds, Back or Escape -> the room. The wares and buying: ProShop.lua.
+-- Left/Right pieces, Enter adds, Back or Escape -> the room. CHECKOUT (the curtains' button, the floor cart, or the
+-- painting's steward): the till, ProShopTill.lua, the view panned in on him. The wares and buying: ProShop.lua.
 
 local _, ns = ...
 local UI = ns.UI
@@ -367,20 +367,25 @@ local function ToggleCart()
     Redraw()
 end
 
--- Buys the cart (the steward rings it up later; for now it's straight to the till).
+-- The till's camera (ProShopTill.lua): p 0 = the whole room .. 1 = on the steward behind his counter (the mock's 1.75x
+-- on x 395, y 260 of the painting, put at 413, 300), the easel and the corner's bits fading away.
+local STEWARD_VIEW = { scale = 1.75, x = 395, y = 260, at = { 413, 300 } }
+local function Camera(p)
+    local v = STEWARD_VIEW
+    local w, h = SCENE_W / v.scale, SCENE_H / v.scale
+    local left, top = v.x - v.at[1] / v.scale, v.y - v.at[2] / v.scale
+    local x0, y0 = left * p, top * p
+    local x1, y1 = SCENE_W + (left + w - SCENE_W) * p, SCENE_H + (top + h - SCENE_H) * p
+    room.scene:SetTexCoord(x0 / 1024, x1 / 1024, y0 / 1024, y1 / 1024)
+    room.easel:SetAlpha(1 - p)
+    room.corner:SetAlpha(1 - p)
+    room.steward:SetShown(p == 0)
+end
+
+-- Checkout: to the steward at the till (from the curtains, the floor cart or the steward himself).
 local function Checkout()
-    local keys = {}
-    for i, item in ipairs((CartItems())) do keys[i] = item.key end
-    local ok, result = ns.ShopBuy(keys)
-    if ok then
-        ns.ShowToast("achievement", "Bought at the Pro Shop", (#keys == 1 and "1 piece" or #keys .. " pieces") .. " for "
-            .. BreakUpLargeNumbers(result) .. " points", "In your wardrobe: wear it from your Overview's EDIT")
-        wipe(view.cart)
-        view.tabs, view.message = nil, nil  -- (what you own changed)
-    else
-        view.message = result
-    end
-    Redraw()
+    if room.zoom:IsShown() then Zoom(false) end
+    room.till:Start((CartItems()))
 end
 
 -- The right panel's piece info and cart (the mock's .info and .chit).
@@ -528,7 +533,17 @@ local function Build(holder)
         UI.Tooltip(self, lines)
     end)
     room.cart:HookScript("OnLeave", GameTooltip_Hide)
-    room.cart:SetScript("OnClick", function() Zoom(true) end)
+    room.cart:SetScript("OnClick", Checkout)
+    -- The steward behind his counter (the painting's): click him to check out; a little brass "Checkout" over him.
+    room.steward = CreateFrame("Button", nil, room)
+    room.steward.hint = S.Plaque(room.steward, 90, 22, 12)
+    room.steward.hint:SetPoint("BOTTOM", room.steward, "TOP", 0, 2)
+    room.steward.hint.text:SetText("Checkout")
+    room.steward.hint:EnableMouse(false)
+    room.steward.hint:Hide()
+    room.steward:SetScript("OnEnter", function(self) self.hint:Show() end)
+    room.steward:SetScript("OnLeave", function(self) self.hint:Hide() end)
+    room.steward:SetScript("OnClick", Checkout)
     room.points = room.corner:CreateFontString(nil, "OVERLAY")
     room.points:SetPoint("BOTTOMRIGHT", -(POST_REACH + 4), 14)
     room.points:SetFont(NAME_FONT, 14, "")
@@ -614,6 +629,22 @@ local function Build(holder)
         end
     end)
     room.zoom = zoom
+    -- The till: pays for the cart (it empties, what you own changes), back in the room after.
+    room.till = S.Till(room, {
+        camera = Camera,
+        buy = function(keys)
+            local ok, result = ns.ShopBuy(keys)
+            if ok then
+                wipe(view.cart)
+                view.tabs, view.message = nil, nil
+            end
+            return ok, result
+        end,
+        done = function()
+            Redraw()
+            room.points:SetText(("You have |cffffd21a%s|r points"):format(BreakUpLargeNumbers(ns.GetPoints().balance)))
+        end,
+    })
 end
 
 local function Layout()
@@ -632,6 +663,9 @@ local function Layout()
     local side = math.floor(math.max(cv.w * ew, cv.h * eh))
     easel.picture:SetSize(side, side)
     easel.picture:Dress(ns.SHOP_DISPLAY, side)
+    room.steward:ClearAllPoints()  -- (the painting's steward: x 300-490, y 92-318)
+    room.steward:SetPoint("TOPLEFT", room, "TOPLEFT", 300 * sx - BLEED, BLEED - 92 * sy)
+    room.steward:SetSize(190 * sx, 226 * sy)
     if room.zoom:IsShown() then PlaceZoom() end
 end
 
@@ -655,6 +689,7 @@ ns.RegisterPage({
             room.zoom.goal, room.zoom.t = nil, 0
             room.blur:SetAlpha(0)
             room.easel:SetAlpha(1)
+            room.till:Reset()
             if not InCombatLockdown() then room.zoom:EnableKeyboard(false) end
         end)
         return holder
