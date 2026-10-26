@@ -123,8 +123,8 @@ Object.assign(PIECE_TAGS, {
   "shop_champions_jacket": ["golf", "shiny"],
   "shop_founders_robe": ["golf", "royal"],
 
-  // Pro Shop Golf Glove (the art is a lucky ball on a tee)
-  "shop_golf_glove_ball": ["golf", "shiny"],
+  // Pro Shop Golf Glove (an empty white leather golf glove)
+  "shop_golf_glove_ball": ["golf"],
   // gacha series 1 accessories
   "gacha_acc_croquet_mallet": ["golf"],
   "gacha_acc_oar": ["golf", "water"],

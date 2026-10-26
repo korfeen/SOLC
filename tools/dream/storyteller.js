@@ -142,7 +142,7 @@ const SHORT = { "Bald with Fly": "fly", "Nightcap with Pom Pom": "nightcap", "Lo
   "Nesingwary's Safari Gear": "safari jacket", "Venture Hard Hat": "hard hat", "Tiny Top Hat": "top hat", "Boulderfist War Paint Band": "headband",
   // Pro Shop pieces
   "Hole in One": "putting green", "Champagne Flute": "champagne", "Golf Ball Helmet": "golf ball", "Club Champion's Cup": "trophy",
-  "Golden Club Key": "club key", "Tennis Whites": "tennis whites", "Golf Glove": "lucky ball",
+  "Golden Club Key": "club key", "Tennis Whites": "tennis whites", "Golf Glove": "glove",
   // gacha series 1
   "Bobble Hat & Goggles": "bobble hat", "Slicked Back": "hair", "Top Knot": "top knot", "Bin Lid": "bin lid", "Bowl Cut": "bowl cut",
   "Tin-Foil Hat": "tin-foil hat", "Lure Hat": "lure hat", "Ascot Hat": "race-day hat", "Fishbowl Helmet": "fishbowl",

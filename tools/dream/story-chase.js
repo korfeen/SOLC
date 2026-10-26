@@ -182,8 +182,8 @@ const THING_CHASE = {
     end: ["And it opened every door except the one I wanted.", "And it was the key to a club I wasn't in.", "And {boss} asked to borrow it, and he said 'members only'."] },
   shop_trophy_cup: { name: "Club Champion's Cup", does: ["holds his champion's cup up high", "gives his trophy cup a big kiss", "drinks out of his champion's cup"],
     end: ["And the little golfer on the lid waved at me.", "And it was full of soup.", "And {boss} said it was his trophy, really."] },
-  shop_golf_glove_ball: { name: "Golf Glove", does: ["points at the lucky golf ball floating by his head", "spins his lucky ball on its little red tee", "gives his floating lucky ball a rub"],
-    end: ["And it brought him luck. All of mine, it turned out.", "And somebody teed off with it, and it floated back.", "And {boss} tried to putt it, and it just wouldn't go in."] },
+  shop_golf_glove_ball: { name: "Golf Glove", does: ["waves his little white golf glove at me", "tries to squeeze one huge finger into his golf glove", "rips open the tan strap on his golf glove, very slowly"],
+    end: ["And the glove waved goodbye on its own.", "And he marked his ball with the gold button, then lost the ball.", "And {boss} borrowed the glove, and it only fit his thumb."] },
   // Gacha series 1 accessories
   gacha_acc_croquet_mallet: { name: "Croquet Mallet", does: ["knocks my ball into a hedge with his croquet mallet", "leans on his striped croquet mallet like a gentleman", "taps a hoop that isn't there with his mallet"],
     end: ["And he croquetted {boss} right out of the room.", "And he said the rules were 'whatever I say'.", "And the ball was a hedgehog. It unrolled and left."] },
