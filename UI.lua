@@ -1538,7 +1538,9 @@ local screens = {}
 local function NewestScreen()
     title.screen = screens[#screens]
     UpdateTitle()
+    if ns.UI.OnScreensChanged then ns.UI.OnScreensChanged(#screens > 0) end  -- (the Overview hides its portrait)
 end
+function ns.UI.ScreenOpen() return #screens > 0 end
 local function DropScreen(name)
     for i = #screens, 1, -1 do if screens[i].name == name then table.remove(screens, i) end end
 end

@@ -17,6 +17,7 @@ if not UI then return end
 
 local ROUND = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"  -- (a white disc)
 local WHITE = "Interface\\Buttons\\WHITE8X8"
+local GLOW = "Interface\\AddOns\\SOLC\\Media\\DreamBed\\glow"  -- (soft, fading to nothing: tools/make-dreambed-fx.js)
 local FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local VUL, VLL, VUR, VLR = UPPER_LEFT_VERTEX or 1, LOWER_LEFT_VERTEX or 2, UPPER_RIGHT_VERTEX or 3, LOWER_RIGHT_VERTEX or 4
 
@@ -153,7 +154,7 @@ local function CapFrame(c)
     if not f then
         f = CreateFrame("Frame", nil, view)
         f.glow = f:CreateTexture(nil, "BACKGROUND", nil, -2)
-        f.glow:SetTexture(ROUND)
+        f.glow:SetTexture(GLOW)
         f.glow:SetBlendMode("ADD")
         f.rim = f:CreateTexture(nil, "BACKGROUND")
         f.rim:SetTexture(ROUND)
@@ -169,7 +170,7 @@ local function CapFrame(c)
     end
     local col = COLORS[c.p[3]] or COLORS.uncommon
     f.body:SetVertexColor(col[1] * 0.8, col[2] * 0.8, col[3] * 0.8)
-    f.glow:SetVertexColor(col[1], col[2], col[3], c.p[3] == "legendary" and 0.45 or 0.3)
+    f.glow:SetVertexColor(col[1], col[2], col[3], c.p[3] == "legendary" and 0.9 or 0.6)
     f.glow:SetShown(c.p[3] == "epic" or c.p[3] == "legendary")
     f:Show()
     c.f, c.size = f, 0
@@ -186,7 +187,7 @@ local function SizeCap(c, size)
     f.shade:SetPoint("TOPLEFT", size * 0.22, -size * 0.22) f.shade:SetPoint("BOTTOMRIGHT", 0, 0)
     f.shine:SetSize(size * 0.38, size * 0.3)
     f.shine:SetPoint("TOPLEFT", size * 0.17, -size * 0.14)
-    if f.glow then f.glow:SetPoint("TOPLEFT", -size * 0.35, size * 0.35) f.glow:SetPoint("BOTTOMRIGHT", size * 0.35, -size * 0.35) end
+    f.glow:SetPoint("TOPLEFT", -size * 0.6, size * 0.6) f.glow:SetPoint("BOTTOMRIGHT", size * 0.6, -size * 0.6)
 end
 
 local Physics  -- (below)
@@ -664,7 +665,7 @@ end
 local function Build()
     panel = CreateFrame("Frame", "SOLCClaw", UIParent, "BackdropTemplate")
     panel:SetBackdrop({ bgFile = WHITE })
-    panel:SetBackdropColor(0.18, 0.04, 0.06, 0.97)
+    panel:SetBackdropColor(0.18, 0.04, 0.06, 1)
     panel:EnableMouse(true)
     panel:Hide()
     panel:HookScript("OnHide", function()
@@ -806,7 +807,7 @@ local function Build()
     panel.won:SetWidth(240)
     panel.won:SetJustifyH("LEFT")
     panel.stat = Text(panel, 11, { 0.6, 0.55, 0.45 })
-    panel.stat:SetPoint("BOTTOMLEFT", x0, 14)
+    panel.stat:SetPoint("BOTTOMLEFT", x0, 40)
     local reset = Btn(panel, 120, 22, "Refill (test)", function()
         wipe(owned) S.points = math.max(S.points, 3000) S.meter = 0 S.state, S.go = "idle", nil Fill() Say("Refilled.")
     end)

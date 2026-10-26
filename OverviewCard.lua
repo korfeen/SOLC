@@ -1972,7 +1972,11 @@ OVERVIEW = {
             if page.loaded then OVERVIEW.refresh(page) end  -- (the portrait back)
         end
         -- The portrait (ME, nothing else open): click it (yours) to change your look, right-click for its frame and
-        -- your motto; someone else's picture opens.
+        -- your motto; someone else's picture opens. It hangs over the window's wood, so a screen over the page (Plinko,
+        -- the claw machine, the minting show) hides it until the screen closes.
+        UI.OnScreensChanged = function(open)
+            if open then page.portraitTop:Hide() elseif page.loaded and page:IsVisible() then OVERVIEW.refresh(page) end
+        end
         BuildPortrait(page, function(button)
             local mint = page.portraitMint
             if not mint then return end
@@ -2242,7 +2246,7 @@ OVERVIEW = {
             page.photo:Show()
             page.hung:Show()
         end
-        page.portraitTop:SetShown(hanging)
+        page.portraitTop:SetShown(hanging and not (UI.ScreenOpen and UI.ScreenOpen()))  -- (a screen over the page hides it)
         -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
         -- refreshes.
         if key ~= page.key then page.CloseDetail() end  -- someone else's feed
