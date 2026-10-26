@@ -73,7 +73,8 @@ neighbouring lines do.
 - One joke per line, and vary it across the three lines: one plain description, one detail, one bit of behaviour or
   lore ("still bitter about Alterac", "going 'MRGLGLGL'").
 - Use real WoW Classic lore (bosses, places, quotes) where it fits. If you're not sure of a fact, leave it out.
-- Family-friendly; no real-world brands; no meanness about real people or players.
+- Adult humour is fine (cigars, booze, scruffy lowlife jokes: it's a guild of grown-ups); no slurs, no real-world
+  brands, no meanness about real people or players.
 - Plain ASCII apart from apostrophes that are part of names (Mo'grosh). No emoji. British spellings like the existing
   lines (armour, colour).
 
@@ -93,7 +94,7 @@ His voice is not the ogre's: a snooty country-club steward, an ogre in a waistco
 politely rude to the buyer. He judges the piece AND the person buying it. One-liners, under 80 characters, no "sir"
 in every line. Examples (from the mockup): "Tweed. You'll fit right in. From a distance." / "A crown. Do mind the
 doorframes." / "Three corners. One more than your thoughts." / "The club blazer. Do try to deserve it." Name the piece or
-a detail of it so you can tell which one he's ringing up; no lore needed. Same rules as above: family-friendly, no
+a detail of it so you can tell which one he's ringing up; no lore needed. Same rules as above: adult humour fine, no
 real brands, plain ASCII, British spellings.
 
 ## 5. Build and check
