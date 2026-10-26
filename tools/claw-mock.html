@@ -1,0 +1,458 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claw Machine</title>
+<style>
+:root{--bg:#17130f;--panel:#24180f;--line:#4a3420;--text:#efe2c6;--muted:#b9a582;--gold:#f2c14e;--velvet:#6b1a21}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 Georgia,serif}
+.wrap{display:flex;gap:16px;padding:14px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+canvas{background:#0f0b08;border-radius:10px;max-width:100%;height:auto;display:block}
+.side{width:360px;max-width:100%;display:flex;flex-direction:column;gap:10px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+h2{margin:0 0 6px;font-size:15px;color:var(--gold);font-weight:400}
+.wallet{font-size:22px;color:var(--gold)}.muted{color:var(--muted);font-size:12px}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+button{background:#3a2614;color:var(--text);border:1px solid #6d4c2a;border-radius:5px;padding:7px 12px;font:14px Georgia,serif;cursor:pointer}
+button:hover{border-color:var(--gold)}button:disabled{opacity:.4;cursor:default}
+button.main{background:var(--velvet);border-color:#a8323c;color:#fff2d6}
+.row{display:grid;grid-template-columns:130px 1fr 44px;gap:6px;align-items:center;font-size:12.5px;margin:3px 0}
+.row input[type=range]{width:100%;accent-color:#c9a14a}
+.row input[type=text]{width:100%;background:#120d09;border:1px solid var(--line);color:var(--text);border-radius:4px;padding:2px 5px;font:12px Georgia,serif;grid-column:2/4}
+.stats{font-size:12.5px;display:grid;grid-template-columns:1fr auto;gap:1px 10px}
+.won{max-height:170px;overflow:auto;font-size:12.5px}
+.uncommon{color:#1eff00}.rare{color:#3a9bff}.epic{color:#c070ff}.legendary{color:#ff8000}
+kbd{background:#120d09;border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:11px}
+</style></head><body>
+<div class="wrap">
+  <canvas id="c" width="760" height="720"></canvas>
+  <div class="side">
+    <div class="box">
+      <div class="wallet"><span id="pts">0</span> points</div>
+      <div class="btns">
+        <button class="main" id="insert">Insert 150 <kbd>Enter</kbd></button>
+        <button id="smash">Smash <kbd>S</kbd></button>
+        <button id="drop">Drop <kbd>Space</kbd></button>
+      </div>
+      <div class="muted" style="margin-top:6px">Steer with <kbd>&larr;</kbd> <kbd>&rarr;</kbd> (or A / D). Smash as often as you dare before dropping: each smash is riskier, and a TILT loses the go and drains every light.</div>
+      <div class="btns"><button id="more">+1000 points</button><label class="muted" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="odds"> show grab odds</label></div>
+    </div>
+    <div class="box"><h2>This session</h2><div class="stats" id="stats"></div></div>
+    <div class="box"><h2>Won (<span id="wonN">0</span>)</h2><div class="won" id="won"><span class="muted">Nothing yet.</span></div></div>
+    <div class="box"><h2>Tuning</h2>
+      <div class="row"><span>Price a go</span><input type="range" id="t_price" min="25" max="500" step="25"><b id="v_price"></b></div>
+      <div class="row"><span>Hold, 0 lights %</span><input type="range" id="t_hold0" min="10" max="100" step="2"><b id="v_hold0"></b></div>
+      <div class="row"><span>Drop, 0 lights %</span><input type="range" id="t_drop0" min="0" max="60" step="2"><b id="v_drop0"></b></div>
+      <div class="row"><span>Rare slip %</span><input type="range" id="t_slipR" min="0" max="40" step="1"><b id="v_slipR"></b></div>
+      <div class="row"><span>Epic slip %</span><input type="range" id="t_slipE" min="0" max="50" step="1"><b id="v_slipE"></b></div>
+      <div class="row"><span>Legendary slip %</span><input type="range" id="t_slipL" min="0" max="60" step="1"><b id="v_slipL"></b></div>
+      <div class="row"><span>Centred zone</span><input type="range" id="t_centre" min="0" max="1" step="0.05"><b id="v_centre"></b></div>
+      <div class="row"><span>Off-centre loss %</span><input type="range" id="t_offPen" min="0" max="100" step="5"><b id="v_offPen"></b></div>
+      <div class="row"><span>Smash power</span><input type="range" id="t_power" min="0.2" max="2" step="0.1"><b id="v_power"></b></div>
+      <div class="row"><span>Steer seconds</span><input type="range" id="t_steer" min="5" max="40" step="1"><b id="v_steer"></b></div>
+      <div class="row"><span>TILT chances %</span><input type="text" id="t_tilts"></div>
+      <div class="row"><span>Capsules in it</span><input type="range" id="t_left" min="1" max="74" step="1"><b id="v_left"></b></div>
+      <div class="muted">Capsules in it: refills the glass with that many of the pieces you haven't won (try a late game: 6). Full meter: hold 100%, drop 0%, no slip; the lights in between are steps from the 0-light numbers.</div>
+      <div class="btns"><button id="reset">Empty my collection</button></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const cv = $("c"), g = cv.getContext("2d");
+const COLORS = { uncommon: "#1eff00", rare: "#3a9bff", epic: "#a335ee", legendary: "#ff8000" };
+const RARITY_ORDER = ["uncommon", "rare", "epic", "legendary"];
+
+// ---- tuning ----
+const T = { price: 150, hold0: 60, drop0: 20, slipR: 7, slipE: 13, slipL: 20, centre: 0.3, offPen: 60, power: 1, steer: 20,
+  tilts: "5, 12, 22, 35, 50, 65, 80", left: 74 };
+const holdAt = (l) => T.hold0 + (100 - T.hold0) * l / 5;
+const dropAt = (l) => T.drop0 * (1 - l / 5);
+const slipOf = (r, l) => ({ uncommon: 0, rare: T.slipR, epic: T.slipE, legendary: T.slipL })[r] * (1 - l / 5);
+const tiltList = () => T.tilts.split(/[ ,]+/).map(Number).filter((n) => !isNaN(n));
+const tiltChance = (k) => { const t = tiltList(); return t.length ? t[Math.min(k, t.length - 1)] : 0; };
+
+// ---- the cabinet ----
+const GX = 40, GY = 130, GW = 680, GH = 450, FLOOR = GY + GH;
+const CW = 130, BX = GX + CW, BT = FLOOR - 250;   // chute width, barrier x and top
+const R = 21, RAIL = GY + 16, HOME = GX + CW / 2, TIP = 40;
+
+let PIECES = [], caps = [], owned = new Set(), points = 3000;
+let state = "idle", stateT = 0, msg = "Insert 150 points to play", msgColor = "#efe2c6";
+let meter = 0, smashes = 0, shakeT = 0, tiltT = 0, timer = 0;
+const claw = { x: HOME, y: RAIL + 20, vx: 0, open: 1, a: 0, w: 0, held: null, dropAtP: -1, travelled: 0, path: 1, glow: 0 };
+const keys = {};
+let go = null;   // this go: { held, outcome, wins: [] }
+const stats = { goes: 0, spent: 0, wins: 0, whiff: 0, weak: 0, drop: 0, tilt: 0, lucky: 0, smashes: 0 };
+
+function fill() {
+  const left = PIECES.filter((p) => !owned.has(p.id));
+  for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [left[i], left[j]] = [left[j], left[i]]; }
+  caps = left.slice(0, T.left).map((p, i) => ({ p, x: BX + R + 6 + Math.random() * (GX + GW - BX - 2 * R - 12), y: GY + 40 - i * 9, vx: 0, vy: 0, held: false }));
+  for (let i = 0; i < 900; i++) physics(1 / 240);   // (settle before showing)
+}
+
+// ---- physics: circles with gravity, pushed apart, walls, the barrier, the hole under the chute ----
+function physics(dt) {
+  for (const c of caps) {
+    if (c.held) continue;
+    c.vy += 1500 * dt;
+    c.x += c.vx * dt; c.y += c.vy * dt;
+    c.vx *= 0.9985; c.vy *= 0.9995;
+  }
+  for (let it = 0; it < 3; it++) {
+    for (let i = 0; i < caps.length; i++) {
+      const a = caps[i];
+      for (let j = i + 1; j < caps.length; j++) {
+        const b = caps[j];
+        const dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+        if (d2 >= 4 * R * R || d2 === 0) continue;
+        const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, o = 2 * R - d;
+        const wa = a.held ? 0 : b.held ? 1 : 0.5, wb = 1 - wa;
+        a.x -= nx * o * wa; a.y -= ny * o * wa; b.x += nx * o * wb; b.y += ny * o * wb;
+        const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (vn < 0) {
+          const j2 = -(1.15) * vn;
+          if (!a.held) { a.vx -= nx * j2 * wa * 2 * 0.5; a.vy -= ny * j2 * wa * 2 * 0.5; }
+          if (!b.held) { b.vx += nx * j2 * wb * 2 * 0.5; b.vy += ny * j2 * wb * 2 * 0.5; }
+          // (a little rolling friction between them)
+          const tx = -ny, ty = nx, vt = (b.vx - a.vx) * tx + (b.vy - a.vy) * ty;
+          if (!a.held) { a.vx += tx * vt * 0.05; a.vy += ty * vt * 0.05; }
+          if (!b.held) { b.vx -= tx * vt * 0.05; b.vy -= ty * vt * 0.05; }
+        }
+      }
+    }
+    for (const c of caps) {
+      if (c.held) continue;
+      if (c.x < GX + R) { c.x = GX + R; c.vx = Math.abs(c.vx) * 0.3; }
+      if (c.x > GX + GW - R) { c.x = GX + GW - R; c.vx = -Math.abs(c.vx) * 0.3; }
+      if (c.y < GY + R) { c.y = GY + R; c.vy = Math.abs(c.vy) * 0.3; }
+      if (c.x > BX && c.y > FLOOR - R) { c.y = FLOOR - R; if (c.vy > 0) c.vy = -c.vy * 0.2; c.vx *= 0.96; }
+      // the barrier: a wall from BT down to the floor
+      const py = Math.max(BT, Math.min(FLOOR, c.y)), dx = c.x - BX, dy = c.y - py, d = Math.hypot(dx, dy);
+      if (d < R + 3 && d > 0) {
+        const nx = dx / d, ny = dy / d, o = R + 3 - d;
+        c.x += nx * o; c.y += ny * o;
+        const vn = c.vx * nx + c.vy * ny;
+        if (vn < 0) { c.vx -= nx * vn * 1.3; c.vy -= ny * vn * 1.3; }
+      }
+      // the claw's tip pushes them aside while it moves through the pile
+      if (state === "rise") {   // (on the way up the empty claw brushes past; going down it stops on the first one it touches)
+        const tx = claw.x, ty = claw.y + TIP - 6, ex = c.x - tx, ey = c.y - ty, e = Math.hypot(ex, ey);
+        if (c !== claw.held && e < R + 8 && e > 0) { c.x = tx + ex / e * (R + 8); c.y = ty + ey / e * (R + 8); }
+      }
+      const speed = Math.abs(c.vx) + Math.abs(c.vy);
+      if (speed < 18) { c.vx *= 0.85; c.vy *= 0.92; }
+    }
+  }
+  for (const c of caps) if (c.held) { c.vx = 0; c.vy = 0; }
+}
+
+// ---- the go ----
+function setMsg(t, color) { msg = t; msgColor = color || "#efe2c6"; }
+function insert() {
+  if (state !== "idle") return;
+  if (!caps.length) return setMsg("The machine is empty: you have them all!", "#f2c14e");
+  if (points < T.price) return setMsg("Not enough points.", "#ff7a6a");
+  points -= T.price; stats.goes++; stats.spent += T.price;
+  go = { outcome: null, wins: [], hadHold: false };
+  smashes = 0; timer = T.steer; state = "steer"; claw.x = HOME; claw.y = RAIL + 20; claw.open = 1; claw.held = null;
+  setMsg("Steer the claw. Smash if you dare. Drop!");
+}
+function smash() {
+  if (state !== "steer") return;
+  const chance = tiltChance(smashes);
+  stats.smashes++;
+  if (Math.random() * 100 < chance) {
+    state = "tilt"; stateT = 0; tiltT = 2.2; meter = 0; go.outcome = "tilt"; stats.tilt++;
+    setMsg(`TILT! (that smash had a ${chance}% chance) The go is lost and the lights are drained.`, "#ff4a3a");
+    return;
+  }
+  smashes++; shakeT = 0.4;
+  for (const c of caps) {
+    if (c.held) continue;
+    c.vy -= (300 + Math.random() * 600) * T.power;
+    c.vx += (Math.random() - 0.5) * 520 * T.power;
+  }
+  setMsg(`BONK! Smash ${smashes} survived (${chance}%). Next one: ${tiltChance(smashes)}%.`);
+}
+function drop() { if (state === "steer") { state = "drop"; claw.open = 1; } }
+
+function grabOdds(c, offset) {
+  const l = meter;
+  const off = offset > T.centre ? (offset - T.centre) / Math.max(0.0001, 1 - T.centre) * T.offPen : 0;
+  return Math.max(0, Math.min(100, holdAt(l) - slipOf(c.p.rarity, l) - off));
+}
+function target() {   // the capsule the claw would close on from here, and how centred it is
+  const tx = claw.x, ty = claw.y + TIP;
+  let best = null;
+  for (const c of caps) {
+    if (c.held) continue;
+    const d = Math.hypot(c.x - tx, c.y - ty);
+    if (d < R + 24 && c.y >= ty - 10 && (!best || Math.abs(c.x - tx) < Math.abs(best.x - tx))) best = c;
+  }
+  return best ? { c: best, offset: Math.min(1, Math.abs(best.x - tx) / (R + 14)) } : null;
+}
+function columnTarget() {   // for the odds display while steering: the top capsule under the claw
+  let best = null;
+  for (const c of caps) if (Math.abs(c.x - claw.x) < R + 14 && (!best || c.y < best.y)) best = c;
+  return best ? { c: best, offset: Math.min(1, Math.abs(best.x - claw.x) / (R + 14)) } : null;
+}
+
+function step(dt) {
+  stateT += dt;
+  const prevVx = claw.vx;
+  claw.vx = 0;
+  if (state === "steer") {
+    timer -= dt;
+    const dir = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+    claw.vx = dir * 170;
+    claw.x = Math.max(GX + 26, Math.min(GX + GW - 26, claw.x + claw.vx * dt));
+    if (timer <= 0) drop();
+  } else if (state === "drop") {
+    claw.y += 190 * dt;
+    const tipY = claw.y + TIP;
+    let hit = tipY >= FLOOR - 4;
+    for (const c of caps) if (Math.hypot(c.x - claw.x, c.y - tipY) < R + 6) hit = true;
+    if (hit || claw.y > FLOOR - TIP) { state = "close"; stateT = 0; }
+  } else if (state === "close") {
+    claw.open = Math.max(0, 1 - stateT / 0.45);
+    if (stateT >= 0.5) {
+      const t = target();
+      if (!t) { go.outcome = "whiff"; }
+      else {
+        const odds = grabOdds(t.c, t.offset);
+        if (Math.random() * 100 < odds) {
+          claw.held = t.c; t.c.held = true; go.hadHold = true;
+          const dropChance = dropAt(meter) + slipOf(t.c.p.rarity, meter) * 0.4;
+          claw.dropAtP = Math.random() * 100 < dropChance ? 0.15 + Math.random() * 0.8 : -1;
+          setMsg(`Got hold of ${t.c.p.name} (${Math.round(odds)}% grip)...`, COLORS[t.c.p.rarity]);
+        } else {
+          go.outcome = "weak";
+          t.c.vy -= 160; t.c.vx += (Math.random() - 0.5) * 120;
+          setMsg(`It slipped off ${t.c.p.name} (${Math.round(odds)}% grip).`);
+        }
+      }
+      claw.travelled = 0; claw.path = (claw.y - RAIL - 20) + Math.abs(claw.x - HOME) + 1;
+      state = "rise"; stateT = 0;
+    }
+  } else if (state === "rise" || state === "carry") {
+    const sp = state === "rise" ? 150 : 140;
+    if (state === "rise") {
+      const ny = Math.max(RAIL + 20, claw.y - sp * dt); claw.travelled += claw.y - ny; claw.y = ny;
+      if (claw.y <= RAIL + 20) state = "carry";
+    } else {
+      const d = HOME - claw.x, mv = Math.sign(d) * Math.min(Math.abs(d), sp * dt);
+      claw.vx = mv / dt; claw.x += mv; claw.travelled += Math.abs(mv);
+      if (Math.abs(HOME - claw.x) < 0.5) { state = "release"; stateT = 0; }
+    }
+    if (claw.held && claw.dropAtP >= 0 && claw.travelled / claw.path >= claw.dropAtP) {
+      const c = claw.held; c.held = false; c.vx = claw.vx; c.vy = 40; claw.held = null; claw.dropAtP = -1;
+      go.outcome = "drop"; claw.open = 0.6;
+      setMsg(`Dropped ${c.p.name} on the way!`, "#ff9a6a");
+    }
+  } else if (state === "release") {
+    claw.open = Math.min(1, stateT / 0.3);
+    if (claw.held && stateT > 0.15) { const c = claw.held; c.held = false; c.vx = 0; c.vy = 60; claw.held = null; }
+    if (stateT > 0.4) { state = "settle"; stateT = 0; }
+  } else if (state === "settle") {
+    if (stateT > 1.4) finish();
+  } else if (state === "tilt") {
+    tiltT -= dt;
+    if (tiltT <= 0) { state = "idle"; go = null; }
+  }
+  // the claw's sway: a pendulum pushed by the carriage's acceleration (looks only; the drop roll is decided at the grab)
+  const L = Math.max(30, claw.y - RAIL) + 30, ax = (claw.vx - prevVx) / dt;
+  claw.w += (-(900 / L) * Math.sin(claw.a) - (ax / L) * Math.cos(claw.a) * 0.6) * dt;
+  claw.w *= Math.exp(-1.8 * dt);
+  claw.a += claw.w * dt;
+  claw.a = Math.max(-0.5, Math.min(0.5, claw.a));
+  if (claw.held) {
+    const tx = claw.x + Math.sin(claw.a) * TIP, ty = claw.y + Math.cos(claw.a) * TIP;
+    claw.held.x = tx; claw.held.y = ty + R - 4;
+  }
+  claw.glow = meter >= 5 ? 0.5 + 0.5 * Math.sin(performance.now() / 180) : 0;
+  // capsules that fell through the hole under the chute are won (a knocked-in one counts too, even mid-go)
+  for (let i = caps.length - 1; i >= 0; i--) {
+    const c = caps[i];
+    if (!c.held && c.x < BX && c.y > FLOOR + R) {
+      if (go && state !== "tilt") { caps.splice(i, 1); owned.add(c.p.id); go.wins.push(c.p); }
+      else { c.x = BX + R + 10 + Math.random() * (GX + GW - BX - 2 * R - 20); c.y = GY + R; c.vx = c.vy = 0; }  // (spilled in with no go on: back on the pile)
+    }
+  }
+}
+function finish() {
+  const g2 = go; go = null; state = "idle";
+  if (g2.wins.length) {
+    const lucky = !g2.hadHold || g2.outcome === "drop" || g2.outcome === "weak" || g2.outcome === "whiff";
+    meter = 0; stats.wins += g2.wins.length; if (lucky) stats.lucky++;
+    setMsg((lucky ? "LUCKY! " : "WON! ") + g2.wins.map((p) => p.name).join(" + ") + (g2.wins.length > 1 ? " - two at once!" : ""), COLORS[g2.wins[0].rarity]);
+  } else {
+    const o = g2.outcome || "whiff";
+    stats[o]++; meter = Math.min(5, meter + 1);
+    if (o === "whiff") setMsg("Whiff: nothing under the claw. +1 light.", "#ff9a6a");
+    else if (o === "weak") setMsg(msg + " +1 light.", "#ff9a6a");
+    else setMsg(msg + " +1 light.", "#ff9a6a");
+  }
+  drawSide();
+}
+
+// ---- drawing ----
+function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function capsule(c) {
+  const col = COLORS[c.p.rarity];
+  g.save(); g.translate(c.x, c.y);
+  if (c.p.rarity === "legendary" || c.p.rarity === "epic") { g.shadowColor = col; g.shadowBlur = c.p.rarity === "legendary" ? 14 : 7; }
+  g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fillStyle = "rgba(230,240,255,0.22)"; g.fill();
+  g.shadowBlur = 0;
+  g.beginPath(); g.arc(0, 0, R, 0, Math.PI); g.closePath(); g.fillStyle = col; g.fill();
+  g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.lineWidth = 1.5; g.strokeStyle = "rgba(0,0,0,0.45)"; g.stroke();
+  g.beginPath(); g.moveTo(-R, 0); g.lineTo(R, 0); g.strokeStyle = "rgba(0,0,0,0.35)"; g.stroke();
+  g.beginPath(); g.ellipse(-R * 0.35, -R * 0.45, R * 0.32, R * 0.16, -0.5, 0, Math.PI * 2); g.fillStyle = "rgba(255,255,255,0.55)"; g.fill();
+  g.restore();
+}
+function drawClaw() {
+  const x = claw.x, y = claw.y;
+  g.strokeStyle = "#c8b48a"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(x, RAIL); g.lineTo(x, y); g.stroke();   // (the cable)
+  g.fillStyle = "#8a6a3a"; rr(x - 22, RAIL - 12, 44, 14, 3); g.fill();   // (the carriage)
+  g.save(); g.translate(x, y); g.rotate(-claw.a);
+  if (claw.glow) { g.shadowColor = "#ffd76a"; g.shadowBlur = 10 + 14 * claw.glow; }
+  g.fillStyle = "#d9c08a"; rr(-14, -6, 28, 18, 5); g.fill();
+  g.shadowBlur = 0;
+  const spread = 0.12 + claw.open * 0.55;
+  for (const s of [-1, 0, 1]) {
+    const ang = s * spread + (s === 0 ? 0 : 0);
+    g.save(); g.rotate(ang); g.strokeStyle = claw.glow ? `rgba(255,${200 + 40 * claw.glow},120,1)` : "#e6d3a3"; g.lineWidth = 4; g.lineCap = "round";
+    g.beginPath(); g.moveTo(0, 10); g.lineTo(0, TIP - 10); g.lineTo(-s * 8 * (1 - claw.open) + (s === 0 ? 0 : -s * 2), TIP); g.stroke(); g.restore();
+  }
+  g.restore();
+}
+function draw() {
+  g.save();
+  g.clearRect(0, 0, cv.width, cv.height);
+  // (the shake: a smash, or the machine's rattle as the next smash gets riskier)
+  const risk = state === "steer" ? tiltChance(smashes) / 100 : 0;
+  const sh = (shakeT > 0 ? 9 * shakeT / 0.4 : 0) + risk * 2.2;
+  g.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+  // cabinet
+  const body = g.createLinearGradient(0, 0, 0, cv.height); body.addColorStop(0, "#5a141b"); body.addColorStop(1, "#2c0a0e");
+  g.fillStyle = body; rr(12, 10, cv.width - 24, cv.height - 20, 18); g.fill();
+  g.strokeStyle = "#c9a14a"; g.lineWidth = 3; g.stroke();
+  // marquee + bulbs (they flicker as TILT gets likelier; dark while tilted)
+  g.fillStyle = "#1c0e08"; rr(40, 24, GW, 86, 10); g.fill(); g.strokeStyle = "#c9a14a"; g.lineWidth = 2; g.stroke();
+  g.font = "bold 40px Georgia"; g.textAlign = "center"; g.fillStyle = state === "tilt" ? "#ff3a2a" : "#f2c14e";
+  g.fillText(state === "tilt" ? "T I L T" : "THE CLAW", cv.width / 2, 82);
+  for (let i = 0; i < 22; i++) {
+    const on = state === "tilt" ? (Math.floor(performance.now() / 150) % 2 === 0) : Math.random() > risk * 0.9;
+    const bx = 56 + i * (GW - 32) / 21;
+    for (const by of [32, 102]) {
+      g.beginPath(); g.arc(bx, by, 4, 0, Math.PI * 2);
+      g.fillStyle = state === "tilt" ? (on ? "#ff3a2a" : "#401010") : on ? "#ffe9a8" : "#5a4a2a"; g.fill();
+    }
+  }
+  // glass
+  const glass = g.createLinearGradient(0, GY, 0, FLOOR); glass.addColorStop(0, "#1d1a22"); glass.addColorStop(1, "#2a1418");
+  g.fillStyle = glass; g.fillRect(GX, GY, GW, GH);
+  g.fillStyle = "#0a0606"; g.fillRect(GX, FLOOR - 4, CW, 30);   // (the hole)
+  g.fillStyle = "rgba(242,193,78,0.6)"; g.font = "13px Georgia"; g.fillText("PRIZE", GX + CW / 2, FLOOR + 18);
+  g.fillStyle = "#3a2614"; g.fillRect(BX, FLOOR, GX + GW - BX, 6);
+  g.strokeStyle = "rgba(200,230,255,0.55)"; g.lineWidth = 5; g.beginPath(); g.moveTo(BX, BT); g.lineTo(BX, FLOOR); g.stroke();
+  g.strokeStyle = "#8a6a3a"; g.lineWidth = 4; g.beginPath(); g.moveTo(GX, RAIL - 6); g.lineTo(GX + GW, RAIL - 6); g.stroke();
+  for (const c of caps) if (c !== claw.held) capsule(c);
+  if (claw.held) capsule(claw.held);
+  drawClaw();
+  // the glass's shine and frame
+  g.fillStyle = "rgba(255,255,255,0.04)"; g.beginPath(); g.moveTo(GX, GY); g.lineTo(GX + 180, GY); g.lineTo(GX + 60, FLOOR); g.lineTo(GX, FLOOR); g.fill();
+  g.strokeStyle = "#c9a14a"; g.lineWidth = 3; g.strokeRect(GX, GY, GW, GH + 26);
+  // odds under the claw
+  if ($("odds").checked && state === "steer") {
+    const t = columnTarget();
+    if (t) {
+      g.fillStyle = "rgba(0,0,0,0.6)"; rr(claw.x - 70, GY + 50, 140, 36, 6); g.fill();
+      g.fillStyle = COLORS[t.c.p.rarity]; g.font = "12px Georgia"; g.fillText(t.c.p.name, claw.x, GY + 65);
+      g.fillStyle = "#efe2c6"; g.fillText(`grip ${Math.round(grabOdds(t.c, t.offset))}%  drop ${Math.round(dropAt(meter) + slipOf(t.c.p.rarity, meter) * 0.4)}%`, claw.x, GY + 80);
+    }
+  }
+  // front panel: claw power, timer, the message
+  const py = FLOOR + 40;
+  g.fillStyle = "#1c0e08"; rr(40, py, GW, 150, 10); g.fill(); g.strokeStyle = "#c9a14a"; g.lineWidth = 2; g.stroke();
+  g.textAlign = "left"; g.fillStyle = "#c9a14a"; g.font = "15px Georgia"; g.fillText("CLAW POWER", 64, py + 32);
+  for (let i = 0; i < 5; i++) {
+    const lit = i < meter, cx = 190 + i * 36;
+    g.beginPath(); g.arc(cx, py + 27, 12, 0, Math.PI * 2);
+    if (lit) { g.shadowColor = "#ffd76a"; g.shadowBlur = meter >= 5 ? 10 + 10 * claw.glow : 8; }
+    g.fillStyle = lit ? "#ffd76a" : "#3a2a14"; g.fill(); g.shadowBlur = 0;
+    g.strokeStyle = "#8a6a3a"; g.lineWidth = 2; g.stroke();
+  }
+  g.fillStyle = "#efe2c6"; g.font = "15px Georgia";
+  g.fillText(state === "steer" ? `Time ${Math.ceil(timer)}s` : "", 400, py + 32);
+  g.fillText(state === "steer" ? `Next smash: ${tiltChance(smashes)}% TILT` : "", 500, py + 32);
+  g.fillStyle = "#b9a582"; g.font = "13px Georgia";
+  g.fillText(`${caps.length} capsules left  ·  ${owned.size} won`, 64, py + 62);
+  g.fillStyle = msgColor; g.font = "16px Georgia";
+  wrap(msg, 64, py + 96, GW - 50, 20);
+  g.restore();
+}
+function wrap(text, x, y, w, lh) {
+  const words = text.split(" "); let line = "";
+  for (const wd of words) { const t = line ? line + " " + wd : wd; if (g.measureText(t).width > w && line) { g.fillText(line, x, y); y += lh; line = wd; } else line = t; }
+  g.fillText(line, x, y);
+}
+function drawSide() {
+  $("pts").textContent = points;
+  $("insert").textContent = `Insert ${T.price}`; $("insert").innerHTML += " <kbd>Enter</kbd>";
+  $("insert").disabled = state !== "idle"; $("smash").disabled = $("drop").disabled = state !== "steer";
+  const s = stats, perWin = s.wins ? (s.spent / s.wins).toFixed(0) : "-";
+  $("stats").innerHTML = [["Goes", s.goes], ["Points spent", s.spent], ["Pieces won", s.wins], ["Points per piece", perWin],
+    ["Whiffs", s.whiff], ["Weak grips", s.weak], ["Drops", s.drop], ["TILTs", s.tilt], ["Lucky wins", s.lucky], ["Smashes", s.smashes]]
+    .map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join("");
+  const won = PIECES.filter((p) => owned.has(p.id));
+  $("wonN").textContent = won.length;
+  $("won").innerHTML = won.length ? won.map((p) => `<div class="${p.rarity}">${p.name} <span class="muted">${p.layer === "expression" ? "mouth" : p.layer}</span></div>`).join("") : '<span class="muted">Nothing yet.</span>';
+}
+
+// ---- input, tuning, loop ----
+addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" && e.target.type === "text") return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys[k] = true;
+  if (k === "Enter") insert(); else if (k === " " || k === "ArrowDown") drop(); else if (k === "s") smash();
+  if ([" ", "ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(k)) e.preventDefault();
+});
+addEventListener("keyup", (e) => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+$("insert").onclick = insert; $("smash").onclick = smash; $("drop").onclick = drop;
+$("more").onclick = () => { points += 1000; drawSide(); };
+$("reset").onclick = () => { owned.clear(); fill(); setMsg("Collection emptied: the machine is full again."); drawSide(); };
+for (const k of Object.keys(T)) {
+  const el = $("t_" + k); if (!el) continue;
+  el.value = T[k];
+  const show = () => { const v = $("v_" + k); if (v) v.textContent = el.value; };
+  show();
+  el.oninput = () => {
+    T[k] = el.type === "text" ? el.value : Number(el.value); show();
+    if (k === "left") { if (state === "idle") fill(); }
+    drawSide();
+  };
+}
+let last = performance.now();
+const DEMO = Number(new URLSearchParams(location.search).get("demo"));
+function loop(now) {
+  for (let r = 0; r < (DEMO ? 8 : 1); r++) tick(DEMO ? 1 / 60 : Math.min(0.05, (now - last) / 1000));   // (demo: fixed steps, for headless checks)
+  last = now;
+  draw();
+  if (state === "steer" || state === "tilt" || Math.random() < 0.1) drawSide();
+  requestAnimationFrame(loop);
+}
+function tick(frame) {
+  const n = Math.ceil(frame / (1 / 240));
+  for (let i = 0; i < n; i++) { step(frame / n); physics(frame / n); }
+  if (shakeT > 0) shakeT -= frame;
+}
+fetch("/pieces").then((r) => r.json()).then((p) => {
+  PIECES = p; $("t_left").max = p.length; T.left = p.length; $("t_left").value = p.length; $("v_left").textContent = p.length;
+  fill(); drawSide(); requestAnimationFrame(loop);
+  const demo = DEMO;
+  if (demo) {
+    setTimeout(() => { insert(); smash(); keys.ArrowRight = true; }, 300);
+    const t = setInterval(() => { if (claw.x >= demo) { keys.ArrowRight = false; drop(); clearInterval(t); } }, 10);
+  }
+});
+</script></body></html>
