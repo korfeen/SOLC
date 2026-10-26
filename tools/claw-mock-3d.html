@@ -1,0 +1,531 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claw Machine</title>
+<style>
+:root{--bg:#17130f;--panel:#24180f;--line:#4a3420;--text:#efe2c6;--muted:#b9a582;--gold:#f2c14e;--velvet:#6b1a21}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 Georgia,serif}
+.wrap{display:flex;gap:16px;padding:14px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+canvas{background:#0f0b08;border-radius:10px;max-width:100%;height:auto;display:block}
+.side{width:360px;max-width:100%;display:flex;flex-direction:column;gap:10px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+h2{margin:0 0 6px;font-size:15px;color:var(--gold);font-weight:400}
+.wallet{font-size:22px;color:var(--gold)}.muted{color:var(--muted);font-size:12px}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+button{background:#3a2614;color:var(--text);border:1px solid #6d4c2a;border-radius:5px;padding:7px 12px;font:14px Georgia,serif;cursor:pointer}
+button:hover{border-color:var(--gold)}button:disabled{opacity:.4;cursor:default}
+button.main{background:var(--velvet);border-color:#a8323c;color:#fff2d6}
+.row{display:grid;grid-template-columns:130px 1fr 44px;gap:6px;align-items:center;font-size:12.5px;margin:3px 0}
+.row input[type=range]{width:100%;accent-color:#c9a14a}
+.row input[type=text]{width:100%;background:#120d09;border:1px solid var(--line);color:var(--text);border-radius:4px;padding:2px 5px;font:12px Georgia,serif;grid-column:2/4}
+.stats{font-size:12.5px;display:grid;grid-template-columns:1fr auto;gap:1px 10px}
+.won{max-height:170px;overflow:auto;font-size:12.5px}
+.uncommon{color:#1eff00}.rare{color:#3a9bff}.epic{color:#c070ff}.legendary{color:#ff8000}
+kbd{background:#120d09;border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:11px}
+</style></head><body>
+<div class="wrap">
+  <canvas id="c" width="760" height="720"></canvas>
+  <div class="side">
+    <div class="box">
+      <div class="wallet"><span id="pts">0</span> points</div>
+      <div class="btns">
+        <button class="main" id="insert">Insert 150 <kbd>Enter</kbd></button>
+        <button id="smash">Smash <kbd>S</kbd></button>
+        <button id="drop">Drop <kbd>Space</kbd></button>
+      </div>
+      <div class="muted" style="margin-top:6px" id="help"></div>
+      <div class="btns">
+        <button id="view">View: angled <kbd>V</kbd></button>
+        <button id="ctrl">Controls: classic <kbd>C</kbd></button>
+      </div>
+      <div class="btns"><button id="more">+1000 points</button><label class="muted" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="odds"> show grab odds</label><a class="muted" href="/" style="margin-left:auto">flat version</a></div>
+    </div>
+    <div class="box"><h2>This session</h2><div class="stats" id="stats"></div></div>
+    <div class="box"><h2>Won (<span id="wonN">0</span>)</h2><div class="won" id="won"><span class="muted">Nothing yet.</span></div></div>
+    <div class="box"><h2>Tuning</h2>
+      <div class="row"><span>Price a go</span><input type="range" id="t_price" min="25" max="500" step="25"><b id="v_price"></b></div>
+      <div class="row"><span>Hold, 0 lights %</span><input type="range" id="t_hold0" min="10" max="100" step="2"><b id="v_hold0"></b></div>
+      <div class="row"><span>Drop, 0 lights %</span><input type="range" id="t_drop0" min="0" max="60" step="2"><b id="v_drop0"></b></div>
+      <div class="row"><span>Rare slip %</span><input type="range" id="t_slipR" min="0" max="40" step="1"><b id="v_slipR"></b></div>
+      <div class="row"><span>Epic slip %</span><input type="range" id="t_slipE" min="0" max="50" step="1"><b id="v_slipE"></b></div>
+      <div class="row"><span>Legendary slip %</span><input type="range" id="t_slipL" min="0" max="60" step="1"><b id="v_slipL"></b></div>
+      <div class="row"><span>Centred zone</span><input type="range" id="t_centre" min="0" max="1" step="0.05"><b id="v_centre"></b></div>
+      <div class="row"><span>Off-centre loss %</span><input type="range" id="t_offPen" min="0" max="100" step="5"><b id="v_offPen"></b></div>
+      <div class="row"><span>Smash power</span><input type="range" id="t_power" min="0.2" max="2" step="0.1"><b id="v_power"></b></div>
+      <div class="row"><span>Steer seconds</span><input type="range" id="t_steer" min="5" max="40" step="1"><b id="v_steer"></b></div>
+      <div class="row"><span>TILT chances %</span><input type="text" id="t_tilts"></div>
+      <div class="row"><span>Capsules in it</span><input type="range" id="t_left" min="1" max="74" step="1"><b id="v_left"></b></div>
+      <div class="muted">Capsules in it: refills the glass with that many of the pieces you haven't won (try a late game: 6). Full meter: hold 100%, drop 0%, no slip.</div>
+      <div class="btns"><button id="reset">Empty my collection</button></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const cv = $("c"), g = cv.getContext("2d");
+const COLORS = { uncommon: "#1eff00", rare: "#3a9bff", epic: "#a335ee", legendary: "#ff8000" };
+const DARK = { uncommon: "#0c6a00", rare: "#11407a", epic: "#4a1270", legendary: "#7a3c00" };
+const Q = new URLSearchParams(location.search);
+
+// ---- tuning (as the flat version) ----
+const T = { price: 150, hold0: 60, drop0: 20, slipR: 7, slipE: 13, slipL: 20, centre: 0.3, offPen: 60, power: 1, steer: 25,
+  tilts: "5, 12, 22, 35, 50, 65, 80", left: 74 };
+const holdAt = (l) => T.hold0 + (100 - T.hold0) * l / 5;
+const dropAt = (l) => T.drop0 * (1 - l / 5);
+const slipOf = (r, l) => ({ uncommon: 0, rare: T.slipR, epic: T.slipE, legendary: T.slipL })[r] * (1 - l / 5);
+const tiltList = () => T.tilts.split(/[ ,]+/).map(Number).filter((n) => !isNaN(n));
+const tiltChance = (k) => { const t = tiltList(); return t.length ? t[Math.min(k, t.length - 1)] : 0; };
+
+// ---- the box: x left->right, y up, z front (glass) -> back. The chute is the front-left corner, walled off. ----
+const W = 420, D = 280, H = 360, R = 22, CX = 120, CZ = 120, BH = 165, TIP = 42, TOPY = H - 30;
+const HOME = { x: CX / 2, z: CZ / 2 };
+
+// ---- the fixed camera: angled (2.5D, from the front and above) or top (straight down) ----
+const VIEWS = { angled: { pitch: 0.62, dist: 1500 }, top: { pitch: 1.5, dist: 2600 } };
+const C0 = { x: W / 2, y: H / 2, z: D / 2 };
+const cam = { pitch: 0, dist: 1, f: 1, cy: 0 };
+// Each view is fitted once so the whole box fills the window (40,88 680x470) with a small margin.
+for (const v of Object.values(VIEWS)) {
+  Object.assign(cam, { pitch: v.pitch, dist: v.dist, f: 1, cy: 0 });
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  for (const x of [0, W]) for (const y of [0, H]) for (const z of [0, D]) {
+    const q = P(x, y, z); minX = Math.min(minX, q.x - 380); maxX = Math.max(maxX, q.x - 380); minY = Math.min(minY, q.y); maxY = Math.max(maxY, q.y);
+  }
+  v.f = Math.min(640 / (maxX - minX), 440 / (maxY - minY));
+  v.cy = 323 - (minY + maxY) / 2 * v.f;
+}
+let view = Q.get("view") === "top" ? "top" : "angled";
+Object.assign(cam, VIEWS[view]);
+function P(x, y, z) {   // world -> { x, y (screen), s (scale), d (depth) }
+  const px = x - C0.x, py = y - C0.y, pz = z - C0.z, cs = Math.cos(cam.pitch), sn = Math.sin(cam.pitch);
+  const yc = py * cs + pz * sn, zc = -py * sn + pz * cs, d = zc + cam.dist, s = cam.f / d;
+  return { x: 380 + px * s, y: cam.cy - yc * s, s, d };
+}
+
+let PIECES = [], caps = [], owned = new Set(), points = 3000;
+let state = "idle", stateT = 0, msg = "Insert 150 points to play", msgColor = "#efe2c6";
+let meter = 0, smashes = 0, shakeT = 0, tiltT = 0, timer = 0, phase = "x", moved = false, controls = "classic";
+const claw = { x: HOME.x, z: HOME.z, y: TOPY, vx: 0, vz: 0, open: 1, ax: 0, wx: 0, az: 0, wz: 0, held: null, dropAtP: -1, travelled: 0, path: 1, glow: 0 };
+const keys = {};
+let go = null;
+const stats = { goes: 0, spent: 0, wins: 0, whiff: 0, weak: 0, drop: 0, tilt: 0, lucky: 0, smashes: 0 };
+
+function fill() {
+  const left = PIECES.filter((p) => !owned.has(p.id));
+  for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [left[i], left[j]] = [left[j], left[i]]; }
+  caps = left.slice(0, T.left).map((p, i) => {
+    let x, z;
+    do { x = R + Math.random() * (W - 2 * R); z = R + Math.random() * (D - 2 * R); } while (x < CX + R && z < CZ + R);
+    return { p, x, y: 60 + i * 12, z, vx: 0, vy: 0, vz: 0, held: false };
+  });
+  for (let i = 0; i < 1200; i++) physics(1 / 240);
+}
+
+// ---- physics: spheres ----
+function physics(dt) {
+  for (const c of caps) {
+    if (c.held) continue;
+    c.vy -= 1500 * dt;
+    c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt;
+    c.vx *= 0.9985; c.vz *= 0.9985; c.vy *= 0.9995;
+  }
+  for (let it = 0; it < 3; it++) {
+    for (let i = 0; i < caps.length; i++) {
+      const a = caps[i];
+      for (let j = i + 1; j < caps.length; j++) {
+        const b = caps[j];
+        const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 >= 4 * R * R || d2 === 0) continue;
+        const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, nz = dz / d, o = 2 * R - d;
+        const wa = a.held ? 0 : b.held ? 1 : 0.5, wb = 1 - wa;
+        a.x -= nx * o * wa; a.y -= ny * o * wa; a.z -= nz * o * wa; b.x += nx * o * wb; b.y += ny * o * wb; b.z += nz * o * wb;
+        const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny + (b.vz - a.vz) * nz;
+        if (vn < 0) {
+          const j2 = -1.15 * vn;
+          if (!a.held) { a.vx -= nx * j2 * wa; a.vy -= ny * j2 * wa; a.vz -= nz * j2 * wa; }
+          if (!b.held) { b.vx += nx * j2 * wb; b.vy += ny * j2 * wb; b.vz += nz * j2 * wb; }
+        }
+      }
+    }
+    for (const c of caps) {
+      if (c.held) continue;
+      if (c.x < R) { c.x = R; c.vx = Math.abs(c.vx) * 0.3; }
+      if (c.x > W - R) { c.x = W - R; c.vx = -Math.abs(c.vx) * 0.3; }
+      if (c.z < R) { c.z = R; c.vz = Math.abs(c.vz) * 0.3; }
+      if (c.z > D - R) { c.z = D - R; c.vz = -Math.abs(c.vz) * 0.3; }
+      if (c.y > H - R) { c.y = H - R; c.vy = -Math.abs(c.vy) * 0.3; }
+      if (!(c.x < CX && c.z < CZ) && c.y < R) { c.y = R; if (c.vy < 0) c.vy = -c.vy * 0.2; c.vx *= 0.96; c.vz *= 0.96; }
+      // the chute's two glass walls
+      const walls = [[CX, Math.max(0, Math.min(BH, c.y)), Math.max(0, Math.min(CZ, c.z))], [Math.max(0, Math.min(CX, c.x)), Math.max(0, Math.min(BH, c.y)), CZ]];
+      for (const q of walls) {
+        const ex = c.x - q[0], ey = c.y - q[1], ez = c.z - q[2], e = Math.hypot(ex, ey, ez);
+        if (e < R + 3 && e > 0) {
+          const nx = ex / e, ny = ey / e, nz = ez / e, o = R + 3 - e;
+          c.x += nx * o; c.y += ny * o; c.z += nz * o;
+          const vn = c.vx * nx + c.vy * ny + c.vz * nz;
+          if (vn < 0) { c.vx -= nx * vn * 1.3; c.vy -= ny * vn * 1.3; c.vz -= nz * vn * 1.3; }
+        }
+      }
+      if (state === "rise") {   // (on the way up the empty claw brushes past; going down it stops on the first one it touches)
+        const ty = claw.y - TIP + 6, ex = c.x - claw.x, ey = c.y - ty, ez = c.z - claw.z, e = Math.hypot(ex, ey, ez);
+        if (c !== claw.held && e < R + 8 && e > 0) { const k = (R + 8) / e; c.x = claw.x + ex * k; c.y = ty + ey * k; c.z = claw.z + ez * k; }
+      }
+      if (Math.abs(c.vx) + Math.abs(c.vy) + Math.abs(c.vz) < 20) { c.vx *= 0.85; c.vz *= 0.85; c.vy *= 0.92; }
+    }
+  }
+  for (const c of caps) if (c.held) { c.vx = c.vy = c.vz = 0; }
+}
+
+// ---- the go ----
+function setMsg(t, color) { msg = t; msgColor = color || "#efe2c6"; }
+function helpText() {
+  return controls === "classic"
+    ? "Classic: hold <kbd>&rarr;</kbd> to move right and let go; then hold <kbd>&uarr;</kbd> to move back, and letting go drops it. One go at each, like a real machine. Smash (<kbd>S</kbd>) any time before the drop."
+    : "Free: steer with the arrow keys, <kbd>Space</kbd> drops. Smash (<kbd>S</kbd>) any time before the drop.";
+}
+function insert() {
+  if (state !== "idle") return;
+  if (!caps.length) return setMsg("The machine is empty: you have them all!", "#f2c14e");
+  if (points < T.price) return setMsg("Not enough points.", "#ff7a6a");
+  points -= T.price; stats.goes++; stats.spent += T.price;
+  go = { outcome: null, wins: [], hadHold: false };
+  smashes = 0; timer = T.steer; state = "steer"; phase = "x"; moved = false;
+  claw.x = HOME.x; claw.z = HOME.z; claw.y = TOPY; claw.open = 1; claw.held = null;
+  setMsg(controls === "classic" ? "Hold right to move the claw across..." : "Steer the claw. Smash if you dare. Drop!");
+}
+function smash() {
+  if (state !== "steer") return;
+  const chance = tiltChance(smashes);
+  stats.smashes++;
+  if (Math.random() * 100 < chance) {
+    state = "tilt"; stateT = 0; tiltT = 2.2; meter = 0; go.outcome = "tilt"; stats.tilt++;
+    setMsg(`TILT! (that smash had a ${chance}% chance) The go is lost and the lights are drained.`, "#ff4a3a");
+    return;
+  }
+  smashes++; shakeT = 0.4;
+  for (const c of caps) {
+    if (c.held) continue;
+    c.vy += (300 + Math.random() * 600) * T.power;
+    c.vx += (Math.random() - 0.5) * 520 * T.power; c.vz += (Math.random() - 0.5) * 520 * T.power;
+  }
+  setMsg(`BONK! Smash ${smashes} survived (${chance}%). Next one: ${tiltChance(smashes)}%.`);
+}
+function drop() { if (state === "steer") { state = "drop"; claw.open = 1; } }
+
+function grabOdds(c, offset) {
+  const l = meter;
+  const off = offset > T.centre ? (offset - T.centre) / Math.max(0.0001, 1 - T.centre) * T.offPen : 0;
+  return Math.max(0, Math.min(100, holdAt(l) - slipOf(c.p.rarity, l) - off));
+}
+function target() {   // the capsule the claw closes on from here, and how centred it is
+  const ty = claw.y - TIP;
+  let best = null, bh = 1e9;
+  for (const c of caps) {
+    if (c.held) continue;
+    const hd = Math.hypot(c.x - claw.x, c.z - claw.z);
+    if (Math.hypot(hd, c.y - ty) < R + 24 && c.y <= ty + 10 && hd < bh) { best = c; bh = hd; }
+  }
+  return best ? { c: best, offset: Math.min(1, bh / (R + 14)) } : null;
+}
+function columnTarget() {   // for the odds display: the top capsule under the claw
+  let best = null;
+  for (const c of caps) if (Math.hypot(c.x - claw.x, c.z - claw.z) < R + 14 && (!best || c.y > best.y)) best = c;
+  return best ? { c: best, offset: Math.min(1, Math.hypot(best.x - claw.x, best.z - claw.z) / (R + 14)) } : null;
+}
+function surfaceUnder(x, z) {   // where the claw's shadow falls: the top of the highest capsule under it, or the floor (none over the hole)
+  let h = x < CX && z < CZ ? null : 0;
+  for (const c of caps) {
+    if (c === claw.held) continue;
+    const hd = Math.hypot(c.x - x, c.z - z);
+    if (hd < R) h = Math.max(h === null ? -1e9 : h, c.y + Math.sqrt(R * R - hd * hd));
+  }
+  return h;
+}
+
+function step(dt) {
+  stateT += dt;
+  const pvx = claw.vx, pvz = claw.vz;
+  claw.vx = claw.vz = 0;
+  if (state === "steer") {
+    timer -= dt;
+    const sp = 150;
+    if (controls === "classic") {
+      const k = phase === "x" ? keys.ArrowRight : keys.ArrowUp;
+      if (k) { moved = true; if (phase === "x") claw.vx = sp; else claw.vz = sp; }
+      else if (moved) {
+        if (phase === "x") { phase = "z"; moved = false; setMsg("Now hold up to move it back. Letting go drops it."); }
+        else drop();
+      }
+      if (phase === "x" && claw.x >= W - 26) { phase = "z"; moved = false; }
+      if (phase === "z" && claw.z >= D - 26) drop();
+    } else {
+      claw.vx = ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) * sp;
+      claw.vz = ((keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0)) * sp;
+    }
+    claw.x = Math.max(26, Math.min(W - 26, claw.x + claw.vx * dt));
+    claw.z = Math.max(26, Math.min(D - 26, claw.z + claw.vz * dt));
+    if (timer <= 0) drop();
+  } else if (state === "drop") {
+    claw.y -= 190 * dt;
+    const tipY = claw.y - TIP;
+    let hit = tipY <= 4;
+    for (const c of caps) if (Math.hypot(c.x - claw.x, c.y - tipY, c.z - claw.z) < R + 6) hit = true;
+    if (hit) { state = "close"; stateT = 0; }
+  } else if (state === "close") {
+    claw.open = Math.max(0, 1 - stateT / 0.45);
+    if (stateT >= 0.5) {
+      const t = target();
+      if (!t) go.outcome = "whiff";
+      else {
+        const odds = grabOdds(t.c, t.offset);
+        if (Math.random() * 100 < odds) {
+          claw.held = t.c; t.c.held = true; go.hadHold = true;
+          const dropChance = dropAt(meter) + slipOf(t.c.p.rarity, meter) * 0.4;
+          claw.dropAtP = Math.random() * 100 < dropChance ? 0.15 + Math.random() * 0.8 : -1;
+          setMsg(`Got hold of ${t.c.p.name} (${Math.round(odds)}% grip)...`, COLORS[t.c.p.rarity]);
+        } else {
+          go.outcome = "weak";
+          t.c.vy += 160; t.c.vx += (Math.random() - 0.5) * 120; t.c.vz += (Math.random() - 0.5) * 120;
+          setMsg(`It slipped off ${t.c.p.name} (${Math.round(odds)}% grip).`);
+        }
+      }
+      claw.travelled = 0; claw.path = (TOPY - claw.y) + Math.hypot(claw.x - HOME.x, claw.z - HOME.z) + 1;
+      state = "rise"; stateT = 0;
+    }
+  } else if (state === "rise" || state === "carry") {
+    if (state === "rise") {
+      const ny = Math.min(TOPY, claw.y + 150 * dt); claw.travelled += ny - claw.y; claw.y = ny;
+      if (claw.y >= TOPY) state = "carry";
+    } else {
+      const dx = HOME.x - claw.x, dz = HOME.z - claw.z, d = Math.hypot(dx, dz), mv = Math.min(d, 140 * dt);
+      if (d > 0) { claw.vx = dx / d * mv / dt; claw.vz = dz / d * mv / dt; claw.x += dx / d * mv; claw.z += dz / d * mv; }
+      claw.travelled += mv;
+      if (d < 0.5) { state = "release"; stateT = 0; }
+    }
+    if (claw.held && claw.dropAtP >= 0 && claw.travelled / claw.path >= claw.dropAtP) {
+      const c = claw.held; c.held = false; c.vx = claw.vx; c.vz = claw.vz; c.vy = -40; claw.held = null; claw.dropAtP = -1;
+      go.outcome = "drop"; claw.open = 0.6;
+      setMsg(`Dropped ${c.p.name} on the way!`, "#ff9a6a");
+    }
+  } else if (state === "release") {
+    claw.open = Math.min(1, stateT / 0.3);
+    if (claw.held && stateT > 0.15) { const c = claw.held; c.held = false; c.vx = c.vz = 0; c.vy = -60; claw.held = null; }
+    if (stateT > 0.4) { state = "settle"; stateT = 0; }
+  } else if (state === "settle") {
+    if (stateT > 1.4) finish();
+  } else if (state === "tilt") {
+    tiltT -= dt;
+    if (tiltT <= 0) { state = "idle"; go = null; }
+  }
+  // the sway (looks only; the drop roll is decided at the grab): two pendulums pushed by the carriage's acceleration
+  const L = Math.max(30, TOPY + 30 - claw.y) + 30;
+  for (const [a, w, acc] of [["ax", "wx", (claw.vx - pvx) / dt], ["az", "wz", (claw.vz - pvz) / dt]]) {
+    claw[w] += (-(900 / L) * Math.sin(claw[a]) - (acc / L) * Math.cos(claw[a]) * 0.6) * dt;
+    claw[w] *= Math.exp(-1.8 * dt);
+    claw[a] = Math.max(-0.5, Math.min(0.5, claw[a] + claw[w] * dt));
+  }
+  if (claw.held) {
+    claw.held.x = claw.x + Math.sin(claw.ax) * TIP; claw.held.z = claw.z + Math.sin(claw.az) * TIP;
+    claw.held.y = claw.y - TIP - R + 6;
+  }
+  claw.glow = meter >= 5 ? 0.5 + 0.5 * Math.sin(performance.now() / 180) : 0;
+  // capsules that fell through the hole under the chute are won (a knocked-in one counts too); with no go on, back on the pile
+  for (let i = caps.length - 1; i >= 0; i--) {
+    const c = caps[i];
+    if (!c.held && c.x < CX && c.z < CZ && c.y < -R * 1.5) {
+      if (go && state !== "tilt") { caps.splice(i, 1); owned.add(c.p.id); go.wins.push(c.p); }
+      else { c.x = CX + R + Math.random() * (W - CX - 2 * R); c.z = CZ + R + Math.random() * (D - CZ - 2 * R); c.y = H - R; c.vx = c.vy = c.vz = 0; }
+    }
+  }
+}
+function finish() {
+  const g2 = go; go = null; state = "idle";
+  if (g2.wins.length) {
+    const lucky = !g2.hadHold || !!g2.outcome;
+    meter = 0; stats.wins += g2.wins.length; if (lucky) stats.lucky++;
+    setMsg((lucky ? "LUCKY! " : "WON! ") + g2.wins.map((p) => p.name).join(" + "), COLORS[g2.wins[0].rarity]);
+  } else {
+    const o = g2.outcome || "whiff";
+    stats[o]++; meter = Math.min(5, meter + 1);
+    setMsg(o === "whiff" ? "Whiff: nothing under the claw. +1 light." : msg + " +1 light.", "#ff9a6a");
+  }
+  drawSide();
+}
+
+// ---- drawing ----
+function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function quad(pts, fill, stroke) {
+  g.beginPath();
+  pts.forEach((p, i) => { const q = P(p[0], p[1], p[2]); if (i) g.lineTo(q.x, q.y); else g.moveTo(q.x, q.y); });
+  if (pts.length > 2) g.closePath();
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1.5; g.stroke(); }
+}
+function sphere(c) {
+  const q = P(c.x, c.y, c.z), r = R * q.s, col = COLORS[c.p.rarity];
+  if (c.p.rarity === "legendary" || c.p.rarity === "epic") { g.shadowColor = col; g.shadowBlur = c.p.rarity === "legendary" ? 14 : 7; }
+  const grad = g.createRadialGradient(q.x - r * 0.35, q.y - r * 0.4, r * 0.1, q.x, q.y, r);
+  grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.25, col); grad.addColorStop(1, DARK[c.p.rarity]);
+  g.beginPath(); g.arc(q.x, q.y, r, 0, Math.PI * 2); g.fillStyle = grad; g.fill();
+  g.shadowBlur = 0;
+  g.lineWidth = 1; g.strokeStyle = "rgba(0,0,0,0.5)"; g.stroke();
+}
+function shadowAt(x, h, z, rad, alpha) {
+  const a = P(x, h + 0.5, z), b = P(x + rad, h + 0.5, z), cz = P(x, h + 0.5, z + rad);
+  g.beginPath(); g.ellipse(a.x, a.y, Math.abs(b.x - a.x), Math.max(1.5, Math.abs(cz.y - a.y)), 0, 0, Math.PI * 2);
+  g.fillStyle = `rgba(0,0,0,${alpha})`; g.fill();
+}
+function drawClaw() {
+  const hx = claw.x + Math.sin(claw.ax) * 6, hz = claw.z + Math.sin(claw.az) * 6;
+  const top = P(claw.x, H, claw.z), head = P(hx, claw.y, hz);
+  g.strokeStyle = "#c8b48a"; g.lineWidth = 2; g.beginPath(); g.moveTo(top.x, top.y); g.lineTo(head.x, head.y); g.stroke();
+  const spread = 6 + claw.open * 22;
+  const tipx = claw.x + Math.sin(claw.ax) * TIP, tipz = claw.z + Math.sin(claw.az) * TIP;
+  const col = claw.glow ? `rgb(255,${Math.round(200 + 40 * claw.glow)},120)` : "#e6d3a3";
+  if (claw.glow) { g.shadowColor = "#ffd76a"; g.shadowBlur = 8 + 12 * claw.glow; }
+  for (let k = 0; k < 3; k++) {
+    const an = k * 2.094 + 0.5, ox = Math.cos(an), oz = Math.sin(an);
+    const knee = P(hx + ox * (spread + 4), claw.y - TIP * 0.55, hz + oz * (spread + 4));
+    const tip = P(tipx + ox * spread * 0.55, claw.y - TIP, tipz + oz * spread * 0.55);
+    g.strokeStyle = col; g.lineWidth = Math.max(2, 4 * head.s); g.lineCap = "round";
+    g.beginPath(); g.moveTo(head.x, head.y); g.lineTo(knee.x, knee.y); g.lineTo(tip.x, tip.y); g.stroke();
+  }
+  g.fillStyle = "#d9c08a"; g.beginPath(); g.arc(head.x, head.y, 13 * head.s, 0, Math.PI * 2); g.fill();
+  g.shadowBlur = 0;
+}
+function draw() {
+  const v = VIEWS[view];
+  for (const k of ["pitch", "dist", "f", "cy"]) cam[k] += (v[k] - cam[k]) * 0.15;
+  g.save(); g.clearRect(0, 0, cv.width, cv.height);
+  const risk = state === "steer" ? tiltChance(smashes) / 100 : 0;
+  const sh = (shakeT > 0 ? 9 * shakeT / 0.4 : 0) + risk * 2.2;
+  g.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+  const body = g.createLinearGradient(0, 0, 0, cv.height); body.addColorStop(0, "#5a141b"); body.addColorStop(1, "#2c0a0e");
+  g.fillStyle = body; rr(12, 10, cv.width - 24, cv.height - 20, 18); g.fill(); g.strokeStyle = "#c9a14a"; g.lineWidth = 3; g.stroke();
+  // marquee
+  g.fillStyle = "#1c0e08"; rr(40, 22, 680, 56, 10); g.fill(); g.strokeStyle = "#c9a14a"; g.lineWidth = 2; g.stroke();
+  g.font = "bold 32px Georgia"; g.textAlign = "center"; g.fillStyle = state === "tilt" ? "#ff3a2a" : "#f2c14e";
+  g.fillText(state === "tilt" ? "T I L T" : "THE CLAW", 380, 62);
+  for (let i = 0; i < 8; i++) {
+    for (const bx of [58 + i * 14, 702 - i * 14]) {
+      const on = state === "tilt" ? (Math.floor(performance.now() / 150) % 2 === 0) : Math.random() > risk * 0.9;
+      g.beginPath(); g.arc(bx, 50, 3.5, 0, Math.PI * 2);
+      g.fillStyle = state === "tilt" ? (on ? "#ff3a2a" : "#401010") : on ? "#ffe9a8" : "#5a4a2a"; g.fill();
+    }
+  }
+  // the inside: dark window, then the back and side walls and the floor
+  g.fillStyle = "#120c10"; rr(40, 88, 680, 470, 8); g.fill();
+  g.save(); rr(40, 88, 680, 470, 8); g.clip();
+  quad([[0, H, D], [W, H, D], [W, 0, D], [0, 0, D]], "#1d1a24");
+  quad([[0, H, 0], [0, H, D], [0, 0, D], [0, 0, 0]], "#18141c");
+  quad([[W, H, 0], [W, H, D], [W, 0, D], [W, 0, 0]], "#18141c");
+  quad([[0, 0, 0], [W, 0, 0], [W, 0, D], [0, 0, D]], "#2a1418");
+  quad([[0, 0, 0], [CX, 0, 0], [CX, 0, CZ], [0, 0, CZ]], "#050303");
+  for (let x = 60; x < W; x += 60) quad([[x, 0, x < CX ? CZ : 0], [x, 0, D]], null, "rgba(255,255,255,0.05)");
+  for (let z = 60; z < D; z += 60) quad([[z < CZ ? CX : 0, 0, z], [W, 0, z]], null, "rgba(255,255,255,0.05)");
+  { const q = P(CX / 2, 0, CZ / 2); g.fillStyle = "rgba(242,193,78,0.7)"; g.font = `${Math.round(13 * q.s)}px Georgia`; g.fillText("PRIZE", q.x, q.y + 4); }
+  quad([[0, H, claw.z], [W, H, claw.z]], null, "#8a6a3a");   // (the claw's rail)
+  // capsules and the claw, far to near; the claw's shadow drawn just before what's nearer than the spot it falls on
+  const items = caps.map((c) => ({ d: P(c.x, c.y, c.z).d, c }));
+  items.push({ d: P(claw.x, claw.y - TIP / 2, claw.z).d - 2, claw: true });
+  items.sort((a, b) => b.d - a.d);
+  const sh0 = state === "steer" || state === "drop" || state === "idle" ? surfaceUnder(claw.x, claw.z) : null;
+  let shadowDone = sh0 === null;
+  const shadowD = sh0 === null ? 0 : P(claw.x, sh0, claw.z).d;
+  for (const it of items) {
+    if (!shadowDone && it.d < shadowD) { shadowAt(claw.x, sh0, claw.z, 18, 0.55); shadowDone = true; }
+    if (it.claw) drawClaw(); else sphere(it.c);
+  }
+  if (!shadowDone) shadowAt(claw.x, sh0, claw.z, 18, 0.55);
+  // the chute's glass walls, then the front glass's shine
+  quad([[CX, 0, 0], [CX, BH, 0], [CX, BH, CZ], [CX, 0, CZ]], "rgba(200,230,255,0.10)", "rgba(200,230,255,0.5)");
+  quad([[0, 0, CZ], [0, BH, CZ], [CX, BH, CZ], [CX, 0, CZ]], "rgba(200,230,255,0.10)", "rgba(200,230,255,0.5)");
+  g.fillStyle = "rgba(255,255,255,0.035)"; g.beginPath(); g.moveTo(40, 88); g.lineTo(220, 88); g.lineTo(100, 558); g.lineTo(40, 558); g.fill();
+  g.restore();
+  g.strokeStyle = "#c9a14a"; g.lineWidth = 3; rr(40, 88, 680, 470, 8); g.stroke();
+  if ($("odds").checked && state === "steer") {
+    const t = columnTarget();
+    if (t) {
+      g.fillStyle = "rgba(0,0,0,0.65)"; rr(270, 96, 220, 38, 6); g.fill();
+      g.fillStyle = COLORS[t.c.p.rarity]; g.font = "12px Georgia"; g.fillText(t.c.p.name, 380, 111);
+      g.fillStyle = "#efe2c6"; g.fillText(`grip ${Math.round(grabOdds(t.c, t.offset))}%  drop ${Math.round(dropAt(meter) + slipOf(t.c.p.rarity, meter) * 0.4)}%`, 380, 127);
+    }
+  }
+  // front panel
+  const py = 570;
+  g.fillStyle = "#1c0e08"; rr(40, py, 680, 130, 10); g.fill(); g.strokeStyle = "#c9a14a"; g.lineWidth = 2; g.stroke();
+  g.textAlign = "left"; g.fillStyle = "#c9a14a"; g.font = "15px Georgia"; g.fillText("CLAW POWER", 64, py + 30);
+  for (let i = 0; i < 5; i++) {
+    const lit = i < meter, cx = 190 + i * 36;
+    g.beginPath(); g.arc(cx, py + 25, 12, 0, Math.PI * 2);
+    if (lit) { g.shadowColor = "#ffd76a"; g.shadowBlur = meter >= 5 ? 10 + 10 * claw.glow : 8; }
+    g.fillStyle = lit ? "#ffd76a" : "#3a2a14"; g.fill(); g.shadowBlur = 0; g.strokeStyle = "#8a6a3a"; g.lineWidth = 2; g.stroke();
+  }
+  g.fillStyle = "#efe2c6"; g.font = "15px Georgia";
+  if (state === "steer") { g.fillText(`Time ${Math.ceil(timer)}s`, 400, py + 30); g.fillText(`Next smash: ${tiltChance(smashes)}% TILT`, 500, py + 30); }
+  g.fillStyle = "#b9a582"; g.font = "13px Georgia"; g.fillText(`${caps.length} capsules left  ·  ${owned.size} won`, 64, py + 56);
+  g.fillStyle = msgColor; g.font = "16px Georgia"; wrap(msg, 64, py + 86, 630, 20);
+  g.restore();
+}
+function wrap(text, x, y, w, lh) {
+  const words = text.split(" "); let line = "";
+  for (const wd of words) { const t = line ? line + " " + wd : wd; if (g.measureText(t).width > w && line) { g.fillText(line, x, y); y += lh; line = wd; } else line = t; }
+  g.fillText(line, x, y);
+}
+function drawSide() {
+  $("pts").textContent = points;
+  $("insert").innerHTML = `Insert ${T.price} <kbd>Enter</kbd>`;
+  $("insert").disabled = state !== "idle"; $("smash").disabled = $("drop").disabled = state !== "steer";
+  $("view").innerHTML = `View: ${view} <kbd>V</kbd>`; $("ctrl").innerHTML = `Controls: ${controls} <kbd>C</kbd>`; $("help").innerHTML = helpText();
+  const s = stats, perWin = s.wins ? (s.spent / s.wins).toFixed(0) : "-";
+  $("stats").innerHTML = [["Goes", s.goes], ["Points spent", s.spent], ["Pieces won", s.wins], ["Points per piece", perWin],
+    ["Whiffs", s.whiff], ["Weak grips", s.weak], ["Drops", s.drop], ["TILTs", s.tilt], ["Lucky wins", s.lucky], ["Smashes", s.smashes]]
+    .map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join("");
+  const won = PIECES.filter((p) => owned.has(p.id));
+  $("wonN").textContent = won.length;
+  $("won").innerHTML = won.length ? won.map((p) => `<div class="${p.rarity}">${p.name} <span class="muted">${p.layer === "expression" ? "mouth" : p.layer}</span></div>`).join("") : '<span class="muted">Nothing yet.</span>';
+}
+
+// ---- input, tuning, loop ----
+function toggleView() { view = view === "angled" ? "top" : "angled"; drawSide(); }
+function toggleControls() { if (state === "idle") { controls = controls === "classic" ? "free" : "classic"; drawSide(); } }
+addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" && e.target.type === "text") return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys[k] = true;
+  if (k === "Enter") insert();
+  else if (k === " " && controls === "free") drop();
+  else if (k === "s") smash();
+  else if (k === "v") toggleView();
+  else if (k === "c") toggleControls();
+  if ([" ", "ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(k)) e.preventDefault();
+});
+addEventListener("keyup", (e) => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+$("insert").onclick = insert; $("smash").onclick = smash; $("drop").onclick = drop;
+$("view").onclick = toggleView; $("ctrl").onclick = toggleControls;
+$("more").onclick = () => { points += 1000; drawSide(); };
+$("reset").onclick = () => { owned.clear(); fill(); setMsg("Collection emptied: the machine is full again."); drawSide(); };
+for (const k of Object.keys(T)) {
+  const el = $("t_" + k); if (!el) continue;
+  el.value = T[k];
+  const show = () => { const v = $("v_" + k); if (v) v.textContent = el.value; };
+  show();
+  el.oninput = () => { T[k] = el.type === "text" ? el.value : Number(el.value); show(); if (k === "left" && state === "idle") fill(); drawSide(); };
+}
+const DEMO = Number(Q.get("demo"));
+let last = performance.now();
+function loop(now) {
+  for (let r = 0; r < (DEMO ? 8 : 1); r++) tick(DEMO ? 1 / 60 : Math.min(0.05, (now - last) / 1000));   // (demo: fixed steps, for headless checks)
+  last = now;
+  draw();
+  if (state === "steer" || state === "tilt" || Math.random() < 0.1) drawSide();
+  requestAnimationFrame(loop);
+}
+function tick(frame) {
+  const n = Math.ceil(frame / (1 / 240));
+  for (let i = 0; i < n; i++) { step(frame / n); physics(frame / n); }
+  if (shakeT > 0) shakeT -= frame;
+}
+fetch("/pieces").then((r) => r.json()).then((p) => {
+  PIECES = p; $("t_left").max = p.length; T.left = p.length; $("t_left").value = p.length; $("v_left").textContent = p.length;
+  fill(); drawSide(); draw(); requestAnimationFrame(loop);
+});
+</script></body></html>
