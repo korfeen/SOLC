@@ -73,8 +73,8 @@ neighbouring lines do.
 - One joke per line, and vary it across the three lines: one plain description, one detail, one bit of behaviour or
   lore ("still bitter about Alterac", "going 'MRGLGLGL'").
 - Use real WoW Classic lore (bosses, places, quotes) where it fits. If you're not sure of a fact, leave it out.
-- Adult humour is fine (cigars, booze, scruffy lowlife jokes: it's a guild of grown-ups); no slurs, no real-world
-  brands, no meanness about real people or players.
+- Adult humour is fine (whiskey, cigars, cigarettes, scruffy lowlife jokes: it's a guild of grown-ups); never slurs,
+  sexual content or hard drugs; no real-world brands, no meanness about real people or players.
 - Plain ASCII apart from apostrophes that are part of names (Mo'grosh). No emoji. British spellings like the existing
   lines (armour, colour).
 
