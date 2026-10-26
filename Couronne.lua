@@ -26,6 +26,7 @@ local K = {
     PULL = 130, SPEED = 1500,  -- (a full pull back, and the speed it gives)
     STRIKER_MASS = 1.6, QUEEN_BONUS = 3,
 }
+local WOOD = { 0.86, 0.7, 0.47 }  -- (the board, also seen through the pucks' holes)
 local COL = { white = { 0.93, 0.9, 0.82 }, black = { 0.16, 0.14, 0.13 }, queen = { 0.8, 0.12, 0.1 }, striker = { 0.95, 0.82, 0.45 } }
 
 local panel, board
@@ -56,15 +57,16 @@ local function DiscTex(d)
     t.body:SetTexture(ROUND)
     local c = COL[d.kind]
     t.body:SetVertexColor(c[1], c[2], c[3])
-    t.ring = board:CreateTexture(nil, "ARTWORK", nil, 3)  -- (a turned groove, as real pucks have)
-    t.ring:SetTexture(ROUND)
-    t.ring:SetVertexColor(0, 0, 0, d.kind == "black" and 0.35 or 0.12)
-    t.inner = board:CreateTexture(nil, "ARTWORK", nil, 4)
-    t.inner:SetTexture(ROUND)
-    t.inner:SetVertexColor(c[1], c[2], c[3])
-    t.shine = board:CreateTexture(nil, "ARTWORK", nil, 5)
+    -- (a ring, as real couronne pieces are: the hole shows the board, its upper-left inside wall in shadow)
+    t.shine = board:CreateTexture(nil, "ARTWORK", nil, 3)
     t.shine:SetTexture(ROUND)
-    t.shine:SetVertexColor(1, 1, 1, d.kind == "black" and 0.18 or 0.35)
+    t.shine:SetVertexColor(1, 1, 1, d.kind == "black" and 0.2 or 0.4)
+    t.lip = board:CreateTexture(nil, "ARTWORK", nil, 4)
+    t.lip:SetTexture(ROUND)
+    t.lip:SetVertexColor(c[1] * 0.45, c[2] * 0.45, c[3] * 0.45)
+    t.hole = board:CreateTexture(nil, "ARTWORK", nil, 5)
+    t.hole:SetTexture(ROUND)
+    t.hole:SetVertexColor(WOOD[1], WOOD[2], WOOD[3])
     d.tex = t
 end
 local function PlaceDisc(d)
@@ -75,9 +77,9 @@ local function PlaceDisc(d)
     local x, y = d.x, -d.y
     t.rim:SetPoint("CENTER", board, "TOPLEFT", x + 1, y - 1.5) t.rim:SetSize(2 * r + 2, 2 * r + 2)
     t.body:SetPoint("CENTER", board, "TOPLEFT", x, y) t.body:SetSize(2 * r, 2 * r)
-    t.ring:SetPoint("CENTER", board, "TOPLEFT", x, y) t.ring:SetSize(1.45 * r, 1.45 * r)
-    t.inner:SetPoint("CENTER", board, "TOPLEFT", x, y) t.inner:SetSize(1.3 * r, 1.3 * r)
-    t.shine:SetPoint("CENTER", board, "TOPLEFT", x - r * 0.32, y + r * 0.36) t.shine:SetSize(r * 0.7, r * 0.45)
+    t.shine:SetPoint("CENTER", board, "TOPLEFT", x - r * 0.5, y + r * 0.5) t.shine:SetSize(r * 0.45, r * 0.3)
+    t.lip:SetPoint("CENTER", board, "TOPLEFT", x, y) t.lip:SetSize(0.92 * r, 0.92 * r)
+    t.hole:SetPoint("CENTER", board, "TOPLEFT", x + r * 0.06, y - r * 0.06) t.hole:SetSize(0.82 * r, 0.82 * r)
     local a = d.fade or 1
     for _, tex in pairs(t) do tex:SetAlpha(a) end
 end
@@ -358,7 +360,7 @@ local function Ring(x, y, r, width, color)  -- a circle drawn on the board: a da
     outer:SetPoint("CENTER", board, "TOPLEFT", x, -y)
     local inner = board:CreateTexture(nil, "BORDER", nil, 2)
     inner:SetTexture(ROUND)
-    inner:SetVertexColor(0.86, 0.7, 0.47)
+    inner:SetVertexColor(WOOD[1], WOOD[2], WOOD[3])
     inner:SetSize(2 * (r - width), 2 * (r - width))
     inner:SetPoint("CENTER", board, "TOPLEFT", x, -y)
 end
@@ -388,7 +390,7 @@ local function Build()
     board:SetPoint("TOPLEFT", rim, "TOPLEFT", K.RIM, -K.RIM)
     local wood = board:CreateTexture(nil, "BACKGROUND")
     wood:SetAllPoints()
-    wood:SetColorTexture(0.86, 0.7, 0.47, 1)
+    wood:SetColorTexture(WOOD[1], WOOD[2], WOOD[3], 1)
     local function Ln(x1, y1, x2, y2, w, a)
         local l = board:CreateLine(nil, "BORDER", nil, 0)
         l:SetThickness(w or 2)
