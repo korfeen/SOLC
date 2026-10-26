@@ -181,3 +181,14 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
     }));
   }
 }
+
+// --- the panels' shadow (the mock's 0 6px 14px rgba(0,0,0,.55)): a rounded rectangle blurred, 128 square for 64 px
+// (S = 2): the panel's outline 16 px in from every side, the shadow fading over 14 px past it. 9 slices, corners 24 px.
+{
+  const N = 128, S = 2, M = 16;
+  save("PanelShadow", N, N, paint(N, N, (x, y) => {
+    const d = -inside(x - M * S, y - M * S, N - 2 * M * S, N - 2 * M * S, 6 * S) / S;  // (px outside the outline)
+    const t = d <= 0 ? 1 : Math.max(0, 1 - d / 14);
+    return [0, 0, 0, 0.55 * t * t];
+  }));
+}

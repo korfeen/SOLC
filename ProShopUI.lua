@@ -132,42 +132,45 @@ function ShopUI.Knob(parent, dir)
     return knob
 end
 
--- A curtain's panel: a dark velvet gradient in a rounded gilt frame (nine slices), a brass pin on its top, a shadow
--- under it.
-function ShopUI.Panel(parent)
-    local panel = CreateFrame("Frame", nil, parent)
-    local shadow = panel:CreateTexture(nil, "BACKGROUND", nil, -2)
-    shadow:SetPoint("TOPLEFT", -2, -4) shadow:SetPoint("BOTTOMRIGHT", 2, -8)
-    shadow:SetColorTexture(0, 0, 0, 0.35)
-    local fill = panel:CreateTexture(nil, "BACKGROUND", nil, -1)
-    fill:SetPoint("TOPLEFT", 2, -2) fill:SetPoint("BOTTOMRIGHT", -2, 2)
-    Gradient(fill, { C("#3d0b12") }, { C("#2c070c") })
-    local E = 16 / 64  -- (the frame's corners: 16 px of its 64)
+-- Nine slices of one art on frame (corners CORNER px, the edges and middle stretched), reaching OUT px past it on
+-- every side and moved DY down: returns the function that places them (call it when frame changes size).
+local function Nine(frame, art, corner, out, dy, layer, sublevel)
+    local E = corner / 64  -- (the art stands for 64 px)
     local cells = { { 0, E }, { E, 1 - E }, { 1 - E, 1 } }
     local parts = {}
     for row = 1, 3 do
         for col = 1, 3 do
-            local t = panel:CreateTexture(nil, "BORDER")
-            t:SetTexture(ART .. "Panel")
+            local t = frame:CreateTexture(nil, layer, nil, sublevel)
+            t:SetTexture(ART .. art)
             t:SetTexCoord(cells[col][1], cells[col][2], cells[row][1], cells[row][2])
             parts[(row - 1) * 3 + col] = t
         end
     end
-    local function Place()
-        local w, h = panel:GetSize()
-        local x = { 0, 16, w - 16 }
-        local y = { 0, 16, h - 16 }
-        local sw = { 16, w - 32, 16 }
-        local sh = { 16, h - 32, 16 }
+    return function()
+        local w, h = frame:GetWidth() + 2 * out, frame:GetHeight() + 2 * out
+        local x, y = { 0, corner, w - corner }, { 0, corner, h - corner }
+        local sw, sh = { corner, w - 2 * corner, corner }, { corner, h - 2 * corner, corner }
         for row = 1, 3 do
             for col = 1, 3 do
                 local t = parts[(row - 1) * 3 + col]
                 t:ClearAllPoints()
-                t:SetPoint("TOPLEFT", x[col], -y[row])
+                t:SetPoint("TOPLEFT", x[col] - out, -(y[row] - out + dy))
                 t:SetSize(math.max(0.1, sw[col]), math.max(0.1, sh[row]))
             end
         end
     end
+end
+
+-- A curtain's panel: a dark velvet gradient in a rounded gilt frame (nine slices), a brass pin on its top, a shadow
+-- under it (soft and rounded).
+function ShopUI.Panel(parent)
+    local panel = CreateFrame("Frame", nil, parent)
+    local fill = panel:CreateTexture(nil, "BACKGROUND", nil, -1)
+    fill:SetPoint("TOPLEFT", 3, -3) fill:SetPoint("BOTTOMRIGHT", -3, 3)  -- (its square corners under the frame's rounded band)
+    Gradient(fill, { C("#3d0b12") }, { C("#2c070c") })
+    local shade = Nine(panel, "PanelShadow", 24, 16, 6, "BACKGROUND", -2)  -- (soft, rounded, a little below)
+    local frameArt = Nine(panel, "Panel", 16, 0, 0, "BORDER")
+    local function Place() shade() frameArt() end
     panel:SetScript("OnSizeChanged", Place)
     local pin = panel:CreateTexture(nil, "OVERLAY")
     pin:SetSize(16, 16)
