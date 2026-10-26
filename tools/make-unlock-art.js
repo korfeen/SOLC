@@ -567,6 +567,41 @@ if (!only || only === "gear" || only === "shop") {
   console.log(`Pro Shop: ${n} pieces painted of ${shop.length}`);
 }
 
+// - Gacha pieces: the claw machine's series (tools/gen-art-gacha<n>.json), won from it only: "gacha:<series>". Locked
+//   (never rolled) like the shop's. Files named gacha-<id>.png so they can't clash with other pieces.
+if (!only || only === "gear" || only === "gacha") {
+  const LAYER_FOLDER = { headwear: "Headwear", outfit: "Outfit", accessory: "Accessory" };
+  const lists = fs.readdirSync(__dirname).map((f) => f.match(/^gen-art-gacha(\d+)\.json$/)).filter(Boolean);
+  for (const edition of ["painted", "crayon", "sketch"]) {
+    for (const folder of Object.values(LAYER_FOLDER)) for (const rarity of Object.values(FOLDER)) {
+      const dir = path.join(UNLOCKS, edition, folder, rarity);
+      for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^gacha-/.test(f)) fs.rmSync(path.join(dir, f));
+    }
+  }
+  const generated = (edition, id) => path.join(UNLOCKS, "generated", edition, id + ".png");
+  let n = 0, total = 0;
+  for (const [file, series] of lists) {
+    for (const item of JSON.parse(fs.readFileSync(path.join(__dirname, file), "utf8"))) {
+      delete info[item.layer + "/gacha_" + item.id];
+      total++;
+      if (!LAYER_FOLDER[item.layer] || !ready(item.id)) continue;
+      const base = "gacha-" + item.id.replace(/_/g, "-") + ".png";
+      const out = path.join(UNLOCKS, "painted", LAYER_FOLDER[item.layer], FOLDER[item.rarity], base);
+      let rgba = defringe(Buffer.from(decodePng(generated("painted", item.id)).rgba)), back = null;
+      if (item.layer === "outfit") ({ rgba, back } = splitOutfit(rgba));
+      write(out, rgba);
+      if (back) write(out.replace(/.png$/i, ".back.png"), back);
+      for (const edition of ["crayon", "sketch"]) {
+        if (fs.existsSync(generated(edition, item.id))) write(path.join(UNLOCKS, edition, LAYER_FOLDER[item.layer], FOLDER[item.rarity], base), Buffer.from(decodePng(generated(edition, item.id)).rgba));
+      }
+      info[item.layer + "/gacha_" + item.id] = { unlock: "gacha:" + series, name: item.desc.split(":")[0] };  // (its game id: from the file name)
+      made.push({ layer: LAYER_FOLDER[item.layer], file: out });
+      n++;
+    }
+  }
+  console.log(`Gacha: ${n} pieces painted of ${total}`);
+}
+
 // (the retired backdrops out, unless they were just made on purpose)
 if (only !== "backgrounds") {
   for (const edition of ["painted", "crayon", "sketch"]) for (const rarity of Object.values(FOLDER)) {
