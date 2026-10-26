@@ -19,7 +19,7 @@ local CAMERA_TIME, COUNT_TIME, FLAG_TIME, PRINT_TIME, BAG_TIME = 0.6, 0.45, 0.6,
 local REGISTER = { x = 20, y = 18, size = 210 }  -- (its art: crest, body with the drum panel at 22,76 166x52, base)
 local DRUMS, DRUM_W, DRUM_H = 5, 28, 40
 local RECEIPT = { x = 50, y = 214, w = 150, line = 16 }
-local BUBBLE = { x = 470, y = 34, w = 332, pad = 14 }
+local BUBBLE = { x = 568, y = 110, w = 240, pad = 14 }  -- (beside his head, its tail at his mouth)
 -- The game's own sounds (if this client has them): a coin clink, the bell, paper.
 local SOUNDS = { ring = "LOOT_WINDOW_COIN_SOUND", bell = "AUCTION_WINDOW_OPEN", paper = "IG_QUEST_LOG_OPEN" }
 
@@ -216,11 +216,10 @@ function S.Till(room, hooks)
     bubble:SetWidth(BUBBLE.w)
     bubble:SetFrameLevel(till:GetFrameLevel() + 4)
     Nine(bubble, "Bubble", 20, "BACKGROUND")
-    local tail = bubble:CreateTexture(nil, "BORDER")
-    tail:SetSize(22, 22)
-    tail:SetPoint("CENTER", bubble, "BOTTOMLEFT", 6, 4)
+    local tail = bubble:CreateTexture(nil, "BORDER")  -- (over the bubble's edge where they join, so they're one shape)
+    tail:SetSize(32, 32)
+    tail:SetPoint("TOPRIGHT", bubble, "TOPLEFT", 3, -24)
     tail:SetTexture(ART .. "BubbleTail")
-    tail:SetRotation(math.rad(40))  -- (it points left; turned to point down and left, at him)
     local words = S.Text(bubble, S.DISPLAY_FONT, 18, "#3b2412")
     words:SetShadowOffset(0, 0)
     words:SetWidth(BUBBLE.w - 2 * BUBBLE.pad)

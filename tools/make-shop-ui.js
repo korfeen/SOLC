@@ -195,7 +195,7 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
 
 // --- the till (the steward ringing up the cart), 128 squares standing for 64 px (S = 2) unless said:
 //   Bubble      the steward's speech bubble: parchment, a 2 px gilt border, rounded 14 (9 slices, corners 20 px)
-//   BubbleTail  its tail, pointing left at him: a gilt triangle, 32 x 32 for 16 x 16 px
+//   BubbleTail  its tail, pointing left and down at him: parchment edged in gilt, open where it meets the bubble
 //   BagBody, BagTissue, BagHandle   the posh green S.O.L.C. paper bag's parts (the bag drops in, then the tissue,
 //               then the handle), each drawn at 2x its size in px
 {
@@ -205,10 +205,15 @@ save("Vignette", 256, 256, paint(256, 256, (x, y) => {
     if (d < 0) return null;
     return d < 2 ? hex("#c9a14a") : hex("#efe1bd");
   }));
-  save("BubbleTail", 32, 32, paint(32, 32, (x, y) => {
-    // (16 x 16 px: the point at the left, the base along the right edge)
+  // (the tail: 64 square for 32 px; parchment with a gilt edge on its two outer sides, open on the right where it joins
+  // the bubble; its tip at 2,24 px, its base along the right edge from y 6 to 20)
+  save("BubbleTail", 64, 64, paint(64, 64, (x, y) => {
     const px = x / 2, py = y / 2;
-    return Math.abs(py - 8) <= (px / 16) * 8 ? hex("#c9a14a") : null;
+    const tip = [2, 24], top = [32, 6], bottom = [32, 20];
+    const side = (a, b) => ((b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0])) / Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const d1 = side(tip, top), d2 = -side(tip, bottom);  // (px inside each outer edge)
+    if (px > 32 || d1 < 0 || d2 < 0) return null;
+    return Math.min(d1, d2) < 2 ? hex("#c9a14a") : hex("#efe1bd");
   }));
   // The bag: its body 100 x 96 px (a green gradient, rounded 2 at the top and 6 at the bottom, a darker band at the
   // bottom), the tissue 64 x 22 (a cream zigzag), the handle 50 x 34 (a gold arch, 4 px thick).
