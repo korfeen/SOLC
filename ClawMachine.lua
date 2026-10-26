@@ -145,6 +145,23 @@ local function DropAt(l) return K.DROP0 * (1 - l / 5) end
 local function Slip(r, l) return (K.SLIP[r] or 0) * (1 - l / 5) end
 local function Wake() S.asleep, S.calm = false, 0 end
 local function Sound(name, fallback) pcall(PlaySound, SOUNDKIT and SOUNDKIT[name] or fallback) end
+-- Our own sounds (tools/make-claw-sounds.js): bonk, tilt, clack, and the two motor loops, played back to back (each
+-- loop fades in and out, so the copies overlap by LOOP_OVERLAP) while the claw moves.
+local SFX = "Interface\\AddOns\\SOLC\\Media\\Claw\\"
+local MOTORS = { whir = 0.96, winch = 0.72 }  -- (their lengths, seconds)
+local motor = { kind = nil, handle = nil, next = 0 }
+local function Play(name) pcall(PlaySoundFile, SFX .. name .. ".ogg", "SFX") end
+local function Motor(kind)  -- kind: "whir" (the carriage), "winch" (the cable) or nil (still)
+    if kind ~= motor.kind then
+        if motor.handle then StopSound(motor.handle, 150) end
+        motor.kind, motor.handle, motor.next = kind, nil, 0
+    end
+    if kind and GetTime() >= motor.next then
+        local ok, _, handle = pcall(PlaySoundFile, SFX .. kind .. ".ogg", "SFX")
+        motor.handle = ok and handle or nil
+        motor.next = GetTime() + MOTORS[kind] - 0.06
+    end
+end
 local function Say(text) S.msg = text if panel then panel.msg:SetText(text) end end
 
 -- ---- capsules ----
@@ -172,6 +189,7 @@ local function CapFrame(c)
     f.body:SetVertexColor(col[1] * 0.8, col[2] * 0.8, col[3] * 0.8)
     f.glow:SetVertexColor(col[1], col[2], col[3], c.p[3] == "legendary" and 0.9 or 0.6)
     f.glow:SetShown(c.p[3] == "epic" or c.p[3] == "legendary")
+    f.lit, f.col = nil, col
     f:Show()
     c.f, c.size = f, 0
     return f
@@ -323,7 +341,7 @@ local function Smash()
     if math.random() * 100 < chance then
         S.state, S.t, S.tilt, S.meter = "tilt", 0, 2.2, 0
         S.go.outcome = "tilt"
-        Sound("RAID_WARNING", 8959)
+        Play("tilt")
         return Say(("TILT! (that smash had a %d%% chance) The go is lost and the lights are out."):format(chance))
     end
     S.smashes, S.shake = S.smashes + 1, 0.4
@@ -335,7 +353,7 @@ local function Smash()
         end
     end
     Wake()
-    Sound("IG_CHARACTER_INFO_TAB", 841)
+    Play("bonk")
     Say(("BONK! Smash %d survived (%d%%). Next one: %d%%."):format(S.smashes, chance, Tilt(S.smashes)))
 end
 local function GrabOdds(c, offset)
@@ -405,7 +423,7 @@ local function Step(dt)
         for _, c in ipairs(caps) do
             if (c.x - C.x) ^ 2 + (c.y - tipY) ^ 2 + (c.z - C.z) ^ 2 < (K.R + 6) ^ 2 then hit = true break end
         end
-        if hit then S.state, S.t = "close", 0 end
+        if hit then S.state, S.t = "close", 0 Play("clack") end
     elseif st == "close" then
         C.open = math.max(0, 1 - S.t / 0.45)
         if S.t >= 0.5 then
@@ -531,6 +549,28 @@ local function Draw()
         c.f.d = d
         order[#order + 1] = c.f
     end
+    -- Shade: a capsule with others resting over it is darker (the light comes from above). Eased towards its target
+    -- so it doesn't flicker while the pile jostles; a colour is only sent when it changed enough to see.
+    local reach = 2.4 * K.R
+    for _, a in ipairs(caps) do
+        local occ = 0
+        for _, b in ipairs(caps) do
+            local up = b.y - a.y
+            if up > 4 then
+                local hd2 = (b.x - a.x) ^ 2 + (b.z - a.z) ^ 2
+                if hd2 < reach * reach then occ = occ + (1 - math.sqrt(hd2) / reach) * math.min(1, up / K.R) end
+            end
+        end
+        local target = 1 - 0.55 * math.min(1, occ * 0.7)
+        a.lit = a.lit and (a.lit + (target - a.lit) * 0.2) or target
+        local f = a.f
+        if not f.lit or math.abs(a.lit - f.lit) > 0.02 then
+            f.lit = a.lit
+            local col, k = f.col, a.lit * 0.8
+            f.body:SetVertexColor(col[1] * k, col[2] * k, col[3] * k)
+            f.shine:SetAlpha(0.25 + 0.75 * a.lit * a.lit)
+        end
+    end
     -- the claw: cable, head, three prongs (open / closed), and the rail it hangs from
     local cl = view.claw
     local hx, hz = C.x + math.sin(C.ax) * 6, C.z + math.sin(C.az) * 6
@@ -634,6 +674,10 @@ local function OnUpdate(_, elapsed)
         end
     end
     if busy then Draw() end
+    local st = S.state
+    if (st == "steer" and (C.vx ~= 0 or C.vz ~= 0)) or st == "carry" then Motor("whir")
+    elseif st == "drop" or st == "rise" then Motor("winch")
+    else Motor(nil) end
     S.cost = S.cost * 0.9 + (debugprofilestop() - t0) * 0.1
     Refresh()
 end
@@ -670,6 +714,7 @@ local function Build()
     panel:Hide()
     panel:HookScript("OnHide", function()
         wipe(S.keys)
+        Motor(nil)
         if ns.UI.ClearScreen then ns.UI.ClearScreen("Claw") end
     end)
 
