@@ -41,7 +41,7 @@
   {"theme":"Cricket","layer":"headwear","id":"head_cricket_cap","rarity":"uncommon","name":"Cricket Cap","desc":"a faded baggy cricket cap with a club crest"},
   {"theme":"Cricket","layer":"accessory","id":"acc_cricket_bat","rarity":"rare","name":"Cricket Bat","desc":"a willow cricket bat held up, a red ball mark on its face"},
   {"theme":"Cricket","layer":"outfit","id":"outfit_umpire","rarity":"epic","name":"Umpire's Coat","desc":"a long white umpire's coat with several players' jumpers tied round the waist"},
-  {"theme":"Cricket","layer":"headwear","id":"head_umpire_hats","rarity":"rare","name":"Umpire's Hats","desc":"a stack of four different players' hats balanced on the head"},
+  {"theme":"Cricket","layer":"headwear","id":"head_umpire_hats","rarity":"rare","name":"Umpire's Hat","desc":"a stack of four different players' hats balanced on the head"},
   {"theme":"Croquet & fencing","layer":"accessory","id":"acc_croquet_mallet","rarity":"uncommon","name":"Croquet Mallet","desc":"a wooden croquet mallet with striped bands held upright"},
   {"theme":"Croquet & fencing","layer":"outfit","id":"outfit_fencing","rarity":"rare","name":"Fencing Whites","desc":"a padded white fencing jacket with a club patch"},
   {"theme":"Croquet & fencing","layer":"headwear","id":"head_fencing_mask","rarity":"rare","name":"Fencing Mask","desc":"a mesh fencing mask pushed up on top of the head"},

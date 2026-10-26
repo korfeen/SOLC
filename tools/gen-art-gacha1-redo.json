@@ -1,0 +1,5 @@
+[
+  {"layer":"headwear","id":"hair_mohawk","rarity":"rare","gacha":1,"desc":"Mohawk: a tall stiff spiked mohawk dyed hot pink (no green anywhere) - hair only, on the bald ogre head, no hat"},
+  {"layer":"accessory","id":"acc_brandy","rarity":"rare","gacha":1,"desc":"Brandy Snifter: a big balloon brandy glass held by its bowl in the fist, filled with dark amber brandy, the glass drawn with solid white highlights so it reads as glass (not see-through to the background)","flags":["--fit","wear","--hold","right"]},
+  {"layer":"headwear","id":"hair_curlers","rarity":"uncommon","gacha":1,"desc":"Hair Curlers: a flowery headscarf knotted at the top over a row of pink plastic hair curlers peeking out at the front"}
+]
