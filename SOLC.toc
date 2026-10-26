@@ -54,6 +54,7 @@ DMSay.lua
 DreamBedArt.lua
 DreamBed.lua
 Plinko.lua
+ClawMachine.lua
 HuntsBoard.lua
 StewardLines.lua
 ProShopUI.lua

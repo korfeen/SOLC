@@ -622,6 +622,8 @@ SlashCmdList.SOLC = function(input)
         ns.PrintPosters()
     elseif msg == "plinko" then
         ns.ShowPlinko()  -- (Plinko.lua; a place in the window later)
+    elseif msg == "claw" and ns.IsDev() then  -- (dev test of the claw machine: ClawMachine.lua)
+        ns.ShowClaw()
     elseif msg == "glowtest" then  -- TEMPORARY: every card's icons glow as if level 60 (ProfileHeader.lua)
         KillTrackerDB.glowTest = not KillTrackerDB.glowTest or nil
         Print(KillTrackerDB.glowTest and "Glow test on: every card's icons glow." or "Glow test off.")
