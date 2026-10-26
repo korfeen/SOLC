@@ -2,7 +2,7 @@
 -- and politely rude to the buyer. Written by the storyteller agent (.claude/agents/storyteller.md, "The steward's
 -- lines"); `node tools/check-steward-lines.js` lists the shop pieces with no line yet ("NO STEWARD LINE").
 --   pieces[option id]   a piece's own lines (one is picked at random when it's rung up)
---   layers[layer key][rarity]   for a piece with none of its own (and the name colours: layers.name): %s = its name
+--   layers[layer key][rarity]   for a piece with none of its own: %s = its name
 --   open, empty, total (%s = the sum), bag   the sale's other moments
 
 local _, ns = ...
@@ -34,13 +34,6 @@ ns.StewardLines = {
             rare = { "%s. Do mind the doorframes." },
             epic = { "%s. A hat with ambitions. Unlike some." },
             legendary = { "%s. Even the head beneath it improves." },
-        },
-        name = {  -- (a name colour, "%s" its name)
-            common = { "%s. Your name, in colour. It won't make it any shorter." },
-            uncommon = { "%s. Your name, in colour. It won't make it any shorter." },
-            rare = { "%s. People will read your name now. Do brace yourself." },
-            epic = { "%s on a name like yours. Bold." },
-            legendary = { "%s. A colour fit for a member. Very nearly." },
         },
         accessory = {
             uncommon = { "%s. Something to hold. Other than a grudge." },

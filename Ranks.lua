@@ -94,8 +94,8 @@ function ns.RankPerk(kind, rank)
 end
 
 -- Colours, picked in the header's edit mode (ProfileHeader.lua) for your name, your level 60 glow and your header's
--- background: one per ogre skin, yours once you have the skin (a free one, or its unlock: Unlocks.lua) or bought it in the
--- Pro Shop, and white for everyone. The ones picked: KillTrackerDB.card.nameColor / glowColor / bgColor (synced). Built on first use (the
+-- background: one per ogre skin, yours once you have the skin (a free one, or its unlock: Unlocks.lua), and white for
+-- everyone. The ones picked: KillTrackerDB.card.nameColor / glowColor / bgColor (synced). Built on first use (the
 -- skins are in MintArt.lua, which loads after this).
 local SKIN_RGB = {  -- each skin's face colour (sampled from the skins, as tools/make-crayon-items.js SKINS)
     celestial_blue = { 66, 72, 107 }, enchanted_jade = { 112, 119, 58 }, gold = { 182, 131, 40 }, obsidian_ember = { 92, 56, 43 },
@@ -130,17 +130,14 @@ function ns.FindNameColor(id)
     end
 end
 
--- Whether you can use a colour: its skin is yours (free, or unlocked), or you bought the colour in the Pro Shop
--- (KillTrackerDB.shop.nameColors, ProShop.lua).
+-- Whether you can use a colour: its skin is yours (free, or unlocked).
 function ns.HasNameColor(entry)
     local option = entry.skin
-    if not option or not option.unlock or ns.IsUnlocked("skin:" .. option.id) then return true end
-    local shop = KillTrackerDB and KillTrackerDB.shop
-    return shop ~= nil and shop.nameColors ~= nil and shop.nameColors[entry.id] ~= nil
+    return not option or not option.unlock or ns.IsUnlocked("skin:" .. option.id)
 end
 
--- (colours come with the skins, or from the Pro Shop on their own: ns.ShopBuy)
-function ns.BuyNameColor() return false, "Colours come with ogre skins, or from the Pro Shop." end
+-- (colours aren't bought any more: they come with the skins)
+function ns.BuyNameColor() return false, "Colours come with ogre skins." end
 
 -- Someone's colour for one use ("name", "glow", "bg"): the entry they picked (yours only while you have it), or nil.
 function ns.GetCardColor(key, use)
