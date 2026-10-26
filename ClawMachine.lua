@@ -131,6 +131,9 @@ do
     end end end
     cam.f = math.min((K.VW - 30) / (2 * maxX), (K.VH - 24) / (maxY - minY))
     cam.cy = K.VH / 2 - (minY + maxY) / 2 * cam.f
+    -- (how deep the box goes, for the haze: front to back at a quarter of its height)
+    cam.near = select(4, P(K.W / 2, K.H / 4, 0))
+    cam.far = select(4, P(K.W / 2, K.H / 4, K.D))
 end
 
 local panel, view
@@ -531,6 +534,11 @@ local function Line(line, ax, ay, bx, by)
     line:SetStartPoint("TOPLEFT", view, ax, -ay)
     line:SetEndPoint("TOPLEFT", view, bx, -by)
 end
+-- A brass block (the gantry's parts): the two faces the camera sees, its top and its front.
+local function Box(b, x1, x2, y1, y2, z1, z2)
+    Quad(b.top, { x1, y2, z2 }, { x2, y2, z2 }, { x2, y2, z1 }, { x1, y2, z1 })
+    Quad(b.front, { x1, y2, z1 }, { x2, y2, z1 }, { x2, y1, z1 }, { x1, y1, z1 })
+end
 
 local order = {}
 local function Draw()
@@ -564,23 +572,37 @@ local function Draw()
         end
         local target = 1 - 0.55 * math.min(1, occ * 0.7)
         a.lit = a.lit and (a.lit + (target - a.lit) * 0.2) or target
+        -- (and haze: the further back, the darker and greyer - by its exact distance, so it shades smoothly, never row
+        -- by row)
         local f = a.f
-        if not f.lit or math.abs(a.lit - f.lit) > 0.02 then
-            f.lit = a.lit
-            local col, k = f.col, a.lit * 0.8
-            f.body:SetVertexColor(col[1] * k, col[2] * k, col[3] * k)
-            f.shine:SetAlpha(0.25 + 0.75 * a.lit * a.lit)
+        local fog = math.max(0, math.min(1, (f.d - cam.near) / (cam.far - cam.near)))
+        local v = a.lit * (1 - 0.3 * fog)
+        if not f.lit or math.abs(v - f.lit) > 0.02 then
+            f.lit = v
+            local col, k, grey = f.col, v * 0.8, 0.3 * fog
+            f.body:SetVertexColor((col[1] * (1 - grey) + 0.4 * grey) * k, (col[2] * (1 - grey) + 0.4 * grey) * k, (col[3] * (1 - grey) + 0.45 * grey) * k)
+            f.shine:SetAlpha((0.25 + 0.75 * a.lit * a.lit) * (1 - 0.4 * fog))
         end
     end
-    -- the claw: cable, head, three prongs (open / closed), and the rail it hangs from
+    -- the gantry: the crossbar riding the side rails at the claw's depth, its end blocks, the carriage on it
+    -- (bending a texture costs, so only when the claw has moved)
+    local gy, gw = K.H - 4, view.gantry
+    if gw.z ~= C.z then
+        gw.z, gw.x = C.z, nil
+        Box(gw.bar, 0, K.W, gy - 9, gy, C.z - 6, C.z + 6)
+        Box(gw.left, 0, 16, gy - 12, gy + 2, C.z - 11, C.z + 11)
+        Box(gw.right, K.W - 16, K.W, gy - 12, gy + 2, C.z - 11, C.z + 11)
+    end
+    if gw.x ~= C.x then
+        gw.x = C.x
+        Box(gw.cart, C.x - 17, C.x + 17, gy - 16, gy + 4, C.z - 13, C.z + 13)
+    end
+    -- the claw: cable, head, three prongs (open / closed)
     local cl = view.claw
     local hx, hz = C.x + math.sin(C.ax) * 6, C.z + math.sin(C.az) * 6
-    local tx, ty = P(C.x, K.H, C.z)
+    local tx, ty = P(C.x, gy - 16, C.z)
     local headX, headY, headS, headD = P(hx, C.y, hz)
     Line(cl.cable, tx, ty, headX, headY)
-    local r1x, r1y = P(0, K.H, C.z)
-    local r2x, r2y = P(K.W, K.H, C.z)
-    Line(cl.rail, r1x, r1y, r2x, r2y)
     local spread = 6 + C.open * 22
     local tipx, tipz = C.x + math.sin(C.ax) * K.TIP, C.z + math.sin(C.az) * K.TIP
     for k = 1, 3 do
@@ -625,7 +647,8 @@ local function Draw()
     for i, f in ipairs(order) do
         if f.lvl ~= base + i then f.lvl = base + i f:SetFrameLevel(base + i) end
     end
-    view.front:SetFrameLevel(base + #order + 2)
+    view.gantry:SetFrameLevel(base + #order + 1)  -- (the highest thing in the box: over the capsules and the claw)
+    view.front:SetFrameLevel(base + #order + 3)
     view.marquee:SetTextColor(S.state == "tilt" and 1 or 0.95, S.state == "tilt" and 0.23 or 0.76, S.state == "tilt" and 0.16 or 0.3)
     view.marquee:SetText(S.state == "tilt" and "T I L T" or "THE CLAW")
 end
@@ -769,13 +792,30 @@ local function Build()
         l:SetColorTexture(r, g, b, a or 1)
         return l
     end
-    cl.rail = NewLine(3, 0.54, 0.42, 0.23)
     cl.cable = NewLine(2, 0.78, 0.71, 0.54)
     cl.upper, cl.lower = {}, {}
     for k = 1, 3 do cl.upper[k] = NewLine(3, 0.9, 0.83, 0.64) cl.lower[k] = NewLine(3, 0.9, 0.83, 0.64) end
     cl.head = cl:CreateTexture(nil, "OVERLAY")
     cl.head:SetTexture(ROUND)
     view.claw = cl
+    -- the gantry: two brass rails along the side walls' tops (still), and the moving parts (Draw places them)
+    local gw = CreateFrame("Frame", nil, view)
+    gw:SetAllPoints()
+    local function Brass(r, g, b, sub)
+        local t = gw:CreateTexture(nil, "ARTWORK", nil, sub)
+        t:SetTexture(WHITE)
+        t:SetVertexColor(r, g, b, 1)
+        return t
+    end
+    local function Block(sub) return { top = Brass(0.83, 0.66, 0.33, sub + 1), front = Brass(0.47, 0.34, 0.16, sub) } end
+    local gy = K.H - 4
+    for _, x in ipairs({ 0, K.W - 10 }) do
+        local inner = x == 0 and 10 or K.W - 10
+        Quad(Brass(0.72, 0.56, 0.28, 0), { x, gy, K.D }, { x + 10, gy, K.D }, { x + 10, gy, 0 }, { x, gy, 0 })
+        Quad(Brass(0.36, 0.26, 0.12, -1), { inner, gy, 0 }, { inner, gy, K.D }, { inner, gy - 8, K.D }, { inner, gy - 8, 0 })
+    end
+    gw.bar, gw.left, gw.right, gw.cart = Block(2), Block(4), Block(4), Block(6)
+    view.gantry = gw
     local sh = CreateFrame("Frame", nil, view)
     sh.tex = sh:CreateTexture(nil, "ARTWORK")
     sh.tex:SetTexture(ROUND)
