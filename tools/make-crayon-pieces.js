@@ -807,13 +807,16 @@ function draw(id) {
   const edge = Buffer.from(resample({ width: L, height: L, rgba: Buffer.from(Array.from(whole, (m) => [0, 0, 0, m ? 255 : 0]).flat()) }, 0, 0, L, L, S, S));
   for (let i = 0; i < S * S; i++) fillRgba[i * 4 + 3] = Math.min(fillRgba[i * 4 + 3], edge[i * 4 + 3] > 127 ? 255 : 0);
   const line = canvas();  // (the outline on its own, over everything: the areas and details are cut to the shape, holes too)
-  for (const poly of outlines(whole, 40)) stroke(line, [...toCanvas(poly), toCanvas(poly)[0]], 20, OUTLINE, 0.95, r);
+  // (as bold as ever on a normal piece; thinner on a tiny one - a pet, a monocle - so it doesn't swallow it)
+  const span = Math.max(...idx.map((i) => i % L)) - Math.min(...idx.map((i) => i % L)) + 1, tall = Math.max(...idx.map((i) => (i / L) | 0)) - Math.min(...idx.map((i) => (i / L) | 0)) + 1;
+  const outline = Math.max(8, Math.min(20, Math.max(span, tall) * scale * 0.08));
+  for (const poly of outlines(whole, 40)) stroke(line, [...toCanvas(poly), toCanvas(poly)[0]], outline, OUTLINE, 0.95, r);
   // (and round its holes: a hood's face opening)
   const holes = Uint8Array.from(whole, (m, i) => { if (m) return 0; const x = i % L, y = (i / L) | 0; return x > 0 && y > 0 && x < L - 1 && y < L - 1 ? 1 : 0; });
   { const outside = new Uint8Array(L * L), st = []; for (let i = 0; i < L * L; i++) { const x = i % L, y = (i / L) | 0; if (!whole[i] && (x === 0 || y === 0 || x === L - 1 || y === L - 1)) { outside[i] = 1; st.push(i); } }
     while (st.length) { const p = st.pop(), x = p % L, y = (p / L) | 0; for (const q of [x > 0 ? p - 1 : -1, x < L - 1 ? p + 1 : -1, y > 0 ? p - L : -1, y < L - 1 ? p + L : -1]) if (q >= 0 && !whole[q] && !outside[q]) { outside[q] = 1; st.push(q); } }
     for (let i = 0; i < L * L; i++) holes[i] = !whole[i] && !outside[i] ? 1 : 0; }
-  for (const poly of outlines(holes, 30)) stroke(line, [...toCanvas(poly), toCanvas(poly)[0]], 14, OUTLINE, 0.95, r);
+  for (const poly of outlines(holes, 30)) stroke(line, [...toCanvas(poly), toCanvas(poly)[0]], outline * 0.7, OUTLINE, 0.95, r);
   centres.forEach((_, j) => {
     if (j === main || recipe.areas === false) return;
     const m = Uint8Array.from(labels, (l) => (l === j ? 1 : 0));
