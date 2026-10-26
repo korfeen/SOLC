@@ -1038,6 +1038,24 @@ local function EditChoices(tab, draft)
     end
     return list
 end
+-- The pieces the draft wears that aren't yours ("layer:id" keys), and whether the Pro Shop sells every one of them
+-- (then EDIT's SAVE becomes PRO SHOP: off to buy them, ns.ShowProShopWith).
+local function NotMine(draft)
+    local keys, allShop = {}, true
+    for _, layer in ipairs(ns.MintLayers or {}) do
+        local id = draft.traits[layer.key]
+        if id then
+            local mine = false
+            for _, option in ipairs(ns.OwnedOptions(layer.key)) do if option.id == id then mine = true end end
+            if not mine then
+                keys[#keys + 1] = layer.key .. ":" .. id
+                local found = ns.OptionByKey(keys[#keys])
+                if not (found and ns.ShopPrice and ns.ShopPrice(found.option)) then allShop = false end
+            end
+        end
+    end
+    return keys, #keys > 0 and allShop
+end
 local function WearsNotMine(draft)
     for _, layer in ipairs(ns.MintLayers or {}) do
         local id = draft.traits[layer.key]
@@ -1302,14 +1320,21 @@ local function BuildEditor(page, parent)
     end
     save:SetScript("OnEnter", function(self)
         self.hover = true self:Paint(true)
-        if page.edit and WearsNotMine(page.edit) then SetTooltip(self, { "Not yet", "Take off what isn't yours first" }) end
+        if page.edit and WearsNotMine(page.edit) then
+            local _, shop = NotMine(page.edit)
+            SetTooltip(self, shop and { "To the Pro Shop", "Buy what you're trying on: it goes in the cart" }
+                or { "Not yet", "Take off what isn't yours first" })
+        end
     end)
     save:SetScript("OnLeave", function(self) self.hover, self.pressed = false, false self:Dip(false) self:Paint(false) GameTooltip_Hide() end)
     save:SetScript("OnUpdate", function(self)
         if self.glow:IsShown() then self.glow:SetAlpha(0.18 + 0.22 * (0.5 + 0.5 * math.sin(GetTime() * 4))) end
     end)
     function page.PaintEditButtons()
-        save:SetEnabled(Changed() and not (page.edit and WearsNotMine(page.edit)))
+        local shop = false
+        if page.edit then shop = select(2, NotMine(page.edit)) end
+        save.text:SetText(shop and "PRO SHOP" or "SAVE")  -- (trying on shop pieces: off to buy them)
+        save:SetEnabled(shop or Changed() and not (page.edit and WearsNotMine(page.edit)))
         save:Paint(false)
         cancel:Paint(false)
         cancel.text:SetTextColor(0.8, 0.75, 0.66)
@@ -1328,6 +1353,14 @@ local function BuildEditor(page, parent)
     end
     save:SetScript("OnClick", function()
         local edit = page.edit
+        local keys, shop
+        if edit then keys, shop = NotMine(edit) end
+        if shop then
+            UI.ClickSound()
+            page.ShowPanel(nil)
+            if ns.ShowProShopWith then ns.ShowProShopWith(keys) end
+            return
+        end
         if not edit or not Changed() or WearsNotMine(edit) then return end
         UI.ClickSound()
         local card = KillTrackerDB.card or {}

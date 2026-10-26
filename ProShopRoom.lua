@@ -18,6 +18,7 @@ if not UI then return end
 local MEDIA = "Interface\\AddOns\\SOLC\\Media\\ProShop\\"
 local EASEL_ART = "Interface\\AddOns\\SOLC\\Media\\DreamBed\\easel"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
+local PLATE = "Interface\\AddOns\\SOLC\\Media\\Overview\\Plate"  -- (the portrait's name plate)
 local CREAM, GOLD, GILT = { 0.96, 0.9, 0.78 }, { 1, 0.82, 0.1 }, { 0.79, 0.63, 0.29 }
 local BURGUNDY = { 0.3, 0.06, 0.09 }
 
@@ -117,9 +118,10 @@ end
 -- The dressing (zoomed in): the layers the shop stocks as tabs, the piece looked at on each, the cart (one piece a
 -- layer; kept while you're logged in).
 -- (the mockup's words and groups, but Clothes for the outfit layer; you walk in on Clothes, so not zoomed in)
-local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background" }
-local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory", background = "Background" }
-local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE" }
+-- ("name": the name colours, ProShop.lua ns.ShopNameColors, shown on a plate with your name under the picture)
+local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background", "name" }
+local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Expression", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory", background = "Background", name = "Name colour" }
+local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE", name = "ME" }
 local FIRST_TAB = "outfit"
 local CLOSE_LAYERS = { headwear = true, eyes = true, expression = true }
 local CART_LINES = 5  -- (the cart's lines shown; one piece a layer, so 3 for now)
@@ -143,6 +145,11 @@ local function Tabs()
     for _, item in ipairs(ns.ShopStock()) do
         byLayer[item.layer.key] = byLayer[item.layer.key] or {}
         table.insert(byLayer[item.layer.key], item)
+    end
+    for _, colour in ipairs(ns.ShopNameColors()) do  -- (the name colours, in the pieces' shape)
+        byLayer.name = byLayer.name or {}
+        table.insert(byLayer.name, { key = colour.key, layer = { key = "name" }, price = colour.price, owned = colour.owned,
+            option = { id = colour.entry.id, name = colour.entry.name, rarity = colour.entry.skin.rarity }, color = colour.entry.value })
     end
     local tabs = {}
     for _, key in ipairs(TAB_ORDER) do
@@ -180,9 +187,9 @@ end
 local function ShownTraits()
     local traits = {}
     for key, id in pairs(ns.SHOP_DISPLAY) do traits[key] = id end
-    for key, item in pairs(view.cart) do traits[key] = item.option.id end
+    for key, item in pairs(view.cart) do if key ~= "name" then traits[key] = item.option.id end end
     local item, tab = Looked()
-    if item then traits[tab.key] = item.option.id end
+    if item and tab.key ~= "name" then traits[tab.key] = item.option.id end
     return traits
 end
 
@@ -241,6 +248,7 @@ local function PlaceZoom()
     AtPage(zoom.prev, L.knobs[1], L.add.y, sx, sy)
     AtPage(zoom.next, L.knobs[2], L.add.y, sx, sy)
     AtPage(zoom.count, L.add.x, L.count, sx, sy)
+    AtPage(zoom.plate, PICTURE.x, PICTURE.y + PICTURE.size / 2 + 26, sx, sy)
     zoom.back:ClearAllPoints()
     zoom.back:SetPoint("TOPLEFT", room, "TOPLEFT", L.back.x, -L.back.y)
     zoom.back:SetAlpha(late)
@@ -253,13 +261,14 @@ end
 
 local Redraw  -- (further down)
 
--- Zooms in on the easel (true) or back out to the room. Walking in, you start on Clothes (not zoomed in).
-local function Zoom(open)
+-- Zooms in on the easel (true) or back out to the room. Walking in, you start on Clothes (not zoomed in), unless
+-- keepTab (sent here with pieces from EDIT: their tab).
+local function Zoom(open, keepTab)
     local zoom = room.zoom
     if open then
         if not zoom:IsShown() then
             zoom.t = 0
-            for i, tab in ipairs(Tabs()) do if tab.key == FIRST_TAB then view.tab = i end end
+            if not keepTab then for i, tab in ipairs(Tabs()) do if tab.key == FIRST_TAB then view.tab = i end end end
             Redraw()
         end
         zoom:Show()
@@ -322,6 +331,14 @@ function Redraw()
         zoom.count:SetText(("%d / %d"):format(index, #tab.items))
         zoom.add.text:SetText(item.owned and "Yours already" or view.cart[tab.key] == item and "Take it out" or "Add to cart")
         zoom.add:SetEnabled(not item.owned)
+    end
+    -- (on the Name colour tab: your name on a plate under the picture, in the colour looked at)
+    local naming = item ~= nil and tab.key == "name"
+    zoom.plate:SetShown(naming)
+    if naming then
+        zoom.plate.text:SetText(UnitName("player"))
+        zoom.plate.text:SetTextColor(unpack(item.color))
+        zoom.plate:SetWidth(math.max(160, zoom.plate.text:GetStringWidth() + 48))
     end
     -- (the cart)
     local items, total = CartItems()
@@ -616,6 +633,24 @@ local function Build(holder)
     -- Under the picture: the knobs either side of Add to cart, the count under it.
     zoom.controls = CreateFrame("Frame", nil, zoom)
     zoom.controls:SetAllPoints()
+    -- The name plate (the Overview portrait's: dark, a gilt rim, three slices) for the Name colour tab.
+    zoom.plate = CreateFrame("Frame", nil, zoom.controls)
+    zoom.plate:SetHeight(36)
+    local ends = {}
+    for i, slice in ipairs({ { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }) do
+        local t = zoom.plate:CreateTexture(nil, "ARTWORK")
+        t:SetTexture(PLATE)
+        t:SetTexCoord(slice[1], slice[2], 0, 1)
+        ends[i] = t
+    end
+    ends[1]:SetPoint("TOPLEFT") ends[1]:SetPoint("BOTTOMLEFT") ends[1]:SetWidth(18)
+    ends[3]:SetPoint("TOPRIGHT") ends[3]:SetPoint("BOTTOMRIGHT") ends[3]:SetWidth(18)
+    ends[2]:SetPoint("TOPLEFT", ends[1], "TOPRIGHT") ends[2]:SetPoint("BOTTOMRIGHT", ends[3], "BOTTOMLEFT")
+    zoom.plate.text = zoom.plate:CreateFontString(nil, "OVERLAY")
+    zoom.plate.text:SetPoint("CENTER", 0, 1)
+    zoom.plate.text:SetFont(NAME_FONT, 22, "")
+    UI.OutlineText(zoom.plate.text, { 0, 0, 0 })
+    zoom.plate:Hide()
     zoom.add = S.Button(zoom.controls, L.add.w, L.add.h, "Add to cart", 15)
     zoom.add:SetScript("OnClick", ToggleCart)
     zoom.prev = S.Knob(zoom.controls, -1)
@@ -685,10 +720,34 @@ local function Layout()
     if room.zoom:IsShown() then PlaceZoom() end
 end
 
+-- Pieces sent here from EDIT (ns.ShowProShopWith): put in the cart, their tab open, the curtains in.
+local pending
+local function TakePending()
+    local keys = pending
+    pending = nil
+    if not keys then return end
+    view.tabs = nil
+    local first
+    for _, key in ipairs(keys) do
+        for t, tab in ipairs(Tabs()) do
+            for i, item in ipairs(tab.items) do
+                if item.key == key and not item.owned then
+                    view.cart[tab.key] = item
+                    if not first then first, view.tab, view.look[tab.key] = true, t, i end
+                end
+            end
+        end
+    end
+    room.zoom:Hide()  -- (fresh curtains)
+    Zoom(true, first)
+    Redraw()
+end
+
 local function Refresh()
     Layout()
     view.tabs = nil  -- (what you own may have changed)
     Redraw()
+    TakePending()
     room.points:SetText(("You have |cffffd21a%s|r points"):format(BreakUpLargeNumbers(ns.GetPoints().balance)))
 end
 
@@ -714,3 +773,9 @@ ns.RegisterPage({
 })
 
 function ns.ShowProShop() ns.OpenPage("proshop") end
+-- Opens the shop with these pieces ("layer:id" keys) in the cart and the first one's tab open (EDIT's PRO SHOP button).
+function ns.ShowProShopWith(keys)
+    pending = keys
+    ns.OpenPage("proshop")
+    if room and room:IsVisible() and pending then TakePending() end
+end
