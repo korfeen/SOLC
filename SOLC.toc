@@ -51,7 +51,6 @@ Chests.lua
 Dev.lua
 Tribute.lua
 DMSay.lua
-MintPot.lua
 DreamBedArt.lua
 DreamBed.lua
 Plinko.lua

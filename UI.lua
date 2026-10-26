@@ -396,7 +396,7 @@ body:SetPoint("BOTTOMRIGHT", BODY.right - WIDTH, HEIGHT - BODY.bottom)
 body:SetFrameLevel(frame:GetFrameLevel())
 body:SetBackdrop({ bgFile = ns.WINDOW_BACKGROUND })
 body:SetBackdropColor(unpack(ns.WINDOW_COLOR))
-ns.UI.pageBody = body  -- (the pages' whole background, to the wood: the minting kitchen's scenery fills it, MintPot.lua)
+ns.UI.pageBody = body  -- (the pages' whole background, to the wood: a screen's scenery can fill it)
 
 -- Tooltips beside the window: a tooltip for anything in the window opens in one place, just outside its right edge
 -- under the top beam (its left edge, if the screen has no room on the right), so it never covers what you point at.
@@ -980,7 +980,7 @@ end
 
 function ns.OpenPage(key)
     if not PageFor(key) then return end
-    if ns.UI.CloseScreen then ns.UI.CloseScreen() end  -- (another page: the kitchen, a chest over this one closes)
+    if ns.UI.CloseScreen then ns.UI.CloseScreen() end  -- (another page: the Dream Bed, a chest over this one closes)
     state.page = key
     if not frame:IsShown() then ns.ToggleUI() else Refresh() end
 end
@@ -1445,7 +1445,7 @@ end
 -- The title, on the top beam ------------------------------------------------------------------------------------
 
 -- Where you are: the page (its sidebar page, then its tab: "Pictures · Gear", then a tab inside it), whose it is if not yours ("Lance's
--- Kills"), and a screen over it if one is open (the minting kitchen, a chest: ns.UI.SetScreen). On the beam's left, by
+-- Kills"), and a screen over it if one is open (the Dream Bed, a chest: ns.UI.SetScreen). On the beam's left, by
 -- the logo, lettered like the sidebar's planks (cream, the screen gold, outlined dark brown); in ogre mode, ogre words.
 -- Clicking the page's part while a screen is open closes the screen (a way back). The beam still drags the window.
 local TITLE_COLOR, TITLE_HOVER, TITLE_SUB = NAV_COLOR, { 1, 1, 1 }, NAV_CURRENT_COLOR
@@ -1530,10 +1530,10 @@ function ns.UI.SetTab(pageKey, name, ogreName)
     UpdateTitle()
 end
 
--- A screen over the page (the minting kitchen, a chest, a reroll): its name after the page's in the title (ogre: its
+-- A screen over the page (the Dream Bed, a chest, a reroll): its name after the page's in the title (ogre: its
 -- ogre word); onBack, if given, closes it (clicking the page's part of the title). ns.UI.ClearScreen(name) when it closes.
--- One can open over another (the kitchen's reel, a chest): all of them are kept, the title shows the newest, and going
--- to a page closes every one (only the newest kept, the kitchen under it stayed open over the next page).
+-- One can open over another (the Dream Bed's reel, a chest): all of them are kept, the title shows the newest, and going
+-- to a page closes every one (only the newest kept, the one under it stayed open over the next page).
 local screens = {}
 local function NewestScreen()
     title.screen = screens[#screens]

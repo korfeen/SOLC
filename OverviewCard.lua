@@ -2149,7 +2149,7 @@ OVERVIEW = {
                 end
                 local twins = button.option and (button.option.crayon or button.option.sketch)
                 button.ed:SetShown((editable or button.picker) and twins and true or false)
-                button.ed.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Kitchen\\"
+                button.ed.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Picture\\"
                     .. (edition == "crayon" and "EdCrayon" or edition == "sketch" and "EdSketch" or "EdPainted"))
                 button.prev:SetShown(button.picker)
                 button.next:SetShown(button.picker)

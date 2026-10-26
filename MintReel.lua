@@ -1,9 +1,8 @@
 -- The minting show: one spinning reel per layer, like opening a case. The result is already decided
 -- and saved by ns.Mint (Minting.lua); each reel just scrolls a strip of random options past a marker,
 -- slows down and lands on the rolled one, while the picture builds up layer by layer above it. It takes
--- over the main window's page area (UI.lua), opening the window if needed. A reroll plays it; a new mint plays the
--- minting pot's own show (MintPot.lua: the photo developing on its line, its layers dripped on), with a reel of its
--- own from ns.NewMintReel.
+-- over the main window's page area (UI.lua), opening the window if needed. A reroll plays it; the Dream Bed (DreamBed.lua) has a reel of
+-- its own from ns.NewMintReel.
 
 local _, ns = ...
 

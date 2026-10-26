@@ -6,7 +6,7 @@
 -- easel, a layer a beat, in the edition you reach for (brush, coloured pencils, crayons); then the painting comes
 -- forward, signed by you. The mint itself: ns.DreamMint (Minting.lua). The room is painted (tools/gen-dreambed-art.js)
 -- and laid out by hand (tools/dreambed-room.js): DreamBedArt.lua has both.
--- Opened over the page area like the old kitchen: ns.ShowDreamBed().
+-- Opened over the page area, as a screen (UI.lua): ns.ShowDreamBed().
 
 local _, ns = ...
 

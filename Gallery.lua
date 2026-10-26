@@ -30,10 +30,10 @@ ghost:Hide()
 ghost.canvas = CreateFrame("Frame", nil, ghost)
 ghost.canvas:SetSize(66, 66)
 ghost.canvas:SetPoint("CENTER")
--- Its outline in its rarity's colour, turning with it (Media/Icons/Kitchen/Outline: the square is 208 of its 256, room
--- round it to turn in).
+-- Its outline in its rarity's colour, turning with it (Media/Icons/Picture/Outline, tools/make-picture-icons.js: the
+-- square is 208 of its 256, room round it to turn in).
 ghost.outline = ghost.canvas:CreateTexture(nil, "OVERLAY", nil, 7)
-ghost.outline:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Kitchen\\Outline")
+ghost.outline:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Picture\\Outline")
 ghost.outline:SetSize(66 * 256 / 208 + 4, 66 * 256 / 208 + 4)
 ghost.outline:SetPoint("CENTER")
 ghost:SetAlpha(0.9)

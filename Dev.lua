@@ -261,14 +261,10 @@ local function BuildChests(parent)
             wipe(KillTrackerDB.unlocks)  -- (what you wear: the account's wardrobe too, while you share it)
             wipe(KillTrackerDB.ownUnlocks or {})
             KillTrackerDB.chests, KillTrackerDB.tokens = {}, {}
-            ns.Print("Dev: your wardrobe (the shared one too, if you share it), chests and tokens cleared.") Refresh() end },
+            ns.Print("Dev: your wardrobe (the shared one too, if you share it), chests and Dream Bed items cleared.") Refresh() end },
         { "+5 of all", 92, function()
-            KillTrackerDB.tokens = KillTrackerDB.tokens or {}
-            for _, d in ipairs(ns.Dungeons()) do KillTrackerDB.tokens[d.key] = (KillTrackerDB.tokens[d.key] or 0) + 5 end
-            for _, spec in ipairs(ns.LAYER_INGREDIENTS) do ns.AddIngredient(spec.key, 5, true) end
-            for _, fuel in ipairs(ns.FUELS) do ns.AddIngredient(fuel.key, 5, true) end
-            for key in pairs(ns.DREAM_ITEMS) do ns.AddIngredient(key, 5, true) end  -- (milk, stories, bonks)
-            ns.Print("Dev: 5 of every ingredient for you, and 5 milk, stories and bonks.") Refresh() end },
+            for key in pairs(ns.DREAM_ITEMS) do ns.AddIngredient(key, 5, true) end
+            ns.Print("Dev: 5 of every Dream Bed item for you.") Refresh() end },
     }) do
         local button = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
         button:SetSize(spec[2], 22)
@@ -483,12 +479,10 @@ local function Stepper(parent, width, name, list, onChange)
 end
 local function Colored(rarity, text) return ("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", text) end
 local function IngredientLabel(key) return ("|T%s:14|t %s"):format(ns.IngredientIcon(key), ns.IngredientName(key)) end
--- Every ingredient there is: the Dream Bed's, the fuels, the layers', the dungeons' tokens.
+-- Every item there is to put in a chest: the Dream Bed's.
 local function AllIngredients()
-    local keys = { "milk", "story", "bonk" }
-    for _, fuel in ipairs(ns.FUELS) do keys[#keys + 1] = fuel.key end
-    for _, spec in ipairs(ns.LAYER_INGREDIENTS) do keys[#keys + 1] = spec.key end
-    for _, d in ipairs(ns.Dungeons()) do if ns.INGREDIENTS[d.key] then keys[#keys + 1] = d.key end end
+    local keys = {}
+    for _, key in ipairs({ "milk", "story", "bonk" }) do if ns.DREAM_ITEMS[key] then keys[#keys + 1] = key end end
     return keys
 end
 

@@ -1,7 +1,7 @@
 -- Plinko: drop a ball through the pins into a prize slot (/solc plinko; a place in the window comes later). One free
 -- drop a day (from the daily reset), after that the guild's "Plinko drop" price in points. You aim it along the top's
 -- middle (PLINKO.AIM_W pixels wide), then it really bounces: wherever it lands is the prize (PRIZES: points back or
--- more, a spice for the minting pot, fuel, or a chest of a dungeon at your level). The prizes and odds are placeholders.
+-- more, the Dream Bed's milk, a story or a bonk, or a chest of a dungeon at your level). The prizes and odds are placeholders.
 -- KillTrackerDB.plinko = { day, freeUsed, drops }; points won go to KillTrackerDB.points.plinko (Points.lua: added to
 -- your balance, not to what you've earned, so it never raises your rank).
 --

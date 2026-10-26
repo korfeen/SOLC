@@ -429,12 +429,10 @@ local function Pull(i)
     elseif item.kind == "custom" then
         card.name:SetText(("|cffd8dce0%s|r"):format(item.label))
         card.what:SetText(item.sub or "")
-    else  -- the dungeon's tokens
+    else  -- the Dream Bed's milk, stories and bonks
         card.coin:SetTexture(ns.IngredientIcon(item.dungeon))
         card.name:SetText(("|cffd8dce0+%d %s|r"):format(item.count, ns.IngredientName(item.dungeon)))
-        local dungeon = ns.DungeonByKey and ns.DungeonByKey(item.dungeon)
-        card.what:SetText(ns.DREAM_ITEMS and ns.DREAM_ITEMS[item.dungeon] and "for the Dream Bed"
-            or ("for the minting pot, from " .. (dungeon and dungeon.name or "the dungeon")))
+        card.what:SetText("for the Dream Bed")
     end
     card.name:Hide()
     card.what:Hide()
@@ -821,5 +819,5 @@ function ns.ShowChest(dungeonKey, preview, previewTier, previewSpec)
     panel.screenName = dungeonKey == ns.TRIBUTE and "Ogre Godz Tribute" or ((dungeon and dungeon.name or "Dungeon") .. " Chest")
     if ns.UI.SetScreen then ns.UI.SetScreen(panel.screenName, "LOOT", function() panel:Hide() end) end
 end
--- (its own only: it can be over the kitchen's)
+-- (its own only: it can be over another screen's)
 panel:HookScript("OnHide", function() if ns.UI.ClearScreen and panel.screenName then ns.UI.ClearScreen(panel.screenName) end end)

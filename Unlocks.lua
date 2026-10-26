@@ -292,6 +292,7 @@ end
 function ns.CheckUnlocks(clears)
     local db = KillTrackerDB
     if not db or not clears then return end
+    ns.DropOldIngredients()
     -- (deeds earned before their pieces were made: theirs now, quietly)
     local earned = db.achievements or {}
     for _, layer in ipairs(ns.MintLayers) do
@@ -321,48 +322,9 @@ function ns.CheckUnlocks(clears)
     end
 end
 
--- Dungeon tokens: from a dungeon's chests (KillTrackerDB.tokens = { [dungeon key] = how many }). Thrown into the minting
--- pot (Minting.lua) they make a mint likelier to roll that dungeon's pieces; or TOKEN_SHOP_PRICE of them buys one of its
--- pieces you're missing (MintPot.lua).
-ns.TOKEN_SHOP_PRICE = 15
--- Each dungeon's tokens are an ingredient for the pot (their icons: Media/Icons/Ingredients/<KEY>, tools/make-kitchen-art.js).
-ns.INGREDIENTS = {
-    rfc = "Searing Embers",
-    wc = "Fang Venom",
-    dm = "Defias Doubloons",
-    sfk = "Worgen Fur",
-    bfd = "Twilight Pearls",
-    stocks = "Prison Keys",
-    gnomer = "Irradiated Cogs",
-    rfk = "Bramble Thorns",
-    smgy = "Grave Dirt",
-    smlib = "Scarlet Scrolls",
-    smarm = "Scarlet Ingots",
-    smcath = "Holy Candles",
-    rfd = "Frost Bones",
-    ulda = "Titan Shards",
-    zf = "Sandfury Sand",
-    mara = "Purple Lotus",
-    thanes = "Thane Runes",
-    ruins = "Plague Vials",
-    excav = "Relic Fragments",
-    st = "Dream Leaves",
-    brd = "Dark Iron Ore",
-    lbrs = "Blackrock Shards",
-    ubrs = "Dragon Eggshells",
-    dme = "Felvine Shards",
-    dmw = "Arcane Shards",
-    dmn = "Gordok Green Grog",
-    scholo = "Bone Dust",
-    stratl = "Stratholme Holy Water",
-    stratu = "Righteous Orbs",
-    ony = "Onyxia Scales",
-    barrow = "Barrow Moss",
-    hyjal = "Nordrassil Sap",
-}
 -- The Dream Bed's three (DreamBed.lua): Warm Milk (luck, up to 3 a dream), Bedtime Stories (ask about one piece: 1 to
--- 5 by its rarity) and Bonks (ogres go to sleep by bonking their heads: one a dream; one comes back each day). Kept with the tokens as
--- "milk", "story" and "bonk". From rares, dungeon chests, bounties, plinko and Ogre Rank.
+-- 5 by its rarity) and Bonks (ogres go to sleep by bonking their heads: one a dream; one comes back each day). Kept in
+-- KillTrackerDB.tokens as "milk", "story" and "bonk". From rares, dungeon chests, bounties, plinko and Ogre Rank.
 ns.DREAM_ITEMS = {
     milk = { name = "Warm Milk", icon = "Interface\\Icons\\INV_Drink_Milk_01",
         source = "From rare creatures, dungeon chests and plinko. A mug before bed: wilder dreams (rarer pieces, and the crayons)." },
@@ -371,14 +333,13 @@ ns.DREAM_ITEMS = {
     bonk = { name = "Bonk", icon = "Interface\\Icons\\INV_Hammer_05",
         source = "Ogres go to sleep by bonking their heads: one bonk with the mallet and he's out. One comes back each day (up to 3); more from epic dungeon chests, bounties, plinko and Ogre Rank." },
 }
+ns.INGREDIENTS = {}
 for key, item in pairs(ns.DREAM_ITEMS) do ns.INGREDIENTS[key] = item.name end
-function ns.IngredientName(dungeonKey) return ns.INGREDIENTS[dungeonKey] or "Tokens" end
-function ns.IngredientIcon(dungeonKey)
-    if ns.DREAM_ITEMS[dungeonKey] then return ns.DREAM_ITEMS[dungeonKey].icon end
-    return "Interface\\AddOns\\SOLC\\Media\\Icons\\Ingredients\\" .. dungeonKey:upper()
-end
-function ns.Tokens(dungeonKey) return KillTrackerDB.tokens and KillTrackerDB.tokens[dungeonKey] or 0 end
--- Spends tokens of each dungeon ({ [dungeon key] = how many }); false (and nothing spent) if you don't have them.
+function ns.IngredientName(key) return ns.INGREDIENTS[key] or key end
+function ns.IngredientIcon(key) return ns.DREAM_ITEMS[key] and ns.DREAM_ITEMS[key].icon or "Interface\\Icons\\INV_Misc_QuestionMark" end
+function ns.IngredientSource(key) return ns.DREAM_ITEMS[key] and ns.DREAM_ITEMS[key].source end
+function ns.Tokens(key) return KillTrackerDB.tokens and KillTrackerDB.tokens[key] or 0 end
+-- Spends some of each ({ [key] = how many }); false (and nothing spent) if you don't have them.
 function ns.SpendTokens(spend)
     for key, n in pairs(spend) do
         if n > ns.Tokens(key) then return false end
@@ -386,115 +347,23 @@ function ns.SpendTokens(spend)
     for key, n in pairs(spend) do KillTrackerDB.tokens[key] = ns.Tokens(key) - n end
     return true
 end
--- The dungeons you have tokens of, in the Achievements.lua order: { { dungeon, count } }.
-function ns.TokenList()
-    local list = {}
-    for _, d in ipairs(ns.Dungeons and ns.Dungeons() or {}) do
-        if ns.Tokens(d.key) > 0 then list[#list + 1] = { dungeon = d, count = ns.Tokens(d.key) } end
-    end
-    return list
-end
--- A dungeon's pieces you don't have yet: { { layer, option } }.
-function ns.MissingPieces(dungeonKey)
-    local list = {}
-    for _, unlocked in ipairs(ns.UnlockOptions("clear:" .. dungeonKey)) do
-        if not ns.IsUnlocked(ns.OptionKey(unlocked.layer.key, unlocked.option)) then list[#list + 1] = unlocked end
-    end
-    return list
-end
--- Buys one of a dungeon's missing pieces with its tokens. Returns true, or false and why not.
-function ns.BuyPiece(dungeonKey, key)
-    if ns.Tokens(dungeonKey) < ns.TOKEN_SHOP_PRICE then return false, "Not enough tokens." end
-    local unlocked = ns.OptionByKey(key)
-    if not unlocked or unlocked.option.unlock ~= "clear:" .. dungeonKey then return false, "That isn't one of its pieces." end
-    if ns.IsUnlocked(key) then return false, "You have it already." end
-    ns.SpendTokens({ [dungeonKey] = ns.TOKEN_SHOP_PRICE })
-    ns.UnlockOption(key)
-    ns.ShowToast("achievement", "Unlocked for minting!", unlocked.option.name, "Bought with tokens - it can roll in your pictures now")
-    if ns.OnKillsChanged then ns.OnKillsChanged() end
-    return true
-end
-
--- Layer ingredients (ns.PotPlan, Minting.lua: they aim the pot at a layer, and make it rarer): one per layer, once dropped
--- by the creatures of its types (they don't drop any more: the Dream Bed replaces the pot; kept for those who have some). Fuels for the fire
--- under the pot (ns.FUELS: rarer pieces likelier, each its rarity and up, and the fire burns its colour): from rare
--- creatures and rare chests and up. All kept with the tokens, as l_<layer key> and the fuels' keys.
-ns.LAYER_INGREDIENTS = {
-    { layer = "background", name = "Elemental Mote", types = { "Elemental" } },
-    { layer = "skin", name = "Ectoplasm", types = { "Undead" } },
-    { layer = "outfit", name = "Bolt of Cloth", types = { "Humanoid" } },
-    { layer = "expression", name = "Imp Giggle", types = { "Demon" } },
-    { layer = "eyes", name = "Eye of Newt", types = { "Beast" } },
-    { layer = "accessory", name = "Shiny Trinket", types = { "Mechanical", "Giant" } },
-    { layer = "headwear", name = "Dragon Horn", types = { "Dragonkin" } },
-}
-for _, spec in ipairs(ns.LAYER_INGREDIENTS) do
-    spec.key = "l_" .. spec.layer
-    ns.INGREDIENTS[spec.key] = spec.name
-end
-ns.FUELS = {
-    { key = "frostwood", name = "Frostwood Kindling", rarity = "rare", color = { 0.45, 0.75, 1 } },
-    { key = "shimmer", name = "Shimmer Dust", rarity = "epic", color = { 0.8, 0.45, 1 } },
-    { key = "sunwood", name = "Sunwood Log", rarity = "legendary", color = { 1, 0.62, 0.15 } },
-}
-local fuelByKey = {}
-for _, fuel in ipairs(ns.FUELS) do
-    fuelByKey[fuel.key] = fuel
-    ns.INGREDIENTS[fuel.key] = fuel.name
-end
-function ns.Fuel(key) return fuelByKey[key] end
--- What kind an ingredient is: "dungeon", "layer" or "fuel".
-function ns.IngredientKind(key)
-    if ns.DREAM_ITEMS[key] then return "dream" end
-    if fuelByKey[key] then return "fuel" end
-    if key:match("^l_") then return "layer" end
-    return "dungeon"
-end
--- Where an ingredient comes from, for its tooltip.
-function ns.IngredientSource(key)
-    local kind = ns.IngredientKind(key)
-    if kind == "dream" then return ns.DREAM_ITEMS[key].source end
-    if kind == "fuel" then
-        local fuel = fuelByKey[key]
-        local from = ({ rare = "rare creatures and rare chests", epic = "rare elites and epic chests", legendary = "legendary chests" })[fuel.rarity]
-        return ("From %s. Feed it to the fire: %s pieces get likelier."):format(from, fuel.rarity == "legendary" and "legendary" or (fuel.rarity .. " and better"))
-    end
-    if kind == "layer" then
-        for _, spec in ipairs(ns.LAYER_INGREDIENTS) do
-            if spec.key == key then
-                local layer = key:sub(3)
-                return ("From %s creatures. Aims the pot at the %s, and makes it rarer."):format(table.concat(spec.types, " and "):lower(), layer)
-            end
-        end
-    end
-    local d = ns.DungeonByKey and ns.DungeonByKey(key)
-    return ("From %s's chests. Makes its pieces likelier."):format(d and d.name or "a dungeon")
-end
 function ns.AddIngredient(key, n, quiet)
     local db = KillTrackerDB
     db.tokens = db.tokens or {}
     db.tokens[key] = (db.tokens[key] or 0) + (n or 1)
     if not quiet then
-        ns.Print(("|T%s:16|t You found %s%s, %s."):format(ns.IngredientIcon(key), (n or 1) > 1 and (n .. " ") or "", ns.IngredientName(key),
-            ns.DREAM_ITEMS[key] and "for the Dream Bed" or "for the minting pot"))
+        ns.Print(("|T%s:16|t You found %s%s, for the Dream Bed."):format(ns.IngredientIcon(key), (n or 1) > 1 and (n .. " ") or "",
+            ns.IngredientName(key)))
     end
 end
--- Every ingredient you have, for the pot's shelves: dungeons' (in the Achievements.lua order), layers', then fuels.
--- { { key, count, kind, dungeon (for a dungeon's) } }.
-function ns.IngredientList()
-    local list = {}
-    for _, entry in ipairs(ns.TokenList()) do
-        list[#list + 1] = { key = entry.dungeon.key, count = entry.count, kind = "dungeon", dungeon = entry.dungeon }
+-- (the old minting kitchen's dungeon tokens, layer ingredients and fuels, gone with it: dropped from your saved data)
+function ns.DropOldIngredients()
+    local tokens = KillTrackerDB and KillTrackerDB.tokens
+    for key in pairs(tokens or {}) do
+        if not ns.DREAM_ITEMS[key] then tokens[key] = nil end
     end
-    for _, spec in ipairs(ns.LAYER_INGREDIENTS) do
-        if ns.Tokens(spec.key) > 0 then list[#list + 1] = { key = spec.key, count = ns.Tokens(spec.key), kind = "layer" } end
-    end
-    for _, fuel in ipairs(ns.FUELS) do
-        if ns.Tokens(fuel.key) > 0 then list[#list + 1] = { key = fuel.key, count = ns.Tokens(fuel.key), kind = "fuel" } end
-    end
-    return list
 end
--- Rares give Warm Milk (a rare elite two). (The layer ingredients and fuels don't drop any more: the Dream Bed.)
+-- Rares give Warm Milk (a rare elite two).
 table.insert(ns.KillHandlers, function(_, _, c)
     if c.rank == "Rare" or c.rank == "Rare Elite" then ns.AddIngredient("milk", c.rank == "Rare Elite" and 2 or 1) end
 end)
