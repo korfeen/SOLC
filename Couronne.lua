@@ -62,7 +62,7 @@ local panel, board, persp
 local discs = {}  -- { kind = "white"|"black"|"queen"|"striker", x, y, vx, vy, r, m, sunk, fade, vis = (its looks, both views) }
 local striker
 local G = { state = "aim", shots = 0, penalty = 0, bonus = 0, queenWaiting = false, sunkThisShot = {}, aiming = false,
-    pullX = 0, pullY = 0, msg = "", acc = 0, cost = 0, view = "angled" }
+    pullX = 0, pullY = 0, msg = "", acc = 0, cost = 0, view = "angled", streak = 0, comboT = 0, comboShow = "" }
 
 local function Db()
     KillTrackerDB.couronne = KillTrackerDB.couronne or {}
@@ -213,7 +213,7 @@ local function NewGame()
     discs[#discs + 1] = striker
     for k, d in ipairs(discs) do d.vx, d.vy = 0, 0 DiscVis(d, k) end
     PlaceAll()
-    G.state, G.shots, G.penalty, G.bonus, G.queenWaiting, G.aiming = "aim", 0, 0, 0, false, false
+    G.state, G.shots, G.penalty, G.bonus, G.queenWaiting, G.aiming, G.streak = "aim", 0, 0, 0, false, false, 0
     wipe(G.sunkThisShot)
     Say("Sink all 12 whites. Click your baseline to move the striker, drag back from it to shoot.")
 end
@@ -233,6 +233,7 @@ local function Physics(dt)
                 if slow < K.STOP then slow = 0 end
                 d.vx, d.vy = d.vx / sp * slow, d.vy / sp * slow
                 d.x, d.y = d.x + d.vx * dt, d.y + d.vy * dt
+                d.since = (d.since or 0) + slow * dt  -- (how far it has slid since it joined the combo chain)
                 if slow > 0 then moving = true end
             end
         elseif d.fade and d.fade > 0 then
@@ -258,6 +259,18 @@ local function Physics(dt)
                         b.x, b.y = b.x + nx * o * ma / (ma + mb), b.y + ny * o * ma / (ma + mb)
                         local vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny
                         if vn < 0 then
+                            -- (the combo chain: a disc hit by one already in this shot's chain is one link further along -
+                            -- but only if the hitter slid at least a puck's width on its own first: pucks shoved through
+                            -- a tight cluster, as on the break, don't count)
+                            -- (for the bank and clean shots: what the striker touched; pucks touching each other are no
+                            -- longer clean)
+                            if a == striker then striker.touched = true striker.hit[b] = true
+                            elseif b == striker then striker.touched = true striker.hit[a] = true
+                            else a.dirty, b.dirty = true, true end
+                            local ca, cb = a.chain, b.chain
+                            local free = 2 * K.R
+                            if ca and b.kind ~= "striker" and (a.since or 0) >= free and (cb or 0) < ca + 1 then b.chain, b.since = ca + 1, 0 end
+                            if cb and a.kind ~= "striker" and (b.since or 0) >= free and (ca or 0) < cb + 1 then a.chain, a.since = cb + 1, 0 end
                             local jj = -(1 + K.BOUNCE) * vn / (1 / ma + 1 / mb)
                             a.vx, a.vy = a.vx - nx * jj / ma, a.vy - ny * jj / ma
                             b.vx, b.vy = b.vx + nx * jj / mb, b.vy + ny * jj / mb
@@ -282,6 +295,10 @@ local function Physics(dt)
             end
         end
         if not d.sunk then
+            -- (the striker off a rail before it touched any puck: a bank shot, if a white goes in)
+            local rail = d.x < d.r or d.x > K.S - d.r or d.y < d.r or d.y > K.S - d.r
+            if d == striker and not striker.touched and rail then striker.banked = true end
+            if d ~= striker and rail then d.dirty = true end  -- (a puck off a rail: not a clean shot)
             if d.x < d.r then d.x, d.vx = d.r, math.abs(d.vx) * K.RAIL end
             if d.x > K.S - d.r then d.x, d.vx = K.S - d.r, -math.abs(d.vx) * K.RAIL end
             if d.y < d.r then d.y, d.vy = d.r, math.abs(d.vy) * K.RAIL end
@@ -302,6 +319,38 @@ local function Resolve()
     end
     local parts = {}
     if whites > 0 then parts[#parts + 1] = ("%d white%s in"):format(whites, whites > 1 and "s" or "") end
+    -- In a row: shots sinking a white with no foul; a combo: the longest chain of hits that led to a white going in
+    local db, combo = Db(), 0
+    for _, d in ipairs(G.sunkThisShot) do if d.kind == "white" then combo = math.max(combo, d.chain or 0) end end
+    if whites > 0 and blacks == 0 and not foul then G.streak = G.streak + 1 else G.streak = 0 end
+    if G.streak > (db.bestStreak or 0) then db.bestStreak = G.streak end
+    local bank = whites > 0 and striker.banked
+    -- A clean shot: the striker touched only one puck, a white, straight off the baseline, and it went in without
+    -- touching a rail or another puck.
+    local only, n = nil, 0
+    for d in pairs(striker.hit or {}) do only, n = d, n + 1 end
+    local clean = n == 1 and not striker.banked and not foul and only.kind == "white" and only.sunk and not only.dirty
+    if clean then
+        parts[#parts + 1] = "CLEAN SHOT!"
+        db.cleans = (db.cleans or 0) + 1
+    end
+    if bank then
+        parts[#parts + 1] = "BANK SHOT!"
+        db.banks = (db.banks or 0) + 1
+    end
+    if combo >= 2 then
+        parts[#parts + 1] = ("COMBO x%d!"):format(combo)
+        if combo > (db.bestCombo or 0) then db.bestCombo = combo end
+    end
+    if combo >= 2 or bank or clean then  -- (the big words over the board)
+        local words = {}
+        if clean then words[#words + 1] = "CLEAN SHOT!" end
+        if bank then words[#words + 1] = "BANK SHOT!" end
+        if combo >= 2 then words[#words + 1] = ("COMBO x%d!"):format(combo) end
+        G.comboShow = table.concat(words, "\n")
+        G.comboT = 1.8
+        pcall(PlaySound, SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST or 120)
+    end
     if blacks > 0 then
         G.penalty = G.penalty + blacks
         parts[#parts + 1] = ("%d black%s: +%d"):format(blacks, blacks > 1 and "s" or "", blacks)
@@ -341,7 +390,7 @@ local function Resolve()
         end
     end
     if WhitesLeft() == 0 then
-        local db, score = Db(), Score()
+        local score = Score()
         local best = not db.best or score < db.best
         if best then db.best = score end
         G.state = "done"
@@ -368,6 +417,8 @@ local function Shoot()
     local power = pull ^ K.CURVE
     if pull < 0.03 then return end  -- (a click, not a pull)
     striker.vx, striker.vy = dx / len * power * K.SPEED, dy / len * power * K.SPEED
+    for _, d in ipairs(discs) do d.chain, d.since, d.dirty = nil, 0, nil end
+    striker.chain, striker.since, striker.touched, striker.banked, striker.hit = 0, 1e9, false, false, {}  -- (the start of the combo chain: what it hits is link 1)
     G.state, G.shots = "moving", G.shots + 1
     pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB or 841)
     Say("...")
@@ -427,6 +478,16 @@ local function Refresh()
     local best = KillTrackerDB and KillTrackerDB.couronne and KillTrackerDB.couronne.best
     panel.best:SetText(best and ("Best %d"):format(best) or "No best yet")
     panel.left:SetText(("%d whites left%s"):format(WhitesLeft(), G.queenWaiting and "  -  cover the queen!" or ""))
+    local db = KillTrackerDB and KillTrackerDB.couronne or {}
+    panel.streak:SetText(("In a row %d (best %d)\nBest combo x%d   Bank %d   Clean %d"):format(G.streak, db.bestStreak or 0, db.bestCombo or 0, db.banks or 0, db.cleans or 0))
+    -- the combo, big over the board, fading
+    if G.comboT and G.comboT > 0 then
+        panel.combo:SetText(G.comboShow)
+        panel.combo:SetAlpha(math.min(1, G.comboT / 0.5))
+        panel.combo:Show()
+    else
+        panel.combo:Hide()
+    end
     panel.stat:SetText(("Lua %.1f ms"):format(G.cost))
 end
 
@@ -444,6 +505,7 @@ local function OnUpdate(_, elapsed)
         if not moving then G.acc = 0 Resolve() PlaceAll() end
     end
     DrawAim()
+    if G.comboT and G.comboT > 0 then G.comboT = G.comboT - elapsed end
     G.cost = G.cost * 0.9 + (debugprofilestop() - t0) * 0.1
     Refresh()
 end
@@ -674,8 +736,13 @@ local function Build()
     panel.shots:SetPoint("TOPLEFT", x0, -138)
     panel.left = Text(panel, 13)
     panel.left:SetPoint("TOPLEFT", x0, -158)
+    panel.streak = Text(panel, 13, { 0.95, 0.76, 0.3 })
+    panel.streak:SetPoint("TOPLEFT", x0, -178)
+    panel.combo = Text(panel, 38, { 1, 0.84, 0.2 })
+    panel.combo:SetPoint("CENTER", panel, "TOPLEFT", 300, -110)
+    panel.combo:Hide()
     panel.msg = Text(panel, 15)
-    panel.msg:SetPoint("TOPLEFT", x0, -190)
+    panel.msg:SetPoint("TOPLEFT", x0, -218)
     panel.msg:SetWidth(200)
     panel.msg:SetJustifyH("LEFT")
     local rules = Text(panel, 12, { 0.73, 0.65, 0.51 })
