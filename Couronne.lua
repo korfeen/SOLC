@@ -347,7 +347,7 @@ local function Resolve()
         if clean then words[#words + 1] = "CLEAN SHOT!" end
         if bank then words[#words + 1] = "BANK SHOT!" end
         if combo >= 2 then words[#words + 1] = ("COMBO x%d!"):format(combo) end
-        G.comboShow = table.concat(words, "\n")
+        G.comboShow = table.concat(words, "   ")
         G.comboT = 1.8
         pcall(PlaySound, SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST or 120)
     end
@@ -738,8 +738,13 @@ local function Build()
     panel.left:SetPoint("TOPLEFT", x0, -158)
     panel.streak = Text(panel, 13, { 0.95, 0.76, 0.3 })
     panel.streak:SetPoint("TOPLEFT", x0, -178)
-    panel.combo = Text(panel, 38, { 1, 0.84, 0.2 })
-    panel.combo:SetPoint("CENTER", panel, "TOPLEFT", 300, -110)
+    -- (the shot words: on a frame over the board, in the gap between the window's top and the board's far rim)
+    local words = CreateFrame("Frame", nil, panel)
+    words:SetAllPoints()
+    words:SetFrameLevel(persp:GetFrameLevel() + 200)
+    panel.combo = Text(words, 30, { 1, 0.84, 0.2 })
+    local _, rimTop = PA(K.S / 2, -K.RIM, A.RIMH)
+    panel.combo:SetPoint("CENTER", panel, "TOPLEFT", 10 + A.VW / 2, -(12 + rimTop) / 2)
     panel.combo:Hide()
     panel.msg = Text(panel, 15)
     panel.msg:SetPoint("TOPLEFT", x0, -218)
