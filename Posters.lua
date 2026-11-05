@@ -269,9 +269,9 @@ local AUTO = "auto"
 -- tables are Guild.lua's, shared; the poster keeps its own fields). nil if unknown.
 -- (their own descriptions: a custom bounty's own is only "Members of Troll, Frostmane.")
 local EXTRA_DESC = {
-    kind_kobold = "Candle-headed kobolds in the mines of Elwynn and Dun Morogh. You no take candle!",
-    kind_gnoll = "Gnolls of Elwynn, Westfall and Redridge. Mangy, loud and everywhere.",
-    kind_trogg = "Troggs bursting out of the ground in Dun Morogh, Loch Modan and the Wetlands.",
+    kind_kobold = "Candle-headed kobolds in mines and tunnels all over the world. You no take candle!",
+    kind_gnoll = "Gnolls of any pack, anywhere. Mangy, loud and everywhere.",
+    kind_trogg = "Troggs of any kind, wherever they burst out of the ground.",
     tribe_trollfrostmane = "Frostmane trolls in the snowy hills and caves of Dun Morogh. Levels 5-12.",
     tribe_gnollriverpaw = "Riverpaw gnolls raiding the farms of Westfall. Levels 10-20.",
     tribe_gnollredridge = "Redridge gnolls overrunning Redridge and Lakeshire's borders. Levels 15-25.",
