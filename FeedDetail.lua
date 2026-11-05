@@ -111,7 +111,7 @@ local function Describe(item)
         for _, perk in ipairs(ns.RANK_PERKS or {}) do
             if perk.rank == tonumber(e.a) then
                 if not unlocked then Add("Unlocked", "head") unlocked = true end
-                Add(YES .. perk.text)
+                Add(YES .. ns.PerkLabel(perk))
             end
         end
     elseif kind == "G" then  -- a gift from an officer (Dev.lua): a chest

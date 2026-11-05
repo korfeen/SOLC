@@ -31,7 +31,7 @@ local TITLE_COLOR = { 0.94, 0.69, 0.38 }
 local BAR_COLOR, BAR_TRACK = { 1, 0.85, 0.01 }, { 0.16, 0.12, 0.11 }
 local PANEL_TEXT = { 0.93, 0.88, 0.78 }
 local ARROW_DIM = { 0.75, 0.7, 0.62 }
-local RANK_LINES = 20                        -- perk lines in the rank panel
+local RANK_ROWS = 6                          -- ranks listed in the rank panel (the one you're on and the next ones)
 
 -- The slots of a split page, and the header, in window pixels (from its top-left, y down; centres unless said).
 local SPLIT = {
@@ -536,15 +536,25 @@ local function Build()
     perksHeading:SetTextColor(1, 0.82, 0.25)
     perksHeading:SetPoint("TOPLEFT", 4, -66)
     perksHeading:SetText("Rank perks")
-    rank.lines = {}
-    for i = 1, RANK_LINES do
-        local line = rank:CreateFontString(nil, "OVERLAY")
-        line:SetFont(NAME_FONT, 12, "")
-        line:SetPoint("TOPLEFT", 4, -68 - i * 16)
-        line:SetWidth(slot.right - slot.left - 28)
-        line:SetJustifyH("LEFT")
-        line:SetWordWrap(false)
-        rank.lines[i] = line
+    -- A row a rank: "rank 3" and what it brings (wrapping onto a second line if it must), then the rest summed up.
+    rank.rows = {}
+    local above
+    for i = 1, RANK_ROWS + 1 do
+        local row = {}
+        row.text = rank:CreateFontString(nil, "OVERLAY")
+        row.text:SetFont(NAME_FONT, 12, "")
+        row.text:SetWidth(slot.right - slot.left - 92)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(true)
+        row.text:SetMaxLines(2)
+        if above then row.text:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -4) else row.text:SetPoint("TOPLEFT", 66, -88) end
+        row.label = rank:CreateFontString(nil, "OVERLAY")
+        row.label:SetFont(NAME_FONT, 12, "")
+        row.label:SetWidth(62)
+        row.label:SetJustifyH("LEFT")
+        row.label:SetPoint("TOPRIGHT", row.text, "TOPLEFT", -2, 0)
+        above = row.text
+        rank.rows[i] = row
     end
     header.rank = rank
     BuildEditor(W, h, At)
@@ -1076,20 +1086,30 @@ function Fill(key)
     rank.title:SetText(current.title)
     rank.points:SetText(nextRank and ("%d points - %d more to %s"):format(points, nextRank.points - points, nextRank.title)
         or ("%d points - the top rank"):format(points))
-    -- (more perks than lines: the last few reached, then what comes next)
-    local first = 1
-    for i, perk in ipairs(ns.RANK_PERKS) do
-        if perk.rank <= current.rank then first = i end
+    -- The ranks with perks: the last one you've reached, then the next ones (RANK_ROWS in all), then the rest summed up.
+    local ranks, seenRank = {}, {}
+    for _, perk in ipairs(ns.RANK_PERKS) do
+        if not seenRank[perk.rank] then seenRank[perk.rank] = true ranks[#ranks + 1] = perk.rank end
     end
-    first = math.max(1, math.min(first - 3, #ns.RANK_PERKS - #rank.lines + 1))
-    for i, line in ipairs(rank.lines) do
-        local perk = ns.RANK_PERKS[first + i - 1]
-        if perk then
-            local unlocked = perk.rank <= current.rank
-            line:SetText(("%s|cff999999rank %d|r  %s"):format(unlocked and "|cff55dd55+|r " or "   ", perk.rank,
-                unlocked and perk.text or "|cff888888" .. perk.text .. "|r"))
+    local first = 1
+    for i, r in ipairs(ranks) do if r <= current.rank then first = i end end
+    local last = math.min(#ranks, first + RANK_ROWS - 1)
+    first = math.max(1, last - RANK_ROWS + 1)
+    for i, row in ipairs(rank.rows) do
+        local r = i <= RANK_ROWS and ranks[first + i - 1]
+        if r then
+            local reached = r <= current.rank
+            row.label:SetText(("%s|cff%srank %d|r"):format(reached and "|cff55dd55+|r " or "   ", reached and "cccccc" or "999999", r))
+            row.text:SetText(ns.RankPerksLine(r))
+            row.text:SetTextColor(unpack(reached and PANEL_TEXT or { 0.62, 0.6, 0.56 }))
+        elseif i == #rank.rows then  -- (the summary)
+            row.label:SetText("")
+            row.text:SetText(ranks[last] and ns.RankPerksAfter(ranks[last]) and ("|cff888888...%s|r"):format(ns.RankPerksAfter(ranks[last])) or "")
         end
-        line:SetShown(perk ~= nil)
+        local shown = (r or i == #rank.rows) and true or false
+        row.label:SetShown(shown)
+        row.text:SetShown(shown)
+        if not shown then row.text:SetText("") end
     end
 
     -- The icons (glowing at level 60).

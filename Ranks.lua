@@ -20,56 +20,102 @@ end
 
 -- The perks, by the rank that unlocks them. kind: what it does (read by the functions below); text: for the list.
 ns.RANK_PERKS = {
-    { rank = 3, kind = "crayons", value = 2, text = "Two more ogre crayons (ogre mode's letters)" },
-    { rank = 4, kind = "nameColor", id = "silver", name = "Silver", value = { 0.8, 0.84, 0.9 }, text = "Silver name on your card" },
-    { rank = 6, kind = "ogreStyle", value = "sketch", text = "Your ogre in pencil sketch (EDIT's STYLE)" },
-    { rank = 8, kind = "voices", value = 2, text = "Ogre voices on clicks twice as often" },
-    { rank = 10, kind = "luck", value = 1.25, text = "Lucky minting: epic and legendary layers 25% likelier" },
-    { rank = 12, kind = "nameColor", id = "gold", name = "Gold", value = { 1, 0.82, 0.25 }, text = "Gold name on your card" },
-    { rank = 12, kind = "crayons", value = 2, text = "Two more ogre crayons" },
-    { rank = 14, kind = "ogreStyle", value = "crayon", text = "Your ogre in crayon (EDIT's STYLE)" },
-    { rank = 16, kind = "voices", value = 3, text = "Ogre voices on clicks three times as often" },
-    { rank = 18, kind = "luck", value = 1.5, text = "Luckier minting: epic and legendary layers 50% likelier" },
-    { rank = 20, kind = "crayons", value = 3, text = "Three more ogre crayons" },
-    { rank = 22, kind = "wallpaper", value = "blocks", text = "The Blue Blocks wallpaper (EDIT's Wallpaper)" },
-    { rank = 24, kind = "nameColor", id = "orange", name = "Ogre Orange", value = { 1, 0.5, 0.2 }, text = "Ogre-orange name on your card" },
-    { rank = 26, kind = "luck", value = 2, text = "Luckiest minting: epic and legendary layers twice as likely" },
-    { rank = 30, kind = "nameColor", id = "pink", name = "Grand Sleepy Pink", value = { 1, 0.4, 0.75 }, text = "Grand Sleepy Ogre pink name on your card" },
+    { rank = 3, kind = "crayons", value = 2, text = "Two more ogre crayons (ogre mode's letters)", short = "2 crayons" },
+    { rank = 4, kind = "nameColor", id = "silver", name = "Silver", value = { 0.8, 0.84, 0.9 }, text = "Silver name on your card", short = "Silver name" },
+    { rank = 6, kind = "ogreStyle", value = "sketch", text = "Your ogre in pencil sketch (EDIT's STYLE)", short = "Pencil sketch" },
+    { rank = 8, kind = "voices", value = 2, text = "Ogre voices on clicks twice as often", short = "Voices x2" },
+    { rank = 10, kind = "luck", value = 1.25, text = "Lucky minting: epic and legendary layers 25% likelier", short = "Luck +25%" },
+    { rank = 12, kind = "nameColor", id = "gold", name = "Gold", value = { 1, 0.82, 0.25 }, text = "Gold name on your card", short = "Gold name" },
+    { rank = 12, kind = "crayons", value = 2, text = "Two more ogre crayons", short = "2 crayons" },
+    { rank = 14, kind = "ogreStyle", value = "crayon", text = "Your ogre in crayon (EDIT's STYLE)", short = "Crayon style" },
+    { rank = 16, kind = "voices", value = 3, text = "Ogre voices on clicks three times as often", short = "Voices x3" },
+    { rank = 18, kind = "luck", value = 1.5, text = "Luckier minting: epic and legendary layers 50% likelier", short = "Luck +50%" },
+    { rank = 20, kind = "crayons", value = 3, text = "Three more ogre crayons", short = "3 crayons" },
+    { rank = 22, kind = "wallpaper", value = "blocks", text = "The Blue Blocks wallpaper (EDIT's Wallpaper)", short = "Blue Blocks wallpaper" },
+    { rank = 24, kind = "nameColor", id = "orange", name = "Ogre Orange", value = { 1, 0.5, 0.2 }, text = "Ogre-orange name on your card", short = "Orange name" },
+    { rank = 26, kind = "luck", value = 2, text = "Luckiest minting: epic and legendary layers twice as likely", short = "Luck x2" },
+    { rank = 30, kind = "nameColor", id = "pink", name = "Grand Sleepy Pink", value = { 1, 0.4, 0.75 }, text = "Grand Sleepy Ogre pink name on your card", short = "Pink name" },
     -- Picture pieces (MintArt.lua options with unlock "rank:<n>", tools/convert-art.js BASE_UNLOCKS): the epics and
-    -- legendaries that used to be free, one a rank (2026-11-05). CheckRank unlocks them.
-    { rank = 2, kind = "piece", key = "expression:sea_dog_grin", text = "Sea Dog Grin (epic mouth) for your pictures" },
-    { rank = 3, kind = "piece", key = "eyes:dreamy_swirl", text = "Dreamy Swirl (epic eyes) for your pictures" },
-    { rank = 4, kind = "piece", key = "accessory:pirate_eyepatch", text = "Pirate Eyepatch (epic held item) for your pictures" },
-    { rank = 5, kind = "piece", key = "background:pool_with_floaties", text = "Pool with Floaties (epic place) for your pictures" },
-    { rank = 6, kind = "piece", key = "accessory:floating_sheep", text = "Floating Sheep (epic held item) for your pictures" },
-    { rank = 7, kind = "piece", key = "outfit:pirate_captain_coat", text = "Pirate Captain Coat (epic clothes) for your pictures" },
-    { rank = 8, kind = "piece", key = "headwear:astral_nightcap", text = "Astral Nightcap (epic hat) for your pictures" },
-    { rank = 9, kind = "piece", key = "expression:crystal_drool", text = "Crystal Drool (legendary mouth) for your pictures" },
-    { rank = 10, kind = "piece", key = "accessory:moonstone_pendant", text = "Moonstone Pendant (legendary held item) for your pictures" },
-    { rank = 11, kind = "piece", key = "expression:stardust_snore", text = "Stardust Snore (legendary mouth) for your pictures" },
-    { rank = 13, kind = "piece", key = "eyes:starlit_dreamer", text = "Starlit Dreamer (legendary eyes) for your pictures" },
-    { rank = 14, kind = "piece", key = "outfit:celestial_pajamas", text = "Celestial Pajamas (legendary clothes) for your pictures" },
-    { rank = 15, kind = "piece", key = "skin:sea_cursed_teal", text = "Sea Cursed Teal (legendary skin) for your pictures" },
-    { rank = 17, kind = "piece", key = "headwear:dragon_hatchling_hat", text = "Dragon Hatchling Hat (legendary hat) for your pictures" },
-    { rank = 19, kind = "piece", key = "outfit:dragonhide_golf_jacket", text = "Dragonhide Golf Jacket (legendary clothes) for your pictures" },
-    { rank = 21, kind = "piece", key = "skin:enchanted_jade", text = "Enchanted Jade (legendary skin) for your pictures" },
-    { rank = 23, kind = "piece", key = "background:floating_sky_spa", text = "Floating Sky Spa (legendary place) for your pictures" },
-    { rank = 24, kind = "piece", key = "outfit:royal_nap_robe", text = "Royal Nap Robe (legendary clothes) for your pictures" },
-    { rank = 25, kind = "piece", key = "accessory:pocket_portal", text = "Pocket Portal (legendary held item) for your pictures" },
-    { rank = 27, kind = "piece", key = "skin:celestial_blue", text = "Celestial Blue (legendary skin) for your pictures" },
-    { rank = 28, kind = "piece", key = "headwear:crown_of_eternal_rest", text = "Crown of Eternal Rest (legendary hat) for your pictures" },
-    { rank = 29, kind = "piece", key = "background:dragon_over_the_fairway", text = "Dragon over the Fairway (legendary place) for your pictures" },
+    -- legendaries that used to be free, one a rank from 3, when minting opens (2026-11-05). CheckRank unlocks them.
+    { rank = 3, kind = "piece", key = "expression:sea_dog_grin" },
+    { rank = 4, kind = "piece", key = "eyes:dreamy_swirl" },
+    { rank = 5, kind = "piece", key = "accessory:pirate_eyepatch" },
+    { rank = 6, kind = "piece", key = "background:pool_with_floaties" },
+    { rank = 7, kind = "piece", key = "accessory:floating_sheep" },
+    { rank = 8, kind = "piece", key = "outfit:pirate_captain_coat" },
+    { rank = 9, kind = "piece", key = "headwear:astral_nightcap" },
+    { rank = 10, kind = "piece", key = "expression:crystal_drool" },
+    { rank = 11, kind = "piece", key = "accessory:moonstone_pendant" },
+    { rank = 13, kind = "piece", key = "expression:stardust_snore" },
+    { rank = 14, kind = "piece", key = "eyes:starlit_dreamer" },
+    { rank = 15, kind = "piece", key = "outfit:celestial_pajamas" },
+    { rank = 17, kind = "piece", key = "skin:sea_cursed_teal" },
+    { rank = 19, kind = "piece", key = "headwear:dragon_hatchling_hat" },
+    { rank = 21, kind = "piece", key = "outfit:dragonhide_golf_jacket" },
+    { rank = 23, kind = "piece", key = "skin:enchanted_jade" },
+    { rank = 24, kind = "piece", key = "background:floating_sky_spa" },
+    { rank = 25, kind = "piece", key = "outfit:royal_nap_robe" },
+    { rank = 26, kind = "piece", key = "accessory:pocket_portal" },
+    { rank = 27, kind = "piece", key = "skin:celestial_blue" },
+    { rank = 28, kind = "piece", key = "headwear:crown_of_eternal_rest" },
+    { rank = 29, kind = "piece", key = "background:dragon_over_the_fairway" },
     -- The rank frames (Frames.lua's unlock "rank:<n>", checked there: these are for the list only).
-    { rank = 2, kind = "frame", text = "The Polaroid picture frame" },
-    { rank = 3, kind = "frame", text = "The Honey Wood picture frame" },
-    { rank = 5, kind = "frame", text = "The Driftwood picture frame" },
-    { rank = 8, kind = "frame", text = "The Dungeon Iron picture frame" },
-    { rank = 12, kind = "frame", text = "The Gilded picture frame" },
-    { rank = 20, kind = "frame", text = "The Bone and Tusk picture frame" },
-    { rank = 30, kind = "piece", key = "skin:grand_sleepy_pink", text = "Grand Sleepy Pink (legendary skin) for your pictures" },
+    { rank = 3, kind = "frame", short = "Polaroid frame" },
+    { rank = 4, kind = "frame", short = "Honey Wood frame" },
+    { rank = 5, kind = "frame", short = "Driftwood frame" },
+    { rank = 8, kind = "frame", short = "Dungeon Iron frame" },
+    { rank = 12, kind = "frame", short = "Gilded frame" },
+    { rank = 20, kind = "frame", short = "Bone and Tusk frame" },
+    { rank = 30, kind = "piece", key = "skin:grand_sleepy_pink" },
 }
 
-table.sort(ns.RANK_PERKS, function(a, b) return a.rank < b.rank end)
+local KIND_ORDER = { piece = 1, frame = 2 }  -- (within a rank: the picture piece, the frame, then the rest)
+table.sort(ns.RANK_PERKS, function(a, b)
+    if a.rank ~= b.rank then return a.rank < b.rank end
+    local ka, kb = KIND_ORDER[a.kind] or 3, KIND_ORDER[b.kind] or 3
+    if ka ~= kb then return ka < kb end
+    return (a.short or a.key or "") < (b.short or b.key or "")
+end)
+
+-- A perk's short label, for the lists: a picture piece's name in its rarity's colour (MintArt.lua: loaded later, so
+-- looked up when asked), else its short.
+function ns.PerkLabel(perk)
+    if perk.kind == "piece" then
+        local found = ns.OptionByKey and ns.OptionByKey(perk.key)
+        if found then return ("|c%s%s|r"):format(ns.RARITY_COLORS and ns.RARITY_COLORS[found.option.rarity] or "ffffffff", found.option.name) end
+    end
+    return perk.short or perk.text or "?"
+end
+-- What a rank brings, as one line ("Sea Dog Grin, Polaroid frame, 2 crayons"), or nil.
+function ns.RankPerksLine(rank)
+    local labels = {}
+    for _, perk in ipairs(ns.RANK_PERKS) do
+        if perk.rank == rank then labels[#labels + 1] = ns.PerkLabel(perk) end
+    end
+    return #labels > 0 and table.concat(labels, ", ") or nil
+end
+-- The perks after a rank, summed up: "24 more ranks: 16 picture pieces, 2 frames, 3 name colours, luck, a style".
+local SUM = { { "piece", "picture piece", "picture pieces" }, { "frame", "frame", "frames" }, { "nameColor", "name colour", "name colours" },
+    { "ogreStyle", "a style", "styles" }, { "crayons", "crayons", "crayons" }, { "voices", "voices", "voices" }, { "luck", "luck", "luck" },
+    { "wallpaper", "a wallpaper", "wallpapers" } }
+local COUNTED = { piece = true, frame = true, nameColor = true }
+function ns.RankPerksAfter(rank)
+    local counts, ranks = {}, {}
+    for _, perk in ipairs(ns.RANK_PERKS) do
+        if perk.rank > rank then
+            counts[perk.kind] = (counts[perk.kind] or 0) + 1
+            ranks[perk.rank] = true
+        end
+    end
+    local parts, n = {}, 0
+    for _ in pairs(ranks) do n = n + 1 end
+    if n == 0 then return nil end
+    for _, s in ipairs(SUM) do
+        local c = counts[s[1]]
+        if c then parts[#parts + 1] = COUNTED[s[1]] and ("%d %s"):format(c, c == 1 and s[2] or s[3]) or (c == 1 and s[2] or s[3]) end
+    end
+    return ("%d more rank%s: %s"):format(n, n == 1 and "" or "s", table.concat(parts, ", "))
+end
 
 -- Someone's rank: you (key nil) or a synced guildmate. Returns the rank's entry, the next one's (nil at the top)
 -- and their lifetime points.
@@ -195,11 +241,11 @@ function ns.CheckRank()
     end
     if ns.AddIngredient then ns.AddIngredient("bonk", bonks, true) end
     local unlocked = {}
-    for _, perk in ipairs(ns.RANK_PERKS) do
-        if perk.rank > seen and perk.rank <= current.rank then unlocked[#unlocked + 1] = perk.text end
+    for rank = seen + 1, current.rank do unlocked[#unlocked + 1] = ns.RankPerksLine(rank) end
+    if not (ns.RankLocked and ns.RankLocked("pixcollection")) then  -- (no Dream Bed talk before it's open: Onboarding.lua)
+        unlocked[#unlocked + 1] = ("%d %s for the Dream Bed"):format(bonks, bonks == 1 and "Bonk" or "Bonks")
     end
-    unlocked[#unlocked + 1] = ("%d %s for the Dream Bed"):format(bonks, bonks == 1 and "Bonk" or "Bonks")
-    ns.ShowToast("achievement", ("Rank %d!"):format(current.rank), current.title, unlocked[1])
+    ns.ShowToast("achievement", ("Rank %d!"):format(current.rank), current.title, ns.RankPerksLine(current.rank) or unlocked[1])
     ns.Print(("You reached rank %d: |cffff8000%s|r%s"):format(current.rank, current.title,
         #unlocked > 0 and (". Unlocked: " .. table.concat(unlocked, "; ")) or ""))
     if ns.OnKillsChanged then ns.OnKillsChanged() end

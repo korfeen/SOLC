@@ -16,8 +16,8 @@ const SIZE = 512;
 // The frames, in order: name, how you get it.
 const FRAMES = [
   { id: "taped", name: "Taped Up", back: "under" },  // (back: how its back is made, see Back)
-  { id: "polaroid", name: "Polaroid", unlock: "rank:2", back: "plain" },
-  { id: "wood", name: "Honey Wood", unlock: "rank:3" },
+  { id: "polaroid", name: "Polaroid", unlock: "rank:3", back: "plain" },
+  { id: "wood", name: "Honey Wood", unlock: "rank:4" },
   { id: "driftwood", name: "Driftwood", unlock: "rank:5" },
   { id: "gilded", name: "Gilded", unlock: "rank:12" },
   { id: "bone", name: "Bone and Tusk", unlock: "rank:20" },
