@@ -25,7 +25,7 @@ local PARCH, INK = { 0.96, 0.93, 0.86 }, { 0.16, 0.11, 0.06 }
 local PAPER = { uncommon = "ff17801a", rare = "ff1257b0", epic = "ff7a22c4", legendary = "ffb35c00" }
 local function PaperColor(rarity) return PAPER[rarity] or ns.RARITY_COLORS[rarity] end
 local RIM = { uncommon = { 0.6, 0.6, 0.6 }, rare = { 0.23, 0.54, 0.88 }, epic = { 0.6, 0.29, 0.88 }, legendary = { 0.88, 0.63, 0.13 } }
-local CHAPTERS = { { "headwear", "Hats", "HATS" }, { "outfit", "Clothes", "CLOTH" }, { "accessory", "Things he holds", "STUFF" },
+local CHAPTERS = { { "headwear", "Hats", "HATS" }, { "outfit", "Clothes", "CLOTH" }, { "accessory", "Accessories", "STUFF" },
     { "background", "Places", "PLACE" }, { "skin", "Ogres", "OGRE" }, { "eyes", "Eyes", "EYES" }, { "expression", "Mouths", "MOUTH" } }
 local CARDS_PER_PAGE = 9  -- (3 x 3 on the storybook's right page)
 -- Your ogre's face for each moment: eyes and expression option ids (the minting art's own).
@@ -415,15 +415,6 @@ local function ShowBook(show)
         local key = CHAPTERS[i][1]
         button.label:SetText(O(CHAPTERS[i][2], CHAPTERS[i][3]))
         button:Paint(key == chapter)
-        local sample = spread.sel and spread.sel.layer == key and spread.sel.option
-        if not sample then
-            for _, layer in ipairs(ns.MintLayers) do
-                if layer.key == key then
-                    for _, option in ipairs(layer.options) do if ns.MintAllowed(option) then sample = option break end end
-                end
-            end
-        end
-        if sample and button.sample ~= sample then button.sample = sample ns.DrawPiece(button.canvas, key, sample) end
     end
     local stories = ns.Tokens("story")
     for i, card in ipairs(spread.cards) do
@@ -836,54 +827,60 @@ local function InkWord(parent, size, onClick)
     b:SetScript("OnLeave", function(self) self.hovered = false self:Paint(self.on) end)
     return b
 end
-
--- The storybook: the Collection's red book (its painting, cover and all) lying open over the room.
-local BOOK_ART = "Interface\\AddOns\\SOLC\\Media\\Collection\\book"
--- (its parchment pages in the painting, painting pixels: the gold corners left out; the cover is drawn here)
-local BOOK_SHEETS = { left = { 175, 760 }, right = { 778, 1375 }, top = 125, bottom = 855, w = 1536, h = 1024 }
-local COVER, SPINE = 12, 3  -- (the leather showing round the pages; the gap at the fold, either side)
+-- The storybook: a big thought cloud over the sleeping ogre.
 local function BuildBook()
     local spread = CreateFrame("Frame", nil, W.screen)
-    local bw = S.w * 0.9
-    local bh = bw * 0.62
+    local bw = S.w * 0.84
+    local bh = bw * 0.58
     spread:SetSize(bw, bh)
-    spread:SetPoint("CENTER", 0, -4)
+    spread:SetPoint("TOP", 20, -18)  -- (high and a little right: its trail of puffs runs down to his head)
     spread:SetFrameLevel(W.screen:GetFrameLevel() + 40)
     spread:EnableMouse(true)
     spread.chapter, spread.page = "headwear", 0
     local shade = spread:CreateTexture(nil, "BACKGROUND", nil, -8)
     shade:SetPoint("TOPLEFT", W.screen) shade:SetPoint("BOTTOMRIGHT", W.screen)
     shade:SetColorTexture(0.04, 0.03, 0.09, 0.6)
-    -- The cover: red leather, a darker edge, lighter towards the middle; the pages on it, the spine's shadow between.
-    local edge = spread:CreateTexture(nil, "BACKGROUND", nil, -8)
-    edge:SetAllPoints()
-    edge:SetColorTexture(0.22, 0.04, 0.03)
-    local leather = spread:CreateTexture(nil, "BACKGROUND", nil, -7)
-    leather:SetPoint("TOPLEFT", 3, -3) leather:SetPoint("BOTTOMRIGHT", -3, 3)
-    leather:SetColorTexture(1, 1, 1)
-    leather:SetGradient("VERTICAL", CreateColor(0.36, 0.07, 0.05, 1), CreateColor(0.52, 0.12, 0.08, 1))
-    local B = BOOK_SHEETS
-    local pageW, pageH = bw / 2 - COVER - SPINE, bh - 2 * COVER
-    for i, side in ipairs({ B.left, B.right }) do
-        local sheet = spread:CreateTexture(nil, "BACKGROUND", nil, -6)
-        sheet:SetTexture(BOOK_ART)
-        sheet:SetTexCoord(side[1] / B.w, side[2] / B.w, B.top / B.h, B.bottom / B.h)
-        sheet:SetPoint("TOPLEFT", i == 1 and COVER or bw / 2 + SPINE, -COVER)
-        sheet:SetSize(pageW, pageH)
+    -- The cloud: two lobes of cream (a filled middle, puffy discs round its edge - a brown outline disc behind each, as
+    -- the little thought bubble's), a gap between them bridged by two small puffs, and puffs trailing down to his head.
+    local function Blob(x, y, d, pass)
+        local t = spread:CreateTexture(nil, pass == 1 and "BACKGROUND" or "BORDER", nil, pass == 1 and -6 or 0)
+        t:SetTexture(DISC)
+        t:SetSize(pass == 1 and d + 6 or d, pass == 1 and d + 6 or d)
+        t:SetPoint("CENTER", spread, "TOPLEFT", x, -y)
+        if pass == 1 then t:SetVertexColor(0.45, 0.3, 0.15) else t:SetVertexColor(PARCH[1], PARCH[2], PARCH[3]) end
     end
-    -- (the fold: a soft shadow either side of the middle)
-    for side = 1, 2 do
-        local t = spread:CreateTexture(nil, "BACKGROUND", nil, -5)
-        t:SetPoint(side == 1 and "TOPRIGHT" or "TOPLEFT", spread, "TOP", 0, -COVER)
-        t:SetPoint(side == 1 and "BOTTOMRIGHT" or "BOTTOMLEFT", spread, "BOTTOM", 0, COVER)
-        t:SetWidth(SPINE + 18)
-        t:SetColorTexture(1, 1, 1)
-        if side == 1 then t:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.3))
-        else t:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.3), CreateColor(0, 0, 0, 0)) end
+    local GAP, PUFF = 18, 44
+    local lobes = { { x = PUFF / 2, y = PUFF / 2, w = bw * 0.34 - PUFF, h = bh - PUFF },
+        { x = bw * 0.34 + GAP + PUFF / 2, y = PUFF / 2, w = bw * 0.66 - GAP - PUFF, h = bh - PUFF } }
+    for pass = 1, 2 do
+        for li, lobe in ipairs(lobes) do
+            -- (round its edge, a disc every so often, sizes varying a little: puffy)
+            local edge = {}
+            local function Along(x0, y0, x1, y1)
+                local n = math.max(1, math.floor(math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) / (PUFF * 0.62)))
+                for k = 0, n - 1 do edge[#edge + 1] = { x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n } end
+            end
+            local x0, y0, x1, y1 = lobe.x, lobe.y, lobe.x + lobe.w, lobe.y + lobe.h
+            Along(x0, y0, x1, y0) Along(x1, y0, x1, y1) Along(x1, y1, x0, y1) Along(x0, y1, x0, y0)
+            for k, p in ipairs(edge) do Blob(p[1], p[2], PUFF * (0.9 + 0.25 * ((k * 7 + li * 3) % 5) / 4), pass) end
+            if pass == 2 then
+                local fill = spread:CreateTexture(nil, "BORDER", nil, 1)
+                fill:SetColorTexture(PARCH[1], PARCH[2], PARCH[3])
+                fill:SetPoint("TOPLEFT", spread, "TOPLEFT", x0, -y0)
+                fill:SetSize(lobe.w, lobe.h)
+            end
+        end
+        -- (the bridge between the lobes, and the trail down towards his head)
+        local mid = bw * 0.34 + GAP / 2
+        Blob(mid, bh * 0.42, PUFF * 0.55, pass)
+        Blob(mid, bh * 0.6, PUFF * 0.42, pass)
+        for k, p in ipairs({ { 0.06, 1.06, 0.6 }, { 0.0, 1.16, 0.42 }, { -0.04, 1.25, 0.28 } }) do
+            Blob(p[1] * bw, p[2] * bh, PUFF * p[3], pass)
+        end
     end
-    local pad = 20
-    local L = { x = COVER + pad, y = COVER + pad, w = pageW - 2 * pad, h = pageH - 2 * pad }
-    local R = { x = bw / 2 + SPINE + pad, y = COVER + pad, w = pageW - 2 * pad, h = pageH - 2 * pad }
+    local pad = 16
+    local L = { x = lobes[1].x + pad - 8, y = lobes[1].y + pad - 6, w = lobes[1].w - 2 * pad + 16, h = lobes[1].h - 2 * pad + 12 }
+    local R = { x = lobes[2].x + pad - 8, y = lobes[2].y + pad - 6, w = lobes[2].w - 2 * pad + 16, h = lobes[2].h - 2 * pad + 12 }
     local function At(region, x, y) region:SetPoint("TOPLEFT", spread, "TOPLEFT", x, -y) end
 
     -- The left page: what this is, the chapters, the stories you have, your choice.
@@ -897,34 +894,20 @@ local function BuildBook()
     note:SetJustifyH("LEFT")
     note:SetTextColor(0.35, 0.26, 0.16)
     spread.note = note
-    -- The chapters: paper tiles, two across, each with a piece of its own drawn small and its name.
+    -- The chapters: a row each, its crayon icon (Media/Icons/Layer_<key>) and its name; the open one underlined in red
+    -- ink, its icon at full strength (the others a little faded); hovered, the name goes red.
     spread.chapters = {}
-    local tileW, tileH, tileGap = (L.w - 8) / 2, 44, 6
+    local rowH = 30
     for i, ch in ipairs(CHAPTERS) do
         local b = CreateFrame("Button", nil, spread)
-        b:SetSize(tileW, tileH)
-        At(b, L.x + ((i - 1) % 2) * (tileW + 8), L.y + 88 + math.floor((i - 1) / 2) * (tileH + tileGap))
-        local bg = b:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-        bg:SetColorTexture(0.86, 0.79, 0.64)
-        b.edges = {}
-        for e = 1, 4 do
-            local line = b:CreateTexture(nil, "BORDER")
-            if e <= 2 then line:SetHeight(2) line:SetPoint(e == 1 and "TOPLEFT" or "BOTTOMLEFT") line:SetPoint(e == 1 and "TOPRIGHT" or "BOTTOMRIGHT")
-            else line:SetWidth(2) line:SetPoint(e == 3 and "TOPLEFT" or "TOPRIGHT") line:SetPoint(e == 3 and "BOTTOMLEFT" or "BOTTOMRIGHT") end
-            b.edges[e] = line
-        end
-        local hover = b:CreateTexture(nil, "HIGHLIGHT")
-        hover:SetPoint("TOPLEFT", 2, -2) hover:SetPoint("BOTTOMRIGHT", -2, 2)
-        hover:SetColorTexture(1, 0.95, 0.8, 0.3)
-        b.canvas = CreateFrame("Frame", nil, b)
-        b.canvas:SetSize(tileH - 6, tileH - 6)
-        b.canvas:SetPoint("LEFT", 3, 0)
-        b.label = Text(b, 14)
-        b.label:SetPoint("LEFT", b.canvas, "RIGHT", 6, 1)
-        b.label:SetWidth(tileW - tileH - 10)
-        b.label:SetJustifyH("LEFT")
-        b.label:SetWordWrap(false)
+        b:SetSize(L.w, rowH)
+        At(b, L.x, L.y + 84 + (i - 1) * (rowH + 2))
+        b.icon = b:CreateTexture(nil, "ARTWORK")
+        b.icon:SetSize(rowH, rowH)
+        b.icon:SetPoint("LEFT")
+        b.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Layer_" .. ch[1])
+        b.label = Text(b, 15)
+        b.label:SetPoint("LEFT", b.icon, "RIGHT", 8, 1)
         b.streak = {}
         for k, stroke in ipairs({ { 3, -2, 0.85, -1.2, 0 }, { 2, -5, 0.5, 0.9, 4 } }) do
             local t = b:CreateTexture(nil, "ARTWORK")
@@ -935,14 +918,16 @@ local function BuildBook()
             b.streak[k] = t
         end
         function b:Paint(on)
-            for _, line in ipairs(self.edges) do
-                if on then line:SetColorTexture(0.95, 0.73, 0.32) else line:SetColorTexture(0.62, 0.55, 0.43) end
-            end
-            local w = math.min(self.label:GetStringWidth(), tileW - tileH - 10) + 6
+            self.on = on
+            local w = self.label:GetStringWidth() + 6
             for k, t in ipairs(self.streak) do t:SetWidth(w - (k - 1) * 6) t:SetShown(on and true or false) end
-            local c = on and RED or INK
+            local c = (on or self.hovered) and RED or INK
             self.label:SetTextColor(c[1], c[2], c[3])
+            self.icon:SetAlpha(on and 1 or 0.7)
+            self.icon:SetSize(on and rowH + 4 or rowH, on and rowH + 4 or rowH)
         end
+        b:SetScript("OnEnter", function(self) self.hovered = true self:Paint(self.on) end)
+        b:SetScript("OnLeave", function(self) self.hovered = false self:Paint(self.on) end)
         b:SetScript("OnClick", function() Click() spread.chapter, spread.page = ch[1], 0 ShowBook(true) end)
         spread.chapters[i] = b
     end
