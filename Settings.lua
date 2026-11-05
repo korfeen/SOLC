@@ -119,6 +119,10 @@ ns.RegisterPage({
             end
             choiceRows[#choiceRows + 1] = row
         end
+        -- (the section's whole area, for the steward's tour to light up: Onboarding.lua)
+        UI.settingsTracks = UI.settingsTracks or CreateFrame("Frame", nil, page)
+        UI.settingsTracks:SetPoint("TOPLEFT", page, "TOPLEFT", RIGHT - 18, -58)
+        UI.settingsTracks:SetSize(96 + #ns.PRIVACY_CHOICES * 74 + 30, ry + ROW + 10 - 58)
 
         -- Puzzle duels (SOLC Puzzle's Duel.lua), when that addon is on.
         y = y + ROW + 18
