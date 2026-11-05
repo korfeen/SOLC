@@ -44,7 +44,7 @@ const SET_FACTIONS = { defias: "a Defias thug", venture: "a Venture Co. miner", 
   stalker: "Nathanos Blightcaller", master: "Rexxar", boulderfist: "a Boulderfist ogre", crushridge: "a Crushridge ogre", deadwind: "a Deadwind ogre",
   dreadmaul: "a Dreadmaul ogre", dunemaul: "a Dunemaul ogre", dustbelcher: "a Dustbelcher ogre", firegut: "a Firegut ogre", gordok: "a Gordok royal guard",
   gordunni: "a Gordunni ogre", mogrosh: "a Mo'grosh ogre", moshogg: "a Mosh'Ogg witch doctor", spirestone: "a Spirestone battle lord",
-  splinterfist: "a Splinter Fist slaver", urok: "Urok Doomhowl" };
+  splinterfist: "a Splinter Fist slaver", urok: "Urok Doomhowl", sheriff: "a bounty hunter" };
 // Creature sets whose id isn't the creature's name (crit_<key>_head/_body): "in a full {name} suit".
 const SET_CREATURES = { blackflight: "black whelp", blueflight: "blue whelp", bronzeflight: "bronze whelp", greenflight: "green whelp", redflight: "red whelp" };
 const GENERIC_ENDS = ["And a goose stole his {hat}.", "And it turned out his {outfit} was mine all along.", "And his {hat} said goodbye on its own."];

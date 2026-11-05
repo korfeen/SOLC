@@ -571,4 +571,8 @@ ns.PixCollectionNumbers = {
     ["accessory:prop_gather"] = 568,
     ["accessory:prop_leaders"] = 569,
     ["accessory:prop_pvp"] = 570,
+    ["accessory:hunt_sheriff_star"] = 571,
+    ["background:bg_bounty_office"] = 572,
+    ["headwear:hunt_sheriff_head"] = 573,
+    ["outfit:hunt_sheriff_body"] = 574,
 }

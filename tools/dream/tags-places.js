@@ -29,6 +29,7 @@ Object.assign(PIECE_TAGS, {
   "bg_brd": ["fire", "metal"],
   "bg_dme": ["nature", "fel"],
   "bg_godz_touched": ["shiny", "stone", "night"],
+  "bg_bounty_office": [],
   "bg_dmn": ["royal"],
   "bg_dmw": ["arcane", "stone"],
   "bg_lbrs": ["fire", "stone"],

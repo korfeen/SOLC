@@ -217,6 +217,8 @@ const THING_CHASE = {
     end: ["And the skull said hello. It knew my name.", "And the {mobs} saw the skull and went very quiet.", "And it turned out to be {boss}'s cousin."] },
   prop_rares: { name: "Spyglass", does: ["looks at me through his brass spyglass", "spots something rare through his spyglass", "hands me his spyglass and points at nothing"],
     end: ["And it was a rare spawn. It despawned the second I looked.", "And I looked through the wrong end, and he was tiny.", "And {boss} was looking back at me through another spyglass."] },
+  hunt_sheriff_star: { name: "Sheriff's Star", does: ["holds up his big tin sheriff's star in his fist", "shows me his shiny six-pointed star, very proud", "breathes on his tin star and polishes it on his belly", "flashes his sheriff's star at me and says 'ogre law'"],
+    end: ["And I said it was tin. He said it was 'very shiny tin'.", "And the {mobs} all put their hands up at once.", "And {boss} said 'this town ain't big enough', and it wasn't.", "And one of the little balls on the tips fell off. He ate it."] },
   prop_leaders: { name: "Stolen Crown", does: ["holds up a big jewelled crown like he won it", "grips his stolen gold crown by the rim and grins", "tries his stolen crown on, but it won't fit over his ears"],
     end: ["And the crown's owner turned up asking for it back.", "And he made the {mobs} bow. Two of them did.", "And {boss} said it was his crown. It wasn't."] },
   prop_dungeons: { name: "Dungeon Torch", does: ["holds up his burning torch to light the way", "waves his torch in my face to see who I am", "lights the way with his torch, the wrong way"],

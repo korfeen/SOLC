@@ -49,6 +49,8 @@ Object.assign(PIECE_ENDS, {
   "hunt_stalker_body": ["And he reached for an arrow and got a sandwich from his quiver.", "And his tattered cloak caught on a door and unravelled behind him."],
   "hunt_master_head": ["And he whistled for Misha, but only a squirrel came.", "And the tall spikes on his mask got stuck in a doorframe."],
   "hunt_master_body": ["And his big spiked pauldron knocked over everything on that side.", "And he drew both axes, then used one to butter his toast."],
+  "hunt_sheriff_head": ["And he tipped his big hat, and a cloud of dust came off it.", "And the WANTED poster in his hatband turned out to be me."],
+  "hunt_sheriff_body": ["And he pulled a wanted poster from his bandolier and slapped it on {boss}.", "And his duster swished so dramatically he had to do it twice."],
 
   // chase hats
   "chase_rfd_icemetal_barbute": ["And his icemetal helm froze his ears and he talked funny all day.", "And he sneezed inside the barbute and it snowed a bit."],

@@ -83,6 +83,8 @@ Object.assign(PIECE_TAGS, {
   "hunt_stalker_body": ["metal"],
   "hunt_master_head": ["metal"],
   "hunt_master_body": ["metal", "huge"],
+  "hunt_sheriff_head": [],
+  "hunt_sheriff_body": [],
 
   // chase hats
   "chase_rfd_icemetal_barbute": ["ice", "metal"],
@@ -102,6 +104,7 @@ Object.assign(PIECE_TAGS, {
   "shop_trophy_cup": ["golf", "shiny"],
   "prop_elites": ["undead"],
   "prop_rares": [],
+  "hunt_sheriff_star": ["shiny", "metal"],
   "shop_bowler_hat": ["golf"],
   "shop_flat_cap": ["golf"],
   "shop_panama": ["golf"],

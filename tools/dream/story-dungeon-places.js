@@ -232,6 +232,13 @@ const SETTING_DUNGEON = {
       "climbs out of a stone god's ear", "is sneezed out of the cliff by a grumpy god"],
     back: ["And the Ogre Godz said he was their favourite.", "And it rained gold. It hurt.", "And the cliffs all yawned at once.",
       "And the storm clouds closed again, like a curtain.", "And the Godz asked for a bigger tribute next time."] },
+  bg_bounty_office: { name: "the Bounty Office",
+    at: ["in a dusty ogre bounty office, reading the wanted posters", "in the bounty office, crossing a face off the wall in red",
+      "at the bounty office desk, counting a pile of gold by lantern light", "in the bounty office, trying to rope a chair with the lasso"],
+    enters: ["kicks open the bounty office door", "steps off a wanted poster on the wall",
+      "rides in from the golden fields at sunset", "climbs out from behind the rack of clubs"],
+    back: ["And every poster on the wall was him. Different hats.", "And the lantern flickered every time someone lied.",
+      "And the reward was ten gold and a sandwich.", "And the coiled lasso uncoiled itself and left.", "And outside the window the fields went on forever."] },
 };
 
 // The zone golf courses (zone_*, unlocked by exploring the zone), by option id: 2 at, 3 enters, 3 back each.

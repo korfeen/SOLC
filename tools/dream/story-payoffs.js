@@ -247,6 +247,12 @@ const PAYOFF = {
     ["And the Godz ate it and said 'needs salt'.", "And they gave it back. Not good enough.", "And he was the tribute. They kept him."],
     ["And the cliffs pulled better faces.", "And one face got stuck like that.", "And the Godz said 'rude' and rained on me."],
   ],
+  bg_bounty_office: [
+    ["And one of the posters was me. Badly drawn.", "And the posters started reading me back.", "And he tore one down and said 'that's me, wanted for napping'."],
+    ["And the red pen ran out. He used ketchup.", "And the face I crossed off was his. He was fine about it.", "And the crossed-out face uncrossed itself."],
+    ["And the gold was all buttons.", "And I lost count at seven. He started again.", "And the lantern blew out, and the pile was smaller after."],
+    ["And I roped him instead. He let me.", "And the chair got away. It's wanted now.", "And the lasso roped me, the chair and the desk."],
+  ],
 };
 
 // The zone golf courses' payoffs, by option id (one list per opening).
