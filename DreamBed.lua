@@ -903,16 +903,16 @@ local function BuildBook()
     -- The chapters: a row each, its crayon icon (Media/Icons/Layer_<key>) and its name; the open one underlined in red
     -- ink, its icon at full strength (the others a little faded); hovered, the name goes red.
     spread.chapters = {}
-    local rowH = 26
+    local rowH = 32
     for i, ch in ipairs(CHAPTERS) do
         local b = CreateFrame("Button", nil, spread)
         b:SetSize(L.w, rowH)
-        At(b, L.x, L.y + 118 + (i - 1) * (rowH + 3))
+        At(b, L.x, L.y + 104 + (i - 1) * (rowH + 2))
         b.icon = b:CreateTexture(nil, "ARTWORK")
         b.icon:SetSize(rowH, rowH)
         b.icon:SetPoint("LEFT")
         b.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Layer_" .. ch[1])
-        b.label = Text(b, 15)
+        b.label = Text(b, 18)
         b.label:SetPoint("LEFT", b.icon, "RIGHT", 8, 1)
         b.streak = {}
         for k, stroke in ipairs({ { 7, 1, 0.95, 0, -2 } }) do
@@ -950,9 +950,9 @@ local function BuildBook()
         ShowBook(false)
         Refresh()
     end)
-    At(spread.pick, L.x, L.y + L.h - 44)
+    At(spread.pick, L.x, L.y + L.h - 26)
     local none = InkWord(spread, 13, function() S.story, spread.sel = nil, nil ShowBook(false) Refresh() end)
-    At(none, L.x, L.y + L.h - 18)
+    At(none, L.x, L.y + L.h - 2)
     spread.none = none
 
     -- The right page: the pieces, 3 x 3 paper cards, a page at a time.

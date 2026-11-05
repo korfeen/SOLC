@@ -419,13 +419,13 @@ function UI.PixCollection(parent)
         if BOOK then
             -- (in the book: its crayon icon, its short name under it)
             local b = CreateFrame("Button", nil, left)
-            b:SetSize(54, 50)
-            At(b, "TOPLEFT", 240 + (i - 1) * 55, 190)
+            b:SetSize(54, 60)
+            At(b, "TOPLEFT", 240 + (i - 1) * 55, 184)
             b.icon = b:CreateTexture(nil, "ARTWORK")
             b.icon:SetPoint("TOP", 0, -1)
             b.icon:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Layer_" .. layer[1])
             b.label = b:CreateFontString(nil, "OVERLAY")
-            b.label:SetFont(FONT, 11, "")
+            b.label:SetFont(FONT, 13, "")
             b.label:SetPoint("BOTTOM", 0, 6)
             b.label:SetText(SHORT[layer[1]])
             local streak = b:CreateTexture(nil, "ARTWORK")
@@ -435,9 +435,9 @@ function UI.PixCollection(parent)
                 if active and not self.picked then UI.Flick(streak) end
                 self.picked = active
                 streak:SetVertexColor(INK.heading[1], INK.heading[2], INK.heading[3], 0.95)
-                streak:SetWidth(math.min(self.label:GetStringWidth() + 8, 52) * (streak.len or 1))
+                streak:SetWidth(math.min(self.label:GetStringWidth() + 8, 54) * (streak.len or 1))
                 streak:SetShown(active and true or false)
-                local size = (active or self.hovered) and 34 or 28
+                local size = (active or self.hovered) and 44 or 40
                 self.icon:SetSize(size, size)
                 self.icon:SetAlpha((active or self.hovered) and 1 or 0.65)
                 self.label:SetTextColor(unpack((active or self.hovered) and INK.heading or INK.text))
@@ -451,7 +451,7 @@ function UI.PixCollection(parent)
             layerButtons[layer[1]] = Button(left, layer[2], 242 + ((i - 1) % 4) * 98, 193 + math.floor((i - 1) / 4) * 28, 94, Pick)
         end
     end
-    if BOOK then Rule(244) Rule(310) end
+    if BOOK then Rule(247) Rule(310) end
     local filters = { { "all", "ALL" }, { "seen", "SEEN" },
         { "unlocked", "UNLOCKED" }, { "minted", "MINTED" } }
     for i, filter in ipairs(filters) do
