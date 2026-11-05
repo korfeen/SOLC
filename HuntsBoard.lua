@@ -10,7 +10,7 @@
 -- and the boss), your progress and its reward, CLAIMED stamped across when it's done; the footer: bounty chests waiting,
 -- and the officers' NEXT WEEK button.
 -- Officer view: next week's title and a row per slot: EVERYONE (one pick) or BY LEVEL (a pick per bracket); a pick
--- opens the catalogue for it (the rotation, or a bounty by tier). SEND sends it to the guild (ns.SetPosters).
+-- opens the catalogue for it (the rotation, or a bounty by kind). SEND sends it to the guild (ns.SetPosters).
 
 local _, ns = ...
 local UI = ns.UI
@@ -24,7 +24,12 @@ local CREAM, DIM, GOLD = { 0.96, 0.9, 0.78 }, { 0.75, 0.68, 0.56 }, { 1, 0.82, 0
 -- On the board itself: parchment in lamp light, and the molten gold's amber.
 local LAMP, AMBER_CODE = { 0.94, 0.85, 0.67 }, "ffffb842"
 local INK, INK_DIM, RED = { 0.23, 0.15, 0.08 }, { 0.45, 0.35, 0.24 }, { 0.62, 0.12, 0.08 }
-local TIER_COLORS = { easy = { 0.22, 0.5, 0.2 }, medium = { 0.16, 0.38, 0.66 }, hard = { 0.55, 0.2, 0.72 } }
+-- Each kind of poster its colour (the engraving's shade and its headline's ink): hunt green, clan blue, wanted red,
+-- odd job purple.
+-- The posters with an engraving (Media/Posters): any other shows only its kind's colour till its picture is painted.
+local ENGRAVED = {}
+for id in ("blackrock burningblade cat defias demon dragonkin dwarf elemental human kolkar murloc orc raptor scarlet scorpid spider syndicate troll undead venture wolf"):gmatch("%S+") do ENGRAVED[id] = true end
+local KIND_COLORS = { hunt = { 0.22, 0.5, 0.2 }, clan = { 0.16, 0.38, 0.66 }, wanted = { 0.62, 0.12, 0.1 }, odd = { 0.5, 0.2, 0.66 } }
 local SEPIA = { 1, 0.78, 0.5 }  -- (an unclaimed poster's picture: desaturated, then this brown)
 local SEPIA_PICTURE = { 0.98, 0.7, 0.4 }  -- (an ogre picture's: browner, it's greyer to begin with)
 local TIER_REWARD = { easy = 0.25, medium = 0.5, hard = 1 }
@@ -461,16 +466,17 @@ local function DrawPoster(f, p, claimers)
     -- (an officer's own ogre; the poster's: a wanted boss's gear, a creature's costume, a faction's outfit, a special's
     -- prop, Posters.lua; else the engraving)
     f.picture = (p.extra and p.extra.picture) or ns.PosterPicture(artId)
-    f.art:SetShown(not f.picture)
+    f.art:SetShown(not f.picture and ENGRAVED[artId:lower()] or false)
     f.canvas:SetShown(f.picture and true or false)
     if f.picture then DrawPicture(f) end
-    local c = TIER_COLORS[p.tier] or TIER_COLORS.medium
+    local kind = p.bounty.kind or "hunt"
+    local c = KIND_COLORS[kind] or KIND_COLORS.hunt
     f.shade:SetColorTexture(c[1], c[2], c[3], 0.25)
-    f.shade:SetShown(not f.picture)  -- (the tier's colour only where an engraving goes)
-    -- (WANTED or BOUNTY; an officer's own poster, its own headline)
+    f.shade:SetShown(not f.picture)  -- (the kind's colour only where an engraving goes)
+    -- (its kind: HUNT, CLAN, WANTED or ODD JOB, in its colour; an officer's own poster, its own headline)
     local tagline = p.bounty.tagline
-    f.tag:SetText(tagline or (wanted and "WANTED" or "BOUNTY"))
-    f.tag:SetTextColor(unpack((wanted or tagline) and RED or INK_DIM))
+    f.tag:SetText(tagline or (ns.POSTER_KIND_LABELS and ns.POSTER_KIND_LABELS[kind]) or "BOUNTY")
+    if tagline or wanted then f.tag:SetTextColor(unpack(RED)) else f.tag:SetTextColor(c[1], c[2], c[3]) end
     FitName(f, (not f.full and p.bounty.short) or wanted or p.bounty.name)  -- (a boss's short name on the board)
     f.stamp:SetShown(p.claimed ~= nil)
     f.paper = p.claimed and { 0.7, 0.66, 0.6 } or { 0.86, 0.82, 0.76 }
@@ -672,13 +678,13 @@ end
 
 -- Officer view ----------------------------------------------------------------------------------------------------------
 
--- The catalogue menu for a pick: the rotation, then each tier's posters (for a bracket, or for everyone).
+-- The catalogue menu for a pick: the rotation, then each kind's posters (for a bracket, or for everyone).
 local function PickMenu(owner, bracket, onPick)
     if not MenuUtil then return end
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateButton("|cff999999Rotation|r", function() onPick(nil) end)
         for _, group in ipairs(ns.PosterCatalogue(bracket)) do
-            local sub = root:CreateButton(group.tier:upper())
+            local sub = root:CreateButton(group.label)
             for _, id in ipairs(group.ids) do
                 local poster = ns.PosterBounty(id)
                 if poster then sub:CreateButton(poster.name, function() onPick({ id = id }) end) end

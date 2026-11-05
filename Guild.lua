@@ -82,6 +82,8 @@ local BOUNTIES = {
     { id = "leaders", name = "Decapitation", goal = 15, count = function(npcID) return ns.IsLeader(npcID) end, desc = "Tribe leaders, overlords and rulers (the crowned mobs). Repeat kills count." },
     { id = "dungeons", name = "Dungeon Crawl", goal = 60, event = "dungeon", desc = "Dungeon and raid bosses killed in a guild group (counted per member, each boss once a day)." },
     { id = "pvp", name = "Blood and Honor", goal = 100, event = "pvp", desc = "Honorable kills of the other faction's players." },
+    { id = "gather", name = "Gather Round", goal = 150, event = "gather", desc = "Herbs picked, ore mined and hides skinned: any of them counts." },
+    { id = "fish", name = "Gone Fishing", goal = 100, event = "fish", desc = "Fish, crates and boots: anything you reel in." },
     { id = "explorers", name = "Explorers", goal = 75, count = function(_, entry) return entry.count == 1 end, desc = "Mob types you've never killed before." },
 }
 ns.BOUNTIES = BOUNTIES

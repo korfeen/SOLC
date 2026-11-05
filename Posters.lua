@@ -43,7 +43,7 @@ local TIERS = {
     blackrock = { "medium", 50 }, scourge = { "medium", 75 },
     undead = { "medium", 60 }, demon = { "medium", 25 }, elemental = { "medium", 40 }, dragonkin = { "medium", 15 },
     elites = { "hard", 25 }, rares = { "hard", 2 }, leaders = { "hard", 3 }, dungeons = { "hard", 8 }, pvp = { "hard", 15 },
-    explorers = { "hard", 10 },
+    explorers = { "hard", 10 }, gather = { "medium", 40 }, fish = { "medium", 40 },
     -- Ogre tribes.
     mogrosh = { "medium", 25 }, splinterfist = { "medium", 25 }, boulderfist = { "medium", 30 }, crushridge = { "medium", 30 }, dustbelcher = { "medium", 30 },
     moshogg = { "medium", 25 }, gordunni = { "medium", 30 }, dunemaul = { "medium", 25 }, dreadmaul = { "medium", 25 }, firegut = { "medium", 25 },
@@ -166,12 +166,28 @@ function ns.WantedPicture(id)
     for layer, option in pairs(HELD[key] or {}) do traits[layer] = option end
     return traits
 end
--- The rotation's mix for each board size: the tier of each slot.
+-- The four kinds of poster: HUNT (a creature kind), CLAN (a faction or ogre tribe), WANTED (a dungeon's end boss) and
+-- ODD JOB (anything that isn't one kind of foe: rares, elites, leaders, exploring, PvP, gathering, fishing).
+local ODD = { elites = true, rares = true, leaders = true, dungeons = true, pvp = true, explorers = true, gather = true, fish = true }
+local HUNT = { undead = true, demon = true, elemental = true, dragonkin = true }
+local function Kind(id)
+    if id:find("^wanted_") then return "wanted" end
+    if ODD[id] or id:find("^pvp_") then return "odd" end
+    if HUNT[id] or id:find("^kind_") or id:find("^%u") then return "hunt" end  -- (the creature kinds: Murloc, Wolf...)
+    return "clan"
+end
+ns.PosterKind = function(id) return id and Kind(id) end
+-- The rotation's mix for each board size: the kind of each slot. A kind with nothing for a bracket (no dungeon for
+-- the low levels) takes its fallback's.
 local MIX = {
-    [3] = { "easy", "medium", "hard" },
-    [4] = { "easy", "easy", "medium", "hard" },
-    [5] = { "easy", "easy", "medium", "medium", "hard" },
+    [3] = { "hunt", "clan", "odd" },
+    [4] = { "hunt", "clan", "wanted", "odd" },
+    [5] = { "hunt", "hunt", "clan", "wanted", "odd" },
 }
+local FALLBACK = { wanted = "odd", clan = "hunt", odd = "hunt" }
+-- Odd jobs the rotation leaves out: anyone must be able to do the rotation's (gathering needs a profession). Officers
+-- can still put them up.
+local PICK_ONLY = { gather = true }
 local AUTO = "auto"
 
 -- A poster's bounty by its id: a wanted poster, or a bounty with its tier, personal goal and levels added (the bounty
@@ -187,13 +203,13 @@ local function PosterBounty(id)
     if key then
         local d = ns.DungeonByKey and ns.DungeonByKey(key)
         if not d or not WANTED[key] then return end
-        poster = { id = id, name = "Wanted: " .. WANTED[key], event = "wanted", dungeon = key, tier = "hard", solo = 1,
+        poster = { id = id, name = "Wanted: " .. WANTED[key], event = "wanted", dungeon = key, tier = "hard", kind = "wanted", solo = 1,
             wanted = WANTED[key], short = WANTED_SHORT[key] or WANTED[key], levels = LEVELS[key], desc = d.name, objective = "SMASH" }
     else
         local bounty = ns.ResolveBounty and ns.ResolveBounty(id)
         if not bounty then return end
         local tier = TIERS[id] or (bounty.custom and CUSTOM_TIERS[id:match("^(%a+)_")]) or { "medium", 25 }
-        poster = setmetatable({ tier = tier[1], solo = tier[2], levels = LEVELS[id] }, { __index = bounty })
+        poster = setmetatable({ tier = tier[1], kind = Kind(id), solo = tier[2], levels = LEVELS[id] }, { __index = bounty })
     end
     posters[id] = poster
     return poster
@@ -301,29 +317,29 @@ local function Hash(text)
     return h
 end
 
--- The rotation's pool for a tier and bracket: catalogue bounties, and for hard also the dungeons' wanted posters, that
--- fit the bracket's levels - and the guild's side: SIDE marks the ones only one faction meets at their levels (the
+-- The rotation's pool for a kind and bracket: catalogue bounties, or the dungeons' wanted posters, that fit the
+-- bracket's levels - and the guild's side: SIDE marks the ones only one faction meets at their levels (the
 -- player's faction stands for the guild's: a guild is one faction, so every member's addon agrees). EXTRA: custom
--- bounties in the rotation too (the Alliance starter zones' foes), by tier.
+-- bounties in the rotation too (the Alliance starter zones' foes).
 local SIDE = { kolkar = "Horde", burningblade = "Horde", Scorpid = "Horde", wanted_rfc = "Horde", wanted_ruins = "Horde",
     wanted_thanes = "Alliance" }
-local EXTRA = { easy = { "kind_kobold", "kind_gnoll", "kind_trogg" } }
+local EXTRA = { "kind_kobold", "kind_gnoll", "kind_trogg" }
 local pools = {}
-local function Pool(tier, bracket)
+local function Pool(kind, bracket)
     local side = UnitFactionGroup and UnitFactionGroup("player")
-    local key = tier .. ":" .. tostring(bracket) .. ":" .. tostring(side)
+    local key = kind .. ":" .. tostring(bracket) .. ":" .. tostring(side)
     if pools[key] then return pools[key] end
     local pool = {}
     local function OurSide(id) return not (SIDE[id] and side and SIDE[id] ~= side) end
     for _, bounty in ipairs(ns.BOUNTIES or {}) do
-        local poster = TIERS[bounty.id] and TIERS[bounty.id][1] == tier and PosterBounty(bounty.id)
+        local poster = TIERS[bounty.id] and Kind(bounty.id) == kind and PosterBounty(bounty.id)
         if poster and Fits(poster, bracket) and OurSide(bounty.id) then pool[#pool + 1] = bounty.id end
     end
-    for _, id in ipairs(EXTRA[tier] or {}) do
-        local poster = PosterBounty(id)
+    for _, id in ipairs(EXTRA) do
+        local poster = Kind(id) == kind and PosterBounty(id)
         if poster and Fits(poster, bracket) and OurSide(id) then pool[#pool + 1] = id end
     end
-    if tier == "hard" then
+    if kind == "wanted" then
         for _, d in ipairs(ns.Dungeons and ns.Dungeons() or {}) do
             local poster = WANTED[d.key] and not d.raid and PosterBounty("wanted_" .. d.key)
             if poster and Fits(poster, bracket) and OurSide(poster.id) then pool[#pool + 1] = poster.id end
@@ -333,17 +349,22 @@ local function Pool(tier, bracket)
     return pool
 end
 
--- The rotation's poster for a slot: from its tier's pool for the bracket, by the guild, week, slot and bracket, never one
--- already on the board.
-local function RotationPick(guild, week, slot, tier, bracket, taken)
-    local pool = Pool(tier, bracket)
+-- The rotation's poster for a slot: from its kind's pool for the bracket (or its fallback's, empty), by the guild,
+-- week, slot and bracket, never one already on the board.
+local function RotationPick(guild, week, slot, kind, bracket, taken)
+    local pool = Pool(kind, bracket)
+    for _ = 1, 3 do
+        if #pool > 0 or not FALLBACK[kind] then break end
+        kind = FALLBACK[kind]
+        pool = Pool(kind, bracket)
+    end
     if #pool == 0 then return end
     local h = Hash(("%s:%d:%d:%d"):format(guild, week, slot, bracket))
     for _ = 1, 3 do h = (h * 1103515245 + 12345) % 2147483648 end  -- (stirred: the next week is a different board)
     local start = math.floor(h / 65536) % #pool
     for i = 0, #pool - 1 do
         local id = pool[(start + i) % #pool + 1]
-        if not taken[id] then return id end
+        if not taken[id] and not PICK_ONLY[id] then return id end
     end
 end
 
@@ -476,10 +497,14 @@ function ns.RemovePosterExtra(tag)
     return SetExtras(kept)
 end
 
--- What could go on a poster for a bracket, for the officers' picker: { { tier, ids } } (catalogue, then wanted posters).
+-- What could go on a poster for a bracket, for the officers' picker: { { kind, label, ids } }, by kind.
+local KIND_LABELS = { hunt = "HUNT", clan = "CLAN", wanted = "WANTED", odd = "ODD JOB" }
+ns.POSTER_KIND_LABELS = KIND_LABELS
 function ns.PosterCatalogue(bracket)
     local out = {}
-    for _, tier in ipairs({ "easy", "medium", "hard" }) do out[#out + 1] = { tier = tier, ids = Pool(tier, bracket) } end
+    for _, kind in ipairs({ "hunt", "clan", "wanted", "odd" }) do
+        out[#out + 1] = { kind = kind, label = KIND_LABELS[kind], ids = Pool(kind, bracket) }
+    end
     return out
 end
 
@@ -555,7 +580,7 @@ table.insert(ns.KillHandlers, function(npcID, entry, c)
 end)
 
 -- Non-kill posters: "pvp" with the victim { race } if known, "dungeon" (a guild-group boss), "wanted" with the
--- dungeon cleared (its key).
+-- dungeon cleared (its key), "gather" and "fish" (LifeStats.lua).
 function ns.OnPosterEvent(event, arg)
     CountWhere(function(bounty)
         if bounty.event ~= event then return false end
@@ -573,7 +598,7 @@ function ns.PrintPosters()
     end
     ns.Print(("This week's bounties, levels %s (reset in %s):"):format(ns.BracketName(board.bracket), ns.BountyTimeLeft and ns.BountyTimeLeft(board.resetsIn) or "?"))
     for _, p in ipairs(board.posters) do
-        ns.Print(("  %s %s [%s] %d/%d"):format(p.claimed and "|cff40ff40done|r" or "-", p.bounty.name, p.tier, p.have, p.goal))
+        ns.Print(("  %s %s [%s] %d/%d"):format(p.claimed and "|cff40ff40done|r" or "-", p.bounty.name, p.bounty.kind or p.tier, p.have, p.goal))
     end
 end
 
