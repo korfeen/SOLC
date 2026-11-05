@@ -114,7 +114,6 @@ local function DrawTiles()
         if picture and not picture.blank then
             tile.chest:SetShown(picture.chest ~= nil)
             if picture.chest then  -- a dungeon chest to open (Chests.lua), or the Ogre Godz' tribute
-                local dungeon = ns.DungeonByKey and ns.DungeonByKey(picture.chest)
                 local tribute = picture.chest == ns.TRIBUTE
                 tile.canvas:Hide()
                 tile.border:SetVertexColor(1, 0.82, 0.25)
@@ -122,7 +121,7 @@ local function DrawTiles()
                 tile.caption:SetText(tribute and "|cffffd100TRIBUTE!|r" or "|cffffd100OPEN|r")
                 tile.band:Show()
                 tile.tag:SetText(picture.count > 1 and ("|cffffd100x%d|r"):format(picture.count) or "")
-                tile.dungeonName = tribute and "Ogre Godz tribute" or dungeon and dungeon.name or "A dungeon"
+                tile.dungeonName = ns.ChestName(picture.chest)
             else
                 tile.canvas:Show()
                 ns.DrawMint(tile.canvas, picture.mint)

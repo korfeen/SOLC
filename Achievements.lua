@@ -55,7 +55,7 @@ end
 -- The Deeds page's ALL groups (a feat's own group, else by its key; dungeon and zone feats have theirs).
 local FEAT_GROUPS = { pictures = "Pictures", epic = "Pictures", legendary = "Pictures", showcase = "Pictures", puzzles = "Pictures",
     herbs = "Professions", ore = "Professions", skins = "Professions", fish = "Professions", craft = "Professions",
-    bounties = "Club life", chests = "Club life", shop = "Club life", buddy = "Club life" }
+    bounties = "Club life", wanted = "Club life", chests = "Club life", shop = "Club life", buddy = "Club life" }
 ns.DEED_GROUPS = { "Creatures", "Tribes", "Hunting", "Rares", "Dungeons", "Exploration", "Pictures", "Professions", "Club life", "Secrets" }
 local RARE_RANKS = { ["Rare"] = true, ["Rare Elite"] = true }
 local ELITE_RANKS = { ["Elite"] = true, ["Rare Elite"] = true, ["Boss"] = true }
@@ -101,6 +101,8 @@ local FEATS = {
     { key = "bounties", label = "Bounties claimed", unit = "bounties", count = function(_, f) return f.bounties end, tiers = {
         { 1, "First Bounty", 10 }, { 10, "Bounty Regular", 20 }, { 25, "Poster Child", 35 }, { 50, "Gold Digger", 60 },
         { 100, "Most Wanted Hunter", 100 } } },
+    { key = "wanted", label = "Wanted posters claimed", unit = "wanted posters", count = function(_, f) return f.wanted end, tiers = {
+        { 1, "Dead Or Alive", 10 }, { 10, "Posse Leader", 30 }, { 25, "Hang 'Em High", 60 } } },
     { key = "chests", label = "Chests opened", unit = "chests", count = function(_, f) return f.chests end, tiers = {
         { 1, "Lid Flipper", 5 }, { 10, "Rummager", 15 }, { 50, "Treasure Hoarder", 40 }, { 100, "Dragon's Hoard", 70 } } },
     -- Gathering (LifeStats.lua: yours; nothing counts while it's Off in Settings).
@@ -613,7 +615,7 @@ local function CountKills(source)
     for _, entry in ipairs(prof and prof.list or {}) do facts.craft = math.max(facts.craft, entry.rank or 0) end
     if mine then
         local tally = source.tally or {}
-        facts.bounties, facts.chests = tally.bounties or 0, tally.chests or 0
+        facts.bounties, facts.chests, facts.wanted = tally.bounties or 0, tally.chests or 0, tally.wanted or 0
         local life = source.life or {}
         facts.herbs, facts.ore, facts.skins, facts.fish = life.herbs or 0, life.ore or 0, life.skins or 0, life.fish or 0
         facts.tally, facts.nap = tally, life.nap or 0  -- (the secret deeds: SecretDeeds.lua)

@@ -158,6 +158,33 @@ function ns.PosterPicture(id)
     end
     return traits
 end
+-- A poster's own pieces, { { layer, option } } (its bounty chest's: Unlocks.lua): its ogre's - a creature's hat, onesie
+-- and toy, a faction's outfit, an odd job's prop - or a wanted poster's dungeon set. No id: every poster ogre's.
+local function PiecesOf(piece, out)
+    for _, layer in ipairs(ns.MintLayers or {}) do
+        for _, option in ipairs(layer.options) do
+            if option.id == piece or option.id:sub(1, #piece + 1) == piece .. "_" then out[#out + 1] = { layer = layer, option = option } end
+        end
+    end
+    return out
+end
+function ns.PosterPieces(id)
+    local out = {}
+    if not id then
+        local seen = {}
+        for _, piece in pairs(POSTER_OGRE) do
+            if not seen[piece] then seen[piece] = true PiecesOf(piece, out) end
+        end
+        return out
+    end
+    local base = id:match("^X%w+_(.+)$")  -- (an officer's own poster: its bounty's)
+    if base then return ns.PosterPieces(base) end
+    local key = id:match("^wanted_(%w+)$")
+    if key then return ns.UnlockOptions("clear:" .. key) end
+    local kind = id:match("^kind_(%w+)$")  -- (a custom creature poster: that creature's, if it has any)
+    local piece = POSTER_OGRE[id] or (id:find("^rare_") and POSTER_OGRE.rares) or (kind and "crit_" .. kind)
+    return piece and PiecesOf(piece, out) or out
+end
 function ns.WantedPicture(id)
     local key = id and id:match("^wanted_(%w+)$")
     if not key or not WANTED[key] then return end
@@ -552,8 +579,8 @@ end
 -- Progress and claims ------------------------------------------------------------------------------------------------
 -- KillTrackerDB.posters = { week, progress = { [id] = n }, claimed = { [id] = time } }: yours, fresh each week. A kill
 -- counts for every poster it fits (a Defias can be a Human too): they overlap, and that's the game. A poster is claimed
--- the moment its goal is reached: points by its tier (the guild's "Reward" setting times TIER_REWARD) and a bounty
--- chest (KillTrackerDB.bountyChests, opened on the board).
+-- the moment its goal is reached: points by its tier (the guild's "Reward" setting times TIER_REWARD), a Bedtime Story
+-- and a bounty chest (Unlocks.lua: in your Inventory, with a chance at the poster's own pieces, ns.PosterPieces).
 local TIER_REWARD = { easy = 0.25, medium = 0.5, hard = 1 }
 
 -- (bracket: locked the first time the week is met, from your level then)
@@ -588,11 +615,12 @@ local function Claim(board, p, mine)
     local points = KillTrackerDB.points
     points.bounty = (points.bounty or 0) + reward
     ns.Touch(points)
-    KillTrackerDB.bountyChests = (KillTrackerDB.bountyChests or 0) + 1
+    if ns.AddBountyChest then ns.AddBountyChest(p.id) end
+    if p.bounty.kind == "wanted" and ns.Tally then ns.Tally("wanted") end  -- (the Wanted posters claimed deeds: its frame)
     if ns.AddIngredient then ns.AddIngredient("story", 1, true) end  -- (a Bedtime Story for the Dream Bed)
     if ns.Tally then ns.Tally("bounties") end  -- (the Bounties claimed deeds)
     ns.AddEvent("P", p.id)
-    ns.ShowToast("achievement", "Bounty claimed!", p.bounty.name, ("+%d points, a bounty chest and a Bedtime Story"):format(reward))
+    ns.ShowToast("achievement", "Bounty claimed!", p.bounty.name, ("+%d points, a Bedtime Story and a bounty chest (in your Inventory)"):format(reward))
     ns.Touch(mine)
     if ns.CheckPosterMilestones then ns.CheckPosterMilestones() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
@@ -661,8 +689,8 @@ end
 -- Every claim in the guild this week (yours and your guildmates', through sync) counts. At each milestone (MILESTONES,
 -- scaled by the guild's "Goal size %") its reward is added to a pile that stacks; everyone who has claimed at least one
 -- poster this week gets each milestone's reward once (KillTrackerDB.posters.milestones = { [i] = true }), including the
--- ones reached before their first claim. The last milestone's is the guild bounty chest
--- (KillTrackerDB.guildBountyChests, opened on the board).
+-- ones reached before their first claim. The last milestone's is the guild bounty chest (Unlocks.lua: in your
+-- Inventory, a piece for sure).
 local MILESTONES = {
     { claims = 5, points = 25, fuel = "bonk" },
     { claims = 10, points = 50, fuel = "story" },
@@ -714,7 +742,7 @@ function ns.CheckPosterMilestones()
             points.bounty = (points.bounty or 0) + m.points
             ns.Touch(points)
             if m.fuel and ns.AddIngredient then ns.AddIngredient(m.fuel, 1, true) end
-            if m.guildChest then KillTrackerDB.guildBountyChests = (KillTrackerDB.guildBountyChests or 0) + 1 end
+            if m.guildChest and ns.AddGuildBountyChest then ns.AddGuildBountyChest() end
             ns.ShowToast("achievement", "Guild bounties: " .. ns.MilestoneClaims(m) .. " claimed!",
                 m.guildChest and "The guild bounty chest!" or "Everyone who claimed gets a reward",
                 ("+%d points%s"):format(m.points, m.fuel and (" and " .. (ns.IngredientName and ns.IngredientName(m.fuel) or m.fuel)) or ""))

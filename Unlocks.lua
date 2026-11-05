@@ -223,6 +223,78 @@ local function OpenTribute(chest)
     return chest.tier or #TIERS, coins, ns.TributeCards(spec)
 end
 
+-- Bounty chests (Posters.lua): a claimed poster's ({ dungeon = ns.BOUNTY, time, tier, poster = its id }, its tier
+-- rolled like a dungeon's) and the guild's milestone chest (ns.GUILD_BOUNTY, epic), opened like the dungeons'. Inside:
+-- coins, the tier's stories and bonks, and one of the poster's own pieces (ns.PosterPieces) by the tier's chance - for
+-- sure after PITY chests without; all of them had: any poster's. The guild chest: a piece for sure.
+ns.BOUNTY, ns.GUILD_BOUNTY = "bounty", "guildbounty"
+local function RollAny()
+    local pick = math.random()
+    for i, t in ipairs(TIERS) do
+        if pick < t.chance then return i end
+        pick = pick - t.chance
+    end
+    return 1
+end
+function ns.AddBountyChest(posterID)
+    local db = KillTrackerDB
+    db.chests = db.chests or {}
+    db.chests[#db.chests + 1] = { dungeon = ns.BOUNTY, time = time(), tier = RollAny(), poster = posterID }
+end
+function ns.AddGuildBountyChest()
+    local db = KillTrackerDB
+    db.chests = db.chests or {}
+    db.chests[#db.chests + 1] = { dungeon = ns.GUILD_BOUNTY, time = time(), tier = 3 }
+end
+-- A chest's name, for its tile and its show: "Deadmines", "Bounty", "Guild bounty", "Ogre Godz tribute".
+function ns.ChestName(key)
+    if key == ns.TRIBUTE then return "Ogre Godz tribute" end
+    if key == ns.BOUNTY then return "Bounty" end
+    if key == ns.GUILD_BOUNTY then return "Guild bounty" end
+    local d = ns.DungeonByKey and ns.DungeonByKey(key)
+    return d and d.name or "A dungeon"
+end
+-- The pieces of a list ({ { layer, option } }) you don't have yet.
+local function Locked(list)
+    local out = {}
+    for _, unlocked in ipairs(list) do
+        if not ns.IsUnlocked(ns.OptionKey(unlocked.layer.key, unlocked.option)) then out[#out + 1] = unlocked end
+    end
+    return out
+end
+local function OpenBounty(chest)
+    local db = KillTrackerDB
+    if ns.Tally then ns.Tally("chests") end  -- (the Chests opened deeds)
+    local tier = chest.tier or 1
+    local spec = TIERS[tier] or TIERS[1]
+    local guild = chest.dungeon == ns.GUILD_BOUNTY
+    local items = {}
+    local own = Locked(ns.PosterPieces and chest.poster and ns.PosterPieces(chest.poster) or {})
+    local list = #own > 0 and own or Locked(ns.PosterPieces and ns.PosterPieces() or {})
+    db.chestPity = db.chestPity or {}
+    local dry = db.chestPity[ns.BOUNTY] or 0
+    if #list > 0 and (guild or dry >= PITY or math.random() < (spec.piece or 0)) then
+        local unlocked = list[math.random(#list)]
+        ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option))
+        items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
+        if not guild then db.chestPity[ns.BOUNTY] = 0 end
+    elseif not guild then
+        db.chestPity[ns.BOUNTY] = dry + 1
+    end
+    for _, key in ipairs({ "story", "bonk" }) do
+        if (spec[key] or 0) > 0 then
+            ns.AddIngredient(key, spec[key], true)
+            items[#items + 1] = { kind = "tokens", dungeon = key, count = spec[key] }
+        end
+    end
+    local coins = math.floor(ns.Config("chestCoins") * (guild and 2 or 1) * spec.coins * (0.5 + math.random()) + 0.5)
+    db.points.chests = (db.points.chests or 0) + coins
+    ns.Touch(db.points)
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    if ns.CheckRank then ns.CheckRank() end
+    return tier, coins, items
+end
+
 -- Opens one of your chests of a dungeon. Returns its tier, its coins and its items ({ { kind = "unlock", layer, option } },
 -- none to two: a chase item, a set piece); nil if you have no chest of it. It's all yours by the time it returns.
 function ns.OpenChest(dungeonKey)
@@ -233,17 +305,11 @@ function ns.OpenChest(dungeonKey)
     end
     if not chest then return nil end
     if dungeonKey == ns.TRIBUTE then return OpenTribute(chest) end
+    if dungeonKey == ns.BOUNTY or dungeonKey == ns.GUILD_BOUNTY then return OpenBounty(chest) end
     if ns.Tally then ns.Tally("chests") end  -- (the Chests opened deeds)
     local tier = chest.tier or 1
     local spec = TIERS[tier] or TIERS[1]
     local items, coins = {}, Coins(dungeonKey, tier)
-    local function Locked(list)
-        local out = {}
-        for _, unlocked in ipairs(list) do
-            if not ns.IsUnlocked(ns.OptionKey(unlocked.layer.key, unlocked.option)) then out[#out + 1] = unlocked end
-        end
-        return out
-    end
     local function Take(unlocked)
         ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option))
         items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }

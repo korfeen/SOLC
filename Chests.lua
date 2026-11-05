@@ -748,8 +748,7 @@ function Shut(dungeonKey, preview, previewTier, previewSpec)
         panel:ClearAllPoints()
         panel:SetAllPoints(panel.anchor)
     end
-    local dungeon = ns.DungeonByKey and ns.DungeonByKey(dungeonKey)
-    panel.title:SetText((dungeon and dungeon.name or dungeonKey) .. " chest")
+    panel.title:SetText(ns.ChestName(dungeonKey) .. " chest")
     local left = (ns.ChestCounts())[dungeonKey] or 0
     panel.left:SetText(preview and "|cffff8040DEV PREVIEW - nothing is unlocked|r" or left > 1 and ("%d of them waiting"):format(left) or "")
     if show.tribute then  -- (no title: the Ogre Godz' words come in its place; its note under them)
@@ -814,9 +813,8 @@ function ns.ShowChest(dungeonKey, preview, previewTier, previewSpec)
     Shut(dungeonKey, preview, previewTier, previewSpec)
     panel:Show()
     -- The top beam's title: the page, then the chest (clicking the page's part closes it).
-    local dungeon = ns.DungeonByKey and ns.DungeonByKey(dungeonKey)
     if ns.UI.ClearScreen and panel.screenName then ns.UI.ClearScreen(panel.screenName) end  -- (another chest's, shown before)
-    panel.screenName = dungeonKey == ns.TRIBUTE and "Ogre Godz Tribute" or ((dungeon and dungeon.name or "Dungeon") .. " Chest")
+    panel.screenName = dungeonKey == ns.TRIBUTE and "Ogre Godz Tribute" or (ns.ChestName(dungeonKey) .. " Chest")
     if ns.UI.SetScreen then ns.UI.SetScreen(panel.screenName, "LOOT", function() panel:Hide() end) end
 end
 -- (its own only: it can be over another screen's)

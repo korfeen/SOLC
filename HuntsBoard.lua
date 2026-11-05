@@ -1450,8 +1450,9 @@ local function Build()
         self.hammered = false
         self.swingIn = false
         self.reader:Redraw()
-        local chests, guildChests = KillTrackerDB.bountyChests or 0, KillTrackerDB.guildBountyChests or 0
-        self.chests:SetText((chests + guildChests > 0) and ("|c" .. AMBER_CODE .. "%d|r bounty chest%s%s waiting"):format(chests,
+        local counts = ns.ChestCounts()  -- (bounty chests: opened in your Inventory, Unlocks.lua)
+        local chests, guildChests = counts[ns.BOUNTY] or 0, counts[ns.GUILD_BOUNTY] or 0
+        self.chests:SetText((chests + guildChests > 0) and ("|c" .. AMBER_CODE .. "%d|r bounty chest%s%s waiting in your Inventory"):format(chests,
             chests == 1 and "" or "s", guildChests > 0 and (" and |cffc070ff%d guild chest%s|r"):format(guildChests,
             guildChests == 1 and "" or "s") or "") or "")
     end
