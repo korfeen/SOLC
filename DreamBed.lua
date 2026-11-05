@@ -1497,7 +1497,7 @@ end
 -- The room's page (the sidebar's Dream Bed): it shows the room as it opens and puts it away as you leave. (Refreshed
 -- often - a kill, a new picture: the room open, only its wallpaper is looked at again, a dream carries on.)
 ns.RegisterPage({
-    key = "dreambed", label = "Dream Bed", section = "me", order = 4,
+    key = "dreambed", label = "Bedroom", section = "me", order = 4,
     bare = true,
     create = function(parent)
         local page = CreateFrame("Frame", nil, parent)

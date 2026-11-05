@@ -906,7 +906,7 @@ local function Refresh()
 end
 
 ns.RegisterPage({
-    key = "proshop", label = "Pro Shop", section = "guild", order = 4,
+    key = "proshop", label = "Shop", section = "guild", order = 4,
     bare = true,
     create = function(parent)
         local holder = CreateFrame("Frame", nil, parent)

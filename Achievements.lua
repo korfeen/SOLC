@@ -122,7 +122,7 @@ local FEATS = {
     -- What you've spent in the Pro Shop, wallpapers too (KillTrackerDB.shop.spent; only yours). The steward's whole look
     -- comes with it: his snooty eyes at 500, his striped outfit at 1500, his sneer at 3000, his Club Sage skin at 6000
     -- and his boater at the top (tools/gen-art-proshop-club.json, convert-art.js BASE_UNLOCKS).
-    { key = "shop", label = "Spent in the Pro Shop", unit = "points", count = function(_, f) return f.shopSpent end, tiers = {
+    { key = "shop", label = "Spent in the Shop", unit = "points", count = function(_, f) return f.shopSpent end, tiers = {
         { 100, "Window Shopper", 5 }, { 500, "Regular Customer", 15 }, { 1500, "Valued Member", 30 }, { 3000, "Big Spender", 50 },
         { 6000, "The Steward's Favourite", 80 }, { 10000, "Life Member", 120 } } },
     -- Friendship: the most dungeons you've cleared with one guildmate (KillTrackerDB.companions, Guild.lua).

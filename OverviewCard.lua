@@ -1328,7 +1328,7 @@ local function BuildEditor(page, parent)
         self.hover = true self:Paint(true)
         if page.edit and WearsNotMine(page.edit) then
             local _, shop = NotMine(page.edit)
-            SetTooltip(self, shop and { "To the Pro Shop", "Buy what you're trying on: it goes in the cart" }
+            SetTooltip(self, shop and { "To the Shop", "Buy what you're trying on: it goes in the cart" }
                 or { "Not yet", "Take off what isn't yours first" })
         end
     end)
@@ -1339,7 +1339,7 @@ local function BuildEditor(page, parent)
     function page.PaintEditButtons()
         local shop = false
         if page.edit then shop = select(2, NotMine(page.edit)) end
-        save.text:SetText(shop and "PRO SHOP" or "SAVE")  -- (trying on shop pieces: off to buy them)
+        save.text:SetText(shop and "TO SHOP" or "SAVE")  -- (trying on shop pieces: off to buy them)
         save:SetEnabled(shop or Changed() and not (page.edit and WearsNotMine(page.edit)))
         save:Paint(false)
         cancel:Paint(false)

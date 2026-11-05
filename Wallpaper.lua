@@ -34,7 +34,7 @@ function ns.WallpaperUnlocked(paper)
         return false, ("Ogre Rank %d"):format(paper.rank)
     end
     if KillTrackerDB.wallpapers and KillTrackerDB.wallpapers[paper.id] then return true end
-    return false, ("Pro Shop, %d points"):format(paper.price)
+    return false, ("The Shop, %d points"):format(paper.price)
 end
 
 -- Buys one (its price in points). Returns true, or false and why not.
@@ -42,7 +42,7 @@ function ns.BuyWallpaper(id)
     local paper = BY_ID[id]
     if not (paper and paper.price) then return false, "That one isn't for sale." end
     if ns.WallpaperUnlocked(paper) then return false, "You have it already." end
-    if ns.RankLocked and ns.RankLocked("proshop") then return false, "The Pro Shop isn't open to you yet." end
+    if ns.RankLocked and ns.RankLocked("proshop") then return false, "The Shop isn't open to you yet." end
     local balance = ns.GetPoints().balance
     if balance < paper.price then return false, ("Not enough points (%d of %d)."):format(balance, paper.price) end
     local db = KillTrackerDB

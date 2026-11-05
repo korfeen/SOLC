@@ -75,7 +75,7 @@ function ns.PixCollectionUnlockText(option)
     end
     if kind == 'loot' then return 'Loot or equip: ' .. value .. '.' end
     if kind == 'combine' then return 'Collect its component pieces.' end
-    if kind == 'shop' then return 'Buy it in the Pro Shop.' end
+    if kind == 'shop' then return 'Buy it in the Shop.' end
     if kind == 'gacha' then return 'From the claw machine.' end
     return 'Earn its wardrobe unlock to mint this piece.'
 end

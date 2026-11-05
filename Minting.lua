@@ -145,7 +145,7 @@ function ns.FrameUnlocked(frame)
     local deed = unlock:match("^deed:(.+)$")
     if deed then return (KillTrackerDB.achievements or {})[deed] ~= nil, "A deed" end
     local shop = unlock:match("^shop:(.+)$")  -- (bought in the Pro Shop: ProShop.lua)
-    if shop then return (KillTrackerDB.frames or {})[shop] ~= nil, "The Pro Shop" end
+    if shop then return (KillTrackerDB.frames or {})[shop] ~= nil, "The Shop" end
     return false
 end
 function ns.SetMintFrame(mint, id)

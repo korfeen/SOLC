@@ -43,7 +43,7 @@ local STEPS = {
         { text = "New posters every week. Finish one for its reward. Every claim fills the guild's counter, so even you can be useful." },
     } },
     { id = "proshop", rank = 5, page = "proshop", lines = {
-        { text = "Rank five. Against my express wishes, you may now enter my Pro Shop. Wipe your boots. Twice.", open = "proshop", glow = "proshop" },
+        { text = "Rank five. Against my express wishes, you may now enter my shop. Wipe your boots. Twice.", open = "proshop", glow = "proshop" },
         { text = "Spend your points on finery for your ogre. Dress the mannequin, fill your cart and bring it to me at the till. I shall pretend to be pleased." },
         { text = "Spending points never costs you rank. So spend them. All of them. It's the least you can do." },
     } },
@@ -329,8 +329,8 @@ function ns.StartTour(replay)
 end
 
 -- A locked page asked for (a link, a slash command): the steward says what rank it waits on.
-local NAMES = { deeds = "The Deeds", pixcollection = "The Dream Bed", bounties = "The bounty board", proshop = "My Pro Shop",
-    games = "The Games Room", dreambed = "The Dream Bed" }
+local NAMES = { deeds = "The Deeds", pixcollection = "Your bedroom", bounties = "The bounty board", proshop = "My shop",
+    games = "The Games Room", dreambed = "Your bedroom" }
 -- A remark: one line, no buttons, gone by itself after a while (a click on the bubble sends it off sooner). Never over
 -- a tour he's giving (then it goes to the chat); a remark in its place is replaced.
 local remarkToken = 0
