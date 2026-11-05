@@ -134,6 +134,17 @@ local POSTER_OGRE = {
     gordok = "fac_gordok", spirestone = "fac_spirestone", deadwind = "fac_deadwind", urok = "fac_urok",
     kind_kobold = "crit_kobold", kind_gnoll = "crit_gnoll", kind_trogg = "crit_trogg",  -- (the Alliance starter zones' foes)
 }
+-- The odd jobs ogres dressed for the job, from pieces we have (a piece not in the game: the plain ogre layers instead).
+local ODD_LOOK = {
+    fish = { skin = "swamp_green", eyes = "single_eye_open", expression = "sea_dog_grin", headwear = "gacha_head_fishing_hat", outfit = "gacha_outfit_sailor_stripes" },
+    gather = { skin = "club_sage", eyes = "dreamy_swirl", expression = "drooling", headwear = "flower_crown", outfit = "tweed_vest" },
+    explorers = { skin = "mud_brown", eyes = "heavy_bags", expression = "mouth_hanging_open", headwear = "hunt_tracker_head", outfit = "hunt_tracker_body" },
+    leaders = { skin = "gold", eyes = "snooty_eyes", expression = "smug_smile", headwear = "gacha_hair_powdered_wig", outfit = "royal_nap_robe" },
+    dungeons = { skin = "slate_gray", eyes = "bloodshot", expression = "mouth_hanging_open", headwear = "gacha_head_bobble", outfit = "gacha_outfit_parka" },
+    pvp = { skin = "sunburnt_red", eyes = "pirate_eyepatch", expression = "sea_dog_grin", headwear = "gacha_hair_mohawk", outfit = "hunt_stalker_body" },
+    elites = { skin = "mud_brown", eyes = "heavy_bags", expression = "smug_smile", headwear = "hunt_master_head", outfit = "hunt_master_body" },
+    rares = { skin = "moss", eyes = "single_eye_open", expression = "smug_smile", headwear = "gacha_head_deerstalker", outfit = "shop_norfolk_jacket" },
+}
 local function HasOption(layerKey, id)
     for _, layer in ipairs(ns.MintLayers or {}) do
         if layer.key == layerKey then
@@ -145,13 +156,17 @@ end
 function ns.PosterPicture(id)
     local wanted = ns.WantedPicture(id)
     if wanted or not id then return wanted end
-    local piece = POSTER_OGRE[id] or (id:find("^rare_") and POSTER_OGRE.rares)  -- (a named rare: the Rare Hunters' ogre)
+    if id:find("^rare_") then id = "rares" end  -- (a named rare: the Rare Hunters' ogre)
+    local piece = POSTER_OGRE[id]
     if not piece then return end
     local traits = {}
     for layer, option in pairs(WANTED_OGRE) do traits[layer] = option end
     if piece:find("^prop_") then
         if not HasOption("accessory", piece) then return end
-        traits.accessory, traits.outfit = piece, "striped_pajamas"  -- (the plain ogre, holding it)
+        traits.accessory, traits.outfit = piece, "striped_pajamas"  -- (the plain ogre, holding it; or dressed for the job)
+        for layer, option in pairs(ODD_LOOK[id] or {}) do
+            if HasOption(layer, option) then traits[layer] = option end
+        end
     else
         if not HasOption("headwear", piece .. "_head") or not HasOption("outfit", piece .. "_body") then return end
         traits.headwear, traits.outfit = piece .. "_head", piece .. "_body"
