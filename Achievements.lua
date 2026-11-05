@@ -373,20 +373,46 @@ local EXPLORE = {
     { "deadwind", "Deadwind Pass", 1430, 3, "Haunted Hole In One" },
     { "moonglade", "Moonglade", 1450, 1, "Moonwalker" },
 }
-local function Explored(uiMap)
+-- A zone's map pieces uncovered - only once you've set foot in it (LifeStats.lua's places): some maps show a piece or
+-- two of themselves from the start (Moonglade's only one), which mustn't count as exploring.
+local function Explored(uiMap, zone)
+    local life = KillTrackerDB and KillTrackerDB.life
+    if not (life and life.places and life.places[zone]) then return 0 end
     local textures = C_MapExplorationInfo and C_MapExplorationInfo.GetExploredMapTextures and C_MapExplorationInfo.GetExploredMapTextures(uiMap)
     return textures and #textures or 0
+end
+-- Exploration deeds given before that rule (a zone never visited): taken back, with their course and their news.
+local function RevokeUnexplored()
+    local db = KillTrackerDB
+    local earned = db and db.achievements
+    if not earned then return 0 end
+    local taken = 0
+    for _, z in ipairs(EXPLORE) do
+        local id = ("feat:explore:%s:%d"):format(z[1], z[4])
+        if earned[id] and Explored(z[3], z[2]) < z[4] then
+            earned[id] = nil
+            local key = "background:zone_" .. z[1]
+            if db.unlocks then db.unlocks[key] = nil end
+            if db.ownUnlocks then db.ownUnlocks[key] = nil end
+            for i = #(db.events or {}), 1, -1 do
+                local e = db.events[i]
+                if (e.k == "A" and e.a == id) or (e.k == "U" and e.a == key) then table.remove(db.events, i) end
+            end
+            taken = taken + 1
+        end
+    end
+    return taken
 end
 -- Your exploration, for /solc explore (SecretDeeds.lua): { zone, pieces explored, pieces in all }, and whether the
 -- game tells an addon at all (C_MapExplorationInfo).
 function ns.ExplorationProgress()
     local list = {}
-    for _, z in ipairs(EXPLORE) do list[#list + 1] = { z[2], Explored(z[3]), z[4] } end
+    for _, z in ipairs(EXPLORE) do list[#list + 1] = { z[2], Explored(z[3], z[2]), z[4] } end
     return list, C_MapExplorationInfo ~= nil and C_MapExplorationInfo.GetExploredMapTextures ~= nil
 end
 for _, z in ipairs(EXPLORE) do
     FEATS[#FEATS + 1] = { key = "explore:" .. z[1], label = "Explore " .. z[2], unit = "map pieces", group = "Exploration",
-        count = function(source) if source == KillTrackerDB then return Explored(z[3]) end end,
+        count = function(source) if source == KillTrackerDB then return Explored(z[3], z[2]) end end,
         tiers = { { z[4], z[5], 25 } } }
 end
 
@@ -650,6 +676,8 @@ end)
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
+    local taken = RevokeUnexplored()
+    if taken > 0 then ns.Print(("%d exploration deed%s taken back: those zones haven't been visited yet."):format(taken, taken == 1 and "" or "s")) end
     local awarded = CheckAchievements(true)
     if awarded > 0 then
         ns.Print(("%d achievements awarded for earlier deeds. Type /solc to see them."):format(awarded))
