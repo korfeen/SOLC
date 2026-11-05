@@ -308,11 +308,11 @@ const PATTERNS = {
   },
   // Oval loops: rows of long rounded ovals, ringed orange, cream and light orange round an orange middle, on peach.
   // Club Stripes, everyone's to start with: a dark clubhouse stripe (dark so white text reads on it, 2026-11-05) - a
-  // walnut band edged in a near-black pinstripe and a gold one, then a darker band with a faint line down its middle. STRIPES: { from x, colour } over a repeat.
+  // walnut band edged in a near-black pinstripe and a gold one, then a darker band with a faint line down its middle (no gold lines on the wall: too bright, 2026-11-05). STRIPES: { from x, colour } over a repeat.
   stripes: {
     w: 256, h: 256, grain: 0.035,
-    stripes: [[0, "#4a3322"], [46, "#22150c"], [50, "#3a2819"], [54, "#9a7442"], [56, "#3a2819"],
-      [92, "#463021"], [94, "#3a2819"], [124, "#9a7442"], [126, "#3a2819"], [130, "#22150c"]],
+    stripes: [[0, "#4a3322"], [46, "#22150c"], [50, "#3a2819"], [54, "#3a2819"], [56, "#3a2819"],
+      [92, "#463021"], [94, "#3a2819"], [124, "#3a2819"], [126, "#3a2819"], [130, "#22150c"]],
     period: 134,
     colourAt(x) {
       const at = x % (this.w / 2) * (this.period / (this.w / 2));  // (two repeats a tile)
