@@ -76,11 +76,22 @@ C_Timer.NewTicker(600, function()
 end)
 ns.NAP_GOAL = NAP_GOAL
 
+-- /solc pictures clear [yes]: all of this character's pictures gone (Minting.lua's ns.ClearMyPictures) - testers only.
 -- /solc explore: each zone's map pieces uncovered (the exploration deeds and their golf courses, Achievements.lua).
 local Slash = SlashCmdList.SOLC
 if Slash then
     SlashCmdList.SOLC = function(input)
-        if strtrim(input or ""):lower() ~= "explore" then return Slash(input) end
+        local msg = strtrim(input or ""):lower()
+        local tester = ns.IsTester and ns.IsTester()  -- (testers only: Config.lua)
+        if msg == "pictures clear" and tester then
+            ns.Print("This takes ALL of this character's pictures away for good (and the picture deeds). Sure? /solc pictures clear yes")
+            return
+        elseif msg == "pictures clear yes" and tester then
+            local n = ns.ClearMyPictures and ns.ClearMyPictures() or 0
+            ns.Print(("%d picture%s gone, and the picture deeds with them."):format(n, n == 1 and "" or "s"))
+            return
+        end
+        if msg ~= "explore" then return Slash(input) end
         local list, works = ns.ExplorationProgress()
         if not works then ns.Print("This game doesn't tell addons what you've explored (no C_MapExplorationInfo).") return end
         table.sort(list, function(a, b) return a[2] / a[3] > b[2] / b[3] end)

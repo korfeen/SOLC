@@ -163,6 +163,15 @@ function ns.IsDev()
     local guid = UnitGUID("player")
     return guid ~= nil and not issecret(guid) and DEV_CHARACTERS[guid] ~= nil
 end
+-- Testers: characters that get the testing commands (/solc pictures clear) without the dev powers - they play as
+-- everyone does. Dev characters count too.
+local TESTERS = {
+    ["Player-6948-00691B17"] = "Bonnie Bronzebraids (Forever)",
+}
+function ns.IsTester()
+    local guid = UnitGUID("player")
+    return ns.IsDev() or (guid ~= nil and not issecret(guid) and TESTERS[guid] ~= nil)
+end
 -- True if sender ("Name" or "Name-Realm") is one of the dev characters, by your own guild roster.
 function ns.IsDevSender(sender)
     Ranks()

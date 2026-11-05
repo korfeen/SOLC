@@ -920,6 +920,43 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", RemoveOutdatedMints)
 
+-- All of this character's pictures gone (/solc pictures clear yes, SecretDeeds.lua): each marked removed
+-- (KillTrackerDB.removedMints: guildmates' copies go too, Sync.lua), the showcase and photo emptied, the pieces' minted
+-- history (PixCollection.lua) and the picture news cleared, and the picture deeds taken back with what they unlocked.
+-- Spent Bonks and Bedtime Stories aren't given back. Returns how many pictures went.
+local PICTURE_FEATS = { pictures = true, epic = true, legendary = true, showcase = true }
+function ns.ClearMyPictures()
+    local db = KillTrackerDB
+    local n = #(db.mints or {})
+    db.removedMints = db.removedMints or {}
+    for _, mint in ipairs(db.mints or {}) do
+        local mark = {}
+        db.removedMints[mint.number] = ns.Touch(mark)
+    end
+    db.mints = {}
+    db.dreamPending = nil
+    if db.showcase then db.showcase.numbers = {} ns.Touch(db.showcase) end
+    if db.card and db.card.portrait then db.card.portrait = nil ns.Touch(db.card) end
+    db.pixPieceMinted, db.pixMinted = nil, nil
+    for i = #(db.events or {}), 1, -1 do
+        local k = db.events[i].k
+        if k == "M" or k == "W" then table.remove(db.events, i) end
+    end
+    for id in pairs(db.achievements or {}) do
+        local feat = id:match("^feat:(%a+):%d+$")
+        if feat and PICTURE_FEATS[feat] then
+            db.achievements[id] = nil
+            for _, unlocked in ipairs(ns.UnlockOptions and ns.UnlockOptions("deed:" .. id) or {}) do
+                local key = ns.OptionKey(unlocked.layer.key, unlocked.option)
+                if db.unlocks then db.unlocks[key] = nil end
+                if db.ownUnlocks then db.ownUnlocks[key] = nil end
+            end
+        end
+    end
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+    return n
+end
+
 StaticPopupDialogs["SOLC_REROLL"] = {
     text = "%s minted this picture first. Reroll it for free?",
     button1 = YES or "Yes",
