@@ -1029,7 +1029,7 @@ local function BuildBook()
     W.spread = spread
     hooksecurefunc(spread, "Show", function()
         spread.title:SetText(O("What's he thinking about?", "THINK?"))
-        spread.note:SetText(O("Pick a piece and he'll dream about it for sure. It costs Bedtime Stories by its rarity, and doesn't count towards the painting's luck.",
+        spread.note:SetText(O("Pick something and he'll dream about it for sure. The red number is how many Bedtime Stories it costs. (A picked piece won't make the painting rarer.)",
             "PICK THING. HE DREAM IT."))
         none.label:SetText(O("Nothing, thank you", "ZZZ"))
         none:Paint(false)
