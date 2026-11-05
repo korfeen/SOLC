@@ -498,7 +498,8 @@ if (!only || only === "gear" || only === "creatures") {
     .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-bounty.json"), "utf8")))
     .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-dragonflights.json"), "utf8")))  // (the dragonkin costume in each flight's colours)
     .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-set-accessories.json"), "utf8")))  // (each faction's and creature's accessory)
-    .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-backgrounds.json"), "utf8")));  // (the dungeons' painted backgrounds, bg_<key>)
+    .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-backgrounds.json"), "utf8")))  // (the dungeons' painted backgrounds, bg_<key>)
+    .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-secret.json"), "utf8")));  // (the secret deeds' pieces, SecretDeeds.lua)
   const LAYER_FOLDER = { headwear: "Headwear", outfit: "Outfit", accessory: "Accessory", background: "Background" };
   for (const edition of ["painted", "crayon", "sketch"]) {
     for (const folder of Object.values(LAYER_FOLDER)) for (const rarity of Object.values(FOLDER)) {
