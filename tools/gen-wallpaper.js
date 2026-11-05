@@ -307,12 +307,12 @@ const PATTERNS = {
     },
   },
   // Oval loops: rows of long rounded ovals, ringed orange, cream and light orange round an orange middle, on peach.
-  // Club Stripes, everyone's to start with: a quiet clubhouse stripe - a wide tan band edged in a brown pinstripe and a
-  // gold one, then a wide cream band with a faint tan line down its middle. STRIPES: { from x, colour } over a repeat.
+  // Club Stripes, everyone's to start with: a dark clubhouse stripe (dark so white text reads on it, 2026-11-05) - a
+  // walnut band edged in a near-black pinstripe and a gold one, then a darker band with a faint line down its middle. STRIPES: { from x, colour } over a repeat.
   stripes: {
     w: 256, h: 256, grain: 0.035,
-    stripes: [[0, "#b08a5c"], [46, "#5a3a22"], [50, "#ecdfc3"], [54, "#b8925a"], [56, "#ecdfc3"],
-      [92, "#d6c19a"], [94, "#ecdfc3"], [124, "#b8925a"], [126, "#ecdfc3"], [130, "#5a3a22"]],
+    stripes: [[0, "#4a3322"], [46, "#22150c"], [50, "#3a2819"], [54, "#9a7442"], [56, "#3a2819"],
+      [92, "#463021"], [94, "#3a2819"], [124, "#9a7442"], [126, "#3a2819"], [130, "#22150c"]],
     period: 134,
     colourAt(x) {
       const at = x % (this.w / 2) * (this.period / (this.w / 2));  // (two repeats a tile)
@@ -324,7 +324,7 @@ const PATTERNS = {
     friezeAt(x, y, W, H) {
       const top = 26, inner = H - 2 * top, t = (y - top) / inner;
       if (t < 0 || t >= 1) return null;
-      return Math.abs(t - 0.28) < 0.025 || Math.abs(t - 0.72) < 0.025 ? hex("#ecdfc3") : hex("#b08a5c");
+      return Math.abs(t - 0.28) < 0.025 || Math.abs(t - 0.72) < 0.025 ? hex("#9a7442") : hex("#4a3322");
     },
   },
   // Blue blocks, measured off the user's example (refs: GE5035): navy, light blue and cream on a square grid, every
