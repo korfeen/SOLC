@@ -1,5 +1,5 @@
 // Whole crayon drawings (own: true) for the odd-job bounty posters' props (tools/gen-art-bounty.json): the Stolen Crown,
-// the Dungeon Torch, the Dented Shield, the Explorer's Map, the Fishing Rod and the Gathering Sack. Shapes in each
+// the Dungeon Torch, the Honour Medal, the Explorer's Map, the Fishing Rod and the Gathering Sack. Shapes in each
 // piece's box (0..1).
 module.exports = ({ INK, BONE, GOLD, tri }) => {
   const WOOD = "#a8682e", DARK = "#5a3a1e";
@@ -18,14 +18,16 @@ module.exports = ({ INK, BONE, GOLD, tri }) => {
       d.fill([[0.3, 0.38], [0.24, 0.2], [0.36, 0.24], [0.42, 0.0], [0.56, 0.16], [0.68, 0.06], [0.72, 0.26], [0.7, 0.38]], "#ff8a2a", { hatch: 10, line: 9 });
       d.fill([[0.4, 0.38], [0.42, 0.22], [0.5, 0.28], [0.58, 0.2], [0.6, 0.38]], "#ffd23f", { hatch: 6, line: 6 });
     } },
-    // A round wooden shield, iron rim, dents and a crack.
+    // A huge lumpy gold medal on a thick red ribbon, crossed swords on it, a bite out of its rim.
     prop_pvp: { own: true, draw: (d) => {
-      d.circle(0.5, 0.5, 0.46, "#4a4a52");
-      d.circle(0.5, 0.5, 0.38, WOOD);
-      for (const x of [0.3, 0.5, 0.7]) d.line([[x, 0.15], [x, 0.85]], 4, DARK);
-      d.circle(0.5, 0.5, 0.1, "#8a8a92");
-      d.line([[0.62, 0.2], [0.68, 0.34], [0.62, 0.42]], 5, INK);
-      d.circle(0.3, 0.68, 0.04, "#6a6a72", { line: 0 });
+      d.fill([[0.34, 0.0], [0.54, 0.0], [0.58, 0.42], [0.42, 0.44]], "#d8302e", { hatch: 8, line: 8 });
+      d.fill([[0.54, 0.0], [0.72, 0.02], [0.62, 0.44], [0.5, 0.42]], "#b82424", { hatch: 8, line: 8 });
+      for (const y of [0.1, 0.22, 0.34]) d.line([[0.4, y], [0.62, y + 0.02]], 3, "#ffd23f");
+      d.circle(0.5, 0.68, 0.3, GOLD);
+      d.circle(0.5, 0.68, 0.22, "#ffc83a", { line: 5 });
+      d.line([[0.36, 0.56], [0.64, 0.82]], 7, "#8a8a92"); d.line([[0.64, 0.56], [0.36, 0.82]], 7, "#8a8a92");
+      d.line([[0.33, 0.78], [0.42, 0.86]], 6, "#5a3a1e"); d.line([[0.67, 0.78], [0.58, 0.86]], 6, "#5a3a1e");
+      d.circle(0.78, 0.56, 0.06, "#ffffff", { line: 0 });  // (the bite: a notch out of its rim)
     } },
     // A rolled-out old map: a red X, a dotted trail, a compass rose.
     prop_explorers: { own: true, draw: (d) => {
