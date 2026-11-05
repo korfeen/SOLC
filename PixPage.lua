@@ -117,23 +117,14 @@ local function DrawTiles()
                 local dungeon = ns.DungeonByKey and ns.DungeonByKey(picture.chest)
                 local tribute = picture.chest == ns.TRIBUTE
                 tile.canvas:Hide()
-                tile.plus:Hide()
                 tile.border:SetVertexColor(1, 0.82, 0.25)
                 tile.chest:SetVertexColor(1, tribute and 0.85 or 1, tribute and 0.45 or 1)
                 tile.caption:SetText(tribute and "|cffffd100TRIBUTE!|r" or "|cffffd100OPEN|r")
                 tile.band:Show()
                 tile.tag:SetText(picture.count > 1 and ("|cffffd100x%d|r"):format(picture.count) or "")
                 tile.dungeonName = tribute and "Ogre Godz tribute" or dungeon and dungeon.name or "A dungeon"
-            elseif picture.mintAction then
-                tile.canvas:Hide()
-                tile.plus:Show()
-                tile.border:SetVertexColor(0.5, 0.4, 0.2)
-                tile.caption:SetText(("DREAM  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))
-                tile.band:Show()
-                tile.tag:SetText("")
             else
                 tile.canvas:Show()
-                tile.plus:Hide()
                 ns.DrawMint(tile.canvas, picture.mint)
                 local picked = page.pick and page.pick.mint == picture.mint
                 if picked then tile.border:SetVertexColor(1, 1, 1) else tile.border:SetVertexColor(ns.RarityRGB(ns.MintRarity(picture.mint.traits, picture.mint.asked))) end
@@ -375,11 +366,6 @@ local function Create(parent, kind)
             local over = CreateFrame("Frame", nil, tile)
             over:SetAllPoints()
             over:SetFrameLevel(tile.canvas:GetFrameLevel() + 10)
-            tile.plus = over:CreateFontString(nil, "OVERLAY")
-            tile.plus:SetFont(NAME_FONT, 40, "")
-            tile.plus:SetPoint("CENTER", 0, 8)
-            tile.plus:SetText("+")
-            tile.plus:SetTextColor(unpack(GOLD))
             tile.band = over:CreateTexture(nil, "ARTWORK")
             tile.band:SetPoint("BOTTOMLEFT", spec.rim, spec.rim)
             tile.band:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
@@ -402,7 +388,6 @@ local function Create(parent, kind)
             UI.OutlineText(tile.tag, { 0, 0, 0 })
             tile:SetScript("OnClick", function(self)
                 UI.ClickSound()
-                if self.picture.mintAction then return ns.ConfirmMint() end
                 if self.picture.chest then return ns.ShowChest(self.picture.chest) end
                 Pick(self.picture)
             end)
@@ -411,9 +396,6 @@ local function Create(parent, kind)
                 if picture.chest then
                     return Tooltip(self, { self.dungeonName .. (picture.count > 1 and (" chests (%d)"):format(picture.count) or " chest"),
                         "Coins, and things for your pictures to roll. Click to open.", picture.count > 1 and "Open them one after another." or nil })
-                end
-                if picture.mintAction then
-                    return Tooltip(self, { "Dream a picture", ns.BonksLine() .. ". The ogre dreams it, you paint it." })
                 end
                 local mint = picture.mint
                 local rarity = ns.MintRarity(mint.traits, mint.asked)
@@ -474,8 +456,6 @@ local function Create(parent, kind)
             UI.ClickSound()
             if d.item and not d.owned and not state.viewing then
                 ns.ConfirmBuy(d.item)
-            elseif d.mintAction then
-                ns.ConfirmMint()
             elseif d.extra and d.extra.onClick then
                 d.extra.onClick()
             end
@@ -607,7 +587,7 @@ local function Refresh(p)
         state.view, state.listPage = "collection", "pix"
         p.data = {}
         for _, d in ipairs(List.BuildRows()) do
-            if not d.mint and not d.mintAction then p.data[#p.data + 1] = d end  -- (pictures and minting: on PIX)
+            if not d.mint then p.data[#p.data + 1] = d end  -- (pictures: on PIX)
         end
         p.total, p.max = 0, 0
         p.pictures = nil

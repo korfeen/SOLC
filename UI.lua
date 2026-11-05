@@ -190,9 +190,6 @@ local function BuildRows()
             { "Spent", -p.spent } }) do
             rows[#rows + 1] = { label = part[1], count = part[2], pointsPart = true }
         end
-        if not state.viewing then
-            rows[#rows + 1] = { label = "Mint a picture", count = 0, mintAction = true }
-        end
         if not state.viewing then ns.UpdateDuplicates() end
         local mints = {}
         for _, mint in pairs(Source().mints or {}) do mints[#mints + 1] = mint end
@@ -1373,11 +1370,6 @@ local function RowTooltip(self)
         GameTooltip:Show()
     elseif self.data.extra then
         if self.data.extra.onEnter then self.data.extra.onEnter(self) end
-    elseif self.data.mintAction then
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Dream a picture")
-        GameTooltip:AddLine("Off to the Dream Bed: one Bonk and the ogre dreams up a picture for you to paint. A Bedtime Story picks a piece.", 1, 1, 1, true)
-        GameTooltip:Show()
     elseif self.data.pointsPart then
         return
     elseif self.data.player then
@@ -1439,11 +1431,7 @@ local function FillRow(row, d, total, max)
     row.label:SetText(d.label)
     local barFraction = max > 0 and d.count / max or 0
     row.bar:SetVertexColor(0.8, 0.2, 0.2, 0.45)
-    if d.mintAction then
-        row.label:SetText("|cffffd100+ Dream a picture|r")
-        row.count:SetText("Dream Bed")
-        barFraction = 0
-    elseif d.mint then
+    if d.mint then
         local rarity = ns.MintRarity(d.mint.traits, d.mint.asked)
         row.label:SetText(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity], d.label)
             .. (d.mint.duplicateOf and "  |cffff6060Duplicate|r" or ""))

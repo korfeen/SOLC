@@ -979,12 +979,6 @@ function ns.ConfirmReroll(mint)
     StaticPopup_Show("SOLC_REROLL", mint.duplicateOf, nil, mint)
 end
 
--- Minting happens in the Dream Bed (DreamBed.lua).
-function ns.ConfirmMint()
-    local ok, err = pcall(ns.ShowDreamBed)
-    if not ok then ns.Print("|cffff5555The Dream Bed broke:|r " .. tostring(err)) end  -- (say so, rather than skip it quietly)
-end
-
 -- Showcase: up to SHOWCASE_SIZE of your pictures on your Overview, synced to guildmates (Sync.lua):
 -- KillTrackerDB.showcase = { numbers = { picture number, ... }, backdrop = background option id, seq }.
 

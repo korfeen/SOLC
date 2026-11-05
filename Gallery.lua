@@ -248,12 +248,6 @@ function UI.Gallery(page)
             self.tile:SetScript("OnUpdate", on and ShineUpdate or nil)
         end
         thumb:Shine(false)
-        thumb.plus = thumb.tile:CreateFontString(nil, "OVERLAY")
-        thumb.plus:SetFont(NAME_FONT, 44, "")
-        thumb.plus:SetTextColor(unpack(GOLD))
-        UI.OutlineText(thumb.plus, { 0, 0, 0 })
-        thumb.plus:SetPoint("CENTER", 0, 8)
-        thumb.plus:SetText("+")
         thumb.caption = thumb.tile:CreateFontString(nil, "OVERLAY")
         thumb.caption:SetFont(NAME_FONT, 12, "")
         thumb.caption:SetTextColor(unpack(CREAM))
@@ -266,7 +260,6 @@ function UI.Gallery(page)
             local entry = self.entry
             if not entry then return end
             UI.ClickSound()
-            if entry.mintAction then return ns.ConfirmMint() end
             if entry.ogre then return page.ShowPanel("edit") end  -- (your ogre: changed in place, EDIT)
             if entry.chest then return ns.ShowChest(entry.chest) end
             if page.OpenView then page.OpenView(entry.mint, true) end
@@ -278,9 +271,7 @@ function UI.Gallery(page)
         thumb:SetScript("OnDragStop", function() gallery:StopDrag() end)
         thumb:SetScript("OnEnter", function(self)
             local entry = self.entry
-            if entry and entry.mintAction then
-                return UI.Tooltip(self, { "Dream a picture", "Off to the Dream Bed: the ogre dreams it, you paint it." })
-            elseif entry and entry.ogre then
+            if entry and entry.ogre then
                 return UI.Tooltip(self, { "Your ogre", "Click to build it from what you have. Drag it onto PHOTO to show it" })
             elseif entry and entry.chest then
                 return UI.Tooltip(self, { (self.dungeonName or "A dungeon") .. (entry.count > 1 and (" chests (%d)"):format(entry.count) or " chest"),
@@ -307,7 +298,7 @@ function UI.Gallery(page)
         local mints = {}
         for _, mint in ipairs(KillTrackerDB.mints or {}) do mints[#mints + 1] = mint end
         table.sort(mints, function(a, b) return a.number > b.number end)
-        -- Your chests first, a row of their own (gaps fill it out), then minting, then your pictures. (Your ogre isn't
+        -- Your chests first, a row of their own (gaps fill it out), then your pictures. (Your ogre isn't
         -- here: it's changed in the Overview's EDIT.)
         local entries = {}
         local counts, order = ns.ChestCounts()
@@ -332,13 +323,11 @@ function UI.Gallery(page)
             thumb:Shine(entry ~= nil and entry.chest == ns.TRIBUTE)
             if ogre then  -- your ogre, YOUR OGRE under it
                 ns.DrawMint(thumb.canvas, entry.ogreMint)
-                thumb.plus:Hide()
                 thumb.icon:Hide()
                 thumb.caption:SetText("YOUR OGRE")
                 thumb.border:SetColorTexture(1, 0.82, 0.25)
             elseif entry and not mint then
                 thumb.cover:Hide()
-                thumb.plus:SetShown(entry.mintAction == true)
                 thumb.icon:SetShown(entry.chest ~= nil)
                 if entry.chest then
                     local d = ns.DungeonByKey and ns.DungeonByKey(entry.chest)
@@ -349,9 +338,6 @@ function UI.Gallery(page)
                     thumb.caption:SetText(("%s%s"):format(tribute and "|cffffd100TRIBUTE!|r" or "OPEN",
                         entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
                     thumb.border:SetColorTexture(1, 0.82, 0.25)
-                else
-                    thumb.caption:SetText("DREAM")
-                    thumb.border:SetColorTexture(0.5, 0.4, 0.2)
                 end
             end
             thumb.border:SetShown(mint == nil)  -- (a picture: no box, its own frame)
