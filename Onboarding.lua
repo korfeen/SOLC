@@ -62,8 +62,13 @@ local function DB()
     return db.tour
 end
 
--- The rank the locks and the tour go by: yours (a dev character's pretend one while set).
+-- The rank the locks and the tour go by: yours (a dev character's pretend one while set; the last step's during
+-- /solc tour all, the preview).
+local preview = false
+local LAST_RANK = 1
+for _, step in ipairs(STEPS) do LAST_RANK = math.max(LAST_RANK, step.rank) end
 function ns.TourRank()
+    if preview then return LAST_RANK end
     local db = KillTrackerDB
     if db and db.tourRank and ns.IsDev and ns.IsDev() then return db.tourRank end
     return ns.GetRank and ns.GetRank().rank or 1
@@ -245,6 +250,12 @@ local function Close()
     wipe(queue)
     if panel then panel:Hide() end
     if glow then glow:Hide() end
+    if preview then  -- (the preview's over: the locks are back)
+        preview = false
+        if ns.UI.RelayoutSidebar then ns.UI.RelayoutSidebar() end
+        if ns.UI.window and ns.UI.window:IsShown() and ns.OpenPage then ns.OpenPage("overview") end
+        if ns.Print then ns.Print("Tour preview over: back to your own rank. /solc tour reset to start the real one fresh.") end
+    end
 end
 
 local function ShowLine()
@@ -270,7 +281,7 @@ function ns.TourNext()
     if not current then return Close() end
     local tour = DB()
     if line >= #current.lines then
-        if tour and current.id then tour.seen[current.id] = true end
+        if tour and current.id and not preview then tour.seen[current.id] = true end
         StartNext()
     else
         line = line + 1
@@ -280,7 +291,7 @@ end
 
 function ns.TourSkip()
     local tour = DB()
-    if tour then
+    if tour and not preview then
         local rank = ns.TourRank()
         for _, step in ipairs(STEPS) do if step.rank <= rank then tour.seen[step.id] = true end end
     end
@@ -367,7 +378,8 @@ function ns.SetTourRank(rank)
     C_Timer.After(0.2, function() ns.StartTour() end)
 end
 
--- /solc tour (every step up to your rank again), /solc tour reset (as new: next open starts from the welcome);
+-- /solc tour (every step up to your rank again), /solc tour all (the preview: every step of every rank, the rooms open
+-- till it's over, nothing marked seen), /solc tour reset (as new: next open starts from the welcome);
 -- dev: /solc tourrank <n> | /solc tourrank. The rest goes to Core.lua's handler.
 local Slash = SlashCmdList.SOLC
 if Slash then
@@ -376,6 +388,16 @@ if Slash then
         if msg == "tour" then
             if not (ns.UI.window and ns.UI.window:IsShown()) and ns.ToggleUI then ns.ToggleUI() end
             C_Timer.After(0.35, function() Close() ns.StartTour(true) end)
+            return
+        elseif msg == "tour all" then  -- (the preview: every step, every page open till it's over)
+            if not (ns.UI.window and ns.UI.window:IsShown()) and ns.ToggleUI then ns.ToggleUI() end
+            C_Timer.After(0.35, function()
+                Close()
+                preview = true
+                if ns.UI.RelayoutSidebar then ns.UI.RelayoutSidebar() end
+                ns.StartTour(true)
+            end)
+            if ns.Print then ns.Print("Tour preview: every step, every room open till it's over. Nothing is marked seen.") end
             return
         elseif msg == "tour reset" then
             local tour = DB()
