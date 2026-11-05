@@ -32,7 +32,7 @@
 --                picture frame's id, Frames.lua; tale: the dream the ogre told, DreamBed.lua)
 --   posters    = week^id,id,...                 (this week's bounty posters you've claimed, see Posters.lua)
 --   summary    = earned points^PvP kills         (always sent, for the Members and Leaderboard pages)
---   event      = time^kind^a^b[^c^d]             (guild activity feed, see Feed.lua; c and d from 0.41.0 on)
+--   event      = time^kind^a^b[^c^d]             (guild activity feed, see Feed.lua; c and d from 0.42.0 on)
 --   gear       = race^sex^class^level^guid^slot:itemID[:enchant:suffix];...   (character and equipment, see
 --                Gear.lua; only when changed, empty otherwise; enchant and suffix in decimal)
 --   professions = P^line:rank:max:icon:name;...^line=recipeID,recipeID...^line=...   (see Professions.lua;
@@ -45,8 +45,8 @@
 --                card's choices: gender icon, the picture shown instead of their model (OverviewCard.lua), their profile
 --                header's background, its crop (thousandths; zoom in hundredths) and their name colour (ProfileHeader.lua),
 --                the ogre they built (layer:id,...; Minting.lua), "1" if it's their photo, and its layers' editions
---                (ns.StyleKey: layer=c,layer=s) (all those from 0.41.0 on); their portrait's frame and their motto
---                (OverviewCard.lua; from 0.42.0 on) and their wallpaper (Wallpaper.lua; 0.41.0 on); only when changed,
+--                (ns.StyleKey: layer=c,layer=s) (all those from 0.42.0 on); their portrait's frame and their motto
+--                (OverviewCard.lua; from 0.42.0 on) and their wallpaper (Wallpaper.lua; 0.42.0 on); only when changed,
 --                empty otherwise)
 --   life       = L^nap^deaths^quests^places^goldIn^goldOut   (LifeStats.lua, from 0.42.0 on: napping minutes, deaths,
 --                quests, places visited, gold in and out in copper; "-" for what they don't share; only when changed)
@@ -188,7 +188,7 @@ local function SerializeCard(db, baseSeq)
     local card = db.card
     if not card or (card.seq or 0) <= baseSeq then return "" end
     local function Scaled(value, scale) return value and Base36(math.floor(value * scale + 0.5)) or "" end
-    -- (From 0.41.0: the ogre you built, layer:id,layer:id..., and "1" when it's your photo.)
+    -- (From 0.42.0: the ogre you built, layer:id,layer:id..., and "1" when it's your photo.)
     local ogre = {}
     for key, id in pairs(card.ogre or {}) do ogre[#ogre + 1] = Clean(key) .. ":" .. Clean(id) end
     table.sort(ogre)
@@ -331,7 +331,7 @@ local function Deserialize(payload)
                 if key then traits[key] = id end
             end
             update.mints[#update.mints + 1] = { number = number, time = time, traits = traits, style = ns.StyleFromKey(f[4]),
-                asked = Optional(f[5]), paintedBy = Optional(f[6]), frame = Optional(f[7]), tale = Optional(f[8]) }  -- (from 0.41.0 on)
+                asked = Optional(f[5]), paintedBy = Optional(f[6]), frame = Optional(f[7]), tale = Optional(f[8]) }  -- (from 0.42.0 on)
         end
     end
     local f = Split(s[11], FIELD)
@@ -348,7 +348,7 @@ local function Deserialize(payload)
         local t, kind = FromBase36(e[1]), Optional(e[2])
         if t and kind then
             update.events[#update.events + 1] = { t = t, k = kind, a = Optional(e[3]), b = Optional(e[4]),
-                c = Optional(e[5]), d = Optional(e[6]) }  -- c and d from 0.41.0 on (Feed.lua)
+                c = Optional(e[5]), d = Optional(e[6]) }  -- c and d from 0.42.0 on (Feed.lua)
         end
     end
     f = Split(s[14] or "", FIELD)  -- from 0.37.0 on
@@ -401,16 +401,16 @@ local function Deserialize(payload)
         local function Scaled(text, scale) local n = text and text ~= "" and FromBase36(text) return n and n / scale end
         update.card = { gender = Optional(f[2]), portrait = f[3] and f[3] ~= "" and FromBase36(f[3]) or nil,
             headerBg = Optional(f[4]), cropX = Scaled(f[5], 1000), cropY = Scaled(f[6], 1000), cropZoom = Scaled(f[7], 100),
-            nameColor = Optional(f[8]) }  -- the header's from 0.41.0 on
-        if f[9] and f[9] ~= "" then  -- their ogre (0.41.0 on)
+            nameColor = Optional(f[8]) }  -- the header's from 0.42.0 on
+        if f[9] and f[9] ~= "" then  -- their ogre (0.42.0 on)
             update.card.ogre = {}
             for key, id in f[9]:gmatch("([%w_]+):([%w_]+)") do update.card.ogre[key] = id end
         end
         update.card.photoOgre = f[10] == "1" or nil
         local style = ns.StyleFromKey(f[11])  -- its layers in crayon or sketched (a table: some layers)
         update.card.ogreStyle = type(style) == "table" and style or nil
-        update.card.glowColor, update.card.bgColor = Optional(f[12]), Optional(f[13])  -- (from 0.41.0 on)
-        update.card.main = Optional(f[14])  -- (an alt: its main's name; from 0.41.0 on)
+        update.card.glowColor, update.card.bgColor = Optional(f[12]), Optional(f[13])  -- (from 0.42.0 on)
+        update.card.main = Optional(f[14])  -- (an alt: its main's name; from 0.42.0 on)
         update.card.frame, update.card.motto = Optional(f[15]), Optional(f[16])  -- (their portrait's frame, their motto; 0.42.0 on)
         update.card.wallpaper = Optional(f[17])  -- (behind their photo: Wallpaper.lua)
     end

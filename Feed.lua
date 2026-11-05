@@ -8,10 +8,10 @@
 --   W  won a picture in a puzzle race          a = picture number, b = who it was won from
 --   B  did their share of a completed bounty   a = bounty id
 --   D  killed a boss in a guild group          a = boss name, b = 1 for a final boss (only clears in the guild's news),
---                                              c = the instance map, d = the guildmates there ("Name,Name"; from 0.41.0)
+--                                              c = the instance map, d = the guildmates there ("Name,Name"; from 0.42.0)
 --   K  reached an Ogre Rank (Ranks.lua)         a = rank
---   U  unlocked a picture layer (Unlocks.lua)   a = its option key ("skin:boss_dm") (from 0.41.0)
---   G  got a gift from an officer (Dev.lua)     a = who gave it, b = what ("chest:<dungeon>") (from 0.41.0)
+--   U  unlocked a picture layer (Unlocks.lua)   a = its option key ("skin:boss_dm") (from 0.42.0)
+--   G  got a gift from an officer (Dev.lua)     a = who gave it, b = what ("chest:<dungeon>") (from 0.42.0)
 
 local _, ns = ...
 

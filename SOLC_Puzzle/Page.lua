@@ -678,7 +678,7 @@ loader:RegisterEvent("ADDON_LOADED")
 loader:SetScript("OnEvent", function(self, _, name)
     if name ~= "SOLC_Puzzle" then return end
     -- The launch wipe (WoW Forever): best times, replays and paintings from testing go, once (as SOLC's, Core.lua).
-    if not SOLCPuzzleDB or SOLCPuzzleDB.epoch ~= "forever-launch" then SOLCPuzzleDB = { epoch = "forever-launch" } end
+    if not SOLCPuzzleDB or SOLCPuzzleDB.epoch ~= "forever-0.42" then SOLCPuzzleDB = { epoch = "forever-0.42" } end
     self:UnregisterEvent("ADDON_LOADED")
 end)
 

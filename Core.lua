@@ -227,9 +227,9 @@ local function MoveEncounterKills(db)
     end
 end
 
--- The launch wipe (WoW Forever, 0.41.0): everything saved while testing goes, once per character and once per
--- account (the guild's synced stats, guild settings, the shared wardrobe). Change DATA_EPOCH to wipe again.
-local DATA_EPOCH = "forever-launch"
+-- The launch wipe (WoW Forever, 0.42.0): everything saved before it goes, once per character and once per account
+-- (the guild's synced stats, guild settings, the shared wardrobe). Change DATA_EPOCH to wipe again.
+local DATA_EPOCH = "forever-0.42"
 
 local function InitDB()
     if not KillTrackerDB or KillTrackerDB.epoch ~= DATA_EPOCH then KillTrackerDB = { epoch = DATA_EPOCH } end

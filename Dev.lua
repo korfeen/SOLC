@@ -169,7 +169,7 @@ function ns.GiftChest(dungeonKey, target)
         C_Timer.After(GIFT_TIMEOUT, function()
             if waiting[id] then
                 waiting[id] = nil
-                ns.Print(("No answer from %s about the %s chest - offline, or not on SOLC 0.41.0 yet? Nothing was given."):format(short, DungeonName(dungeonKey)))
+                ns.Print(("No answer from %s about the %s chest - offline, or not on SOLC 0.42.0 yet? Nothing was given."):format(short, DungeonName(dungeonKey)))
             end
         end)
     end)
