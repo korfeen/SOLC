@@ -249,7 +249,9 @@ end
 
 local function ShowLine()
     local step_line = current.lines[line]
-    if step_line.open and ns.OpenPage then ns.OpenPage(step_line.open) end
+    -- (the page he talks about opens too: its own open, else the page whose button he lights up)
+    local open = step_line.open or (step_line.glow ~= "tracks" and step_line.glow)
+    if open and ns.OpenPage and not (ns.UI.PageLocked and ns.UI.PageLocked(open)) then ns.OpenPage(open) end
     local tour = DB()
     if step_line.introduce and tour then tour.named = true end
     panel.name:SetText(tour and tour.named and NAME or MYSTERY)
