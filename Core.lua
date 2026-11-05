@@ -71,12 +71,6 @@ local function NpcIDFromGUID(guid)
     end
 end
 
--- Identifies one spawned mob across players: its spawn UID plus server ID from the GUID.
-local function SpawnKey(guid)
-    local _, _, serverID, _, _, _, spawnUID = strsplit("-", guid)
-    return spawnUID .. serverID
-end
-
 -- Categorizing ---------------------------------------------------------------
 
 -- Looks a name up in a Name*/Word* table pair from Data.lua. Returns the matched ID or nil.
@@ -229,9 +223,6 @@ local function MoveEncounterKills(db)
             entry.rank = entry.rank or old.rank
             db.kills[npcID], db.kills[9000000 + encounterID] = entry, nil
             Touch(entry)
-            for _, logged in ipairs(db.groupLog or {}) do
-                if logged.n == 9000000 + encounterID then logged.n = npcID end
-            end
         end
     end
 end
@@ -250,7 +241,6 @@ local function InitDB()
     db.kills = db.kills or {}                -- [npcID] = { name, count, maxWeight, seq, created [, type, rank, family, subtype if not in Data.lua] }
     db.records = db.records or {}            -- [recordKey] = heaviest kill, see Records.lua
     db.achievements = db.achievements or {}  -- [achievementID] = time earned, see Achievements.lua
-    db.groupLog = db.groupLog or {}          -- kills made in a group: { s = change number, n = npcID, k = spawn key }
     db.pvp = db.pvp or { total = 0, unknown = 0, players = {} }  -- PvP kills, see PvP.lua
     db.points = db.points or { kills = 0, spent = 0 }  -- kill points so far and points spent (Points.lua)
     db.collection = db.collection or {}      -- [itemID] = { time bought }
@@ -329,9 +319,6 @@ local function RecordKill(npcID, unit, guid, boss)
     entry.count = entry.count + 1
     entry.name = (unit and Readable(UnitName(unit))) or (boss and boss.name) or entry.name or ("NPC " .. npcID)
     Touch(entry)
-    if IsInGroup() then
-        db.groupLog[#db.groupLog + 1] = { s = db.seq, n = npcID, k = guid and SpawnKey(guid) or boss.key }
-    end
 
     -- Not in Data.lua: keep what the game tells us so the mob can still be categorized.
     if boss then

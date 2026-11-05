@@ -86,7 +86,7 @@ local function Pump()
     local resultName = tostring(result)
     for name, value in pairs(results or {}) do if value == result then resultName = name end end
     Debug("send %s to %s: %s", item.message:match("^[^|]*"), item.target, ok and resultName or ("error " .. tostring(result)))
-    if ok and results and result == results.AddonMessageThrottle then
+    if ok and results and (result == results.AddonMessageThrottle or result == results.ChannelThrottle) then
         C_Timer.After(SEND_RETRY, Pump)  -- try the same message again
         return
     end

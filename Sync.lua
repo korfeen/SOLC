@@ -21,7 +21,7 @@
 -- (items "~", fields "^"; npcID, count and time in base 36):
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
 --   record     = subtype^weight^mob^zone^time
---   group kill = npcID^spawnKey                  (still sent to keep the sections in place; nothing reads it now)
+--   group kill = npcID^spawnKey                  (always empty now; the section stays so the others keep their places)
 --   picture    = number^time^layer:option;layer:option...[^style^asked^paintedBy^frame^tale]   (minted pictures, see
 --                Minting.lua; style: c / s for every layer in crayon / sketch, layer=c,layer=s for a mix; frame: its
 --                picture frame's id, Frames.lua; tale: the dream the ogre told, DreamBed.lua)
@@ -58,7 +58,7 @@ local SEND_INTERVAL = 0.3     -- seconds between messages; throttled sends are r
 local LIVE_INTERVAL = 10      -- seconds between live update broadcasts (only if something changed)
 local HELLO_INTERVAL = 300    -- seconds between hello broadcasts, to catch anything missed
 local REPLY_TIMEOUT = 15      -- seconds to wait for an answer to /kt sync, or to a get before asking again
-local TRANSFER_TIMEOUT = 120  -- seconds before an incomplete incoming transfer is dropped
+local TRANSFER_TIMEOUT = 120  -- seconds without a new chunk before an incomplete incoming transfer is dropped
 local SECTION, ITEM, FIELD = "#", "~", "^"
 local DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
 
@@ -219,7 +219,6 @@ local function Serialize(db, baseSeq)
             records[#records + 1] = table.concat({ Clean(r.name), Decimal(r.weight), Clean(r.mob), Clean(r.zone), Base36(r.time) }, FIELD)
         end
     end
-    -- The group log is in change order, so only its tail can be new.
     local pictures = {}
     for _, mint in ipairs(db.mints or {}) do
         if (mint.seq or 0) > baseSeq then
@@ -229,12 +228,6 @@ local function Serialize(db, baseSeq)
             pictures[#pictures + 1] = table.concat({ Base36(mint.number), Base36(mint.time), table.concat(traits, ";"),
                 ns.StyleKey(mint.style), Clean(mint.asked), Clean(mint.paintedBy), Clean(mint.frame), Clean(mint.tale) }, FIELD)  -- (asked, painter, tale: the Dream Bed; its frame)
         end
-    end
-    local group = {}
-    for i = #db.groupLog, 1, -1 do
-        local g = db.groupLog[i]
-        if g.s <= baseSeq then break end
-        group[#group + 1] = Base36(g.n) .. FIELD .. Clean(g.k)
     end
     local bounty = ""
     if db.posters and (db.posters.seq or 0) > baseSeq then
@@ -262,7 +255,7 @@ local function Serialize(db, baseSeq)
         end
     end
     return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
-        table.concat(kills, ITEM), table.concat(records, ITEM), table.concat(group, ITEM), table.concat(pictures, ITEM),
+        table.concat(kills, ITEM), table.concat(records, ITEM), "", table.concat(pictures, ITEM),  -- ("": the old group kills)
         bounty, summary, table.concat(events, ITEM), gear, SerializeProfessions(db, baseSeq),
         SerializeShowcase(db, baseSeq), SerializeRemoved(db, baseSeq), SerializeCard(db, baseSeq) }, SECTION)
 end
@@ -453,7 +446,7 @@ local function SendResult(item)
     if not ok then return "failed" end
     local results = Enum and Enum.SendAddonMessageResult
     if result == nil or result == true or (results and result == results.Success) then return "sent" end
-    if results and result == results.AddonMessageThrottle then return "throttled" end
+    if results and (result == results.AddonMessageThrottle or result == results.ChannelThrottle) then return "throttled" end
     return "failed"
 end
 
@@ -476,26 +469,35 @@ local function Pump()
     end
 end
 
-local function Queue(channel, target, message)
-    queue[#queue + 1] = { channel = channel, target = target, message = message }
+-- urgent (hellos, gets, "not sharing": one short message each) goes ahead of the chunks waiting to be sent, after any
+-- other urgent ones: WoW lets about one message a second through, and a big update can take minutes.
+local function Queue(channel, target, message, urgent)
+    local item = { channel = channel, target = target, message = message, urgent = urgent }
+    if urgent then
+        local at = 1
+        while queue[at] and queue[at].urgent do at = at + 1 end
+        table.insert(queue, at, item)
+    else
+        queue[#queue + 1] = item
+    end
     ticker = ticker or C_Timer.NewTicker(SEND_INTERVAL, Pump)
 end
 
 -- target nil = broadcast to the guild.
-local function Send(target, message)
+local function Send(target, message, urgent)
     if not ns.IsMember() then return end  -- (outside the guild: nothing shared)
-    Queue(target and "WHISPER" or "GUILD", target, message)
+    Queue(target and "WHISPER" or "GUILD", target, message, urgent)
 end
 
 local function SendHello(target, wantReply)
     local db = KillTrackerDB
     if not db.sharing or (not target and not IsInGuild()) then return end
     Send(target, ("H|%s|%s|%s|%d|%s|%s"):format(PROTOCOL, db.syncID, Base36(db.seq), wantReply and 1 or 0,
-        Base36(ns.ConfigVersion()), Clean(ADDON_VERSION)))
+        Base36(ns.ConfigVersion()), Clean(ADDON_VERSION)), true)
 end
 
 local function SendGet(target, syncID, haveSeq)
-    Send(target, ("G|%s|%s|%s"):format(PROTOCOL, syncID or "-", Base36(haveSeq or 0)))
+    Send(target, ("G|%s|%s|%s"):format(PROTOCOL, syncID or "-", Base36(haveSeq or 0)), true)
 end
 
 -- Sends a payload in numbered chunks as kind ("U" or "C") messages. Transfer IDs count up (from a random
@@ -541,7 +543,7 @@ end
 
 -- Receiving ------------------------------------------------------------------
 
-local incoming = {}       -- ["sender|transferID"] = { parts, count, chunks, started }
+local incoming = {}       -- ["sender|transferID"] = { parts, count, chunks, last = when its newest chunk came }
 -- [short name, lowercase] = { name, started } while /kt sync awaits an answer. Only manual syncs print
 -- to chat; automatic guild syncing is silent and just updates the stats in the window.
 local pendingManual = {}
@@ -616,7 +618,7 @@ function handlers.H(sender, channel, protocol, syncID, seq, wantReply, configVer
         if KillTrackerDB.sharing then
             SendHello(sender, false)
         elseif channel == "WHISPER" then
-            Send(sender, "N|" .. PROTOCOL)  -- a manual /kt sync deserves an answer
+            Send(sender, "N|" .. PROTOCOL, true)  -- a manual /kt sync deserves an answer
         end
     end
 end
@@ -648,7 +650,7 @@ function handlers.G(sender, _, protocol, syncID, haveSeq)
     if protocol ~= PROTOCOL then return end
     local db = KillTrackerDB
     if not db.sharing then
-        Send(sender, "N|" .. PROTOCOL)
+        Send(sender, "N|" .. PROTOCOL, true)
         return
     end
     haveSeq = FromBase36(haveSeq) or 0
@@ -676,9 +678,10 @@ local function Collect(kind, sender, id, part, parts, chunk, onComplete)
     local key = kind .. "|" .. sender .. "|" .. id
     local transfer = incoming[key]
     if not transfer then
-        transfer = { parts = parts, count = 0, chunks = {}, started = GetTime() }
+        transfer = { parts = parts, count = 0, chunks = {} }
         incoming[key] = transfer
     end
+    transfer.last = GetTime()  -- (a big one takes minutes: about one chunk a second gets through)
     if not transfer.chunks[part] then
         transfer.chunks[part] = chunk
         transfer.count = transfer.count + 1
@@ -737,7 +740,7 @@ end
 local function Cleanup()
     local now = GetTime()
     for key, transfer in pairs(incoming) do
-        if now - transfer.started > TRANSFER_TIMEOUT then incoming[key] = nil end
+        if now - transfer.last > TRANSFER_TIMEOUT then incoming[key] = nil end
     end
     for short, pending in pairs(pendingManual) do
         if now - pending.started > REPLY_TIMEOUT then
@@ -827,7 +830,7 @@ function ns.SyncWith(target)
     target = FindFriend(target) or target
     pendingManual[DisplayName(target):lower()] = { name = DisplayName(target), started = GetTime() }
     ns.Print(("Syncing with %s..."):format(DisplayName(target)))
-    Send(target, ("H|%s|%s|%s|1"):format(PROTOCOL, KillTrackerDB.syncID, Base36(KillTrackerDB.seq)))
+    Send(target, ("H|%s|%s|%s|1"):format(PROTOCOL, KillTrackerDB.syncID, Base36(KillTrackerDB.seq)), true)
 end
 
 -- Syncs with the targeted player, if any.
