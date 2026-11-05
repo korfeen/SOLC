@@ -21,7 +21,7 @@
 local _, ns = ...
 
 -- The level brackets (under 10: the first).
-local BRACKETS = { { 10, 19 }, { 20, 29 }, { 30, 39 }, { 40, 49 }, { 50, 59 }, { 60, 60 } }
+local BRACKETS = { { 1, 20 }, { 21, 29 }, { 30, 39 }, { 40, 49 }, { 50, 59 }, { 60, 60 } }
 ns.POSTER_BRACKETS = BRACKETS
 function ns.BracketForLevel(level)
     for i, b in ipairs(BRACKETS) do
@@ -190,7 +190,7 @@ local FALLBACK = { wanted = "odd", clan = "hunt", odd = "hunt" }
 local PICK_ONLY = { gather = true }
 -- The rotation's "Rare Hunters" is one named rare instead (rare_<npcID>): out in the world (no dungeons or cities), not
 -- elite (but at 60), at the bracket's levels (the first: the starter zones on), in a zone of the guild's side.
-local RARE_LEVELS = { { 6, 17 }, { 18, 29 }, { 28, 39 }, { 38, 49 }, { 48, 59 }, { 55, 63 } }
+local RARE_LEVELS = { { 1, 20 }, { 19, 29 }, { 28, 39 }, { 38, 49 }, { 48, 59 }, { 55, 63 } }
 local NOT_WORLD = { ["Blackrock Depths"] = true, ["Blackrock Mountain"] = true, ["Blackrock Spire"] = true,
     ["Dire Maul"] = true, ["Gnomeregan"] = true, ["Maraudon"] = true, ["Razorfen Kraul"] = true, ["Scarlet Monastery"] = true,
     ["Shadowfang Keep"] = true, ["Stormwind City"] = true, ["Stratholme"] = true, ["Sunken Temple"] = true,
