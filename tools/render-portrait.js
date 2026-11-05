@@ -1,91 +1,92 @@
-// Renders an ogre from its picture pieces to a PNG, the way the game draws it (Minting.lua's ns.RenderMint): the
-// background, the pieces' parts behind the ogre, the skin (with the clothes' hide masks cut out of it), the clothes,
-// the mouth, the eyes, the accessory, the hat. From the game's own textures (Media\Collectible\*.blp), painted
-// edition. Then cropped to a square and scaled, e.g. for a Discord avatar.
+// Renders an ogre from its picture pieces to a PNG, the way the game draws it (Minting.lua's ns.RenderMint), from the
+// full-size source paintings (1254 px a picture; the game's textures are 512) so a close crop stays sharp:
+// the background, the pieces' parts behind the ogre (their "behind" masks and linings from the item fitter), the skin
+// (with the clothes' "hide" masks cut out of it), the clothes, the mouth, the eyes, the accessory, the hat.
+// The eyes and mouth only show where the head is (the skin's own shape): some face pieces kept a bit of the painting's
+// dark backdrop past the head (Snooty Eyes did), which the game would show where a hat doesn't cover it.
 //   node tools/render-portrait.js <out.png> [crop x y size, fractions of the picture] [size in px]
-// The look is Reginald's (ProShopRoom.lua's STEWARD) unless REGINALD below is changed.
+// Default: Reginald (ProShopRoom.lua's STEWARD), his face and hat, 512 px - his Discord avatar.
 
 const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
-const { readBlp } = require("./convert-art.js");
+const { SOURCE, decodePng } = require("./convert-art.js");
 
-const MEDIA = path.join(__dirname, "..", "Media", "Collectible");
-const REGINALD = { skin: "club_sage", eyes: "snooty_eyes", expression: "snooty_sneer", outfit: "shop_steward_vest", headwear: "shop_steward_boater" };
-const ORDER = ["background", "skin", "outfit", "expression", "eyes", "accessory", "headwear"];  // (Minting.lua's ns.MintLayers)
-const FOLDER = { background: "Background", skin: "Skin", outfit: "Outfit", expression: "Expression", eyes: "Eyes", accessory: "Accessory", headwear: "Headwear" };
-const N = 512;  // the picture's size at the game's density
+const EXTRA = path.join(path.dirname(SOURCE), "killtracker-art-extra", "Unlocks");
+const FITS = path.join(EXTRA, "generated", "fits");
+// Reginald's pieces: the source painting of each (the face pieces in his skin's colour) and its fitter files.
+const PIECES = {
+  skin: path.join(SOURCE, "Skin", "Legendary", "club-sage.png"),
+  outfit: path.join(EXTRA, "painted", "Outfit", "Epic", "shop-steward-vest.png"),
+  expression: path.join(SOURCE, "Expression", "Epic", "club-sage", "snooty-sneer.png"),
+  eyes: path.join(SOURCE, "Eyes", "Epic", "club-sage", "snooty-eyes.png"),
+  headwear: path.join(EXTRA, "painted", "Headwear", "Legendary", "shop-steward-boater.png"),
+};
+const FIT_IDS = { outfit: "shop_steward_vest", headwear: "shop_steward_boater" };
+const ORDER = ["skin", "outfit", "expression", "eyes", "headwear"];  // (Minting.lua's ns.MintLayers, back to front)
 
-// The pieces' data from MintArt.lua: id, rect, perSkin, hide, behind, behindRect (painted edition only).
-function option(layer, id) {
-  const src = fs.readFileSync(path.join(__dirname, "..", "MintArt.lua"), "utf8");
-  const line = src.split(/\r?\n/).find((l) => l.includes(`id = "${id}"`) && l.includes(`${FOLDER[layer]}\\\\`));
-  if (!line) throw Error(`no ${layer} ${id} in MintArt.lua`);
-  const rect = (name) => { const m = line.match(new RegExp(`[ ,{]${name} = \\{ ([\\d., ]+) \\}`)); return m ? m[1].split(",").map(Number) : null; };
-  const file = (name) => { const m = line.match(new RegExp(`[ ,{]${name} = MEDIA \\.\\. "([^"]+)"`)); return m ? m[1].replace(/\\\\/g, "/") : null; };
-  return { id, rect: rect("rect"), perSkin: /perSkin = true/.test(line), texture: file("texture"), hide: file("hide"), behind: file("behind"), behindRect: rect("behindRect") };
+const load = (file) => (fs.existsSync(file) ? decodePng(file) : null);
+const alpha = (img, i) => img.rgba[i * 4 + 3] / 255;
+
+const [out = "reginald.png", cx = "0.275", cy = "0", cs = "0.47", size = "512"] = process.argv.slice(2);
+const images = Object.fromEntries(ORDER.map((k) => [k, decodePng(PIECES[k])]));
+const N = images.skin.width;  // (every source is the whole picture, the same size)
+for (const [k, img] of Object.entries(images)) if (img.width !== N || img.height !== N) throw Error(`${k} isn't ${N}x${N}`);
+
+// The picture, as floats: the club's burgundy, darker toward the edges (Discord shows it in a circle).
+const canvas = new Float64Array(N * N * 3);
+for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  const k = Math.max(0.35, 1 - Math.hypot(x / N - 0.51, y / N - 0.2) * 1.7), i = (y * N + x) * 3;
+  canvas[i] = 122 * k; canvas[i + 1] = 28 * k; canvas[i + 2] = 40 * k;
 }
-const load = (rel, skin) => readBlp(path.join(MEDIA, rel.replace("%s", skin) + ".blp"));
+const over = (rgba, i, a) => { if (a <= 0) return; for (let c = 0; c < 3; c++) canvas[i * 3 + c] = canvas[i * 3 + c] * (1 - a) + rgba[i * 4 + c] * a; };
 
-function draw(canvas, image, rect, mask) {
-  const [x0, y0, w, h] = (rect ?? [0, 0, 1, 1]).map((v) => v * N);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const cx = Math.round(x0 + x), cy = Math.round(y0 + y);
-    if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
-    const sx = Math.min(image.width - 1, Math.floor(x * image.width / w)), sy = Math.min(image.height - 1, Math.floor(y * image.height / h));
-    const s = (sy * image.width + sx) * 4, d = (cy * N + cx) * 4;
-    let a = image.rgba[s + 3] / 255;
-    if (mask) a *= mask.rgba[(Math.floor(cy * mask.height / N) * mask.width + Math.floor(cx * mask.width / N)) * 4 + 3] / 255;
-    for (let c = 0; c < 3; c++) canvas[d + c] = canvas[d + c] * (1 - a) + image.rgba[s + c] * a;
-    canvas[d + 3] = Math.max(canvas[d + 3], a * 255);
+// What of each piece goes behind the ogre (the fitter's Behind ogre mask), and the lining under it.
+const behindOf = {};
+for (const [layer, id] of Object.entries(FIT_IDS)) {
+  behindOf[layer] = load(path.join(FITS, id + ".behind.png"));
+  const lining = load(path.join(FITS, id + ".lining.png"));
+  for (let i = 0; i < N * N; i++) {
+    if (lining) over(lining.rgba, i, alpha(lining, i));
+    const m = behindOf[layer] ? alpha(behindOf[layer], i) : 0;
+    if (m) over(images[layer].rgba, i, alpha(images[layer], i) * m);
   }
+}
+// Where the clothes hide the ogre (the fitter's Hide ogre).
+const hides = Object.values(FIT_IDS).map((id) => load(path.join(FITS, id + ".hide.png"))).filter(Boolean);
+for (const layer of ORDER) {
+  const img = images[layer];
+  for (let i = 0; i < N * N; i++) {
+    let a = alpha(img, i);
+    if (layer === "skin") for (const h of hides) a *= 1 - alpha(h, i);
+    if (layer === "eyes" || layer === "expression") a *= alpha(images.skin, i);  // (only on the head)
+    if (behindOf[layer]) a *= 1 - alpha(behindOf[layer], i);  // (its behind part is already drawn)
+    over(img.rgba, i, a);
+  }
+}
+
+// Crop and scale down (box filter).
+const S = Number(size), X0 = Number(cx) * N, Y0 = Number(cy) * N, W = Number(cs) * N;
+const result = Buffer.alloc(S * S * 4);
+for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+  const acc = [0, 0, 0]; let n = 0;
+  for (let yy = Math.floor(Y0 + y * W / S); yy < Y0 + (y + 1) * W / S; yy++) for (let xx = Math.floor(X0 + x * W / S); xx < X0 + (x + 1) * W / S; xx++) {
+    const i = (Math.min(N - 1, yy) * N + Math.min(N - 1, xx)) * 3;
+    for (let c = 0; c < 3; c++) acc[c] += canvas[i + c]; n++;
+  }
+  const d = (y * S + x) * 4;
+  for (let c = 0; c < 3; c++) result[d + c] = Math.round(acc[c] / Math.max(1, n));
+  result[d + 3] = 255;
 }
 
 function png(width, height, rgba) {
-  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-  const crc = (buf) => { let c = 0xffffffff; for (const b of buf) c = crcTable[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const table = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (buf) => { let c = 0xffffffff; for (const b of buf) c = table[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
   const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
   const raw = Buffer.alloc((width * 4 + 1) * height);
-  for (let y = 0; y < height; y++) { raw[y * (width * 4 + 1)] = 0; Buffer.from(rgba.buffer, rgba.byteOffset + y * width * 4, width * 4).copy(raw, y * (width * 4 + 1) + 1); }
+  for (let y = 0; y < height; y++) rgba.copy(raw, y * (width * 4 + 1) + 1, y * width * 4, (y + 1) * width * 4);
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
-
-const [out = "reginald.png", cx = "0.18", cy = "0", cs = "0.64", size = "512"] = process.argv.slice(2);
-const traits = REGINALD;
-const skinFace = traits.skin;  // (Club Sage's faces are drawn in its own colour: Media\Collectible\Eyes\club_sage)
-const canvas = new Float64Array(N * N * 4);
-// The background: the club's burgundy, darker toward the edges (Discord shows it in a circle).
-for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-  const d = Math.hypot(x / N - 0.5, y / N - 0.32) * 1.6, i = (y * N + x) * 4, k = Math.max(0.35, 1 - d);
-  canvas[i] = 120 * k; canvas[i + 1] = 28 * k; canvas[i + 2] = 40 * k; canvas[i + 3] = 255;
-}
-const opts = Object.fromEntries(Object.entries(traits).map(([layer, id]) => [layer, option(layer, id)]));
-for (const o of Object.values(opts)) if (o.behind) draw(canvas, load(o.behind, skinFace), o.behindRect);
-const masks = Object.values(opts).filter((o) => o.hide).map((o) => load(o.hide, skinFace));
-for (const layer of ORDER) {
-  const o = opts[layer];
-  if (!o) continue;
-  const image = load(o.texture, skinFace);
-  if (layer === "skin" && masks.length) {
-    const mask = { width: N, height: N, rgba: new Uint8Array(N * N * 4).fill(255) };
-    for (const m of masks) for (let p = 0; p < N * N; p++) {
-      const a = m.rgba[(Math.floor(Math.floor(p / N) * m.height / N) * m.width + Math.floor((p % N) * m.width / N)) * 4 + 3];
-      mask.rgba[p * 4 + 3] = Math.min(mask.rgba[p * 4 + 3], a);
-    }
-    draw(canvas, image, o.rect, mask);
-  } else draw(canvas, image, o.rect);
-}
-// Crop and scale (box filter).
-const S = Number(size), X0 = Number(cx) * N, Y0 = Number(cy) * N, W = Number(cs) * N;
-const result = new Uint8Array(S * S * 4);
-for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-  const acc = [0, 0, 0, 0]; let n = 0;
-  for (let yy = Y0 + y * W / S; yy < Y0 + (y + 1) * W / S; yy++) for (let xx = X0 + x * W / S; xx < X0 + (x + 1) * W / S; xx++) {
-    const i = (Math.min(N - 1, Math.floor(yy)) * N + Math.min(N - 1, Math.floor(xx))) * 4;
-    for (let c = 0; c < 4; c++) acc[c] += canvas[i + c]; n++;
-  }
-  for (let c = 0; c < 4; c++) result[(y * S + x) * 4 + c] = Math.round(acc[c] / Math.max(1, n));
-}
 fs.writeFileSync(out, png(S, S, result));
-console.log(`wrote ${out} (${S}x${S})`);
+console.log(`wrote ${out} (${S}x${S}, from ${N}px sources)`);
