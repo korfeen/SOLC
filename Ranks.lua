@@ -59,6 +59,13 @@ ns.RANK_PERKS = {
     { rank = 27, kind = "piece", key = "skin:celestial_blue", text = "Celestial Blue (legendary skin) for your pictures" },
     { rank = 28, kind = "piece", key = "headwear:crown_of_eternal_rest", text = "Crown of Eternal Rest (legendary hat) for your pictures" },
     { rank = 29, kind = "piece", key = "background:dragon_over_the_fairway", text = "Dragon over the Fairway (legendary place) for your pictures" },
+    -- The rank frames (Frames.lua's unlock "rank:<n>", checked there: these are for the list only).
+    { rank = 2, kind = "frame", text = "The Polaroid picture frame" },
+    { rank = 3, kind = "frame", text = "The Honey Wood picture frame" },
+    { rank = 5, kind = "frame", text = "The Driftwood picture frame" },
+    { rank = 8, kind = "frame", text = "The Dungeon Iron picture frame" },
+    { rank = 12, kind = "frame", text = "The Gilded picture frame" },
+    { rank = 20, kind = "frame", text = "The Bone and Tusk picture frame" },
     { rank = 30, kind = "piece", key = "skin:grand_sleepy_pink", text = "Grand Sleepy Pink (legendary skin) for your pictures" },
 }
 

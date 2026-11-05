@@ -965,7 +965,8 @@ local function EditChoices(tab, draft)
     local list = {}
     if tab == "frame" then
         for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
-            if ns.FrameUnlocked(frame) then list[#list + 1] = { id = frame.id, name = frame.name, color = CREAM, texture = frame.texture } end
+            -- (the card's own default is always there, locked or not: everyone's card starts in it)
+            if ns.FrameUnlocked(frame) or frame.id == DEFAULT_PORTRAIT_FRAME then list[#list + 1] = { id = frame.id, name = frame.name, color = CREAM, texture = frame.texture } end
         end
     elseif tab == "name" then
         for _, entry in ipairs(ns.Colors()) do
