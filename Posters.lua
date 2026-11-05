@@ -59,6 +59,8 @@ local LEVELS = {
     mogrosh = { 18, 22 }, splinterfist = { 25, 31 }, boulderfist = { 32, 42 }, crushridge = { 34, 43 }, dustbelcher = { 35, 45 }, moshogg = { 36, 47 },
     gordunni = { 40, 47 }, dunemaul = { 45, 50 }, dreadmaul = { 45, 58 }, firegut = { 50, 54 }, gordok = { 52, 60 }, spirestone = { 54, 59 },
     deadwind = { 55, 60 }, urok = { 54, 60 },
+    -- (creatures met only from these levels on; and the Alliance starter zones' foes, custom bounties: kind_<subtype>)
+    Raptor = { 20, 60 }, Orc = { 15, 60 }, kind_kobold = { 1, 25 }, kind_gnoll = { 1, 35 }, kind_trogg = { 1, 30 },
     -- The dungeons' wanted posters (wanted_<key>), by the dungeon's levels.
     rfc = { 13, 18 }, thanes = { 13, 18 }, wc = { 17, 24 }, dm = { 17, 26 }, ruins = { 18, 25 }, sfk = { 22, 30 },
     bfd = { 24, 32 }, stocks = { 24, 32 }, excav = { 26, 31 }, gnomer = { 29, 38 }, rfk = { 30, 40 }, smgy = { 28, 38 },
@@ -130,6 +132,7 @@ local POSTER_OGRE = {
     mogrosh = "fac_mogrosh", splinterfist = "fac_splinterfist", boulderfist = "fac_boulderfist", crushridge = "fac_crushridge", dustbelcher = "fac_dustbelcher",
     moshogg = "fac_moshogg", gordunni = "fac_gordunni", dunemaul = "fac_dunemaul", dreadmaul = "fac_dreadmaul", firegut = "fac_firegut",
     gordok = "fac_gordok", spirestone = "fac_spirestone", deadwind = "fac_deadwind", urok = "fac_urok",
+    kind_kobold = "crit_kobold", kind_gnoll = "crit_gnoll", kind_trogg = "crit_trogg",  -- (the Alliance starter zones' foes)
 }
 local function HasOption(layerKey, id)
     for _, layer in ipairs(ns.MintLayers or {}) do
@@ -299,20 +302,31 @@ local function Hash(text)
 end
 
 -- The rotation's pool for a tier and bracket: catalogue bounties, and for hard also the dungeons' wanted posters, that
--- fit the bracket's levels.
+-- fit the bracket's levels - and the guild's side: SIDE marks the ones only one faction meets at their levels (the
+-- player's faction stands for the guild's: a guild is one faction, so every member's addon agrees). EXTRA: custom
+-- bounties in the rotation too (the Alliance starter zones' foes), by tier.
+local SIDE = { kolkar = "Horde", burningblade = "Horde", Scorpid = "Horde", wanted_rfc = "Horde", wanted_ruins = "Horde",
+    wanted_thanes = "Alliance" }
+local EXTRA = { easy = { "kind_kobold", "kind_gnoll", "kind_trogg" } }
 local pools = {}
 local function Pool(tier, bracket)
-    local key = tier .. ":" .. tostring(bracket)
+    local side = UnitFactionGroup and UnitFactionGroup("player")
+    local key = tier .. ":" .. tostring(bracket) .. ":" .. tostring(side)
     if pools[key] then return pools[key] end
     local pool = {}
+    local function OurSide(id) return not (SIDE[id] and side and SIDE[id] ~= side) end
     for _, bounty in ipairs(ns.BOUNTIES or {}) do
         local poster = TIERS[bounty.id] and TIERS[bounty.id][1] == tier and PosterBounty(bounty.id)
-        if poster and Fits(poster, bracket) then pool[#pool + 1] = bounty.id end
+        if poster and Fits(poster, bracket) and OurSide(bounty.id) then pool[#pool + 1] = bounty.id end
+    end
+    for _, id in ipairs(EXTRA[tier] or {}) do
+        local poster = PosterBounty(id)
+        if poster and Fits(poster, bracket) and OurSide(id) then pool[#pool + 1] = id end
     end
     if tier == "hard" then
         for _, d in ipairs(ns.Dungeons and ns.Dungeons() or {}) do
             local poster = WANTED[d.key] and not d.raid and PosterBounty("wanted_" .. d.key)
-            if poster and Fits(poster, bracket) then pool[#pool + 1] = poster.id end
+            if poster and Fits(poster, bracket) and OurSide(poster.id) then pool[#pool + 1] = poster.id end
         end
     end
     pools[key] = pool
