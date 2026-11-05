@@ -571,7 +571,8 @@ local function BuildReader(screen)
         local w, h = width, math.floor(width * READ.aspect)
         sheet.artShrink = 0
         local e = f.poster.extra
-        sheet.tierShown = e and (e.ends > 0 or e.limit > 0) or false
+        local kind = f.poster.bounty.kind  -- (a hunt or clan poster has its kill bonus line too: room for it)
+        sheet.tierShown = e and (e.ends > 0 or e.limit > 0) or ((ns.Config("bountyKillBonus") or 0) > 0 and (kind == "hunt" or kind == "clan")) or false
         sheet.single = f.poster.goal <= 1
         sheet:SetScale(1)  -- (text measures differently at another scale: it's left small from the last one read)
         if not self:IsShown() then  -- (shown first, though not seen yet: text on a hidden frame isn't laid out to measure)

@@ -267,6 +267,15 @@ local AUTO = "auto"
 
 -- A poster's bounty by its id: a wanted poster, or a bounty with its tier, personal goal and levels added (the bounty
 -- tables are Guild.lua's, shared; the poster keeps its own fields). nil if unknown.
+-- (their own descriptions: a custom bounty's own is only "Members of Troll, Frostmane.")
+local EXTRA_DESC = {
+    kind_kobold = "Candle-headed kobolds in the mines of Elwynn and Dun Morogh. You no take candle!",
+    kind_gnoll = "Gnolls of Elwynn, Westfall and Redridge. Mangy, loud and everywhere.",
+    kind_trogg = "Troggs bursting out of the ground in Dun Morogh, Loch Modan and the Wetlands.",
+    tribe_trollfrostmane = "Frostmane trolls in the snowy hills and caves of Dun Morogh. Levels 5-12.",
+    tribe_gnollriverpaw = "Riverpaw gnolls raiding the farms of Westfall. Levels 10-20.",
+    tribe_gnollredridge = "Redridge gnolls overrunning Redridge and Lakeshire's borders. Levels 15-25.",
+}
 local posters = {}
 local function PosterBounty(id)
     if not id or id == AUTO then return end
@@ -292,7 +301,7 @@ local function PosterBounty(id)
         local bounty = ns.ResolveBounty and ns.ResolveBounty(id)
         if not bounty then return end
         local tier = TIERS[id] or (bounty.custom and CUSTOM_TIERS[id:match("^(%a+)_")]) or { "medium", 25 }
-        poster = setmetatable({ tier = tier[1], kind = Kind(id), solo = tier[2], levels = LEVELS[id] }, { __index = bounty })
+        poster = setmetatable({ tier = tier[1], kind = Kind(id), solo = tier[2], levels = LEVELS[id], desc = EXTRA_DESC[id] }, { __index = bounty })
     end
     posters[id] = poster
     return poster
