@@ -18,7 +18,8 @@
 --
 -- Wire format: H|6|syncID|seq|wantReply|configVersion|addonVersion   G|6|syncID|haveSeq   N|6
 --              U|transferID|part|parts|chunk   C|transferID|part|parts|chunk (chunk of "6#version#settings#bounties")
---              R|6   S|transferID|part|parts|chunk (chunk of "6#key^syncID^seq^earned^kills^pvp^week^bounty^pictures^age~...")
+--              R|6   S|transferID|part|parts|chunk (chunk of "6#key^syncID^seq^earned^kills^pvp^week^bounty^pictures^age
+--              ^nap^deaths^quests^places^goldIn^goldOut~...")
 -- Update payload: 6 # name # syncID # baseSeq # seq # total # kills # records # group kills # pictures # bounty
 --                 # summary # events # gear # professions # showcase # removed pictures # card   (sections added
 --                 later go at the end; receivers ignore unknown ones)
@@ -47,6 +48,8 @@
 --                (ns.StyleKey: layer=c,layer=s) (all those from 0.41.0 on); their portrait's frame and their motto
 --                (OverviewCard.lua; from 0.42.0 on) and their wallpaper (Wallpaper.lua; 0.41.0 on); only when changed,
 --                empty otherwise)
+--   life       = L^nap^deaths^quests^places^goldIn^goldOut   (LifeStats.lua, from 0.42.0 on: napping minutes, deaths,
+--                quests, places visited, gold in and out in copper; "-" for what they don't share; only when changed)
 
 local addonName, ns = ...
 
@@ -204,6 +207,25 @@ local function SerializeRemoved(db, baseSeq)
     return table.concat(numbers, ",")
 end
 
+-- The life section: napping, deaths, quests, places, gold (LifeStats.lua), "-" for each one not shared.
+local function N36(n) return n and Base36(n) or "-" end
+local function SerializeLife(db, baseSeq)
+    if not db.life or (db.life.seq or 0) <= baseSeq or not ns.SharedLife then return "" end
+    local l = ns.SharedLife()
+    return table.concat({ "L", N36(l.nap), N36(l.deaths), N36(l.quests), N36(l.places), N36(l.goldIn), N36(l.goldOut) }, FIELD)
+end
+
+-- Life numbers from the wire ("-" or nothing: not shared, nil).
+local LIFE_FIELDS = { "nap", "deaths", "quests", "places", "goldIn", "goldOut" }
+local function ReadLife(fields, first)
+    local life = {}
+    for i, key in ipairs(LIFE_FIELDS) do
+        local v = fields[first + i - 1]
+        life[key] = v and v ~= "-" and v ~= "" and FromBase36(v) or nil
+    end
+    return life
+end
+
 -- Everything in db changed after baseSeq (0 = everything).
 local function Serialize(db, baseSeq)
     local kills, records = {}, {}
@@ -261,7 +283,8 @@ local function Serialize(db, baseSeq)
     return table.concat({ PROTOCOL, Clean(ns.MyName()), db.syncID, Base36(baseSeq), Base36(db.seq), Base36(db.total),
         table.concat(kills, ITEM), table.concat(records, ITEM), "", table.concat(pictures, ITEM),  -- ("": the old group kills)
         bounty, summary, table.concat(events, ITEM), gear, SerializeProfessions(db, baseSeq),
-        SerializeShowcase(db, baseSeq), SerializeRemoved(db, baseSeq), SerializeCard(db, baseSeq) }, SECTION)
+        SerializeShowcase(db, baseSeq), SerializeRemoved(db, baseSeq), SerializeCard(db, baseSeq),
+        SerializeLife(db, baseSeq) }, SECTION)
 end
 
 -- Returns the update as a table, or nil if the payload is malformed or from another protocol.
@@ -390,6 +413,8 @@ local function Deserialize(payload)
         update.card.frame, update.card.motto = Optional(f[15]), Optional(f[16])  -- (their portrait's frame, their motto; 0.42.0 on)
         update.card.wallpaper = Optional(f[17])  -- (behind their photo: Wallpaper.lua)
     end
+    f = Split(s[19] or "", FIELD)  -- (life: from 0.42.0 on)
+    if f[1] == "L" then update.life = ReadLife(f, 2) end
     return update
 end
 
@@ -400,6 +425,7 @@ function ns.FriendScore(friend)
     local s = friend.score
     if s and (not friend.syncID or (s.syncID == friend.syncID and s.seq > (friend.seq or 0))
         or (s.syncID ~= friend.syncID and s.at > (friend.received or 0))) then
+        s.life = s.life or {}
         return s
     end
     local bounty = 0
@@ -408,7 +434,7 @@ function ns.FriendScore(friend)
     for _ in pairs(friend.mints or {}) do pictures = pictures + 1 end
     return { syncID = friend.syncID, seq = friend.seq or 0, earned = friend.earned or 0, total = friend.total or 0,
         pvp = friend.pvpTotal or 0, week = friend.posters and friend.posters.week, bounty = bounty, pictures = pictures,
-        at = friend.received or 0 }
+        at = friend.received or 0, life = friend.life or {} }
 end
 
 -- Applies an update to the friend's stored copy. Returns false if it doesn't continue from that copy.
@@ -450,6 +476,7 @@ local function Apply(sender, update)
     end
     if update.showcase then friend.showcase = update.showcase end  -- see Minting.lua
     if update.card then friend.card = update.card end  -- see OverviewCard.lua
+    if update.life then friend.life = update.life end  -- see LifeStats.lua (nil numbers: not shared)
     friend.name, friend.syncID, friend.total = update.name, update.syncID, update.total
     friend.version = ns.SeenVersion(sender) or friend.version
     friend.seq = math.max(friend.seq or 0, update.seq)
@@ -552,8 +579,8 @@ local function SendConfig(target)
 end
 
 -- The score relay: the toplist numbers of every guildmate we know, as "S" chunks of
--- "6 # key^syncID^seq^earned^kills^pvp^week^bounty^pictures^age ~ ..." (age: seconds since they were current, since
--- clocks differ). Sent to one guildmate who just logged in (they ask the first who answers their hello: handlers.H),
+-- "6 # key^syncID^seq^earned^kills^pvp^week^bounty^pictures^age^nap^deaths^quests^places^goldIn^goldOut ~ ..." (age:
+-- seconds since they were current, since clocks differ; the life numbers "-" where they don't share them). Sent to one guildmate who just logged in (they ask the first who answers their hello: handlers.H),
 -- so they see who played while they were away without anyone sending everything.
 local function ScoreBoard()
     local items, now = {}, time()
@@ -561,7 +588,8 @@ local function ScoreBoard()
         local s = ns.FriendScore(friend)
         if s.syncID and (s.seq or 0) > 0 then
             items[#items + 1] = table.concat({ Clean(key), Clean(s.syncID), Base36(s.seq), Base36(s.earned), Base36(s.total),
-                Base36(s.pvp), Base36(s.week or 0), Base36(s.bounty), Base36(s.pictures), Base36(math.max(0, now - (s.at or now))) }, FIELD)
+                Base36(s.pvp), Base36(s.week or 0), Base36(s.bounty), Base36(s.pictures), Base36(math.max(0, now - (s.at or now))),
+                N36(s.life.nap), N36(s.life.deaths), N36(s.life.quests), N36(s.life.places), N36(s.life.goldIn), N36(s.life.goldOut) }, FIELD)
         end
     end
     return PROTOCOL .. SECTION .. table.concat(items, ITEM)
@@ -580,7 +608,7 @@ local function MergeScores(payload)
             and ns.IsGuildMember(key) then
             local score = { syncID = syncID, seq = seq, earned = FromBase36(f[4]) or 0, total = FromBase36(f[5]) or 0,
                 pvp = FromBase36(f[6]) or 0, week = FromBase36(f[7]), bounty = FromBase36(f[8]) or 0,
-                pictures = FromBase36(f[9]) or 0, at = now - (FromBase36(f[10]) or 0) }
+                pictures = FromBase36(f[9]) or 0, at = now - (FromBase36(f[10]) or 0), life = ReadLife(f, 11) }
             local friend = KillTrackerFriends[key]
             local have = friend and ns.FriendScore(friend)
             if not have or not have.syncID or (have.syncID == syncID and seq > (have.seq or 0))

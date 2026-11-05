@@ -16,13 +16,16 @@ local STEWARD = { skin = "club_sage", eyes = "snooty_eyes", expression = "snooty
     headwear = "shop_steward_boater" }
 
 -- The steps, in rank order. page: the one this rank opens (locked below it); each line can light a sidebar button
--- (glow) and open a page behind him (open).
+-- (glow) and open a page behind him (open). form: the privacy form in his bubble (what's tracked and shared: kill
+-- stats, and LifeStats.lua's Share / Just me / Off); reaction: his line about what you chose there.
 local STEPS = {
     { id = "welcome", rank = 1, lines = {
         { text = "Oh. It's you. Someone let you in. I shall be having words with the doorman.", open = "overview" },
         { text = "I am Reginald, steward of this club. You may call me sir. You may not call me Reggie.", introduce = true },
         { text = "You go about your little adventures and the club keeps score. Every kill, every deed, every pitiful death. Mostly the deaths.", glow = "kills" },
         { text = "Score earns points. Points earn Ogre Rank. Rank opens more of the club. I fully expect you to stay rank one forever.", glow = "overview" },
+        { text = "Before you go. The club keeps records. Some members prefer... discretion. Tell me what I may write down about you. You may change your mind later: Settings, the cog, top right.", form = true },
+        { reaction = true },  -- (what he thinks of your choices: Reaction)
         { text = "The Guild room is open to everyone. Sadly, that includes you. News, members, everyone's pictures. Touch nothing.", glow = "home" },
         { text = "The rest of the club is for members of standing. Should you ever earn a rank, I shall come and find you. Reluctantly." },
     } },
@@ -138,6 +141,7 @@ local function Build()
     panel.bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)
     panel.bubble:SetBackdropBorderColor(0.35, 0.24, 0.12)
     local tail = panel.bubble:CreateTexture(nil, "BACKGROUND", nil, -1)
+    panel.tail = tail
     tail:SetSize(18, 18)
     tail:SetPoint("CENTER", panel.bubble, "BOTTOMRIGHT", -2, 14)
     tail:SetColorTexture(0.98, 0.95, 0.86, 0.97)
@@ -182,9 +186,89 @@ local function Glow(key)
     glow:Show()
 end
 
-local function Say(text, glowKey, last, single)
+-- The privacy form, under his words: kill-stat sharing (Share / Off), then each tracked stat (Share / Just me / Off).
+local FORM_ROW = 24
+local function FormRows()
+    local rows = { { label = "Kill stats", choices = { { "share", "Share" }, { "off", "Off" } },
+        get = function() return KillTrackerDB.sharing == false and "off" or "share" end,
+        set = function(v) KillTrackerDB.sharing = v == "share" end } }
+    for _, stat in ipairs(ns.LIFE_STATS or {}) do
+        rows[#rows + 1] = { label = stat.name, choices = ns.PRIVACY_CHOICES, tip = stat.desc,
+            get = function() return ns.Privacy(stat.key) end, set = function(v) ns.SetPrivacy(stat.key, v) end }
+    end
+    return rows
+end
+local function RefreshForm()
+    for _, row in ipairs(panel.form.rows) do
+        local current = row.spec.get()
+        for _, b in ipairs(row.buttons) do
+            if b.value == current then b:LockHighlight() b:Disable() else b:UnlockHighlight() b:Enable() end
+        end
+    end
+end
+local function BuildForm()
+    local form = CreateFrame("Frame", nil, panel.bubble)
+    form.rows = {}
+    for i, spec in ipairs(FormRows()) do
+        local row = { spec = spec, buttons = {} }
+        local label = form:CreateFontString(nil, "OVERLAY")
+        label:SetFont(NAME_FONT, 14, "")
+        label:SetTextColor(0.15, 0.1, 0.06)
+        label:SetPoint("TOPLEFT", 0, -(i - 1) * FORM_ROW - 4)
+        label:SetText(spec.label)
+        for j, choice in ipairs(spec.choices) do
+            local b = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
+            b:SetSize(62, 20)
+            b:SetPoint("TOPLEFT", 86 + (j - 1) * 64, -(i - 1) * FORM_ROW)
+            b:SetText(choice[2])
+            b.value = choice[1]
+            b:SetScript("OnClick", function() spec.set(choice[1]) RefreshForm() end)
+            if spec.tip then
+                b:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:AddLine(spec.label, 1, 1, 1)
+                    GameTooltip:AddLine(spec.tip, nil, nil, nil, true)
+                    GameTooltip:Show()
+                end)
+                b:SetScript("OnLeave", GameTooltip_Hide)
+            end
+            row.buttons[j] = b
+        end
+        form.rows[i] = row
+    end
+    form:SetSize(280, #form.rows * FORM_ROW)
+    panel.form = form
+end
+
+-- What he thinks of your choices in the form.
+local function Reaction()
+    local hidden = 0
+    for _, stat in ipairs(ns.LIFE_STATS or {}) do if ns.Privacy(stat.key) ~= "share" then hidden = hidden + 1 end end
+    local killsHidden = KillTrackerDB.sharing == false
+    if hidden == 0 and not killsHidden then return "An open book. How vulgar. Very well." end
+    if hidden == #(ns.LIFE_STATS or {}) and killsHidden then return "A member of mystery. I approve. Mostly." end
+    if hidden == 1 and ns.Privacy("gold") ~= "share" and not killsHidden then return "Wise. Nobody wants to see that." end
+    if hidden == 1 and ns.Privacy("deaths") ~= "share" and not killsHidden then return "Hiding the deaths. I would too." end
+    return "Noted. Discretion becomes you. Barely."
+end
+
+local function Say(text, glowKey, last, single, form)
     panel.text:SetText(text)
-    panel.bubble:SetSize(308, panel.text:GetStringHeight() + 58)
+    -- (the form: in the bubble under his words, the bubble hanging down over the page so it fits on the screen)
+    if form and not panel.form then BuildForm() end
+    if panel.form then panel.form:SetShown(form and true or false) end
+    panel.bubble:ClearAllPoints()
+    if form then
+        panel.form:ClearAllPoints()
+        panel.form:SetPoint("TOPLEFT", panel.text, "BOTTOMLEFT", 0, -10)
+        RefreshForm()
+        panel.bubble:SetPoint("TOPRIGHT", ns.UI.window, "TOPLEFT", STAND_X - OGRE * 0.3, -BEAM_MIDDLE - 18)
+        panel.bubble:SetSize(308, panel.text:GetStringHeight() + panel.form:GetHeight() + 68)
+    else
+        panel.bubble:SetPoint("BOTTOMRIGHT", ns.UI.window, "TOPLEFT", STAND_X - OGRE * 0.3, -TOP_BEAM_TOP + 46)
+        panel.bubble:SetSize(308, panel.text:GetStringHeight() + 58)
+    end
+    panel.tail:SetShown(not form)
     panel.next:SetText(last and "Sorry" or "Next")
     panel.skip:SetShown(not last and not single)
     Glow(glowKey)
@@ -210,7 +294,8 @@ local function ShowLine()
     if step_line.introduce and tour then tour.named = true end
     panel.name:SetText(tour and tour.named and NAME or MYSTERY)
     panel.plate:SetWidth(math.max(150, (panel.name:GetStringWidth() or 0) + 48))
-    Say(step_line.text, step_line.glow, line == #current.lines and #queue == 0, current.single)
+    Say(step_line.reaction and Reaction() or step_line.text, step_line.glow, line == #current.lines and #queue == 0, current.single,
+        step_line.form)
 end
 
 local function StartNext()

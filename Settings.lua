@@ -1,7 +1,8 @@
 -- The Settings page (the cog on the top beam): just for you, on this character. How the window looks and sounds
 -- (all of SOLC's sounds off: Toast.lua's ns.SoundOff), do not disturb (no toasts or pop-ins: ns.DoNotDisturb), the
 -- minimap button, puzzle duel challenges (SOLC Puzzle, when it's on), your main character (an alt's title reads
--- "Alt of <main>": ProfileHeader.lua) and sharing your wardrobe with your other characters (Core.lua). The guild's
+-- "Alt of <main>": ProfileHeader.lua), sharing your wardrobe with your other characters (Core.lua), and on the right what
+-- SOLC tracks: sharing your kill stats, and Share / Just me / Off for each of LifeStats.lua's stats. The guild's
 -- point values are the dev menu's (Config.lua, Dev.lua).
 
 local _, ns = ...
@@ -19,11 +20,11 @@ ns.RegisterPage({
         line:SetText("Just for you, on this character.")
 
         local checks = {}
-        -- A checkbox at y: get() says if it's on, set(on) changes it; tip: its tooltip lines.
-        local function Check(y, label, tip, get, set)
+        -- A checkbox at y (and x: default the left column): get() says if it's on, set(on) changes it; tip: its tooltip.
+        local function Check(y, label, tip, get, set, x)
             local check = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
             check:SetSize(26, 26)
-            check:SetPoint("TOPLEFT", LEFT, -y)
+            check:SetPoint("TOPLEFT", x or LEFT, -y)
             check.label = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             check.label:SetPoint("LEFT", check, "RIGHT", 4, 0)
             check.label:SetText(label)
@@ -76,6 +77,48 @@ ns.RegisterPage({
             "No toasts, no ogre pop-ins and no puzzle duel challenges (they're declined). Chat lines still come, and gifts still wait in your Inventory." },
             function() return KillTrackerDB.dnd and true or false end,
             function(on) KillTrackerDB.dnd = on or nil end)
+
+        -- What SOLC tracks, and who sees it (LifeStats.lua), in the right-hand column: kill-stat sharing, then each of
+        -- the new stats with Share / Just me / Off.
+        local RIGHT = 430
+        local ry = 64
+        UI.CreateSection(page, "What SOLC tracks", ry):SetPoint("TOPLEFT", RIGHT - 12, -ry)
+        ry = ry + 24
+        Check(ry, "Share my kill stats with the guild", { "Share my kill stats",
+            "Off: guildmates don't get your kills, deeds or pictures (the same as /solc sharing). Everything still counts for you." },
+            function() return KillTrackerDB.sharing ~= false end,
+            function(on) KillTrackerDB.sharing = on end, RIGHT)
+        local choiceRows = {}
+        for _, stat in ipairs(ns.LIFE_STATS or {}) do
+            ry = ry + ROW
+            local label = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            label:SetPoint("TOPLEFT", RIGHT + 4, -(ry + 5))
+            label:SetText(stat.name)
+            local row = { key = stat.key, buttons = {} }
+            for i, choice in ipairs(ns.PRIVACY_CHOICES) do
+                local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+                b:SetSize(70, 22)
+                b:SetPoint("TOPLEFT", RIGHT + 96 + (i - 1) * 74, -(ry + 2))
+                b:SetText(choice[2])
+                b:SetScript("OnClick", function()
+                    UI.ClickSound()
+                    ns.SetPrivacy(stat.key, choice[1])
+                    page:Refresh()
+                end)
+                b:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:AddLine(stat.name, 1, 1, 1)
+                    GameTooltip:AddLine(stat.desc, nil, nil, nil, true)
+                    GameTooltip:AddLine(({ share = "Share: counted, and guildmates see it.", me = "Just me: counted, only you see it.",
+                        off = "Off: not counted (what's counted so far stays)." })[choice[1]], 0.6, 0.9, 0.6, true)
+                    GameTooltip:Show()
+                end)
+                b:SetScript("OnLeave", GameTooltip_Hide)
+                b.value = choice[1]
+                row.buttons[i] = b
+            end
+            choiceRows[#choiceRows + 1] = row
+        end
 
         -- Puzzle duels (SOLC Puzzle's Duel.lua), when that addon is on.
         y = y + ROW + 18
@@ -142,6 +185,12 @@ ns.RegisterPage({
 
         function page:Refresh()
             for _, check in ipairs(checks) do check:SetChecked(check.get()) end
+            for _, row in ipairs(choiceRows) do  -- (the chosen one lit and pressed in, the others plain)
+                local current = ns.Privacy(row.key)
+                for _, b in ipairs(row.buttons) do
+                    if b.value == current then b:LockHighlight() b:Disable() else b:UnlockHighlight() b:Enable() end
+                end
+            end
             local hasPuzzle = SOLC and SOLC.PuzzleDuels ~= nil
             puzzleHeading:SetShown(hasPuzzle)
             duels:SetShown(hasPuzzle)
