@@ -835,7 +835,7 @@ end
 local function BuildBook()
     local spread = CreateFrame("Frame", nil, W.screen)
     local bw = S.w * 0.84
-    local bh = bw * 0.58
+    local bh = bw * 0.64
     spread:SetSize(bw, bh)
     spread:SetPoint("TOP", 20, -18)  -- (high and a little right: its trail of puffs runs down to his head)
     spread:SetFrameLevel(W.screen:GetFrameLevel() + 40)
@@ -853,20 +853,20 @@ local function BuildBook()
         t:SetPoint("CENTER", spread, "TOPLEFT", x, -y)
         if pass == 1 then t:SetVertexColor(0.45, 0.3, 0.15) else t:SetVertexColor(PARCH[1], PARCH[2], PARCH[3]) end
     end
-    local GAP, PUFF = 18, 44
-    local lobes = { { x = PUFF / 2, y = PUFF / 2, w = bw * 0.34 - PUFF, h = bh - PUFF },
-        { x = bw * 0.34 + GAP + PUFF / 2, y = PUFF / 2, w = bw * 0.66 - GAP - PUFF, h = bh - PUFF } }
+    local GAP, PUFF = 22, 66
+    local lobes = { { x = PUFF / 2, y = PUFF / 2, w = bw * 0.4 - PUFF, h = bh - PUFF },
+        { x = bw * 0.4 + GAP + PUFF / 2, y = PUFF / 2, w = bw * 0.6 - GAP - PUFF, h = bh - PUFF } }
     for pass = 1, 2 do
         for li, lobe in ipairs(lobes) do
             -- (round its edge, a disc every so often, sizes varying a little: puffy)
             local edge = {}
             local function Along(x0, y0, x1, y1)
-                local n = math.max(1, math.floor(math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) / (PUFF * 0.62)))
+                local n = math.max(1, math.floor(math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) / (PUFF * 0.74)))
                 for k = 0, n - 1 do edge[#edge + 1] = { x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n } end
             end
             local x0, y0, x1, y1 = lobe.x, lobe.y, lobe.x + lobe.w, lobe.y + lobe.h
             Along(x0, y0, x1, y0) Along(x1, y0, x1, y1) Along(x1, y1, x0, y1) Along(x0, y1, x0, y0)
-            for k, p in ipairs(edge) do Blob(p[1], p[2], PUFF * (0.9 + 0.25 * ((k * 7 + li * 3) % 5) / 4), pass) end
+            for k, p in ipairs(edge) do Blob(p[1], p[2], PUFF * (0.82 + 0.42 * ((k * 7 + li * 3) % 5) / 4), pass) end
             if pass == 2 then
                 local fill = spread:CreateTexture(nil, "BORDER", nil, 1)
                 fill:SetColorTexture(PARCH[1], PARCH[2], PARCH[3])
@@ -875,7 +875,7 @@ local function BuildBook()
             end
         end
         -- (the bridge between the lobes, and the trail down towards his head)
-        local mid = bw * 0.34 + GAP / 2
+        local mid = bw * 0.4 + GAP / 2
         Blob(mid, bh * 0.42, PUFF * 0.55, pass)
         Blob(mid, bh * 0.6, PUFF * 0.42, pass)
         for k, p in ipairs({ { 0.06, 1.06, 0.6 }, { 0.0, 1.16, 0.42 }, { -0.04, 1.25, 0.28 } }) do
@@ -888,12 +888,14 @@ local function BuildBook()
     local function At(region, x, y) region:SetPoint("TOPLEFT", spread, "TOPLEFT", x, -y) end
 
     -- The left page: what this is, the chapters, the stories you have, your choice.
-    local title = Text(spread, 22)
+    local title = Text(spread, 18)
     At(title, L.x, L.y)
+    title:SetWidth(L.w)
+    title:SetJustifyH("LEFT")
     title:SetTextColor(RED[1], RED[2], RED[3])
     spread.title = title
-    local note = Text(spread, 12)
-    At(note, L.x, L.y + 32)
+    local note = Text(spread, 11)
+    At(note, L.x, L.y + 46)
     note:SetWidth(L.w)
     note:SetJustifyH("LEFT")
     note:SetTextColor(0.35, 0.26, 0.16)
@@ -901,11 +903,11 @@ local function BuildBook()
     -- The chapters: a row each, its crayon icon (Media/Icons/Layer_<key>) and its name; the open one underlined in red
     -- ink, its icon at full strength (the others a little faded); hovered, the name goes red.
     spread.chapters = {}
-    local rowH = 30
+    local rowH = 26
     for i, ch in ipairs(CHAPTERS) do
         local b = CreateFrame("Button", nil, spread)
         b:SetSize(L.w, rowH)
-        At(b, L.x, L.y + 84 + (i - 1) * (rowH + 2))
+        At(b, L.x, L.y + 108 + (i - 1) * (rowH + 3))
         b.icon = b:CreateTexture(nil, "ARTWORK")
         b.icon:SetSize(rowH, rowH)
         b.icon:SetPoint("LEFT")
@@ -940,7 +942,7 @@ local function BuildBook()
         spread.chapters[i] = b
     end
     spread.storiesText = Text(spread, 13)
-    At(spread.storiesText, L.x, L.y + L.h - 70)
+    At(spread.storiesText, R.x, R.y + R.h - 14)  -- (by the page arrows, under the cards)
     spread.storiesText:SetTextColor(INK[1], INK[2], INK[3])
     spread.pick = InkWord(spread, 15, function()
         if not spread.sel then return end

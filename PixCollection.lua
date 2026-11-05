@@ -427,6 +427,8 @@ function UI.PixCollection(parent)
         dex.offset = math.max(0, math.min(math.max(0, math.ceil(#dex.filtered / 3) - 3), dex.offset + delta))
         dex:Draw()
     end
+    -- (the way back to the Dream Bed's room: the book lies there)
+    if BOOK then Button(left, "< BEDROOM", 528, 160, 100, function() if ns.OpenPage then ns.OpenPage("dreambed") end end) end
     Button(left, "<", 242, 704, 28, function() Scroll(-1) end)
     Button(left, ">", 601, 704, 28, function() Scroll(1) end)
     left:EnableMouseWheel(true)
