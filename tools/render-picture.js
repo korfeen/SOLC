@@ -190,7 +190,46 @@ function png({ width, height, rgba }) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw, { level: 9 })), chunk("IEND", Buffer.alloc(0))]);
 }
 
-module.exports = { renderPicture, png, loadArt };
+// A picture's overall rarity, as Minting.lua's ns.MintRarity: its pieces' scores added up, graded by how few everyday
+// rolls score at least that high (the piece the bedtime story asked for counts as the lowest).
+const WEIGHTS = { uncommon: 25, rare: 10, epic: 4, legendary: 1 }, SCORES = { uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+const TIERS = [["legendary", 0.015], ["epic", 0.05], ["rare", 0.17]];
+let atLeast;
+function pictureRarity(traits, asked) {
+  const { options } = loadArt();
+  if (!atLeast) {
+    let chance = { 0: 1 };
+    for (const layer of LAYERS) {
+      const everyday = Object.values(options[layer]).filter((o) => !o.unlock && !o.retired);
+      if (!everyday.length) continue;
+      const total = everyday.reduce((t, o) => t + (o.weight || WEIGHTS[o.rarity]), 0), next = {};
+      for (const [score, p] of Object.entries(chance)) for (const o of everyday) {
+        const s = Number(score) + SCORES[o.rarity];
+        next[s] = (next[s] || 0) + p * (o.weight || WEIGHTS[o.rarity]) / total;
+      }
+      chance = next;
+    }
+    atLeast = {};
+    let sum = 0;
+    for (let s = Math.max(...Object.keys(chance).map(Number)); s >= 0; s--) { sum += chance[s] || 0; atLeast[s] = sum; }
+  }
+  let score = 0;
+  for (const layer of LAYERS) {
+    const o = options[layer][traits[layer]];
+    score += layer === asked ? SCORES.uncommon : o ? SCORES[o.rarity] : 0;
+  }
+  const share = atLeast[score] ?? 1;
+  for (const [rarity, limit] of TIERS) if (share <= limit + 1e-9) return rarity;
+  return "uncommon";
+}
+
+// The pieces' names and rarities, in layer order: [{ layer, name, rarity }].
+function pieces(traits) {
+  const { options } = loadArt();
+  return LAYERS.filter((l) => options[l][traits[l]]).map((l) => ({ layer: l, name: options[l][traits[l]].name, rarity: options[l][traits[l]].rarity }));
+}
+
+module.exports = { renderPicture, png, loadArt, pictureRarity, pieces };
 
 if (require.main === module) {
   const [out, ...args] = process.argv.slice(2);
