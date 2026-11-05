@@ -54,7 +54,7 @@ local CUSTOM_TIERS = { kind = { "easy", 40 }, tribe = { "medium", 25 }, pvp = { 
 local LEVELS = {
     defias = { 10, 25 }, venture = { 10, 40 }, kolkar = { 10, 35 }, burningblade = { 10, 40 }, syndicate = { 20, 40 },
     scarlet = { 30, 60 }, bloodsail = { 40, 48 }, darkiron = { 45, 60 }, blackrock = { 20, 60 }, scourge = { 35, 60 },
-    demon = { 20, 60 },
+    demon = { 20, 60 }, pvp = { 21, 60 },  -- (PvP: not for the lowest bracket, few find a fight there)
     -- The ogre tribes.
     mogrosh = { 18, 22 }, splinterfist = { 25, 31 }, boulderfist = { 32, 42 }, crushridge = { 34, 43 }, dustbelcher = { 35, 45 }, moshogg = { 36, 47 },
     gordunni = { 40, 47 }, dunemaul = { 45, 50 }, dreadmaul = { 45, 58 }, firegut = { 50, 54 }, gordok = { 52, 60 }, spirestone = { 54, 59 },
