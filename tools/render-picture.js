@@ -216,7 +216,7 @@ function pictureRarity(traits, asked) {
   let score = 0;
   for (const layer of LAYERS) {
     const o = options[layer][traits[layer]];
-    score += layer === asked ? SCORES.uncommon : o ? SCORES[o.rarity] : 0;
+    score += o ? SCORES[o.rarity] : 0;  // (the bedtime story's piece too: its own rarity, as Minting.lua)
   }
   const share = atLeast[score] ?? 0;
   for (const [rarity, limit] of TIERS) if (share <= limit + 1e-9) return rarity;

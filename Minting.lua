@@ -412,13 +412,12 @@ local function ScoreOdds()
 end
 
 -- Overall rarity from the traits' rarities added up, graded by how few rolls score that high:
--- legendary = top 1.5% of pictures, epic = top 5%, rare = top 17%, else uncommon. asked: a layer the bedtime story
--- picked (the Dream Bed: mint.asked), counted as an everyday piece - it was chosen, not luck.
+-- legendary = top 1.5% of pictures, epic = top 5%, rare = top 17%, else uncommon. (asked: a layer the bedtime story
+-- picked, mint.asked - it counts at its own rarity like the rest, since 2026-11-05.)
 function ns.MintRarity(traits, asked)
     local score = 0
     for _, layer in ipairs(ns.MintLayers) do
         local option = FindOption(layer, traits[layer.key])
-        if layer.key == asked then option = { rarity = RARITY_ORDER[1] } end
         score = score + (option and RARITY_SCORE[option.rarity] or 0)
     end
     local share = ScoreOdds()[score] or 0  -- (above every graded roll: the rarest)
