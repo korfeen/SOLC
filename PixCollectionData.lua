@@ -515,4 +515,12 @@ ns.PixCollectionNumbers = {
     ["outfit:gacha_outfit_shellsuit"] = 512,
     ["outfit:shop_steward_vest"] = 513,
     ["skin:club_sage"] = 514,
+    ["accessory:prop_dnd_sign"] = 515,
+    ["accessory:prop_murloc_maraca"] = 516,
+    ["accessory:prop_neck_pillow"] = 517,
+    ["accessory:prop_white_flag"] = 518,
+    ["background:bg_godz_touched"] = 519,
+    ["headwear:prop_bent_halo"] = 520,
+    ["outfit:prop_barrel_body"] = 521,
+    ["outfit:prop_sleeping_bag_body"] = 522,
 }

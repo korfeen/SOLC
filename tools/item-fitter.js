@@ -696,7 +696,8 @@ function runBuild(ids) {
   fs.writeFileSync(BUILD_LIST, JSON.stringify(list, null, 1));
   Object.assign(build, { running: true, done: false, ok: false, lines: ["Sent " + ids.length + " new: building..."] });
   const { spawn } = require("child_process");
-  const steps = [["make-unlock-art.js", "gear"], ["convert-art.js"]];
+  // (then the Collection's catalogue numbers for anything new: without one its layer's page stops - 2026-11-05)
+  const steps = [["make-unlock-art.js", "gear"], ["convert-art.js"], ["number-collection.js"]];
   const next = () => {
     const step = steps.shift();
     if (!step) { Object.assign(build, { running: false, done: true, ok: true }); build.lines.push("Done: restart WoW (not just /reload)."); runStories(); return; }
