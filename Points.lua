@@ -70,7 +70,7 @@ end
 ns.AchievementPoints = AchievementPoints
 
 -- Points of KillTrackerDB or a friend's stats: { kills, newMobs, leaders, achievements, pvp, guildGroup, dungeons,
--- bounty, chests, earned, spent, duels, balance }.
+-- bounty, chests, gather, skills, earned, spent, duels, balance }.
 -- Friends' kill points aren't synced, so they're estimated at 1 per kill.
 function ns.GetPoints(source)
     source = source or KillTrackerDB
@@ -97,7 +97,15 @@ function ns.GetPoints(source)
     p.dungeons = source.points and source.points.dungeons or 0
     p.bounty = source.points and source.points.bounty or 0
     p.chests = source.points and source.points.chests or 0  -- coins from dungeon chests (Unlocks.lua)
+    -- Professions: each gather (LifeStats.lua) as it happens, and every skill point by each profession's best level ever
+    -- (Professions.lua; a guildmate's: the levels they have now).
+    p.gather = source.points and source.points.gather or 0
+    local skills, prof = 0, source.professions
+    if prof and prof.best then for _, rank in pairs(prof.best) do skills = skills + rank end
+    elseif prof then for _, entry in ipairs(prof.list or {}) do skills = skills + (entry.rank or 0) end end
+    p.skills = skills * ns.Config("skillPoint")
     p.earned = p.kills + p.newMobs + p.leaders + p.achievements + p.pvp + p.guildGroup + p.dungeons + p.bounty + p.chests
+        + p.gather + p.skills
     -- (puzzle duel bets won and lost: yours to spend, but not earned; SOLC.SettleDuel in API.lua)
     p.duels = source.points and source.points.duels or 0
     p.balance = p.earned - p.spent + p.duels

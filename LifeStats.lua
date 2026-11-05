@@ -14,6 +14,7 @@ ns.LIFE_STATS = {
     { key = "quests", name = "Quests", desc = "Quests turned in." },
     { key = "places", name = "Exploration", desc = "Places visited: every zone and subzone you've set foot in." },
     { key = "gold", name = "Gold", desc = "Gold that came in (loot, quests, sales, trades, the mail) and went out." },
+    { key = "gathering", name = "Gathering", desc = "Herbs picked, ore mined, beasts skinned and fish caught: points for each, and deeds." },
 }
 ns.PRIVACY_CHOICES = { { "share", "Share" }, { "me", "Just me" }, { "off", "Off" } }
 
@@ -50,6 +51,7 @@ function ns.SharedLife()
     if shared("quests") then out.quests = life.quests end
     if shared("places") then out.places = life.placeCount end
     if shared("gold") then out.goldIn, out.goldOut = life.goldIn, life.goldOut end
+    if shared("gathering") then out.herbs, out.ore, out.skins, out.fish = life.herbs or 0, life.ore or 0, life.skins or 0, life.fish or 0 end
     return out
 end
 
@@ -73,16 +75,51 @@ local function NotePlace()
     if added then Changed(life) end
 end
 
+-- Gathering: a herb picked, ore mined or a beast skinned (its cast, then the loot window it opens), or a fish caught
+-- (fishing loot): one each, whatever it gives (life.herbs / ore / skins / fish). Each is points too (the guild's
+-- "gather" setting, KillTrackerDB.points.gather) and counts for its deeds (Achievements.lua).
+local GATHER_IDS = { [2366] = "herbs", [2368] = "herbs", [3570] = "herbs", [11993] = "herbs",
+    [2575] = "ore", [2576] = "ore", [3564] = "ore", [10248] = "ore", [8613] = "skins", [8617] = "skins", [8618] = "skins", [10768] = "skins" }
+local GATHER_NAMES = { ["Herb Gathering"] = "herbs", ["Mining"] = "ore", ["Skinning"] = "skins" }  -- (other ranks, by name)
+local pendingGather, pendingAt
+local function GatherKind(spellID)
+    if not spellID or issecret(spellID) then return end
+    if GATHER_IDS[spellID] then return GATHER_IDS[spellID] end
+    local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID) or (GetSpellInfo and GetSpellInfo(spellID))
+    if name and not issecret(name) then return GATHER_NAMES[name] end
+end
+local function Gathered(kind)
+    if not (KillTrackerDB and Counting("gathering")) then return end
+    local life = Life()
+    life[kind] = (life[kind] or 0) + 1
+    local points = KillTrackerDB.points
+    if points then
+        points.gather = (points.gather or 0) + (ns.Config("gather") or 0)
+        ns.Touch(points)
+    end
+    Changed(life)
+    if ns.CheckAchievements then ns.CheckAchievements() end
+end
+
 local napTicker, napUnsynced = nil, 0
 local frame = CreateFrame("Frame")
+frame:RegisterEvent("LOOT_OPENED")
+if frame.RegisterUnitEvent then frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player") end
 for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "PLAYER_DEAD", "QUEST_TURNED_IN", "PLAYER_MONEY",
     "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA" }) do
     frame:RegisterEvent(event)
 end
-frame:SetScript("OnEvent", function(_, event)
+frame:SetScript("OnEvent", function(_, event, ...)
     if not KillTrackerDB then return end
     local life = Life()
-    if event == "PLAYER_ENTERING_WORLD" then
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local kind = GatherKind(select(3, ...))
+        if kind then pendingGather, pendingAt = kind, GetTime() end
+    elseif event == "LOOT_OPENED" then
+        if IsFishingLoot and IsFishingLoot() then Gathered("fish")
+        elseif pendingGather and GetTime() - pendingAt < 5 then Gathered(pendingGather) end
+        pendingGather = nil
+    elseif event == "PLAYER_ENTERING_WORLD" then
         life.lastMoney = GetMoney()  -- (gold: changes from here on)
         -- Logged out at an inn or in a city and back in there: slept it off.
         if life.napOut and Counting("nap") and IsResting() then

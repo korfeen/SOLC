@@ -212,11 +212,12 @@ local function N36(n) return n and Base36(n) or "-" end
 local function SerializeLife(db, baseSeq)
     if not db.life or (db.life.seq or 0) <= baseSeq or not ns.SharedLife then return "" end
     local l = ns.SharedLife()
-    return table.concat({ "L", N36(l.nap), N36(l.deaths), N36(l.quests), N36(l.places), N36(l.goldIn), N36(l.goldOut) }, FIELD)
+    return table.concat({ "L", N36(l.nap), N36(l.deaths), N36(l.quests), N36(l.places), N36(l.goldIn), N36(l.goldOut),
+        N36(l.herbs), N36(l.ore), N36(l.skins), N36(l.fish) }, FIELD)  -- (gathering: added at the end, older versions skip it)
 end
 
 -- Life numbers from the wire ("-" or nothing: not shared, nil).
-local LIFE_FIELDS = { "nap", "deaths", "quests", "places", "goldIn", "goldOut" }
+local LIFE_FIELDS = { "nap", "deaths", "quests", "places", "goldIn", "goldOut", "herbs", "ore", "skins", "fish" }
 local function ReadLife(fields, first)
     local life = {}
     for i, key in ipairs(LIFE_FIELDS) do
@@ -589,7 +590,8 @@ local function ScoreBoard()
         if s.syncID and (s.seq or 0) > 0 then
             items[#items + 1] = table.concat({ Clean(key), Clean(s.syncID), Base36(s.seq), Base36(s.earned), Base36(s.total),
                 Base36(s.pvp), Base36(s.week or 0), Base36(s.bounty), Base36(s.pictures), Base36(math.max(0, now - (s.at or now))),
-                N36(s.life.nap), N36(s.life.deaths), N36(s.life.quests), N36(s.life.places), N36(s.life.goldIn), N36(s.life.goldOut) }, FIELD)
+                N36(s.life.nap), N36(s.life.deaths), N36(s.life.quests), N36(s.life.places), N36(s.life.goldIn), N36(s.life.goldOut),
+                N36(s.life.herbs), N36(s.life.ore), N36(s.life.skins), N36(s.life.fish) }, FIELD)
         end
     end
     return PROTOCOL .. SECTION .. table.concat(items, ITEM)

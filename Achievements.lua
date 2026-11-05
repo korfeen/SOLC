@@ -97,6 +97,22 @@ local FEATS = {
         { 100, "Most Wanted Hunter", 100 } } },
     { key = "chests", label = "Chests opened", unit = "chests", count = function(_, f) return f.chests end, tiers = {
         { 1, "Lid Flipper", 5 }, { 10, "Rummager", 15 }, { 50, "Treasure Hoarder", 40 }, { 100, "Dragon's Hoard", 70 } } },
+    -- Gathering (LifeStats.lua: yours; nothing counts while it's Off in Settings).
+    { key = "herbs", label = "Herbs picked", unit = "herbs", count = function(_, f) return f.herbs end, tiers = {
+        { 25, "Weed Puller", 5 }, { 100, "Green Thumb", 10 }, { 250, "Flower Muncher", 20 }, { 500, "Herb Hoarder", 35 },
+        { 1000, "Walking Salad", 60 } } },
+    { key = "ore", label = "Ore mined", unit = "nodes", count = function(_, f) return f.ore end, tiers = {
+        { 25, "Rock Knocker", 5 }, { 100, "Pick Swinger", 10 }, { 250, "Vein Hunter", 20 }, { 500, "Deep Delver", 35 },
+        { 1000, "Mountain Mover", 60 } } },
+    { key = "skins", label = "Beasts skinned", unit = "skins", count = function(_, f) return f.skins end, tiers = {
+        { 25, "Hide Peeler", 5 }, { 100, "Fur Trader", 10 }, { 250, "Pelt Pile", 20 }, { 500, "Rug Maker", 35 },
+        { 1000, "Nothing Left But Bones", 60 } } },
+    { key = "fish", label = "Fish caught", unit = "fish", count = function(_, f) return f.fish end, tiers = {
+        { 25, "Bait Dunker", 5 }, { 100, "Reel Ogre", 10 }, { 250, "Bobber Watcher", 20 }, { 500, "Old Salt", 35 },
+        { 1000, "Lake Emptier", 60 } } },
+    -- Your best profession's level (Professions.lua: synced, so guildmates' show too).
+    { key = "craft", label = "Best profession", unit = "skill", count = function(_, f) return f.craft end, tiers = {
+        { 75, "Apprentice Ogre", 10 }, { 150, "Journeyman Ogre", 20 }, { 225, "Expert Ogre", 35 }, { 300, "Artisan Ogre", 60 } } },
     -- What you've spent in the Pro Shop, wallpapers too (KillTrackerDB.shop.spent; only yours). The steward's whole look
     -- comes with it: his snooty eyes at 500, his striped outfit at 1500, his sneer at 3000, his Club Sage skin at 6000
     -- and his boater at the top (tools/gen-art-proshop-club.json, convert-art.js BASE_UNLOCKS).
@@ -476,9 +492,15 @@ local function CountKills(source)
         if rarity >= 4 then facts.legendary = facts.legendary + 1 end
     end
     facts.showcase = source.showcase and #(source.showcase.numbers or {}) or 0
+    facts.craft = 0
+    local prof = source.professions
+    for _, rank in pairs(prof and prof.best or {}) do facts.craft = math.max(facts.craft, rank) end
+    for _, entry in ipairs(prof and prof.list or {}) do facts.craft = math.max(facts.craft, entry.rank or 0) end
     if mine then
         local tally = source.tally or {}
         facts.bounties, facts.chests = tally.bounties or 0, tally.chests or 0
+        local life = source.life or {}
+        facts.herbs, facts.ore, facts.skins, facts.fish = life.herbs or 0, life.ore or 0, life.skins or 0, life.fish or 0
         facts.shopSpent = source.shop and source.shop.spent or 0
         facts.buddy = 0
         for _, c in pairs(source.companions or {}) do facts.buddy = math.max(facts.buddy, c.clears or 0) end

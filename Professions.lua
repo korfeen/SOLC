@@ -38,6 +38,14 @@ local function UpdateLevels()
         end
     end
     local p = Professions()
+    -- Each profession's best level ever (p.best = { [line] = rank }): its skill points earn points (Points.lua), and
+    -- dropping it never takes them back.
+    p.best = p.best or {}
+    local better = false
+    for _, prof in ipairs(list) do
+        if (prof.rank or 0) > (p.best[prof.line] or 0) then p.best[prof.line], better = prof.rank, true end
+    end
+    if better and ns.CheckAchievements then ns.CheckAchievements() end
     local same = #list == #p.list
     for i, prof in ipairs(list) do
         local old = p.list[i]
