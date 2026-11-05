@@ -176,6 +176,19 @@ local function Build()
     glow.tex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
     glow.tex:SetBlendMode("ADD")
     glow.tex:SetVertexColor(1, 0.82, 0.3)
+    -- (round a whole section instead: a thin gold outline and a faint wash)
+    glow.wash = glow:CreateTexture(nil, "BACKGROUND")
+    glow.wash:SetAllPoints()
+    glow.wash:SetColorTexture(1, 0.82, 0.3, 0.06)
+    glow.edges = {}
+    for i, side in ipairs({ { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" }, { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }) do
+        local edge = glow:CreateTexture(nil, "OVERLAY")
+        edge:SetColorTexture(1, 0.82, 0.3, 0.95)
+        edge:SetPoint(side[1])
+        edge:SetPoint(side[2])
+        if i <= 2 then edge:SetHeight(2) else edge:SetWidth(2) end
+        glow.edges[i] = edge
+    end
     glow.t = 0
     glow:SetScript("OnUpdate", function(self, elapsed)
         self.t = self.t + elapsed
@@ -185,11 +198,16 @@ end
 
 local function Glow(key)
     -- (a sidebar button by its page, or "tracks": Settings' "What SOLC tracks" section)
-    local button = key == "tracks" and ns.UI.settingsTracks or key and ns.UI.NavButton and ns.UI.NavButton(key)
+    local section = key == "tracks"
+    local button = section and ns.UI.settingsTracks or key and ns.UI.NavButton and ns.UI.NavButton(key)
     if not button or not button:IsShown() then glow:Hide() return end
     glow:ClearAllPoints()
-    glow:SetPoint("TOPLEFT", button, "TOPLEFT", -10, 6)
-    glow:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 10, -6)
+    local pad = section and 0 or 10
+    glow:SetPoint("TOPLEFT", button, "TOPLEFT", -pad, pad * 0.6)
+    glow:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", pad, -pad * 0.6)
+    glow.tex:SetShown(not section)
+    glow.wash:SetShown(section)
+    for _, edge in ipairs(glow.edges) do edge:SetShown(section) end
     glow:SetFrameLevel(button:GetFrameLevel() + 30)
     glow:Show()
 end
