@@ -1,0 +1,3 @@
+-- The Collection's open book (tools/gen-collection-book.js - don't edit): where its picture goes, window pixels.
+local _, ns = ...
+ns.CollectionBookArt = { x = 175, y = 108, w = 942, h = 690 }

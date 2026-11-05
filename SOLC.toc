@@ -49,6 +49,7 @@ FeedDetail.lua
 Gallery.lua
 SmashPage.lua
 PixCollectionData.lua
+CollectionBookArt.lua
 PixCollection.lua
 PixPage.lua
 Chests.lua

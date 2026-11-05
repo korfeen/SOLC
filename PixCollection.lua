@@ -135,6 +135,21 @@ local function DrawEquipped(canvas, entry, edition)
     ns.RenderMint(canvas, traits, 0, style)
 end
 
+-- Its look: an open book (CollectionBookArt.lua, tools/gen-collection-book.js: the Dream Bed's red book opened flat)
+-- with ink on its parchment pages, else the old dark boards.
+local BOOK = ns.CollectionBookArt
+local INK = BOOK and {
+    panel = { 0, 0, 0, 0 }, backing = { 0, 0, 0, 0 }, text = { 0.22, 0.13, 0.06 }, heading = { 0.55, 0.12, 0.08 },
+    dim = { 0.42, 0.31, 0.19 }, track = { 0.74, 0.64, 0.48 }, bar = { 0.62, 0.32, 0.1 },
+    tab = { 0.76, 0.65, 0.47 }, tabOn = { 0.55, 0.14, 0.09 }, label = { 0.3, 0.19, 0.09 }, labelOn = { 1, 0.9, 0.7 },
+    tile = { 0.86, 0.79, 0.64 }, unseen = { 0.62, 0.55, 0.43 }, rarityDim = 0.9,
+} or {
+    panel = { 0.065, 0.045, 0.03, 1 }, backing = { 0.045, 0.032, 0.022, 1 }, text = { 0.93, 0.88, 0.78 }, heading = { 1, 0.82, 0.48 },
+    dim = { 0.65, 0.59, 0.49 }, track = { 0.2, 0.15, 0.09 }, bar = { 0.73, 0.53, 0.23 },
+    tab = { 0.18, 0.12, 0.07 }, tabOn = { 0.38, 0.26, 0.12 }, label = { 0.72, 0.65, 0.53 }, labelOn = { 1, 0.84, 0.5 },
+    tile = { 0.06, 0.045, 0.03 }, unseen = { 0.25, 0.22, 0.18 }, rarityDim = 0.45,
+}
+
 function UI.PixCollection(parent)
     local dex = CreateFrame("Frame", nil, parent)
     dex:SetAllPoints()
@@ -149,13 +164,13 @@ function UI.PixCollection(parent)
         panel:EnableMouse(true)
         local bg = panel:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
-        bg:SetColorTexture(0.065, 0.045, 0.03, 1)
+        bg:SetColorTexture(unpack(INK.panel))
         return panel
     end
     local function Text(parentFrame, size, x, y, width)
         local text = parentFrame:CreateFontString(nil, "OVERLAY")
         text:SetFont(FONT, size, "")
-        text:SetTextColor(0.93, 0.88, 0.78)
+        text:SetTextColor(unpack(INK.text))
         At(text, "TOPLEFT", x, y)
         text:SetWidth(width)
         text:SetJustifyH("LEFT")
@@ -164,24 +179,34 @@ function UI.PixCollection(parent)
     local backing = dex:CreateTexture(nil, "BACKGROUND", nil, -8)
     At(backing, "TOPLEFT", 226, 146)
     backing:SetSize(848, 584)
-    backing:SetColorTexture(0.045, 0.032, 0.022, 1)
+    backing:SetColorTexture(unpack(INK.backing))
+    if BOOK then  -- (the open book behind both pages; its cover runs on under the window's wood, cut at the page area)
+        local clip = CreateFrame("Frame", nil, dex)
+        clip:SetAllPoints(UI.pageArea or dex)
+        clip:SetClipsChildren(true)
+        clip:SetFrameLevel(dex:GetFrameLevel())
+        local book = clip:CreateTexture(nil, "BACKGROUND", nil, -7)
+        At(book, "TOPLEFT", BOOK.x, BOOK.y)
+        book:SetSize(BOOK.w, BOOK.h)
+        book:SetTexture("Interface\\AddOns\\SOLC\\Media\\Collection\\book")
+    end
     local left = Panel(236, 146, 398, 584)
     local right = Panel(674, 146, 390, 584)
     local heading = Text(left, 25, 246, 160, 375)
     heading:SetText("SKINS")
-    heading:SetTextColor(1, 0.82, 0.48)
+    heading:SetTextColor(unpack(INK.heading))
     local progress = Text(left, 13, 246, 253, 375)
     local track = left:CreateTexture(nil, "BACKGROUND")
     At(track, "TOPLEFT", 246, 275)
     track:SetSize(375, 4)
-    track:SetColorTexture(0.2, 0.15, 0.09, 1)
+    track:SetColorTexture(unpack(INK.track))
     local bar = left:CreateTexture(nil, "ARTWORK")
     At(bar, "TOPLEFT", 246, 275)
     bar:SetHeight(4)
-    bar:SetColorTexture(0.73, 0.53, 0.23, 1)
+    bar:SetColorTexture(unpack(INK.bar))
     local footer = Text(left, 12, 283, 708, 300)
     footer:SetJustifyH("CENTER")
-    footer:SetTextColor(0.65, 0.59, 0.49)
+    footer:SetTextColor(unpack(INK.dim))
     local filterButtons, layerButtons = {}, {}
     local title = Text(right, 23, 690, 158, 355)
     local details = Text(right, 15, 690, 552, 355)
@@ -216,7 +241,7 @@ function UI.PixCollection(parent)
         At(button, "TOPLEFT", x, y)
         local bg = button:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
-        bg:SetColorTexture(0.18, 0.12, 0.07)
+        bg:SetColorTexture(unpack(INK.tab))
         button.bg = bg
         local hover = button:CreateTexture(nil, "HIGHLIGHT")
         hover:SetAllPoints()
@@ -255,15 +280,12 @@ function UI.PixCollection(parent)
     end
     local tiles = {}
     function dex:Draw()
-        for key, button in pairs(layerButtons) do
-            local active = self.layer == key
-            button.bg:SetColorTexture(active and 0.38 or 0.18, active and 0.26 or 0.12, active and 0.12 or 0.07)
-            button.label:SetTextColor(active and 1 or 0.72, active and 0.84 or 0.65, active and 0.5 or 0.53)
-        end
-        for key, button in pairs(filterButtons) do
-            local active = self.filter == key
-            button.bg:SetColorTexture(active and 0.38 or 0.18, active and 0.26 or 0.12, active and 0.12 or 0.07)
-            button.label:SetTextColor(active and 1 or 0.72, active and 0.84 or 0.65, active and 0.5 or 0.53)
+        for _, group in ipairs({ { layerButtons, self.layer }, { filterButtons, self.filter } }) do
+            for key, button in pairs(group[1]) do
+                local active = group[2] == key
+                button.bg:SetColorTexture(unpack(active and INK.tabOn or INK.tab))
+                button.label:SetTextColor(unpack(active and INK.labelOn or INK.label))
+            end
         end
         local count = #self.filtered
         footer:SetText(count == 0 and "No matching pieces" or ("%d-%d of %d  -  scroll to browse"):format(self.offset * 3 + 1, math.min(count, self.offset * 3 + 9), count))
@@ -279,8 +301,8 @@ function UI.PixCollection(parent)
                     tile.border:SetColorTexture(0.95, 0.73, 0.32)
                 elseif entry.seen then
                     local r, g, b = ns.RarityRGB(entry.option.rarity)
-                    tile.border:SetColorTexture(r * 0.45, g * 0.45, b * 0.45)
-                else tile.border:SetColorTexture(0.25, 0.22, 0.18) end
+                    tile.border:SetColorTexture(r * INK.rarityDim, g * INK.rarityDim, b * INK.rarityDim)
+                else tile.border:SetColorTexture(unpack(INK.unseen)) end
             end
         end
         Preview()
@@ -293,11 +315,12 @@ function UI.PixCollection(parent)
         tile.border:SetAllPoints()
         local bg = tile:CreateTexture(nil, "BORDER")
         bg:SetPoint("TOPLEFT", 2, -2) bg:SetPoint("BOTTOMRIGHT", -2, 2)
-        bg:SetColorTexture(0.06, 0.045, 0.03)
+        bg:SetColorTexture(unpack(INK.tile))
         tile.canvas = CreateFrame("Frame", nil, tile)
         tile.canvas:SetSize(88, 88) tile.canvas:SetPoint("TOP", 0, -2)
         tile.caption = tile:CreateFontString(nil, "OVERLAY")
         tile.caption:SetFont(FONT, 11, "")
+        tile.caption:SetTextColor(unpack(INK.text))
         tile.caption:SetPoint("BOTTOM", 0, 4) tile.caption:SetWidth(116)
         tile:SetScript("OnClick", function(self)
             dex.selected, dex.edition = self.entry, nil
