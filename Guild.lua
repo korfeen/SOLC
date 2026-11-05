@@ -3,7 +3,7 @@
 --   Guild dungeons  dungeon and raid bosses killed with at least 3 guildmates in the group: +10, or +50
 --                   for a final boss. Each boss pays once per day.
 --   Weekly bounty   one bounty per week, the same for the whole guild. Officers can pick it from the
---                   catalogue below on the Bounty Board (BountyBoard.lua), for this week or next; otherwise
+--                   catalogue below on the bounty board (HuntsBoard.lua), for this week or next; otherwise
 --                   the guild's rotation of creature kinds picks one, from the guild name and the week, so
 --                   every member's addon agrees without talking. Bounty kills earn extra points, and when the
 --                   guild reaches the goal, everyone who did their share gets a reward. Progress is shared
@@ -87,7 +87,6 @@ local BOUNTIES = {
 ns.BOUNTIES = BOUNTIES
 
 local BOUNTY_BY_ID, ROTATION = {}, {}
-ns.BOUNTY_BY_ID = BOUNTY_BY_ID
 for _, bounty in ipairs(BOUNTIES) do
     BOUNTY_BY_ID[bounty.id] = bounty
     if bounty.rotation then ROTATION[#ROTATION + 1] = bounty end
@@ -174,8 +173,6 @@ local function Targets()
     table.sort(targets.byType, function(a, b) return a.type < b.type end)
     return targets
 end
-ns.BountyTargets = Targets
-ns.PLAYER_RACES = PLAYER_RACES
 
 -- The bounty for an id: a catalogue entry, or a custom one built (once) from its id. nil if unknown.
 local custom = {}
@@ -205,16 +202,6 @@ local function ResolveBounty(id)
     return bounty
 end
 ns.ResolveBounty = ResolveBounty
-
--- Ids for building custom bounties (a kind already in the rotation uses the rotation's bounty).
-function ns.KindBountyID(subtype)
-    for _, bounty in ipairs(ROTATION) do
-        if bounty.id == subtype then return bounty.id end
-    end
-    return "kind_" .. Squash(subtype)
-end
-function ns.TribeBountyID(faction) return "tribe_" .. Squash(faction) end
-function ns.RaceBountyID(race) return race and ("pvp_" .. Squash(race)) or "pvp" end
 
 -- Final bosses (DungeonEncounter ids from the Classic game data, checked against the Forever build
 -- 1.60.1.70205 on wago.tools), one per dungeon wing, plus raid end bosses. Some appear twice: the game

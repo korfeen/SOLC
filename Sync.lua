@@ -21,7 +21,7 @@
 -- (items "~", fields "^"; npcID, count and time in base 36):
 --   kill       = npcID^count^maxWeight[^name^type^rank^family^subtype]  (names only when new to the receiver)
 --   record     = subtype^weight^mob^zone^time
---   group kill = npcID^spawnKey                  (for the de-duplicated combined total, see Combined.lua)
+--   group kill = npcID^spawnKey                  (still sent to keep the sections in place; nothing reads it now)
 --   picture    = number^time^layer:option;layer:option...[^style^asked^paintedBy^frame^tale]   (minted pictures, see
 --                Minting.lua; style: c / s for every layer in crayon / sketch, layer=c,layer=s for a mix; frame: its
 --                picture frame's id, Frames.lua; tale: the dream the ogre told, DreamBed.lua)
@@ -400,7 +400,7 @@ end
 local function Apply(sender, update)
     local friend = KillTrackerFriends[sender]
     if update.base == 0 then
-        friend = { kills = {}, records = {}, group = {}, mints = {}, version = friend and friend.version }  -- full update: start over
+        friend = { kills = {}, records = {}, mints = {}, version = friend and friend.version }  -- full update: start over
     elseif not friend or friend.syncID ~= update.syncID or (friend.seq or 0) < update.base then
         return false
     end
@@ -419,10 +419,6 @@ local function Apply(sender, update)
     for _, number in ipairs(update.removed) do friend.mints[number] = nil end
     for _, mint in ipairs(update.mints) do
         friend.mints[mint.number] = mint
-    end
-    friend.group = friend.group or {}  -- [spawnKey] = npcID: their kills made in a group
-    for key, npcID in pairs(update.group) do
-        friend.group[key] = npcID
     end
     if update.posters then friend.posters = update.posters end  -- { week, claimed = { [id] = true } }
     friend.earned, friend.pvpTotal = update.earned or friend.earned, update.pvp or friend.pvpTotal

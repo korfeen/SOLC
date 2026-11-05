@@ -17,7 +17,6 @@ ns.RANKS = {}
 for rank, title in ipairs(TITLES) do
     ns.RANKS[rank] = { rank = rank, title = title, points = math.floor(24 * (rank - 1) ^ 2.2 / 10 + 0.5) * 10 }
 end
-local MAX_RANK = #ns.RANKS
 
 -- The perks, by the rank that unlocks them. kind: what it does (read by the functions below); text: for the list.
 ns.RANK_PERKS = {

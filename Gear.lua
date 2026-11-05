@@ -64,7 +64,6 @@ local function Update()
     if Same(db.gear, gear) then return end
     db.gear = gear
     ns.Touch(gear)
-    if ns.OnGearChanged then ns.OnGearChanged() end
 end
 
 local pending

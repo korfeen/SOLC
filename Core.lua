@@ -217,36 +217,9 @@ local function Touch(t)
     return db.seq
 end
 
--- Upgrades data saved by older versions. Can be removed once every character has logged in on 0.6.0+.
-local function Migrate(db)
-    -- Pre-0.2.0: kills stored by name only; they can't be categorized properly, so drop them.
-    if db.byName then
-        for _, count in pairs(db.byName) do db.total = math.max(0, db.total - count) end
-        db.byName = nil
-    end
-    -- Pre-0.6.0: records and achievements per race / beast family / type, now per subtype.
-    for key, record in pairs(db.records) do
-        local name = key:match("^race:(.+)") or key:match("^family:(.+)")
-        if name then
-            db.records[key] = nil
-            local newKey = "subtype:" .. name
-            if not db.records[newKey] or db.records[newKey].weight < record.weight then
-                db.records[newKey] = record
-            end
-        end
-    end
-    for id, earned in pairs(db.achievements) do
-        local rest = id:match("^race:(.+)")
-        if rest then
-            db.achievements["subtype:" .. rest] = db.achievements["subtype:" .. rest] or earned
-        end
-        if rest or id:match("^type:") then db.achievements[id] = nil end
-    end
-    for _, entry in pairs(db.kills) do
-        entry.subtype, entry.race = entry.subtype or entry.race, nil
-    end
-    -- A boss whose encounter wasn't in Encounters.lua yet was counted as 9000000 + its encounter ID (Guild.lua); once
-    -- the encounter is known, those kills move to its boss creature.
+-- A boss whose encounter wasn't in Encounters.lua yet was counted as 9000000 + its encounter ID (Guild.lua); once the
+-- encounter is known (a later version adds it), those kills move to its boss creature.
+local function MoveEncounterKills(db)
     for encounterID, bosses in pairs(ns.EncounterNPCs or {}) do
         local old = db.kills[9000000 + encounterID]
         if old and #bosses == 1 and bosses[1][1] ~= 9000000 + encounterID then  -- (still unknown: it stays)
@@ -260,20 +233,6 @@ local function Migrate(db)
                 if logged.n == 9000000 + encounterID then logged.n = npcID end
             end
         end
-    end
-    -- 0.11.0: weights are now based on real model heights; records from the old model are dropped.
-    -- A new syncID makes friends fetch everything again, so their copies lose the old records too.
-    if (db.weightModel or 1) < 2 then
-        wipe(db.records)
-        for _, entry in pairs(db.kills) do entry.maxWeight = nil end
-        db.syncID = NewSyncID()
-        db.weightModel = 2
-        if next(db.kills) then Print("Weight records were reset for the new, more realistic weight model.") end
-    end
-    -- 0.18.0: faction/tribe achievements below 1000 kills were dropped (only the 1000 one remains).
-    for id in pairs(db.achievements) do
-        local kills = id:match("^faction:.*:(%d+)$")
-        if kills and kills ~= "1000" then db.achievements[id] = nil end
     end
 end
 
@@ -293,25 +252,15 @@ local function InitDB()
     db.achievements = db.achievements or {}  -- [achievementID] = time earned, see Achievements.lua
     db.groupLog = db.groupLog or {}          -- kills made in a group: { s = change number, n = npcID, k = spawn key }
     db.pvp = db.pvp or { total = 0, unknown = 0, players = {} }  -- PvP kills, see PvP.lua
-    -- Points (Points.lua): kill points so far and points spent. Kills from before points existed: 1 each.
-    db.points = db.points or { kills = db.total, spent = 0 }
-    db.collection = db.collection or {}      -- [itemID] = { time bought, claim = true when marked for minting }
+    db.points = db.points or { kills = 0, spent = 0 }  -- kill points so far and points spent (Points.lua)
+    db.collection = db.collection or {}      -- [itemID] = { time bought }
     db.mints = db.mints or {}                -- minted pictures, see Minting.lua
     db.minimap = db.minimap or { angle = 225, hide = false }
     db.announce = db.announce or false
     if db.sharing == nil then db.sharing = true end  -- share kill stats with guildmates and /kt sync requests
     db.syncID = db.syncID or NewSyncID()
     db.seq = db.seq or 0
-    Migrate(db)
-    -- Settings from trying out the look (0.39.0 development), now fixed in UI.lua.
-    db.navWidth, db.buttonStyle, db.ogreFont, db.ogreColors, db.ogreOutline = nil, nil, nil, nil, nil
-    -- Plinko is gone (0.41.0): its drops, boards, winnings and deeds with it.
-    db.plinko, db.plinkoBoard, db.plinkoTune = nil, nil, nil
-    if db.points then db.points.plinko = nil end
-    if db.tally then db.tally.jackpots = nil end
-    for id in pairs(db.achievements or {}) do
-        if id:match("^feat:plinko:") or id:match("^feat:jackpot:") then db.achievements[id] = nil end
-    end
+    MoveEncounterKills(db)
     for _, entry in pairs(db.kills) do
         if not entry.seq then Touch(entry) end
     end
@@ -330,10 +279,7 @@ local function InitDB()
     SOLCAccount = SOLCAccount or {}
     SOLCAccount.unlocks = SOLCAccount.unlocks or {}
     SOLCAccount.characters = SOLCAccount.characters or {}  -- [GUID] = { name, class, level, seen }
-    if not db.ownUnlocks then  -- (from before: its unlocks were its own)
-        db.ownUnlocks = {}
-        for key, when in pairs(db.unlocks or {}) do db.ownUnlocks[key] = when end
-    end
+    db.ownUnlocks = db.ownUnlocks or {}
     ns.LinkWardrobe()
 end
 
@@ -362,7 +308,6 @@ local function NoteCharacter()
     local _, class = UnitClass("player")
     SOLCAccount.characters[guid] = { name = UnitName("player"), class = class, level = UnitLevel("player"), seen = time() }
 end
-ns.NoteCharacter = NoteCharacter
 
 -- Kill detection ---------------------------------------------------------------
 

@@ -613,7 +613,6 @@ local UNDER_HAT = {
 }
 -- (Eyewear - anything over the eyes you could take off - is an accessory, never an eyes trait; it may cover the
 -- picture's eyes, even rare ones: the story and the picture's info still name them.)
-ns.MINT_UNDER_HAT = UNDER_HAT
 -- And the face pieces that float off the face (a snore bubble beside the head), drawn in front of the hat too, or a
 -- hat's brim cuts them off.
 local FACE_OVER_HAT = { snoring_zzz_bubble = true }
@@ -746,7 +745,6 @@ local function Suit(traits)
         end
     end
 end
-ns.MintSuit = Suit
 
 function ns.RenderMint(canvas, traits, tilt, style)
     canvas.layers = canvas.layers or {}
@@ -888,12 +886,11 @@ function ns.RenderMint(canvas, traits, tilt, style)
     end
 end
 
--- Pictures whose traits no longer exist (e.g. from the placeholder test set) are removed and refunded.
+-- Pictures whose traits no longer exist (a piece taken out of the art) are removed and refunded.
 -- A picture missing a layer added later isn't outdated; it simply has nothing on that layer.
 local function RemoveOutdatedMints()
     local db, kept, refund, removed = KillTrackerDB, {}, 0, 0
     for _, mint in ipairs(db.mints) do
-        if not mint.wonFrom and mint.crayon == nil then mint.crayon = true end  -- minted before the crayon edition
     end
     for _, mint in ipairs(db.mints) do
         local valid = true
@@ -912,7 +909,7 @@ local function RemoveOutdatedMints()
     if refund > 0 then
         db.mints = kept
         db.points.spent = math.max(0, db.points.spent - refund)
-        ns.Print(("Removed %d test picture(s) made with the old placeholder art; %d points refunded."):format(removed, refund))
+        ns.Print(("Removed %d picture(s) with pieces that no longer exist; %d points refunded."):format(removed, refund))
     end
 end
 
@@ -1027,7 +1024,6 @@ function ns.OwnedOptions(layerKey)
     local layer
     for _, l in ipairs(ns.MintLayers) do if l.key == layerKey then layer = l end end
     if not layer then return {} end
-    for _, mint in ipairs(KillTrackerDB.mints or {}) do ns.LearnTraits(mint.traits) end  -- (the pictures from before it)
     local wardrobe = KillTrackerDB.wardrobe or {}
     local list = {}
     for _, option in ipairs(layer.options) do

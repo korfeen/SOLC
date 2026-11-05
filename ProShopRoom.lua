@@ -21,7 +21,7 @@ if not UI then return end
 local MEDIA = "Interface\\AddOns\\SOLC\\Media\\ProShop\\"
 local EASEL_ART = "Interface\\AddOns\\SOLC\\Media\\DreamBed\\easel"
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
-local CREAM, GOLD, GILT = { 0.96, 0.9, 0.78 }, { 1, 0.82, 0.1 }, { 0.79, 0.63, 0.29 }
+local CREAM, GILT = { 0.96, 0.9, 0.78 }, { 0.79, 0.63, 0.29 }
 local BURGUNDY = { 0.3, 0.06, 0.09 }
 
 -- The room's painting is 827 x 584 (the page's size): everything is placed in its pixels and scaled to the page.
@@ -928,7 +928,6 @@ ns.RegisterPage({
     refresh = function() Refresh() end,
 })
 
-function ns.ShowProShop() ns.OpenPage("proshop") end
 -- Opens the shop with these pieces ("layer:id" keys) in the cart and the first one's tab open (EDIT's PRO SHOP button).
 function ns.ShowProShopWith(keys)
     pending = keys

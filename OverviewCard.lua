@@ -34,7 +34,7 @@ local EDGE_FILL = 60 / 64                    -- Media/Overview/Edge's square
 local GEAR_PANEL = { left = 247, top = 327, width = 370, height = 397 }  -- GEARZ and CRAFTS, in the left slot (window pixels)
 local TABS = {  -- { panel (nil: ME), label, ogre word }
     { nil, "ME", "ME" },
-    { "inventory", "INVENTORY", "STUFF" },  -- (yours only: your chests and pictures, Inventory.lua)
+    { "inventory", "INVENTORY", "STUFF" },  -- (yours only: your chests and pictures, Gallery.lua)
     { "gear", "GEARZ", "GEARZ" },
     { "crafts", "CRAFTS", "MAKE" },
 }  -- (EDIT, your look changed in place on your portrait, has no tab: click your portrait, or MAKE YOUR OGRE)

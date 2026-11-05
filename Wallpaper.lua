@@ -23,7 +23,6 @@ ns.WALLPAPER_LIST = {
 local DEFAULT = ns.WALLPAPER_LIST[1].id
 local BY_ID = {}
 for _, paper in ipairs(ns.WALLPAPER_LIST) do BY_ID[paper.id] = paper end
-function ns.WallpaperById(id) return BY_ID[id] end
 
 -- Whether you have it, and if not, how to get it.
 function ns.WallpaperUnlocked(paper)

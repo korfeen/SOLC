@@ -282,24 +282,16 @@ function ns.OpenChest(dungeonKey)
 end
 
 -- After the achievements count your kills (clears per dungeon: { [dungeon key] = clears }): the first time ever, each
--- dungeon already cleared gives its chest. (Unlocks from the test builds, a whole dungeon at a time, become its pieces.)
+-- dungeon already cleared gives its chest.
 function ns.CheckUnlocks(clears)
     local db = KillTrackerDB
     if not db or not clears then return end
-    ns.DropOldIngredients()
     -- (deeds earned before their pieces were made: theirs now, quietly)
     local earned = db.achievements or {}
     for _, layer in ipairs(ns.MintLayers) do
         for _, option in ipairs(layer.options) do
             local deed = option.unlock and option.unlock:match("^deed:(.+)$")
             if deed and earned[deed] then ns.UnlockOption(ns.OptionKey(layer.key, option), true) end
-        end
-    end
-    for key in pairs(db.unlocks or {}) do
-        if key:match("^clear:") then
-            db.unlocks[key] = nil
-            if db.ownUnlocks then db.ownUnlocks[key] = nil end
-            ns.UnlockPool(key, true)
         end
     end
     if db.unlocksCaughtUp then return end
@@ -318,7 +310,7 @@ end
 
 -- The Dream Bed's two (DreamBed.lua): Bedtime Stories (ask about one piece: 1 to 5 by its rarity) and Bonks (ogres go
 -- to sleep by bonking their heads: one a dream; one comes back each day). Kept in KillTrackerDB.tokens as "story" and
--- "bonk" (anything else there, like the old Warm Milk, is cleared). From rares, dungeon chests, bounties and Ogre Rank.
+-- "bonk". From rares, dungeon chests, bounties and Ogre Rank.
 ns.DREAM_ITEMS = {
     story = { name = "Bedtime Story", icon = "Interface\\Icons\\INV_Misc_Book_09",
         source = "From rare creatures, dungeon chests and bounties. Ask the ogre to dream about one piece you pick." },
@@ -329,7 +321,6 @@ ns.INGREDIENTS = {}
 for key, item in pairs(ns.DREAM_ITEMS) do ns.INGREDIENTS[key] = item.name end
 function ns.IngredientName(key) return ns.INGREDIENTS[key] or key end
 function ns.IngredientIcon(key) return ns.DREAM_ITEMS[key] and ns.DREAM_ITEMS[key].icon or "Interface\\Icons\\INV_Misc_QuestionMark" end
-function ns.IngredientSource(key) return ns.DREAM_ITEMS[key] and ns.DREAM_ITEMS[key].source end
 function ns.Tokens(key) return KillTrackerDB.tokens and KillTrackerDB.tokens[key] or 0 end
 -- Spends some of each ({ [key] = how many }); false (and nothing spent) if you don't have them.
 function ns.SpendTokens(spend)
@@ -346,13 +337,6 @@ function ns.AddIngredient(key, n, quiet)
     if not quiet then
         ns.Print(("|T%s:16|t You found %s%s, for the Dream Bed."):format(ns.IngredientIcon(key), (n or 1) > 1 and (n .. " ") or "",
             ns.IngredientName(key)))
-    end
-end
--- (the old minting kitchen's dungeon tokens, layer ingredients and fuels, gone with it: dropped from your saved data)
-function ns.DropOldIngredients()
-    local tokens = KillTrackerDB and KillTrackerDB.tokens
-    for key in pairs(tokens or {}) do
-        if not ns.DREAM_ITEMS[key] then tokens[key] = nil end
     end
 end
 -- Rares give a Bedtime Story (a rare elite two).

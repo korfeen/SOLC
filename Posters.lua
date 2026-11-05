@@ -78,7 +78,6 @@ local WANTED = {
     stratl = "Balnazzar", stratu = "Baron Rivendare", thanes = "Durgen Dirgehammer", ruins = "Rath'mael",
     excav = "Relic Guardian", ony = "Onyxia", barrow = "Sonya Darkhallow", hyjal = "The Wild King",
 }
-ns.WANTED_BOSSES = WANTED
 -- Their short names, on the board's small posters (read, the full one).
 local WANTED_SHORT = {
     wc = "Mutanus", dm = "VanCleef", sfk = "Arugal", gnomer = "Thermaplugg", rfk = "Charlga", smgy = "Thalnos",
@@ -492,7 +491,6 @@ local function MyBoard()
     local mine = Mine((ns.CurrentWeek()))
     return ns.GetPosters(0, mine.bracket), mine
 end
-ns.MyPosterBoard = MyBoard
 
 -- This week's board with your progress: GetPosters(0), each poster also { have, claimed }.
 function ns.GetPosterProgress()

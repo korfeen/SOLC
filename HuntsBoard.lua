@@ -1414,8 +1414,6 @@ local function Build()
             DrawPoster(f, p, claimers[p.id])
         end
         -- The officers' own: smaller, each nailed where it was put in the area under the row (newest swinging).
-        local rowTop = P.top + (roomH - h) * 0.3
-        local posts = LAYOUT.counter.posts
         local ew = math.floor(w * EXTRA_SIZE)
         local eh = math.floor(ew * P.aspect)
         -- (its top: a few pixels under the reward notes, which hang 2 under the beam: BuildCounter)
@@ -1480,6 +1478,5 @@ ns.RegisterPage({
     end,
 })
 
--- Opens the board's page.
-function ns.ShowHuntsBoard() ns.OpenPage("bounties") end
+-- Redraws the board, if it's showing.
 function ns.RefreshHuntsBoard() if screen and screen:IsVisible() then screen:Refresh() end end

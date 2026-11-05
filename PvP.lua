@@ -16,7 +16,6 @@ local function Readable(v)
     return v
 end
 
-local sessionKills = 0
 local lastHonorableKills       -- lifetime honorable kills when last checked
 local seenAlive = {}           -- [guid] = true: enemy players seen alive
 local deaths = {}              -- [guid] = { name, realm, race, class, level, at, credited }
@@ -85,7 +84,6 @@ local function RecordPvPKill(victim)
     local pvp = KillTrackerDB.pvp
     pvp.total = pvp.total + 1
     ns.Touch(pvp)  -- guildmates get the new total (and points) with the next live update
-    sessionKills = sessionKills + 1
     if ns.CheckAchievements then ns.CheckAchievements() end
     if ns.OnBountyEvent then ns.OnBountyEvent("pvp", victim) end
 
@@ -171,4 +169,3 @@ function ns.CollectPlayers(source)
     return players
 end
 
-ns.GetSessionPvPKills = function() return sessionKills end

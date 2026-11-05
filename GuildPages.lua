@@ -175,7 +175,6 @@ local function StatLabel(key)
     return (words:gsub("(%a)(%a*)", function(first, rest) return first:upper() .. rest end))
 end
 local GetItemStats = C_Item and C_Item.GetItemStats or GetItemStats
-local GetItemQualityColor = C_Item and C_Item.GetItemQualityColor or GetItemQualityColor
 local GetItemIcon = C_Item and C_Item.GetItemIconByID or GetItemIcon
 
 -- Someone's gear for the new Overview's GEARZ page (OverviewCard.lua): you (key nil) or a synced guildmate.

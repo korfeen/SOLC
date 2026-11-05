@@ -34,7 +34,6 @@ Guild.lua
 Posters.lua
 Unlocks.lua
 ProShop.lua
-Combined.lua
 SkeletonLayout.lua
 HeaderLayout.lua
 ButtonArt.lua

@@ -56,7 +56,6 @@ local FIELDS = {
     { key = "bountyPosters", label = "Bounty posters a week", default = 4, min = 3, max = 5 },
     { key = "bountyLevelScale", label = "Goal % more per level bracket", default = 0, min = 0, max = 100 },
 }
-ns.CONFIG_FIELDS = FIELDS
 
 local DEFAULTS, FIELD_BY_KEY = {}, {}
 for _, field in ipairs(FIELDS) do
@@ -210,7 +209,6 @@ local function ParseBounties(text)
 end
 
 local function Changed()
-    if ns.OnConfigChanged then ns.OnConfigChanged() end
     if ns.RefreshConfigPanel then ns.RefreshConfigPanel() end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end

@@ -71,7 +71,6 @@ local function FormatWeight(kg)
     if kg < 1 then return ("%d g"):format(math.floor(kg * 1000 + 0.5)) end
     return ("%.1f kg"):format(kg)
 end
-ns.FormatWeight = FormatWeight
 
 table.insert(ns.KillHandlers, function(npcID, entry, c)
     if ns.NO_AWARDS[c.subtype] then return end

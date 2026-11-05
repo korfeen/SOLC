@@ -12,12 +12,11 @@
 -- ns.TellDream(traits, locked, ctx) -> { beats = { { k, pre, say, post } }, ending, set, reaction }
 --   traits: { [layer key] = option id }; locked: the layer the bedtime story asked about (or nil);
 --   ctx: { me, kills = { n, name }, mates = { names }, buddies = { { name, place } }, lastSkin } (all optional).
--- ns.DreamOgreSpeak(...) the same in ogre words, for ogre mode.
+-- ns.DreamOgreBeat(key, id), ns.DreamOgreEnd(): the same in ogre words, for ogre mode.
 
 local _, ns = ...
 
 local ORDER = { "background", "skin", "outfit", "headwear", "eyes", "expression", "accessory" }
-ns.DREAM_ORDER = ORDER
 local OGRE_LINES = { background = "ME AT %s.", skin = "%s OGRE COME.", outfit = "WEAR %s.", headwear = "HAT %s.", eyes = "EYES %s.",
     expression = "FACE %s.", accessory = "HOLD %s." }
 local OGRE_ENDS = { "STAB ME!", "EAT ME HAT.", "BONK!", "SAY MRGL.", "TEETH GONE.", "FLOOR LAVA!", "IT ME!", "TAKE LOOT!" }

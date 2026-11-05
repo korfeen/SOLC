@@ -10,7 +10,6 @@ local STATIONS = {
     { key="arcade", label="Arcade cabinet", description="The club's cartridge cabinet.", x=.61,y=.14,w=.21,h=.45 },
     { key="claw", label="Claw machine", description="Something lovely behind the glass.", x=.82,y=.04,w=.18,h=.69 },
 }
-ns.GamesRoomStations = STATIONS
 
 local function OpenStation(station)
     if station.mode then

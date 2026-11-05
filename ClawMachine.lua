@@ -466,10 +466,6 @@ local function Quad(tex, a, b, c, d)
     tex:SetVertexOffset(VUR, x3 - K.VW, -y3)
     tex:SetVertexOffset(VLR, x4 - K.VW, K.VH - y4)
 end
-local function Line(line, ax, ay, bx, by)
-    line:SetStartPoint("TOPLEFT", view, ax, -ay)
-    line:SetEndPoint("TOPLEFT", view, bx, -by)
-end
 -- The same shaded brass parts as the browser mockup, articulated in screen space.
 local PARTS="Interface\\AddOns\\SOLC\\Media\\GamesRoom\\ClawParts.blp"
 local function Part(parent,u0,u1,v0,v1,layer,sub)
@@ -484,12 +480,6 @@ local function Beam(tex,ax,ay,bx,by,thickness)
     local dx,dy=bx-ax,by-ay
     PlacePart(tex,(ax+bx)/2,(ay+by)/2,math.max(1,math.sqrt(dx*dx+dy*dy)),thickness)
     tex:SetRotation(-math.atan2(dy,dx))
-end
-
--- A brass block (the gantry's parts): the two faces the camera sees, its top and its front.
-local function Box(b, x1, x2, y1, y2, z1, z2)
-    Quad(b.top, { x1, y2, z2 }, { x2, y2, z2 }, { x2, y2, z1 }, { x1, y2, z1 })
-    Quad(b.front, { x1, y2, z1 }, { x2, y2, z1 }, { x2, y1, z1 }, { x1, y1, z1 })
 end
 
 local order = {}

@@ -679,14 +679,6 @@ loader:SetScript("OnEvent", function(self, _, name)
     if name ~= "SOLC_Puzzle" then return end
     -- The launch wipe (WoW Forever): best times, replays and paintings from testing go, once (as SOLC's, Core.lua).
     if not SOLCPuzzleDB or SOLCPuzzleDB.epoch ~= "forever-launch" then SOLCPuzzleDB = { epoch = "forever-launch" } end
-    -- Best times from before grid sizes were all 4x4.
-    local best = SOLCPuzzleDB.best
-    for _, mode in ipairs({ "swap", "sliding" }) do
-        if best and best[mode] then
-            best[mode .. "4"] = best[mode .. "4"] or best[mode]
-            best[mode] = nil
-        end
-    end
     self:UnregisterEvent("ADDON_LOADED")
 end)
 

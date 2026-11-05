@@ -5,8 +5,8 @@
 -- A page with tabOf = "<key>" has no sidebar button: it's a tab of that page, in the tabs under the window. One with
 -- under = "<key>" has none either and lights that page's button (reached from that page's own tabs: Members, Guild).
 -- Pages register with ns.RegisterPage; this file has the window, the sidebar, and the list pages (Kills,
--- PvP, Achievements, Collection), which show your stats, the combined stats of everyone you follow (see
--- Combined.lua) or a synced guildmate's (see Sync.lua), chosen with the arrows in the page header.
+-- PvP, Achievements, Collection), which show your stats or a synced guildmate's (see Sync.lua), chosen with the
+-- arrows in the page header.
 
 local _, ns = ...
 
@@ -39,17 +39,14 @@ local VIEWS = {
 }
 local PLURALS = { subtype = "subtypes", faction = "factions", rank = "ranks", race = "races", class = "classes", zone = "zones" }
 
-local COMBINED = "*combined*"
-
 -- page: the page shown. view: the list on a list page ("creatures", "rank", "mobs", "pvp",
 -- "achievements" or "collection"). path: the categories clicked into so far, { value, label, auto } per
--- level; auto marks a level skipped because it had only one choice. viewing: nil for you, COMBINED, or a
--- friend's key in KillTrackerFriends. combined: the combined stats, rebuilt on every refresh while viewed.
-local state = { page = "overview", view = "creatures", path = {}, viewing = nil, combined = nil }
+-- level; auto marks a level skipped because it had only one choice. viewing: nil for you, or a friend's key in
+-- KillTrackerFriends.
+local state = { page = "overview", view = "creatures", path = {}, viewing = nil }
 
--- The stats being viewed: KillTrackerDB, the combined stats or a friend's synced stats.
+-- The stats being viewed: KillTrackerDB or a friend's synced stats.
 local function Source()
-    if state.viewing == COMBINED then return state.combined end
     return state.viewing and KillTrackerFriends[state.viewing] or KillTrackerDB
 end
 
@@ -186,7 +183,6 @@ ns.CollectionProviders = {}
 local function BuildRows()
     local rows = {}
     if state.view == "collection" then
-        if state.viewing == COMBINED then return rows end  -- points are per player
         local p = ns.GetPoints(Source())
         for _, part in ipairs({ { "Kills", p.kills }, { "New mob types", p.newMobs }, { "Leaders", p.leaders },
             { "Achievements", p.achievements }, { "PvP", p.pvp }, { "Guild groups", p.guildGroup },
@@ -461,7 +457,6 @@ woodHeader:SetFrameLevel(frame:GetFrameLevel() + ns.UI.FRAME_LEVEL.header)
 local function Shade(texture, shade)
     if type(shade) == "table" then texture:SetVertexColor(unpack(shade)) else texture:SetVertexColor(shade, shade, shade) end
 end
-local logo
 for i, piece in ipairs(SKELETON.pieces) do
     local onTop = piece.file == "TopBeam" or piece.file == "Logo"
     local texture = (onTop and woodHeader or woodFrame):CreateTexture(nil, "ARTWORK", nil, i - 8)
@@ -470,7 +465,6 @@ for i, piece in ipairs(SKELETON.pieces) do
     texture:SetSize(piece.w, piece.h)
     texture:SetPoint("TOPLEFT", frame, "TOPLEFT", piece.x, -piece.y)
     Shade(texture, SKELETON_SHADE)
-    if piece.file == "Logo" then logo = texture end
 end
 
 -- Dragging the logo moves the window. A frame takes the mouse over its whole rectangle, so instead of the
@@ -1277,9 +1271,8 @@ end
 -- The lists (SMASH, PIX's shop: SmashPage.lua, PixPage.lua) ------------------------------------
 
 -- Viewing: you or a synced guildmate (the profile header's arrows step through them).
-local function StepViewing(delta, withCombined)
+local function StepViewing(delta)
     local keys = { false }  -- false = you
-    if withCombined then keys[2] = COMBINED end
     for _, friend in ipairs(ns.GetFriends()) do keys[#keys + 1] = friend.key end
     local index = 1
     for i, key in ipairs(keys) do
@@ -1408,9 +1401,9 @@ local function RowTooltip(self)
     end
 end
 
--- Whose page a page without combined stats shows: nil for you, or a key in KillTrackerFriends.
+-- Whose page is shown: nil for you, or a key in KillTrackerFriends.
 function ns.GetViewing()
-    if state.viewing == COMBINED or (state.viewing and not KillTrackerFriends[state.viewing]) then return nil end
+    if state.viewing and not KillTrackerFriends[state.viewing] then return nil end
     return state.viewing
 end
 
@@ -1553,10 +1546,8 @@ local function UpdateTitle(current)
     if current ~= group then text = text .. SEPARATOR .. Label(current) end
     local tab = title.tab  -- a tab inside the page (ns.UI.SetTab)
     if tab and tab.page == current.key then text = text .. SEPARATOR .. (ogre and tab.ogre or tab.name) end
-    -- Whose: a guildmate's (their name, first part), or the whole guild's.
-    if state.viewing == COMBINED then
-        text = (ogre and "GUILD " or "The Guild's ") .. text
-    elseif state.viewing then
+    -- Whose: a guildmate's (their name, first part).
+    if state.viewing then
         local name = tostring(state.viewing):match("^[^-]+") or tostring(state.viewing)
         text = ogre and (name:upper() .. " " .. text) or (name .. "'s " .. text)
     end

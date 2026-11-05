@@ -326,7 +326,6 @@ local FEAT_NAMES = {}  -- [id] = name, for the activity feed
 for _, feat in ipairs(FEATS) do
     for _, tier in ipairs(feat.tiers) do FEAT_NAMES[AchievementID("feat", feat.key, tier[1])] = tier[2] end
 end
-function ns.FeatName(id) return FEAT_NAMES[id] end
 local FEAT_DETAILS = {}  -- [id] = what it took ("Dungeon clears: 10")
 for _, feat in ipairs(FEATS) do
     for _, tier in ipairs(feat.tiers) do FEAT_DETAILS[AchievementID("feat", feat.key, tier[1])] = ("%s: %d"):format(feat.label, tier[1]) end
@@ -336,14 +335,6 @@ end
 function ns.AchievementInfo(id)
     local name, detail = ns.AchievementTitle(id)
     return name, detail or FEAT_DETAILS[id], ns.AchievementPoints and ns.AchievementPoints(id)
-end
-
--- A dungeon or raid by its instance map ({ key, name, map, raid, ... }), or nil.
-function ns.DungeonByMap(map)
-    map = tonumber(map)
-    for _, d in ipairs(DUNGEONS) do
-        if d.map == map then return d end
-    end
 end
 
 -- The bosses of an instance map, in the game's encounter order: { { npcID, name }, ... }.

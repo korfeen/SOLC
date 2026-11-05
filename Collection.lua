@@ -37,12 +37,6 @@ function ns.BuyCollectible(item)
     return true
 end
 
--- Marks an owned item for minting; the companion app reads KillTrackerDB.collection after logout.
-function ns.ClaimCollectible(item)
-    local owned = KillTrackerDB.collection[item.id]
-    if owned then owned.claim = true end
-end
-
 StaticPopupDialogs["SOLC_BUY"] = {
     text = "Buy %s for %d points?",
     button1 = YES or "Yes",

@@ -51,7 +51,6 @@ local STEPS = {
 }
 local PAGE_RANKS = {}
 for _, step in ipairs(STEPS) do if step.page then PAGE_RANKS[step.page] = step.rank end end
-ns.PAGE_RANKS = PAGE_RANKS
 
 local function DB()
     local db = KillTrackerDB
