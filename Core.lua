@@ -565,6 +565,10 @@ SlashCmdList.SOLC = function(input)
         ns.ShowDreamBed()
     elseif msg == "bounty" then
         ns.PrintPosters()
+    elseif msg == "posterpreview" and ns.IsDev() then  -- (dev: the odd jobs' posters on your board, Posters.lua)
+        local page, pages = ns.PosterPreview()
+        ns.Print(page and ("Poster preview %d of %d - again for the next."):format(page, pages) or "Poster preview off: your own board.")
+        if page and ns.OpenPage then ns.OpenPage("bounties") end
     elseif msg == "claw" and ns.IsDev() then  -- (dev test of the claw machine: ClawMachine.lua)
         ns.ShowClaw()
     elseif msg == "couronne" and ns.IsDev() then  -- (dev test of the board game: Couronne.lua)

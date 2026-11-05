@@ -621,6 +621,9 @@ local function MyBoard()
     return ns.GetPosters(0, mine.bracket), mine
 end
 
+-- (dev: the posters /solc posterpreview shows, page by page; preview = the page on show, nil: your own board)
+local PREVIEW_PAGES = { { "fish", "gather", "explorers", "leaders", "dungeons" }, { "pvp", "elites", "rare_471", "wanted_dm", "tribe_trollfrostmane" } }
+local preview
 -- This week's board with your progress: GetPosters(0), each poster also { have, claimed }.
 function ns.GetPosterProgress()
     local board, mine = MyBoard()
@@ -628,7 +631,22 @@ function ns.GetPosterProgress()
     for _, p in ipairs(board.posters) do
         p.have, p.claimed = math.min(mine.progress[p.id] or 0, p.goal), mine.claimed[p.id]
     end
+    if preview then  -- (dev: the odd jobs' posters on show instead - only shown: nothing counts or claims them)
+        local list = {}
+        for _, id in ipairs(PREVIEW_PAGES[preview]) do
+            local poster = PosterBounty(id)
+            if poster then list[#list + 1] = { slot = #list + 1, id = id, bounty = poster, tier = poster.tier, goal = ns.PosterGoal(poster, nil, board.bracket), have = 0 } end
+        end
+        board = setmetatable({ posters = list }, { __index = board })
+    end
     return board
+end
+-- Dev (/solc posterpreview): steps through the odd jobs' posters on your board, a page at a time, then back to yours.
+function ns.PosterPreview()
+    preview = (preview or 0) + 1
+    if not PREVIEW_PAGES[preview] then preview = nil end
+    if ns.RefreshHuntsBoard then ns.RefreshHuntsBoard() end
+    return preview, #PREVIEW_PAGES
 end
 
 local function Claim(board, p, mine)
