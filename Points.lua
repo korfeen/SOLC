@@ -70,7 +70,7 @@ end
 ns.AchievementPoints = AchievementPoints
 
 -- Points of KillTrackerDB or a friend's stats: { kills, newMobs, leaders, achievements, pvp, guildGroup, dungeons,
--- bounty, chests, earned, spent, plinko, balance }.
+-- bounty, chests, earned, spent, duels, balance }.
 -- Friends' kill points aren't synced, so they're estimated at 1 per kill.
 function ns.GetPoints(source)
     source = source or KillTrackerDB
@@ -98,9 +98,9 @@ function ns.GetPoints(source)
     p.bounty = source.points and source.points.bounty or 0
     p.chests = source.points and source.points.chests or 0  -- coins from dungeon chests (Unlocks.lua)
     p.earned = p.kills + p.newMobs + p.leaders + p.achievements + p.pvp + p.guildGroup + p.dungeons + p.bounty + p.chests
-    -- (plinko winnings: yours to spend, but not earned - gambling never raises your rank; Plinko.lua)
-    p.plinko = source.points and source.points.plinko or 0
-    p.balance = p.earned - p.spent + p.plinko
+    -- (puzzle duel bets won and lost: yours to spend, but not earned; SOLC.SettleDuel in API.lua)
+    p.duels = source.points and source.points.duels or 0
+    p.balance = p.earned - p.spent + p.duels
     return p
 end
 
@@ -115,3 +115,17 @@ table.insert(ns.KillHandlers, function(npcID, entry, c, unit)
         ns.AddEvent("R", npcID)
     end
 end)
+
+-- Your points' tooltip (the profile header's points): to spend, where they came from, earned in all (your Ogre Rank's).
+function ns.PointsLines()
+    local p = ns.GetPoints()
+    local lines = { "Points", ("%d to spend"):format(p.balance) }
+    for _, part in ipairs({ { "Kills", p.kills }, { "New mob types", p.newMobs }, { "Leaders", p.leaders },
+        { "Achievements", p.achievements }, { "PvP", p.pvp }, { "Guild groups", p.guildGroup },
+        { "Guild dungeons", p.dungeons }, { "Bounties", p.bounty }, { "Dungeon chests", p.chests },
+        { "Puzzle duels", p.duels }, { "Spent", -p.spent } }) do
+        if part[2] ~= 0 then lines[#lines + 1] = ("%s: %s%d"):format(part[1], part[2] > 0 and "+" or "", part[2]) end
+    end
+    lines[#lines + 1] = ("%d earned in all (your Ogre Rank's)"):format(p.earned)
+    return lines
+end

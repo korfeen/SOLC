@@ -22,7 +22,7 @@ local SOUND_LAND = SOUNDKIT and SOUNDKIT.IG_QUEST_LOG_OPEN or 875
 local SOUND_BIG = 888  -- level-up fanfare, for rare and better
 local BIG_RARITIES = { rare = true, epic = true, legendary = true }
 
-local function Play(sound) pcall(PlaySound, sound) end
+local function Play(sound) ns.PlaySound(sound) end
 
 local function LayerByKey(key)
     for _, layer in ipairs(ns.MintLayers) do

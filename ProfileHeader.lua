@@ -24,8 +24,6 @@ local function StyledIcon(name)
         if style.id == id and style.has[name] then return ICON_STYLES .. id .. "\\" .. name end
     end
 end
--- TEST (remove before release): names whose card icons glow as if level 60.
-local GLOW_TEST = { Lance = true }
 local ARROW_ART = "Interface\\AddOns\\SOLC\\Media\\Overview\\Arrow"
 local EMPTY_SHAPE = 0.45                     -- an empty icon shape (nothing known yet) is drawn this faint
 local TEXT_OUTLINE = { 0.12, 0.07, 0.03 }    -- dark brown round the light text on the boards (ns.UI.OutlineText)
@@ -34,8 +32,6 @@ local BAR_COLOR, BAR_TRACK = { 1, 0.85, 0.01 }, { 0.16, 0.12, 0.11 }
 local PANEL_TEXT = { 0.93, 0.88, 0.78 }
 local ARROW_DIM = { 0.75, 0.7, 0.62 }
 local RANK_LINES = 20                        -- perk lines in the rank panel
--- A title earned (to come): nothing earns one yet, so everyone wears this test one.
-local TEST_TITLE = "the Big Napper"
 
 -- The slots of a split page, and the header, in window pixels (from its top-left, y down; centres unless said).
 local SPLIT = {
@@ -1062,7 +1058,7 @@ function Fill(key)
             if Ambiguate(friendKey, "short") == header.main then header.mainKey = friendKey end
         end
     end
-    Fit(header.title, NAME_FONT, HEADER.title.size, 10, header.main and ("Alt of " .. header.main) or ("-" .. TEST_TITLE), header.titleWidth)
+    Fit(header.title, NAME_FONT, HEADER.title.size, 10, header.main and ("Alt of " .. header.main) or "", header.titleWidth)
     header.titleButton:SetShown(header.main ~= nil)
     if nextRank then
         local into, span = points - current.points, math.max(1, nextRank.points - current.points)
@@ -1090,8 +1086,8 @@ function Fill(key)
         line:SetShown(perk ~= nil)
     end
 
-    -- The icons (glowing at level 60; GLOW_TEST: names to try it on before anyone's 60 - remove before release).
-    local glow = p.level == 60 or (KillTrackerDB and KillTrackerDB.glowTest) or GLOW_TEST[(p.name or ""):match("^[^%-%s]+") or ""] or false
+    -- The icons (glowing at level 60).
+    local glow = p.level == 60
     -- (in the colour they picked for it, or violet)
     local glowEntry = ns.GetCardColor(p.key, "glow")
     local glowColor = glowEntry and glowEntry.id ~= "white" and glowEntry.value or nil
@@ -1121,7 +1117,7 @@ function Fill(key)
         earned, possible = earned + row.earned, possible + #row.tiers
     end
     local stats = {
-        { key and (source.earned or 0) or ns.GetPoints().balance, { "Points", key and "Earned in all" or "To spend on minting pictures" } },
+        { key and (source.earned or 0) or ns.GetPoints().balance, key and { "Points", "Earned in all" } or ns.PointsLines() },
         { source.total or 0, { "Kills" } },
         { ("%d/%d"):format(earned, possible), { "Achievements", "Earned, of those for the kinds of creature killed so far" } },
     }

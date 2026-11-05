@@ -34,12 +34,13 @@ local EDGE_FILL = 60 / 64                    -- Media/Overview/Edge's square
 local GEAR_PANEL = { left = 247, top = 327, width = 370, height = 397 }  -- GEARZ and CRAFTS, in the left slot (window pixels)
 local TABS = {  -- { panel (nil: ME), label, ogre word }
     { nil, "ME", "ME" },
+    { "inventory", "INVENTORY", "STUFF" },  -- (yours only: your chests and pictures, Inventory.lua)
     { "gear", "GEARZ", "GEARZ" },
     { "crafts", "CRAFTS", "MAKE" },
-    { "edit", "EDIT", "EDIT" },  -- (yours only: your look, changed in place on your portrait)
-}
+}  -- (EDIT, your look changed in place on your portrait, has no tab: click your portrait, or MAKE YOUR OGRE)
 -- The tabs' names on the top beam (ns.UI.SetTab; ME: nothing added) and in ogre mode.
-local TAB_TITLES, TABS_OGRE = { gear = "Gear", crafts = "Crafts", edit = "Your Look" }, { gear = "GEARZ", crafts = "MAKE", edit = "ME OGRE" }
+local TAB_TITLES = { gear = "Gear", crafts = "Crafts", edit = "Your Look", inventory = "Inventory" }
+local TABS_OGRE = { gear = "GEARZ", crafts = "MAKE", edit = "ME OGRE", inventory = "STUFF" }
 -- The ME tab on someone else's Overview: their pronoun, by the gender on their card (UI.Profile), THEY if unknown.
 local PRONOUNS = { MALE = "HE", FEMALE = "SHE", NONBINARY = "THEY" }
 
@@ -572,7 +573,9 @@ end
 -- their name on a plate in their name colour (written on a polaroid's white strip instead), under that their motto
 -- on a pinned note. KillTrackerDB.card.frame / .motto (synced, Sync.lua's card section).
 -- In window pixels (from its top-left, y down): the picture's middle and size, the plate's and the note's middles.
-local PORTRAIT = { x = 870, y = 321, size = 345, plate = 590, note = 676, level = 45, mottoMax = 90,
+local PORTRAIT = { x = 870, y = 321, size = 345, plate = 590,
+    box = { x = 870, y = 360, w = 380, h = 404 },  -- (where every frame's art fits, inside the right page's wood: ShowPortrait)
+    note = 676, level = 45, mottoMax = 90,
     noteWidth = 270, noteLine = 18,  -- (the note: as wide as this at most, up to 3 lines)
     hand = 442 / 512,  -- (the polaroid's white strip under its opening, its middle: where the name is written)
     -- One of your pictures opened (a showcase picture clicked, or from the gallery): in the portrait's place, the same
@@ -589,14 +592,6 @@ local function SetMotto(text)
     KillTrackerDB.card = KillTrackerDB.card or {}
     text = strtrim(((text or ""):gsub("[#~^|]", ""):gsub("%s+", " ")))
     KillTrackerDB.card.motto = text ~= "" and text or nil
-    ns.Touch(KillTrackerDB.card)
-    if ns.OnKillsChanged then ns.OnKillsChanged() end
-end
-
--- Your portrait's frame: one of the frames you have (Frames.lua; the same ones as your pictures').
-local function SetPortraitFrame(id)
-    KillTrackerDB.card = KillTrackerDB.card or {}
-    KillTrackerDB.card.frame = id ~= DEFAULT_PORTRAIT_FRAME and id or nil
     ns.Touch(KillTrackerDB.card)
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
@@ -777,31 +772,17 @@ local function BuildPortrait(page, onClick)
                 or "Click: turn it over", "Right-click: its frame" })
         end
         if page.key then return SetTooltip(self, { mint.ogre and "Their ogre" or ("Picture #%d"):format(mint.number) }) end
-        SetTooltip(self, { mint.ogre and "Your ogre" or ("Picture #%d"):format(mint.number), "Click to change your look",
-            "Right-click: frame and motto" })
+        SetTooltip(self, { mint.ogre and "Your ogre" or ("Picture #%d"):format(mint.number), "Right-click: frame and motto" })
     end)
     picture:SetScript("OnLeave", GameTooltip_Hide)
-    -- Showing it: the page's own photo and its beams hide, the header's buttons too.
-    top:SetScript("OnShow", function() if UI.SetHeaderButtonsShown then UI.SetHeaderButtonsShown(false) end end)
-    top:SetScript("OnHide", function() if UI.SetHeaderButtonsShown then UI.SetHeaderButtonsShown(true) end end)
+    -- Showing it: the page's own photo and its beams hide (the header's buttons stay: the frame keeps inside the wood).
     page:HookScript("OnHide", function() top:Hide() end)
 end
 
--- Your portrait's menu (right-click it): its frame, from the ones you have, and your motto.
+-- Your portrait's menu (right-click it): your motto. (Its frame and your wallpaper: EDIT.)
 local function PortraitMenu(owner)
     if not MenuUtil then return end
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle("Frame")
-        local current = KillTrackerDB.card and KillTrackerDB.card.frame or DEFAULT_PORTRAIT_FRAME
-        for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
-            local has, how = ns.FrameUnlocked(frame)
-            if has then
-                root:CreateRadio(frame.name, function() return current == frame.id end, function() SetPortraitFrame(frame.id) end)
-            else
-                root:CreateTitle(("|cff808080%s (%s)|r"):format(frame.name, how or "locked"))
-            end
-        end
-        root:CreateDivider()
         root:CreateButton("Write your motto", function() local page = UI.overviewPage if page then page.portraitTop.note:Click() end end)
     end)
 end
@@ -849,37 +830,55 @@ end
 -- frame, its number and rarity, its layers and buttons; no motto).
 local function ShowPortrait(page, mint, card, name, color, own, view)
     local top = page.portraitTop
-    local side, picture = PORTRAIT.size, top.picture
-    -- (a picture shown as the portrait: drawn without its own frame, the portrait's goes round it)
-    ns.DrawMint(picture.canvas, mint.ogre and mint or setmetatable({ number = false }, { __index = mint }))
-    -- The frame round the picture: its opening on the picture (a little smaller, its edge under the frame).
+    local picture = top.picture
+    -- The frame round the picture: every frame's art (frame.outer) fills the same box (PORTRAIT.box, inside the right
+    -- page's wood), and the picture fills its opening (a little bigger, its edge under the frame) - so the picture is
+    -- bigger in a thin frame, smaller in a chunky one. No frame: the picture alone, PORTRAIT.size.
     local frame = view and ns.FrameById(mint.frame or ns.DefaultFrame())
         or ns.FrameById(card and card.frame or DEFAULT_PORTRAIT_FRAME) or ns.FrameById(DEFAULT_PORTRAIT_FRAME)
     if view then  -- (a picture: its number for its name, in its rarity's colour; turned over to read its dream)
         local rarity = ns.MintRarity(mint.traits, mint.asked)
         name, color = ("Picture #%d"):format(mint.number), { ns.RarityRGB(rarity) }
     end
-    top.tale.framing.hasBack = view and frame and frame.back ~= nil or false
-    ns.ShowMintTale(top.tale, mint, view and page.reading or false)
     local written = frame and frame.id == "polaroid"
+    local box = PORTRAIT.box
+    local side, cx, cy = PORTRAIT.size, box.x, box.y
     if frame and frame.texture then
-        local inner = frame.inner
-        local tex = side / (math.max(inner.w, inner.h) * 1.03)
-        local ix, iy = inner.x + inner.w / 2, inner.y + inner.h / 2
+        local inner, outer = frame.inner, frame.outer or { x = 0, y = 0, w = 1, h = 1 }
+        local tex = math.min(box.w / outer.w, box.h / outer.h)
+        local fx, fy = box.x - (outer.x + outer.w / 2) * tex, box.y - (outer.y + outer.h / 2) * tex  -- (its top-left)
+        side = tex * math.max(inner.w, inner.h) * 1.03
+        cx, cy = fx + (inner.x + inner.w / 2) * tex, fy + (inner.y + inner.h / 2) * tex
         top.frame:ClearAllPoints()
         top.frame:SetSize(tex, tex)
-        top.frame:SetPoint("TOPLEFT", UI.window, "TOPLEFT", PORTRAIT.x - ix * tex, -(PORTRAIT.y - iy * tex))
+        top.frame:SetPoint("TOPLEFT", UI.window, "TOPLEFT", fx, -fy)
         top.frame:SetTexture(frame.texture)
         top.frame:Show()
         top.backTex:ClearAllPoints()
         top.backTex:SetSize(tex, tex)
-        top.backTex:SetPoint("TOPLEFT", UI.window, "TOPLEFT", PORTRAIT.x - ix * tex, -(PORTRAIT.y - iy * tex))
+        top.backTex:SetPoint("TOPLEFT", UI.window, "TOPLEFT", fx, -fy)
         top.backTex:SetTexture(frame.back)
         if written then  -- (on its white strip)
             top.written:ClearAllPoints()
-            top.written:SetPoint("CENTER", UI.window, "TOPLEFT", PORTRAIT.x, -(PORTRAIT.y + (PORTRAIT.hand - iy) * tex))
+            top.written:SetPoint("CENTER", UI.window, "TOPLEFT", cx, -(fy + PORTRAIT.hand * tex))
         end
-    else
+    end
+    picture:SetSize(side, side)
+    picture:ClearAllPoints()
+    picture:SetPoint("CENTER", UI.window, "TOPLEFT", cx, -cy)
+    -- (sized, not just anchored: a picture's pieces are placed by its canvas's width, which anchors only give once the
+    -- layout catches up - a frame change would place the face by the old size)
+    picture.canvas:ClearAllPoints()
+    picture.canvas:SetPoint("CENTER", picture)
+    picture.canvas:SetSize(side, side)
+    top.tale:ClearAllPoints()
+    top.tale:SetPoint("CENTER", picture)
+    top.tale:SetSize(side, side)
+    -- (a picture shown as the portrait: drawn without its own frame, the portrait's goes round it)
+    ns.DrawMint(picture.canvas, mint.ogre and mint or setmetatable({ number = false }, { __index = mint }))
+    top.tale.framing.hasBack = view and frame and frame.back ~= nil or false
+    ns.ShowMintTale(top.tale, mint, view and page.reading or false)
+    if not (frame and frame.texture) then
         top.frame:Hide()
     end
     -- Their name: written in marker on a polaroid (outlined, so a light colour reads on the white), else on the plate.
@@ -939,8 +938,8 @@ local function ShowPortrait(page, mint, card, name, color, own, view)
             b[2]:Enable()
             b[2].action = function() HangInShowcase(mint, slot) end
         end
-        b[3].text:SetText("GALLERY")
-        b[3].action = function() page.OpenGallery() end
+        b[3].text:SetText("INVENTORY")
+        b[3].action = function() page.ShowPanel("inventory") end
         for _, button in ipairs(b) do button:Paint(false) end
     end
 end
@@ -948,51 +947,18 @@ end
 -- EDIT (yours): your look, changed in place - every pick shows on your portrait at once, kept with SAVE (CANCEL, or
 -- another tab, drops it). On the left slot under the tabs: the groups' tabs, then what you have for the one picked
 -- (two columns; the mouse wheel scrolls), then CANCEL and SAVE. page.edit = the draft { traits, frame, header (the header choices to put back), tab }.
-local EDIT = { left = 247, top = 327, width = 370, height = 397, row = 24, cell = 42, cols = 2, rows = 6, thumb = 34 }
+local EDIT = { left = 247, top = 327, width = 370, height = 397, row = 24, cell = 42, cols = 2, rows = 5, thumb = 34 }
+-- The STYLE row under the list (a piece's tab): painted, in pencil sketch, in crayon - the last two from Ogre Ranks.
+local EDIT_STYLES = { { false, "PAINTED" }, { "sketch", "SKETCH" }, { "crayon", "CRAYON" } }
 local EDIT_GROUPS = {
     { "OGRE", { { "skin", "Skin" }, { "eyes", "Eyes" }, { "expression", "Mouth" } } },
     { "WEAR", { { "outfit", "Clothes" }, { "headwear", "Headwear" }, { "accessory", "Accessory" } } },
     { "PICTURE", { { "background", "Background" }, { "frame", "Frame" } } },
-    { "ME", { { "name", "Name colour" }, { "header", "Header" } } },
+    { "ME", { { "name", "Name colour" }, { "header", "Header" }, { "wallpaper", "Wallpaper" } } },
 }
 local CREAM, GOLD_TEXT = { 0.93, 0.88, 0.78 }, { 1, 0.82, 0 }
 -- (the header's choices, changed as you pick in its panel: kept when EDIT opens, put back by CANCEL)
-local HEADER_FIELDS = { "headerBg", "cropX", "cropY", "cropZoom", "nameColor", "bgColor" }
-
--- Where a piece you don't have comes from (its unlock key, Unlocks.lua), in a few words.
-local function HowToGet(option, nextDeed)
-    local kind, a, b = tostring(option.unlock or ""):match("^(%w+):([^:]*):?(.*)$")
-    local d = a and ns.DungeonByKey and ns.DungeonByKey(a)
-    if kind == "clear" then return (d and d.name or "A dungeon") .. " chests"
-    elseif kind == "chase" then return "Chase: " .. (d and d.name or "a dungeon") .. " chests"
-    elseif kind == "deed" then
-        local title = ns.AchievementTitle and ns.AchievementTitle(option.unlock:sub(6))
-        return (nextDeed and ("Next deed (" .. nextDeed .. "): ") or "Deed: ") .. (title or "a deed")
-    elseif kind == "rank" then return "Ogre Rank " .. a
-    elseif kind == "combine" then return "Combine its pieces"
-    elseif kind == "loot" then return "Loot it"
-    elseif kind == "shop" then return "Pro Shop: " .. (ns.ShopPrice(option) or "?") .. " points"
-    elseif kind == "gacha" then return "The claw machine" end
-    return "Not yours yet"
-end
--- The pieces you've seen: on guildmates (their ogre on their Overview, a picture of theirs opened), in the Pro Shop, and your
--- next deed step's rewards (each ladder's lowest step you haven't earned): "layer:id" = true. Built when it's turned on.
-local function SeenPieces()
-    local seen, nextDeed = {}, {}
-    for _, row in ipairs(ns.GetAchievementProgress and ns.GetAchievementProgress() or {}) do  -- (your next tier on each ladder you've started)
-        if row.next and row.next.id then nextDeed[row.next.id] = ("%d/%d"):format(row.kills or 0, row.next.kills or 0) end
-    end
-    for _, layer in ipairs(ns.MintLayers or {}) do
-        for _, option in ipairs(layer.options) do
-            local unlock = option.unlock or ""
-            if unlock:find("^shop:") then seen[layer.key .. ":" .. option.id] = true end
-            local progress = unlock:find("^deed:") and nextDeed[unlock:sub(6)]
-            if progress then seen[layer.key .. ":" .. option.id] = progress end
-        end
-    end
-    for piece in pairs(KillTrackerDB.seenPieces or {}) do seen[piece] = seen[piece] or true end  -- (on guildmates: ns.SeePieces)
-    return seen
-end
+local HEADER_FIELDS = { "headerBg", "cropX", "cropY", "cropZoom", "nameColor", "bgColor", "wallpaper" }  -- (and your wallpaper)
 
 -- The choices for one of the editor's tabs: { id, name, color (RGB, for the name), texture (its thumbnail) or swatch }.
 local function EditChoices(tab, draft)
@@ -1005,6 +971,12 @@ local function EditChoices(tab, draft)
         for _, entry in ipairs(ns.Colors()) do
             if ns.HasNameColor(entry) then list[#list + 1] = { id = entry.id, name = entry.name, color = entry.value, swatch = entry.value } end
         end
+    elseif tab == "wallpaper" then  -- (all of them: one you haven't got shows dimmed, how to get it on hover - click to buy)
+        for _, paper in ipairs(ns.WALLPAPER_LIST) do
+            local has, how = ns.WallpaperUnlocked(paper)
+            list[#list + 1] = { id = paper.id, name = paper.name, color = CREAM, texture = "Interface\\AddOns\\SOLC\\Media\\Wallpaper\\" .. paper.id,
+                locked = not has, how = how, price = not has and paper.price or nil }
+        end
     elseif tab == "header" then  -- (a background picture you have, then a plain colour: your skins' own)
         for _, option in ipairs(ns.OwnedBackgrounds()) do
             local hex = ns.RARITY_COLORS[option.rarity] or "ffffffff"
@@ -1015,27 +987,14 @@ local function EditChoices(tab, draft)
             if ns.HasNameColor(entry) then list[#list + 1] = { id = "c:" .. entry.id, name = entry.name .. " wash", color = CREAM, fill = entry.base } end
         end
     else
-        local owned = {}
-        local function Add(option, extra)
+        local function Add(option)
             local hex = ns.RARITY_COLORS[option.rarity] or "ffffffff"
             local choice = { id = option.id, name = option.name,
                 color = { tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255 },
                 texture = ns.MintTexture(option, draft.traits) }
-            for k, v in pairs(extra or {}) do choice[k] = v end
             list[#list + 1] = choice
         end
-        for _, option in ipairs(ns.OwnedOptions(tab)) do owned[option.id] = true Add(option) end
-        if draft.seenToo then
-            local layer
-            for _, l in ipairs(ns.MintLayers or {}) do if l.key == tab then layer = l end end
-            local seen = draft.seenPieces or {}
-            for _, option in ipairs(layer and layer.options or {}) do
-                if not owned[option.id] and not option.retired then
-                    local why = seen[tab .. ":" .. option.id]
-                    if why then Add(option, { notMine = true, how = HowToGet(option, why ~= true and why or nil) }) end  -- (unseen: not shown at all)
-                end
-            end
-        end
+        for _, option in ipairs(ns.OwnedOptions(tab)) do Add(option) end
     end
     return list
 end
@@ -1071,6 +1030,7 @@ end
 local function EditCurrent(tab, draft)
     local card = KillTrackerDB.card or {}
     if tab == "frame" then return draft.frame elseif tab == "name" then return card.nameColor or "white" end
+    if tab == "wallpaper" then return ns.GetWallpaper() end
     if tab == "header" then return ns.BackgroundOption(nil, card.headerBg) and card.headerBg or ("c:" .. (card.bgColor or "white")) end
     return draft.traits[tab]
 end
@@ -1120,20 +1080,6 @@ local function BuildEditor(page, parent)
     hint:SetTextColor(0.62, 0.56, 0.48)
     hint:SetText("Changes show on your portrait as you pick")
     panel.hint = hint
-    local seenToggle = SmallButton(panel, 96, "MINE")
-    seenToggle:SetPoint("TOPRIGHT", 0, 2)
-    seenToggle:SetScript("OnClick", function(self)
-        local edit = page.edit
-        if not edit then return end
-        UI.ClickSound()
-        edit.seenToo = not edit.seenToo
-        if edit.seenToo then edit.seenPieces = SeenPieces() end
-        edit.offset = 0
-        panel:Refresh()
-    end)
-    seenToggle:SetScript("OnEnter", function(self) self:Paint(true) SetTooltip(self, { "Mine / Mine + seen",
-        "Also show what you've seen: on guildmates' ogres and pictures, in the Pro Shop, your next deeds' rewards" }) end)
-    panel.seenToggle = seenToggle
     -- The groups' tabs.
     panel.tabs = {}
     for g, group in ipairs(EDIT_GROUPS) do
@@ -1221,12 +1167,24 @@ local function BuildEditor(page, parent)
             panel:PaintCell(self)
             local c = self.choice
             if c and (c.notMine or c.mystery) then SetTooltip(self, { c.mystery and "???" or c.name, c.how, c.notMine and "Try it on: not yours to keep yet" or nil }) end
+            if c and c.locked then SetTooltip(self, { c.name, c.how, c.price and "Click to buy" or nil }) end
         end)
         cell:SetScript("OnLeave", function(self) self.hover = false panel:PaintCell(self) GameTooltip_Hide() end)
         cell:SetScript("OnClick", function(self)
             local edit, choice = page.edit, self.choice
             if not choice or choice.mystery then return end
+            local function Wallpaper(id)  -- (your card, live like the name's; CANCEL puts it back)
+                KillTrackerDB.card = KillTrackerDB.card or {}
+                KillTrackerDB.card.wallpaper = id ~= ns.WALLPAPER_DEFAULT and id or nil
+                ns.RefreshWallpapers()
+                page.RefreshNow()
+            end
+            if choice.locked then  -- (one to buy: bought, it's put up)
+                if choice.price then UI.ClickSound() ns.ConfirmBuyWallpaper(choice.id, function() Wallpaper(choice.id) end) end
+                return
+            end
             UI.ClickSound()
+            if edit.tab == "wallpaper" then return Wallpaper(choice.id) end
             if edit.tab == "frame" then edit.frame = choice.id
             elseif edit.tab == "name" or edit.tab == "header" then  -- (your card, live; CANCEL puts it back)
                 local card = KillTrackerDB.card or {}
@@ -1248,6 +1206,42 @@ local function BuildEditor(page, parent)
         end)
         panel.cells[i] = cell
     end
+    -- The STYLE row: the piece worn on this tab, painted, sketched or in crayon (a piece without that art, or a style
+    -- your Ogre Rank hasn't reached yet: dimmed, its tooltip says why). Part of the draft: SAVE keeps it.
+    local styleY = listTop - 4 - (EDIT.cell * EDIT.rows + 6) - 10
+    panel.styleLabel = panel:CreateFontString(nil, "OVERLAY")
+    panel.styleLabel:SetFont(NAME_FONT, 11, "")
+    panel.styleLabel:SetPoint("TOPLEFT", 2, styleY - 6)
+    panel.styleLabel:SetTextColor(0.72, 0.65, 0.51)
+    panel.styleLabel:SetText("STYLE")
+    panel.styles = {}
+    for i, spec in ipairs(EDIT_STYLES) do
+        local button = SmallButton(panel, 92, spec[2])
+        button:SetPoint("TOPLEFT", 62 + (i - 1) * 96, styleY)
+        button.edition = spec[1]
+        button:SetScript("OnClick", function(self)
+            local edit = page.edit
+            if not (edit and self.can) then return end
+            UI.ClickSound()
+            local style = {}
+            for k, e in pairs(edit.style) do style[k] = e end
+            style[edit.tab] = self.edition or nil
+            edit.style = style
+            page.RefreshNow()
+        end)
+        button:SetScript("OnEnter", function(self)
+            self.hover = true
+            self:Paint(true)
+            if self.why then SetTooltip(self, self.why) end
+        end)
+        button:SetScript("OnLeave", function(self)
+            self.hover, self.pressed = false, false
+            self:Dip(false)
+            self:Paint(false)
+            GameTooltip_Hide()
+        end)
+        panel.styles[i] = button
+    end
     panel:SetScript("OnHide", function() if UI.SetHeaderCropping then UI.SetHeaderCropping(false) end end)
     panel.cropHint = panel:CreateFontString(nil, "OVERLAY")  -- (Header: what the board does meanwhile)
     panel.cropHint:SetFont(NAME_FONT, 12, "")
@@ -1265,7 +1259,7 @@ local function BuildEditor(page, parent)
             edge:SetColorTexture(unpack(trying and { 0.91, 0.65, 0.42 } or { 1, 0.82, 0.3 }))
         end
         cell.tick:SetShown(picked and not trying)
-        cell:SetAlpha((c.notMine and not picked or c.mystery) and 0.55 or 1)
+        cell:SetAlpha((c.notMine and not picked or c.mystery or c.locked) and 0.55 or 1)
     end
     -- CANCEL and SAVE.
     -- CANCEL and SAVE: big, under your portrait in the motto's place (shown by ShowPortrait while editing).
@@ -1307,6 +1301,9 @@ local function BuildEditor(page, parent)
         local saved = ns.BaseTraits()
         for k, id in pairs(edit.traits) do if saved[k] ~= id then return true end end
         for k, id in pairs(saved) do if edit.traits[k] ~= id then return true end end
+        local savedStyle = card.ogreStyle or {}
+        for k, e in pairs(edit.style) do if savedStyle[k] ~= e then return true end end
+        for k, e in pairs(savedStyle) do if edit.style[k] ~= e then return true end end
         return false
     end
     -- (SAVE asleep: dim, unclickable; awake: gold, pulsing)
@@ -1367,6 +1364,7 @@ local function BuildEditor(page, parent)
         local card = KillTrackerDB.card or {}
         KillTrackerDB.card = card
         card.frame = edit.frame ~= DEFAULT_PORTRAIT_FRAME and edit.frame or nil
+        card.ogreStyle = next(edit.style) and edit.style or nil
         page.edit = nil
         ns.SetOgre(edit.traits)  -- (syncs the card, all of it)
         page.ShowPanel(nil)
@@ -1382,14 +1380,11 @@ local function BuildEditor(page, parent)
     end)
     buttons:SetScript("OnShow", function(self) if not InCombatLockdown() then self:EnableKeyboard(true) end end)
     buttons:SetScript("OnHide", function(self) if not InCombatLockdown() then self:EnableKeyboard(false) end end)
+    ns.UI.CombatSafeKeys(buttons)
     function panel:Refresh()
         local edit = page.edit
         if not edit then return end
         for _, button in ipairs(self.tabs) do button.selected = button.tab == edit.tab button:Paint(false) end
-        self.seenToggle.text:SetText(edit.seenToo and "MINE + SEEN" or "MINE")
-        self.seenToggle.selected = edit.seenToo
-        self.seenToggle:Paint(false)
-        self.seenToggle:SetShown(edit.tab ~= "frame" and edit.tab ~= "name" and edit.tab ~= "header")
         local onHeader = edit.tab == "header"
         if UI.SetHeaderCropping then UI.SetHeaderCropping(onHeader) end
         self.cropHint:SetShown(onHeader)
@@ -1417,6 +1412,24 @@ local function BuildEditor(page, parent)
                 cell.swatch:SetShown(choice.swatch ~= nil)
                 if choice.swatch then cell.swatch:SetTextColor(unpack(choice.swatch)) end
                 self:PaintCell(cell)
+            end
+        end
+        -- The STYLE row, for a piece's tab.
+        local found = edit.traits[edit.tab] and ns.OptionByKey(edit.tab .. ":" .. edit.traits[edit.tab])
+        local option = found and found.option
+        self.styleLabel:SetShown(option ~= nil)
+        for _, button in ipairs(self.styles) do
+            button:SetShown(option ~= nil)
+            if option then
+                local e = button.edition
+                local has, unlocked = not e or option[e] ~= nil, ns.OgreStyleUnlocked(e)
+                button.can = has and unlocked
+                button.selected = (edit.style[edit.tab] or false) == e
+                button.why = not unlocked and { ("%s: Ogre Rank %d"):format(e == "sketch" and "Pencil sketch" or "Crayon", ns.OgreStyleRank(e) or 0),
+                    "Reach it to draw your ogre this way" }
+                    or not has and { option.name, ("No %s of this one yet"):format(ns.EDITION_NAMES[e] or e) } or nil
+                button:SetAlpha(button.can and 1 or 0.45)
+                button:Paint(false)
             end
         end
     end
@@ -1458,6 +1471,10 @@ OVERVIEW = {
         At(board, "TOPLEFT", under.middle, under.top)
         board:SetSize(under.right - under.middle + 20, under.bottom - under.top)
         board:SetColorTexture(unpack(RIGHT.color))
+        -- (over it, their wallpaper: behind their hanging picture; Wallpaper.lua, set on refresh)
+        page.pageWallpaper = book:CreateTexture(nil, "BACKGROUND", nil, 1)
+        At(page.pageWallpaper, "TOPLEFT", under.middle, under.top)
+        page.pageWallpaper:SetSize(under.right - under.middle + 20, under.bottom - under.top)
 
         local cardFrame = CreateFrame("Frame", nil, page)
         cardFrame:SetAllPoints()
@@ -1476,6 +1493,9 @@ OVERVIEW = {
         sky:SetAllPoints()
         sky:SetTexture("Interface\\Buttons\\WHITE8X8")
         sky:SetGradient("VERTICAL", CreateColor(0.42, 0.58, 0.3, 1), CreateColor(0.96, 0.8, 0.74, 1))
+        -- (over it, their wallpaper: Wallpaper.lua, set on refresh)
+        page.wallpaper = photo:CreateTexture(nil, "BACKGROUND", nil, 1)
+        page.wallpaper:SetAllPoints()
         page.backdrop = photo:CreateTexture(nil, "ARTWORK")
         page.backdrop:SetAllPoints()
         local crop = (1 - card.photo.w / card.photo.h) / 2  -- the square pictures cropped to the photo's shape
@@ -1523,10 +1543,7 @@ OVERVIEW = {
         -- While it shows, the photo takes the clicks: left to open the picture, right (yours) for the menu.
         photo:SetScript("OnMouseUp", function(self, button)
             if not page.portraitMint then return end
-            if page.portraitMint.ogre then  -- an ogre (built, Minting.lua): yours opens the builder
-                if not page.key and button == "LeftButton" then UI.ClickSound() page.ShowPanel("edit") end
-                return
-            end
+            if page.portraitMint.ogre then return end  -- an ogre (built, Minting.lua): your look is the top beam's brush
             if button == "RightButton" and not page.key then
                 PhotoMenu(self)
             elseif button == "LeftButton" then
@@ -1750,6 +1767,18 @@ OVERVIEW = {
 
         -- The showcase's pictures, side by side: no box round them, each hanging in its own frame (Minting.lua), a touch
         -- crooked. An empty one of yours: a chalk outline with a +. A spot a picture is dragged over glows gold.
+        -- Behind them and behind the feed (what its rows don't cover), your wallpaper: the inventory's carrying on
+        -- (Gallery.lua: it starts where the pictures' band ends), as dark; set on refresh. { texture, its dark, where
+        -- it starts in the paper }.
+        page.leftPapers = {}
+        for _, band in ipairs({ { LEFT.bands[1][1], LEFT.bands[2][1] }, { LEFT.bands[3][1], LEFT.bands[4][1] } }) do
+            local paper = left:CreateTexture(nil, "BACKGROUND", nil, -8)
+            At(paper, "TOPLEFT", under.left, band[1])
+            paper:SetSize(under.middle - under.left, band[2] - band[1])
+            local dim = left:CreateTexture(nil, "BACKGROUND", nil, -7)
+            dim:SetAllPoints(paper)
+            page.leftPapers[#page.leftPapers + 1] = { paper, dim, band[1] - LEFT.bands[2][1] }
+        end
         local pictures = LEFT.pictures
         page.polaroids = {}
         for i, x in ipairs(pictures.lefts) do
@@ -1806,7 +1835,7 @@ OVERVIEW = {
                 if not self.key and self.mint then
                     page.OpenView(self.mint, false, self.slot)  -- yours: it, big, in the portrait's place
                 elseif not self.key then
-                    page.OpenGallery()  -- an empty spot of yours: your gallery, to drag a picture in (Gallery.lua)
+                    page.ShowPanel("inventory")  -- an empty spot of yours: your inventory, to open one and hang it
                 elseif self.mint then
                     ns.ShowMint(self.mint, Ambiguate(self.key, "short"))
                 end
@@ -1904,12 +1933,11 @@ OVERVIEW = {
         -- An event's details over the right page instead of the photo.
         page.detail = UI.FeedDetail(page)
         local function PaintFeed() for _, row in ipairs(page.feed) do row:Paint() end end
-        -- Your gallery over the right page instead of the photo (Gallery.lua), from your showcase.
+        -- Your gallery (Gallery.lua): the INVENTORY tab's panel, in the left slot.
         page.gallery = UI.Gallery(page)
         -- One of your pictures, opened to look at (on the photo's place, with its buttons). fromGallery: BACK reopens it.
         function page.OpenView(mint, fromGallery, slot)
             page.CloseDetail()
-            page.gallery:Hide()
             page.building, page.buildingFromGallery = nil, nil
             page.viewing, page.viewingFromGallery, page.viewingSlot = mint, fromGallery, slot
             page.photo:Show()
@@ -1924,7 +1952,6 @@ OVERVIEW = {
         -- Building your ogre (on the photo's place): from the one you have, else your photo's picture, else a plain one.
         function page.OpenBuilder(fromGallery)
             page.CloseDetail()
-            page.gallery:Hide()
             page.viewing, page.viewingFromGallery = nil, nil
             page.building, page.buildingFromGallery = ns.BaseTraits(), fromGallery
             page.photo:Show()
@@ -1937,25 +1964,9 @@ OVERVIEW = {
             if fromGallery then page.OpenGallery() else OVERVIEW.refresh(page) end
         end
         UI.overviewPage = page
-        function page.OpenGallery()
-            page.viewing, page.viewingFromGallery = nil, nil
-            page.building, page.buildingFromGallery = nil, nil
-            page.CloseDetail()
-            page.gallery:Show()
-            page.gallery:Refresh()
-            page.photo:Hide()
-            page.hung:Hide()
-            page.portraitTop:Hide()
-            if UI.SetTab then UI.SetTab("overview", "Gallery", "PIX") end
-        end
-        function page.CloseGallery()
-            if not page.gallery:IsShown() then return end
-            page.gallery:Hide()
-            page.photo:SetShown(page.panel ~= "crafts")
-            page.hung:SetShown(page.panel ~= "crafts")
-            if UI.SetTab then UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end
-            if page.loaded then OVERVIEW.refresh(page) end  -- (the portrait back)
-        end
+        -- (the gallery is the INVENTORY tab: opening it is going there)
+        function page.OpenGallery() if page.panel ~= "inventory" then page.ShowPanel("inventory") end end
+        function page.CloseGallery() if page.panel == "inventory" then page.ShowPanel(nil) end end
         function page.OpenDetail(item)
             page.gallery:Hide()
             page.detail:ShowItem(item)
@@ -1973,8 +1984,8 @@ OVERVIEW = {
             if page.loaded then OVERVIEW.refresh(page) end  -- (the portrait back)
         end
         -- The portrait (ME, nothing else open): click it (yours) to change your look, right-click for its frame and
-        -- your motto; someone else's picture opens. It hangs over the window's wood, so a screen over the page (Plinko,
-        -- the claw machine, the minting show) hides it until the screen closes.
+        -- your motto; someone else's picture opens. It hangs over the window's wood, so a screen over the page (the
+        -- claw machine, the minting show) hides it until the screen closes.
         UI.OnScreensChanged = function(open)
             if open then page.portraitTop:Hide() elseif page.loaded and page:IsVisible() then OVERVIEW.refresh(page) end
         end
@@ -1987,10 +1998,8 @@ OVERVIEW = {
                 page.reading = not page.reading
                 return OVERVIEW.refresh(page)
             end
-            if not page.key then
+            if not page.key then  -- (yours: right-click its menu; your look is the top beam's brush, UI.lua)
                 if button == "RightButton" then return PortraitMenu(page.portraitTop.picture) end
-                UI.ClickSound()
-                if page.panel ~= "edit" then page.ShowPanel("edit") end
             elseif not mint.ogre then
                 UI.ClickSound()
                 ns.ShowMint(mint, Ambiguate(page.key, "short"))
@@ -2001,6 +2010,8 @@ OVERVIEW = {
         page.gearPanel:SetFrameLevel(left:GetFrameLevel() + 20)
         page.craftsPanel = CraftsPage(page)
         page.craftsPanel:SetFrameLevel(left:GetFrameLevel() + 20)
+        page.inventoryPanel = page.gallery  -- (Gallery.lua)
+        page.inventoryPanel:SetFrameLevel(left:GetFrameLevel() + 20)
         page.RefreshNow = function() OVERVIEW.refresh(page) end
         page.editPanel = BuildEditor(page, page)
         page.editPanel:SetFrameLevel(left:GetFrameLevel() + 20)
@@ -2011,7 +2022,8 @@ OVERVIEW = {
         tabs:SetFrameLevel(left:GetFrameLevel() + 25)
         page.tabs = {}
         local function ShowPanel(which)
-            if which == "edit" and page.key then which = nil end  -- (only yours)
+            if (which == "edit" or which == "inventory") and page.key then which = nil end  -- (only yours)
+            if UI.headerEdit then UI.headerEdit:SetSelected(which == "edit") end  -- (the top beam's brush: UI.lua)
             if which ~= "edit" and page.edit then  -- (left: not saved; the header's choices put back)
                 local card, kept, changed = KillTrackerDB.card or {}, page.edit.header, false
                 for _, field in ipairs(HEADER_FIELDS) do
@@ -2019,11 +2031,13 @@ OVERVIEW = {
                 end
                 page.edit = nil
                 if changed and UI.RedrawHeader then UI.RedrawHeader() end
+                if changed then ns.RefreshWallpapers() end
             end
             if which == "edit" and not page.edit then
                 local card = KillTrackerDB.card or {}
                 page.edit = { traits = ns.BaseTraits(), frame = card.frame or DEFAULT_PORTRAIT_FRAME, header = {}, tab = "outfit", offset = 0,
-                    seenToo = true, seenPieces = SeenPieces() }  -- (what you've seen shows by default, after yours)
+                    style = {} }
+                for k, e in pairs(card.ogreStyle or {}) do page.edit.style[k] = e end
                 for _, field in ipairs(HEADER_FIELDS) do page.edit.header[field] = card[field] end
             end
             page.panel = which
@@ -2034,20 +2048,23 @@ OVERVIEW = {
             page.viewing, page.viewingFromGallery = nil, nil
             page.gearPanel:SetShown(which == "gear")
             page.craftsPanel:SetShown(which == "crafts")
-            left:SetShown(which == nil)
+            page.inventoryPanel:SetShown(which == "inventory")
+            left:SetShown(which == nil or which == "inventory")  -- (INVENTORY: the showcase stays, the gallery over the feed)
             page.photo:SetShown(which ~= "crafts")  -- CRAFTS fills the right page itself
             page.hung:SetShown(which ~= "crafts")
             for _, tab in ipairs(page.tabs) do tab:Redraw() end
             if page.loaded then OVERVIEW.refresh(page) end  -- GEARZ shows the model, not a picture
         end
         page.ShowPanel = ShowPanel
+        -- The top beam's brush (UI.lua): your look, opened or closed.
+        UI.EditLook = function() ShowPanel(page.panel ~= "edit" and "edit" or nil) end
         local tabWidth = (LEFT.right - LEFT.left) / #TABS
         for i, spec in ipairs(TABS) do
             local tab = UI.TabButton(tabs, LEFT.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
             function tab:Redraw()
                 local word = KillTrackerDB and KillTrackerDB.ogreMode and spec[3] or spec[2]
                 if spec[1] == nil and page.key then word = PRONOUNS[UI.Profile(page.key).gender or ""] or "THEY" end
-                self:SetShown(spec[1] ~= "edit" or not page.key)  -- (EDIT: yours only)
+                self:SetShown(spec[1] ~= "inventory" or not page.key)  -- (yours only)
                 self:SetTab(word, page.panel == spec[1])
             end
             tab:SetScript("OnClick", function()
@@ -2077,6 +2094,8 @@ OVERVIEW = {
             end
             model:Show()
             local shown = UI.LoadCharacter(model, page.key)
+            local friend = page.key and KillTrackerFriends[page.key]
+            model.shownGear = friend and friend.gear or nil  -- (a new sync's gear reloads it: the page's refresh)
             model:SetShown(shown)
             page.empty:SetShown(not shown)
             model:SetFacing(page.facing)
@@ -2089,15 +2108,16 @@ OVERVIEW = {
 
     refresh = function(page)
         local key = ns.GetViewing()
-        if key and page.gallery and page.gallery:IsShown() then page.CloseGallery() end  -- (someone else's: no gallery)
-        local galleryOpen = page.gallery and page.gallery:IsShown()
+        if key and page.panel == "inventory" then  -- (someone else's Overview: no inventory)
+            page.ShowPanel(nil)
+            if page.loaded then return end
+        end
+        if page.panel == "inventory" then page.inventoryPanel:Refresh() end
         if UI.SetTab then  -- (the top beam)
-            if galleryOpen then UI.SetTab("overview", "Gallery", "PIX")
-            elseif page.viewing and not key then UI.SetTab("overview", ("Picture #%d"):format(page.viewing.number), "PIX")
+            if page.viewing and not key then UI.SetTab("overview", ("Picture #%d"):format(page.viewing.number), "PIX")
             elseif page.building and not key then UI.SetTab("overview", "Your Ogre", "ME OGRE")
             else UI.SetTab("overview", TAB_TITLES[page.panel or "me"], page.panel and TABS_OGRE[page.panel]) end
         end
-        if galleryOpen then page.gallery:Refresh() end
         local p = UI.Profile(key)
 
         -- The photo: their chosen picture, or (no model of them to show) their first showcase picture or else their
@@ -2113,10 +2133,11 @@ OVERVIEW = {
         page.noPicture = not key and not portrait and page.panel == nil  -- (you, none: MAKE YOUR OGRE)
         if page.panel == "gear" then portrait = nil end  -- their gear goes round their character
         if page.panel == "edit" and page.edit and not key then  -- (your look being changed: the draft)
-            portrait = { traits = page.edit.traits, ogre = true, style = cardData and cardData.ogreStyle }
+            portrait = { traits = page.edit.traits, ogre = true, style = next(page.edit.style) and page.edit.style or nil }
         end
         -- One of your pictures opened to look at: it, instead (with its buttons), until BACK.
-        if page.viewing and (key or page.panel ~= nil or not ns.FindMint(nil, page.viewing.number)) then
+        -- (kept on ME and in INVENTORY: opened from either)
+        if page.viewing and (key or (page.panel ~= nil and page.panel ~= "inventory") or not ns.FindMint(nil, page.viewing.number)) then
             page.viewing, page.viewingFromGallery = nil, nil
         end
         if page.viewing then portrait = page.viewing end
@@ -2233,7 +2254,8 @@ OVERVIEW = {
         end
         -- The portrait instead of the photo (ME, their ogre or picture, nothing else open: not a picture opened, not
         -- the builder, not the gallery or a feed line's details).
-        local hanging = portrait ~= nil and (page.panel == nil or page.panel == "edit") and not page.building and not galleryOpen
+        local hanging = portrait ~= nil and (page.panel == nil or page.panel == "edit" or page.panel == "inventory")
+            and not page.building
             and not (page.detail and page.detail:IsShown())
         if hanging and key and portrait.ogre and ns.SeePieces then ns.SeePieces(portrait.traits) end  -- (their ogre: seen)
         if hanging then
@@ -2243,7 +2265,7 @@ OVERVIEW = {
             ShowPortrait(page, portrait, edit and { frame = edit.frame, motto = cardData and cardData.motto } or cardData,
                 (p.name or ""):match("^(%S+)") or "", ns.GetNameColor(key), not key,
                 page.viewing ~= nil and portrait == page.viewing)
-        elseif page.panel ~= "crafts" and not galleryOpen and not (page.detail and page.detail:IsShown()) then
+        elseif page.panel ~= "crafts" and not (page.detail and page.detail:IsShown()) then
             page.photo:Show()
             page.hung:Show()
         end
@@ -2251,9 +2273,17 @@ OVERVIEW = {
         -- The model: reloaded only for someone else, new gear or after a picture, so turning it sticks while the page
         -- refreshes.
         if key ~= page.key then page.CloseDetail() end  -- someone else's feed
-        if not page.loaded or switched or key ~= page.key or (key and gear ~= page.model.shownGear) then
+        if not page.loaded or switched or key ~= page.key or (key and (friend and friend.gear) ~= page.model.shownGear) then
             page.loaded, page.key = true, key
             page.Load()
+        end
+        local paper, back = ns.GetWallpaper(key), page.pageWallpaper
+        UI.SetWallpaper(page.wallpaper, paper, page.photo:GetWidth(), page.photo:GetHeight(), ns.WallpaperTune("photo"))
+        UI.SetWallpaper(back, paper, back:GetWidth(), back:GetHeight(), ns.WallpaperTune("page"))
+        back:SetVertexColor(1 - ns.WallpaperTune("pageDim"), 1 - ns.WallpaperTune("pageDim"), 1 - ns.WallpaperTune("pageDim"))
+        for _, piece in ipairs(page.leftPapers) do  -- (the inventory's, carrying on behind the showcase and the feed)
+            UI.SetWallpaper(piece[1], paper, piece[1]:GetWidth(), piece[1]:GetHeight(), ns.WallpaperTune("inventory"), 0, piece[3])
+            piece[2]:SetColorTexture(0, 0, 0, ns.WallpaperTune("dim"))
         end
         local option = not portrait and ns.GetModelBackdrop and ns.GetModelBackdrop(key)
         if option then page.backdrop:SetTexture(ns.MintTexture(option, {})) end

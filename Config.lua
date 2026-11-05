@@ -41,9 +41,6 @@ local FIELDS = {
     { key = "ach500", label = "500 kills", default = 125, min = 0, max = 10000 },
     { key = "ach1000", label = "1000 kills", default = 200, min = 0, max = 10000 },
     { key = "achTribe", label = "Tribe: 1000 kills", default = 150, min = 0, max = 10000 },
-    { heading = "Collection" },
-    { key = "mintCost", label = "Mint a picture", default = 100, min = 1, max = 100000 },
-    { key = "plinkoCost", label = "Plinko drop (one a day free)", default = 50, min = 1, max = 100000 },
     { heading = "Guild groups" },
     { key = "groupBonus", label = "Bonus % per guildmate", default = 25, min = 0, max = 1000 },
     { key = "groupMaxGuildmates", label = "Guildmates counted, max", default = 4, min = 0, max = 40 },
@@ -55,9 +52,7 @@ local FIELDS = {
     { key = "chestCoins", label = "Chest coins", default = 20, min = 0, max = 10000 },
     { heading = "Weekly bounty" },
     { key = "bountyGoalPercent", label = "Goal size % (100 = normal)", default = 100, min = 1, max = 10000 },
-    { key = "bountyMinPercent", label = "Reward share % of goal", default = 4, min = 0, max = 100 },
     { key = "bountyReward", label = "Reward", default = 100, min = 0, max = 100000 },
-    { key = "bountyExtra", label = "Extra % per bounty kill", default = 100, min = 0, max = 1000 },
     { key = "bountyPosters", label = "Bounty posters a week", default = 4, min = 3, max = 5 },
     { key = "bountyLevelScale", label = "Goal % more per level bracket", default = 0, min = 0, max = 100 },
 }
@@ -73,10 +68,9 @@ local issecret = issecretvalue or function() return false end
 -- SOLC is the Sleepy Ogre Leisure Club's own: outside it (another guild, or none) nothing is recorded or synced and the
 -- window is only a teaser (UI.lua's ns.ShowTeaser); what members earn counts from joining. The guild by its name, any
 -- capitals; not known yet just after login: not yet (it unlocks by itself once it is).
--- (and for now the guild on the beta, SVENSKA INTERNET: take it out before launch)
-local OUR_GUILDS = { ["sleepy ogre leisure club"] = true, ["svenska internet"] = true, ["secret surfers"] = true }
+local OUR_GUILDS = { ["sleepy ogre leisure club"] = true }
 function ns.IsMember()
-    if KillTrackerDB and KillTrackerDB.letMeIn then return true end  -- (testing: /solc letmein, this character)
+    if KillTrackerDB and KillTrackerDB.letMeIn and ns.IsDev() then return true end  -- (testing: /solc letmein, dev characters)
     if not IsInGuild() then return false end
     local name = GetGuildInfo("player")
     return name ~= nil and not issecret(name) and OUR_GUILDS[name:lower()] == true
@@ -221,9 +215,10 @@ local function Changed()
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
 
--- Saves new values (a [key] = number table, any missing key = default) and sends them to the guild.
+-- Saves new values (a [key] = number table, any missing key = default) and sends them to the guild. Dev characters
+-- only (the dev menu's GUILD VALUES tab); officers send the bounty picks with them (SetBountyPicks).
 function ns.SetConfig(values)
-    if not ns.CanEditConfig() then return false end
+    if not ns.IsDev() then return false end
     local current = Current()
     if not current then return false end
     current.values = {}
@@ -262,10 +257,12 @@ function ns.SetBountyPicks(week, text)
     return ns.ConfigSaved(current)
 end
 
--- Settings received from a guildmate. Applied if newer and the sender is a guild master or officer.
+-- Settings received from a guildmate. Applied if newer and the sender is a guild master, an officer (their bounty
+-- picks) or a dev character (the values).
 function ns.ReceiveConfig(sender, version, text, bounties)
     local current = Current()
-    if not current or not version or version <= current.version or not ns.IsGuildOfficer(sender) then return false end
+    if not current or not version or version <= current.version then return false end
+    if not (ns.IsGuildOfficer(sender) or ns.IsDevSender(sender)) then return false end
     current.values, current.version, current.by = Parse(text), version, sender:match("^[^-]+")
     current.bounties = ParseBounties(bounties)
     Changed()
@@ -340,7 +337,7 @@ local function Fill(values)
 end
 
 local function ShowState()
-    local editable = ns.CanEditConfig()
+    local editable = ns.IsDev()
     for _, box in pairs(boxes) do
         box:SetEnabled(editable)
         box:SetTextColor(editable and 1 or 0.6, editable and 1 or 0.6, editable and 1 or 0.6)
@@ -354,7 +351,7 @@ local function ShowState()
     elseif editable then
         info:SetText(changed .. "\n|cff999999Saving sends them to the whole guild.|r")
     else
-        info:SetText(changed .. "\n|cff999999Only the guild master and officers can change these.|r")
+        info:SetText(changed .. "\n|cff999999Only dev characters can change these.|r")
     end
 end
 
@@ -390,39 +387,10 @@ panel.defaults:SetScript("OnEnter", function(self)
 end)
 panel.defaults:SetScript("OnLeave", GameTooltip_Hide)
 
-local boardButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-boardButton:SetSize(96, 22)
-boardButton:SetPoint("BOTTOM", 0, 18)
-boardButton:SetText("Bounty Board")
-boardButton:SetScript("OnClick", function() ns.ToggleBountyBoard() end)
-
--- Just for you (not the guild's): tooltips beside the window or where you point (UI.lua, ns.UI.FixedTooltips).
-local tips = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-tips:SetSize(24, 24)
-tips:SetPoint("TOPRIGHT", -16, -12)
-tips.label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-tips.label:SetPoint("RIGHT", tips, "LEFT", -2, 0)
-tips.label:SetText("Tooltips beside the window")
-tips:SetScript("OnClick", function(self)
-    KillTrackerDB.fixedTooltips = self:GetChecked() and true or false
-end)
-tips:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:AddLine("Tooltips beside the window", 1, 1, 1)
-    GameTooltip:AddLine("All of SOLC's tooltips open in one place, just outside the window, instead of next to what you point at. Just for you.", nil, nil, nil, true)
-    GameTooltip:Show()
-end)
-tips:SetScript("OnLeave", GameTooltip_Hide)
-
-panel:SetScript("OnShow", function()
-    tips:SetChecked(not KillTrackerDB or KillTrackerDB.fixedTooltips ~= false)
-    Refresh()
-end)
-function ns.ToggleConfig()
-    if panel:IsShown() then panel:Hide() else panel:Show() end
-end
--- Moves the panel into a page of the main window, filling width.
-function ns.EmbedConfig(parent, width)
+panel:SetScript("OnShow", Refresh)
+panel.Refresh = Refresh
+-- Moves the panel into parent (the dev menu's GUILD VALUES tab, Dev.lua), filling width.
+function ns.EmbedConfig(parent, width, heading)
     panel:SetParent(parent)
     panel:ClearAllPoints()
     panel:SetAllPoints(parent)
@@ -432,7 +400,7 @@ function ns.EmbedConfig(parent, width)
     closeButton:Hide()
     title:ClearAllPoints()
     title:SetPoint("TOPLEFT", 12, -12)
-    title:SetText("Settings")
+    title:SetText(heading or "Guild values")
     info:ClearAllPoints()
     info:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
     info:SetWidth(width - 40)

@@ -48,7 +48,7 @@ function ns.MyName()
     return KillTrackerDB and KillTrackerDB.myName or UnitName("player")
 end
 
--- Today, as a number that changes at the daily reset (Plinko's free drop, the Dream Bed's night).
+-- Today, as a number that changes at the daily reset (the Dream Bed's night).
 function ns.Today()
     local reset = C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset and C_DateAndTime.GetSecondsUntilDailyReset()
         or (GetQuestResetTime and GetQuestResetTime()) or 0
@@ -277,8 +277,15 @@ local function Migrate(db)
     end
 end
 
+-- The launch wipe (WoW Forever, 0.41.0): everything saved while testing goes, once per character and once per
+-- account (the guild's synced stats, guild settings, the shared wardrobe). Change DATA_EPOCH to wipe again.
+local DATA_EPOCH = "forever-launch"
+
 local function InitDB()
-    KillTrackerDB = KillTrackerDB or {}
+    if not KillTrackerDB or KillTrackerDB.epoch ~= DATA_EPOCH then KillTrackerDB = { epoch = DATA_EPOCH } end
+    if not SOLCAccount or SOLCAccount.epoch ~= DATA_EPOCH then
+        SOLCAccount, KillTrackerFriends, KillTrackerConfig = { epoch = DATA_EPOCH }, {}, {}
+    end
     local db = KillTrackerDB
     db.total = db.total or 0
     db.kills = db.kills or {}                -- [npcID] = { name, count, maxWeight, seq, created [, type, rank, family, subtype if not in Data.lua] }
@@ -298,6 +305,13 @@ local function InitDB()
     Migrate(db)
     -- Settings from trying out the look (0.39.0 development), now fixed in UI.lua.
     db.navWidth, db.buttonStyle, db.ogreFont, db.ogreColors, db.ogreOutline = nil, nil, nil, nil, nil
+    -- Plinko is gone (0.41.0): its drops, boards, winnings and deeds with it.
+    db.plinko, db.plinkoBoard, db.plinkoTune = nil, nil, nil
+    if db.points then db.points.plinko = nil end
+    if db.tally then db.tally.jackpots = nil end
+    for id in pairs(db.achievements or {}) do
+        if id:match("^feat:plinko:") or id:match("^feat:jackpot:") then db.achievements[id] = nil end
+    end
     for _, entry in pairs(db.kills) do
         if not entry.seq then Touch(entry) end
     end
@@ -580,7 +594,7 @@ local function ShowHelp()
     Print("/solc sharing - turn sharing your kill stats on/off")
     Print("/solc bounty - this week's bounty posters and how far you are")
     Print("/solc bounties - the bounty board (officers pick next week's there)")
-    Print("/solc config - point values and guild settings (officers can change them)")
+    Print("/solc settings - your settings (ogre mode, sounds, minimap, your main character...)")
     Print("/solc unknown - mobs with a guessed or unknown faction, with Wowhead links")
     Print("/solc announce - toggle per-kill chat messages")
     Print("/solc minimap - show/hide the minimap button")
@@ -589,14 +603,13 @@ local function ShowHelp()
     Print("/solc tooltips - tooltips beside the window, or where you point")
     Print("/solc debug - announce kills and say why a mob wasn't counted")
     Print("/solc probe - test what the game hides from addons (for dungeons)")
-    Print("/solc reset - clear all data for this character")
 end
 
 SLASH_SOLC1 = "/solc"
 SLASH_SOLC2 = "/kt"
 SlashCmdList.SOLC = function(input)
     local msg, arg = strtrim(input or ""):match("^(%S*)%s*(.-)$")
-    if msg == "letmein" then  -- (testing outside the guild: the lock off for this character, or on again)
+    if msg == "letmein" and ns.IsDev() then  -- (testing outside the guild: the lock off for this dev character, or on again)
         KillTrackerDB.letMeIn = not KillTrackerDB.letMeIn or nil
         return Print(KillTrackerDB.letMeIn and "SOLC unlocked on this character for testing (/solc letmein again to lock it)." or "SOLC locked again: only for Sleepy Ogre Leisure Club members.")
     end
@@ -620,20 +633,10 @@ SlashCmdList.SOLC = function(input)
         ns.ShowDreamBed()
     elseif msg == "bounty" then
         ns.PrintPosters()
-    elseif msg == "plinko" then
-        ns.ShowPlinko()  -- (Plinko.lua; a place in the window later)
     elseif msg == "claw" and ns.IsDev() then  -- (dev test of the claw machine: ClawMachine.lua)
         ns.ShowClaw()
     elseif msg == "couronne" and ns.IsDev() then  -- (dev test of the board game: Couronne.lua)
         ns.ShowCouronne()
-    elseif msg == "glowtest" then  -- TEMPORARY: every card's icons glow as if level 60 (ProfileHeader.lua)
-        KillTrackerDB.glowTest = not KillTrackerDB.glowTest or nil
-        Print(KillTrackerDB.glowTest and "Glow test on: every card's icons glow." or "Glow test off.")
-        if ns.OnKillsChanged then ns.OnKillsChanged() end
-    elseif msg == "claimtest" then
-        ns.ToggleClaimTest(arg)  -- TEMPORARY: a poster drawn as claimed (HuntsBoard.lua)
-    elseif msg == "burn" then
-        ns.ToggleBountyBurn()
     elseif msg == "unknown" then
         ShowUnknown()
     elseif msg == "announce" then
@@ -689,33 +692,6 @@ SlashCmdList.SOLC = function(input)
         db.minimap.hide = not db.minimap.hide
         ns.UpdateMinimapButton()
         Print("Minimap button " .. (db.minimap.hide and "hidden." or "shown."))
-    elseif msg == "clearmints" then
-        -- Every picture of this character gone, as if given away (Minting.lua's RemoveMint): guildmates drop their
-        -- copies at their next sync; the numbers aren't used again. Points spent stay spent; the wardrobe stays.
-        if arg ~= "yes" then
-            Print(("This removes all %d of your pictures, here and (at their next sync) on your guildmates' addons. Type |cffffd100/solc clearmints yes|r to do it."):format(#db.mints))
-        else
-            local numbers = {}
-            for _, mint in ipairs(db.mints) do numbers[#numbers + 1] = mint.number end
-            for _, number in ipairs(numbers) do ns.RemoveMint(number) end
-            Print(("Removed %d pictures."):format(#numbers))
-            NotifyChanged()
-        end
-    elseif msg == "reset" then
-        wipe(db.kills)
-        wipe(db.records)
-        wipe(db.achievements)
-        wipe(db.groupLog)
-        db.pvp = { total = 0, unknown = 0, players = {} }
-        db.points = { kills = 0, spent = 0 }
-        db.posters, db.guildBosses = nil, nil
-        wipe(db.collection)
-        wipe(db.mints)
-        db.total, sessionKills = 0, 0
-        db.syncID, db.seq = NewSyncID(), 0
-        Print("All kill data reset.")
-        NotifyChanged()
-        if ns.OnDataReset then ns.OnDataReset() end
     else
         ShowHelp()
     end

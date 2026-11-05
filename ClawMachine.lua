@@ -1,13 +1,14 @@
--- The claw machine (the gacha box's minigame; a dev test for now: /solc claw, simple textures, test points, nothing won
--- is kept). One capsule per piece you don't own sits in a glass box drawn at a fixed 2.5D angle (tools/claw-mock-3d.html is
+-- The claw machine (the gacha box's minigame, in the Games Room). One capsule per claw machine piece you haven't
+-- unlocked sits in a glass box drawn at a fixed 2.5D angle (tools/claw-mock-3d.html is
 -- the web mockup it copies): pay, steer the claw - hold right, let go; hold up, letting go drops it - and it grabs what it
 -- lands on. Losing: a whiff, a weak grip or a drop on the way back (each lights one CLAW POWER light: more grip, less
 -- sway; a win puts them out). SMASH the cabinet to scramble the pile before you drop: each smash in a go is riskier, and
--- a TILT loses the go and puts every light out.
+-- a TILT loses the go and puts every light out. A go costs PRICE points (spent, like the Pro Shop); a capsule that
+-- falls down the chute unlocks its piece for minting. The lights are kept per character (KillTrackerDB.claw).
 --
 -- Drawing: each capsule is its own little frame (a shaded disc) placed where the camera sees it and sized by distance;
 -- the frames' levels are re-sorted far to near whenever things move, the claw (lines) and its shadow sorted in with
--- them. The box's walls and floor are textures bent onto their corners with SetVertexOffset (the field test's trick).
+-- them. The box's walls and floor are textures bent onto their corners with SetVertexOffset.
 -- Physics: spheres pushed apart pair by pair, walls, the chute's two glass walls, the hole under the chute; it sleeps
 -- once the pile is still, so a still machine costs nothing.
 
@@ -25,7 +26,7 @@ local VUL, VLL, VUR, VLR = UPPER_LEFT_VERTEX or 1, LOWER_LEFT_VERTEX or 2, UPPER
 -- the physics and the rules, in one table (Lua 5.1: at most 60 upvalues a function).
 local K = {
     W = 420, D = 280, H = 360, R = 22, CX = 120, CZ = 120, BH = 165, TIP = 42,
-    VW = 540, VH = 430, PITCH = 0.62, DIST = 1500,
+    VW = 827 * 0.6455, VH = 584, PITCH = 0.62, DIST = 1500,
     G = 1500, STEP = 1 / 120, ITER = 2,
     PRICE = 150, STEER = 25, SPEED = 150,
     HOLD0 = 60, DROP0 = 20, SLIP = { uncommon = 0, rare = 7, epic = 13, legendary = 20 }, CENTRE = 0.3, OFFPEN = 60,
@@ -36,107 +37,31 @@ K.HOME_X, K.HOME_Z = K.CX / 2, K.CZ / 2  -- (where it lets go: over the chute's 
 K.START_Z = 26  -- (where a go starts: right at the front glass, still over the chute, so the front row can be reached)
 local COLORS = { uncommon = { 0.12, 1, 0 }, rare = { 0.23, 0.61, 1 }, epic = { 0.64, 0.21, 0.93 }, legendary = { 1, 0.5, 0 } }
 
--- Series 1 (tools/gacha-series1-picks.json) as labels only, until the pieces are in MintArt.lua: { id, name, rarity }.
-local PIECES = {
-    { "hair_pompadour", "Pompadour", "rare" },
-    { "hair_combover", "Comb-Over", "uncommon" },
-    { "hair_mullet", "Mullet", "uncommon" },
-    { "hair_mohawk", "Mohawk", "rare" },
-    { "hair_topknot", "Top Knot", "uncommon" },
-    { "hair_curlers", "Hair Curlers", "uncommon" },
-    { "hair_powdered_wig", "Powdered Wig", "epic" },
-    { "hair_slicked", "Slicked Back", "rare" },
-    { "hair_braid", "Warrior Braid", "rare" },
-    { "hair_afro", "Big Afro", "epic" },
-    { "hair_bowlcut", "Bowl Cut", "uncommon" },
-    { "face_handlebar", "Handlebar Moustache", "rare" },
-    { "face_walrus", "Walrus Moustache", "uncommon" },
-    { "face_pencil", "Pencil Moustache", "uncommon" },
-    { "face_muttonchops", "Mutton Chops", "rare" },
-    { "face_imperial", "Imperial Moustache", "epic" },
-    { "face_cigar", "Fat Cigar", "rare" },
-    { "face_pipe", "Briar Pipe", "rare" },
-    { "face_cigarette", "Dangling Cigarette", "uncommon" },
-    { "acc_whiskey", "Whiskey Tumbler", "uncommon" },
-    { "acc_brandy", "Brandy Snifter", "rare" },
-    { "acc_cigar_box", "Cigar Box", "rare" },
-    { "outfit_sailor_stripes", "Sailor Stripes", "uncommon" },
-    { "head_souwester", "Sou'wester", "uncommon" },
-    { "outfit_rowing_blazer", "Rowing Blazer", "rare" },
-    { "acc_oar", "Rowing Oar", "uncommon" },
-    { "outfit_hunting_pink", "Riding Jacket", "rare" },
-    { "outfit_jockey_silks", "Jockey Silks", "rare" },
-    { "head_jockey_cap", "Jockey Cap", "uncommon" },
-    { "acc_riding_crop", "Riding Crop", "uncommon" },
-    { "head_polo_helmet", "Polo Helmet", "rare" },
-    { "acc_polo_mallet", "Polo Mallet", "rare" },
-    { "head_fascinator", "Derby Fascinator", "rare" },
-    { "head_ascot_hat", "Ascot Hat", "epic" },
-    { "outfit_cricket_whites", "Cricket Whites", "uncommon" },
-    { "head_cricket_cap", "Cricket Cap", "uncommon" },
-    { "acc_cricket_bat", "Cricket Bat", "rare" },
-    { "outfit_umpire", "Umpire's Coat", "epic" },
-    { "acc_croquet_mallet", "Croquet Mallet", "uncommon" },
-    { "outfit_fencing", "Fencing Whites", "rare" },
-    { "head_fencing_mask", "Fencing Mask", "rare" },
-    { "acc_foil", "Fencing Foil", "rare" },
-    { "head_aviator", "Aviator Cap", "rare" },
-    { "outfit_opera_cape", "Opera Cape", "rare" },
-    { "head_bobble", "Bobble Hat & Goggles", "uncommon" },
-    { "outfit_parka", "Apres-Ski Parka", "rare" },
-    { "head_fishing_hat", "Lure Hat", "uncommon" },
-    { "acc_trophy_fish", "Trophy Fish", "epic" },
-    { "face_tusk_rings", "Tusk Rings", "rare" },
-    { "acc_gilded_club", "Gilded Club", "legendary" },
-    { "acc_diamond_monocle", "Diamond Monocle", "legendary" },
-    { "head_deerstalker", "Deerstalker", "uncommon" },
-    { "acc_peacock", "Peacock", "epic" },
-    { "head_fishbowl", "Fishbowl Helmet", "epic" },
-    { "acc_tiny_butler", "Tiny Butler", "legendary" },
-    { "acc_falcon", "Sleepy Falcon", "epic" },
-    { "head_traffic_cone", "Traffic Cone", "uncommon" },
-    { "head_bin_lid", "Bin Lid", "uncommon" },
-    { "head_knockoff_cap", "Knock-Off Cap", "uncommon" },
-    { "head_tinfoil", "Tin-Foil Hat", "uncommon" },
-    { "outfit_mustard_vest", "Mustard-Stained Wifebeater", "uncommon" },
-    { "outfit_gravy_vest", "Gravy-Stained Wifebeater", "rare" },
-    { "outfit_shellsuit", "Shell Suit", "rare" },
-    { "outfit_sleeping_bag", "Sleeping Bag Coat", "rare" },
-    { "acc_ale_can", "Cheap Ale Can", "uncommon" },
-    { "acc_whiskey_bag", "Bottle in a Bag", "rare" },
-    { "acc_scratchcard", "Scratch Card", "uncommon" },
-    { "acc_pigeon", "Mangy Pigeon", "rare" },
-    { "acc_rat", "Pet Rat", "rare" },
-    { "acc_knockoff_shades", "Knock-Off Shades", "uncommon" },
-    { "head_ear_cigarette", "Cigarette Behind the Ear", "uncommon" },
-}
+-- The pieces: every claw machine piece in MintArt.lua (unlock "gacha:1", Series 1), as { key, name, rarity }.
+local function Pieces()
+    local list = {}
+    for _, unlocked in ipairs(ns.UnlockOptions("gacha:1")) do
+        if not unlocked.option.retired then
+            list[#list + 1] = { ns.OptionKey(unlocked.layer.key, unlocked.option), unlocked.option.name, unlocked.option.rarity }
+        end
+    end
+    return list
+end
 
 -- ---- the camera: fixed, fitted once so the whole box fills the view ----
 local cam = { f = 1, cy = 0, cos = math.cos(K.PITCH), sin = math.sin(K.PITCH) }
 local function P(x, y, z)  -- world -> view x, y (down), scale, depth
-    local px, py, pz = x - K.W / 2, y - K.H / 2, z - K.D / 2
-    local yc = py * cam.cos + pz * cam.sin
-    local d = -py * cam.sin + pz * cam.cos + K.DIST
-    local s = cam.f / d
-    return K.VW / 2 + px * s, cam.cy - yc * s, s, d
+    local t = z / K.D
+    local left, right = (.018 + .096 * t) * K.VW, (.982 - .073 * t) * K.VW
+    local floor, roof = (.752 - .303 * t) * K.VH, (.193 - .173 * t) * K.VH
+    return left + (right-left) * x/K.W, floor - (floor-roof) * y/K.H, (right-left)/K.W, 1000+z-y*.35
 end
-do
-    local minY, maxY, maxX = 1e9, -1e9, 0
-    for _, x in ipairs({ 0, K.W }) do for _, y in ipairs({ 0, K.H }) do for _, z in ipairs({ 0, K.D }) do
-        local sx, sy = P(x, y, z)
-        maxX = math.max(maxX, math.abs(sx - K.VW / 2)); minY = math.min(minY, sy); maxY = math.max(maxY, sy)
-    end end end
-    cam.f = math.min((K.VW - 30) / (2 * maxX), (K.VH - 24) / (maxY - minY))
-    cam.cy = K.VH / 2 - (minY + maxY) / 2 * cam.f
-    -- (how deep the box goes, for the haze: front to back at a quarter of its height)
-    cam.near = select(4, P(K.W / 2, K.H / 4, 0))
-    cam.far = select(4, P(K.W / 2, K.H / 4, K.D))
-end
+cam.near, cam.far = 1000-K.H*.25*.35, 1000+K.D-K.H*.25*.35
 
-local panel, view
+local panel, view, shell
 local caps, owned = {}, {}
 local S = { state = "idle", t = 0, meter = 0, smashes = 0, shake = 0, tilt = 0, timer = 0, phase = "x", moved = false,
-    points = 3000, msg = "Insert 150 points to play.", go = nil, calm = 0, asleep = false, acc = 0, keys = {}, cost = 0 }
+    msg = "Insert 150 points to play.", go = nil, calm = 0, asleep = false, acc = 0, keys = {}, cost = 0 }
 local C = { x = K.HOME_X, z = K.START_Z, y = K.TOPY, vx = 0, vz = 0, open = 1, ax = 0, wx = 0, az = 0, wz = 0,
     held = nil, dropAt = -1, travelled = 0, path = 1 }
 
@@ -145,20 +70,22 @@ local function HoldAt(l) return K.HOLD0 + (100 - K.HOLD0) * l / 5 end
 local function DropAt(l) return K.DROP0 * (1 - l / 5) end
 local function Slip(r, l) return (K.SLIP[r] or 0) * (1 - l / 5) end
 local function Wake() S.asleep, S.calm = false, 0 end
-local function Sound(name, fallback) pcall(PlaySound, SOUNDKIT and SOUNDKIT[name] or fallback) end
+local function Balance() return ns.GetPoints().balance end
+local function SaveMeter() KillTrackerDB.claw = KillTrackerDB.claw or {} KillTrackerDB.claw.meter = S.meter end
+local function Sound(name, fallback) ns.PlaySound(SOUNDKIT and SOUNDKIT[name] or fallback) end
 -- Our own sounds (tools/make-claw-sounds.js): bonk, tilt, clack, and the two motor loops, played back to back (each
 -- loop fades in and out, so the copies overlap by LOOP_OVERLAP) while the claw moves.
 local SFX = "Interface\\AddOns\\SOLC\\Media\\Claw\\"
 local MOTORS = { whir = 0.96, winch = 0.72 }  -- (their lengths, seconds)
 local motor = { kind = nil, handle = nil, next = 0 }
-local function Play(name) pcall(PlaySoundFile, SFX .. name .. ".ogg", "SFX") end
+local function Play(name) ns.PlaySoundFile(SFX .. name .. ".ogg", "SFX") end
 local function Motor(kind)  -- kind: "whir" (the carriage), "winch" (the cable) or nil (still)
     if kind ~= motor.kind then
         if motor.handle then StopSound(motor.handle, 150) end
         motor.kind, motor.handle, motor.next = kind, nil, 0
     end
     if kind and GetTime() >= motor.next then
-        local ok, _, handle = pcall(PlaySoundFile, SFX .. kind .. ".ogg", "SFX")
+        local ok, _, handle = ns.PlaySoundFile(SFX .. kind .. ".ogg", "SFX")
         motor.handle = ok and handle or nil
         motor.next = GetTime() + MOTORS[kind] - 0.06
     end
@@ -214,8 +141,12 @@ local function Fill()
     for _, c in ipairs(caps) do Spare(c) end
     wipe(caps)
     S.wonDirty = true
+    S.pieces = Pieces()
+    wipe(owned)
     local left = {}
-    for _, p in ipairs(PIECES) do if not owned[p[1]] then left[#left + 1] = p end end
+    for _, p in ipairs(S.pieces) do
+        if ns.IsUnlocked(p[1]) then owned[p[1]] = true else left[#left + 1] = p end
+    end
     for i = #left, 2, -1 do local j = math.random(i) left[i], left[j] = left[j], left[i] end
     -- (laid in loose rows from the floor up, outside the chute's corner, then let fall into place)
     local R, k = K.R, 1
@@ -328,8 +259,12 @@ end
 local function Insert()
     if S.state ~= "idle" then return end
     if #caps == 0 then return Say("The machine is empty: you have them all!") end
-    if S.points < K.PRICE then return Say("Not enough points.") end
-    S.points = S.points - K.PRICE
+    if Balance() < K.PRICE then return Say("Not enough points.") end
+    local db = KillTrackerDB
+    db.points.spent = db.points.spent + K.PRICE
+    db.claw = db.claw or {}
+    db.claw.spent = (db.claw.spent or 0) + K.PRICE
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
     S.go = { wins = {}, held = false }
     S.smashes, S.timer, S.state, S.phase, S.moved = 0, K.STEER, "steer", "x", false
     C.x, C.z, C.y, C.open, C.held = K.HOME_X, K.START_Z, K.TOPY, 1, nil
@@ -341,6 +276,7 @@ local function Smash()
     local chance = Tilt(S.smashes)
     if math.random() * 100 < chance then
         S.state, S.t, S.tilt, S.meter = "tilt", 0, 2.2, 0
+        SaveMeter()
         S.go.outcome = "tilt"
         Play("tilt")
         return Say(("TILT! (that smash had a %d%% chance) The go is lost and the lights are out."):format(chance))
@@ -395,6 +331,7 @@ local function Finish()
         S.meter = math.min(5, S.meter + 1)
         if not go.outcome then Say("Whiff: nothing under the claw. +1 light.") else Say(S.msg .. " +1 light.") end
     end
+    SaveMeter()
 end
 
 local function Step(dt)
@@ -504,6 +441,8 @@ local function Step(dt)
                 table.remove(caps, i)
                 Spare(c)
                 owned[c.p[1]] = true
+                ns.UnlockOption(c.p[1])  -- (yours to mint with now; the guild news hears of it)
+                if ns.OnKillsChanged then ns.OnKillsChanged() end
                 S.wonDirty = true
                 S.go.wins[#S.go.wins + 1] = c.p
             else
@@ -531,6 +470,22 @@ local function Line(line, ax, ay, bx, by)
     line:SetStartPoint("TOPLEFT", view, ax, -ay)
     line:SetEndPoint("TOPLEFT", view, bx, -by)
 end
+-- The same shaded brass parts as the browser mockup, articulated in screen space.
+local PARTS="Interface\\AddOns\\SOLC\\Media\\GamesRoom\\ClawParts.blp"
+local function Part(parent,u0,u1,v0,v1,layer,sub)
+    local tex=parent:CreateTexture(nil,layer or "ARTWORK",nil,sub or 0)
+    tex:SetTexture(PARTS) tex:SetTexCoord(u0,u1,v0,v1)
+    return tex
+end
+local function PlacePart(tex,x,y,w,h)
+    tex:ClearAllPoints() tex:SetPoint("CENTER",view,"TOPLEFT",x,-y) tex:SetSize(w,h)
+end
+local function Beam(tex,ax,ay,bx,by,thickness)
+    local dx,dy=bx-ax,by-ay
+    PlacePart(tex,(ax+bx)/2,(ay+by)/2,math.max(1,math.sqrt(dx*dx+dy*dy)),thickness)
+    tex:SetRotation(-math.atan2(dy,dx))
+end
+
 -- A brass block (the gantry's parts): the two faces the camera sees, its top and its front.
 local function Box(b, x1, x2, y1, y2, z1, z2)
     Quad(b.top, { x1, y2, z2 }, { x2, y2, z2 }, { x2, y2, z1 }, { x1, y2, z1 })
@@ -545,7 +500,7 @@ local function Draw()
         sx, sy = (math.random() - 0.5) * amount, (math.random() - 0.5) * amount
     end
     view:ClearAllPoints()
-    view:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + sx, -16 - sy)
+    view:SetPoint("TOPLEFT", panel, "TOPLEFT", sx, -sy)
     wipe(order)
     for _, c in ipairs(caps) do
         local x, y, s, d = P(c.x, c.y, c.z)
@@ -581,45 +536,30 @@ local function Draw()
             f.shine:SetAlpha((0.25 + 0.75 * a.lit * a.lit) * (1 - 0.4 * fog))
         end
     end
-    -- the gantry: the crossbar riding the side rails at the claw's depth, its end blocks, the carriage on it
-    -- (bending a texture costs, so only when the claw has moved)
-    local gy, gw = K.H - 4, view.gantry
-    if gw.z ~= C.z then
-        gw.z, gw.x = C.z, nil
-        Box(gw.bar, 0, K.W, gy - 9, gy, C.z - 6, C.z + 6)
-        Box(gw.left, 0, 16, gy - 12, gy + 2, C.z - 11, C.z + 11)
-        Box(gw.right, K.W - 16, K.W, gy - 12, gy + 2, C.z - 11, C.z + 11)
+    local gw, cl = view.gantry,view.claw
+    local tx,ty,topS=P(C.x,K.H,C.z)
+    local lx,ly,ls=P(0,K.H,C.z)
+    local rx,ry,rs=P(K.W,K.H,C.z)
+    Beam(gw.rail,lx,ly,rx,ry,7*(ls+rs)/2)
+    PlacePart(gw.carriage,tx,ty,26*topS,12*topS)
+    local hx,hz=C.x+math.sin(C.ax)*6,C.z+math.sin(C.az)*6
+    local headX,headY,headS=P(hx,C.y,hz)
+    Beam(cl.cable,tx,ty,headX,headY,math.max(1,1.5*headS))
+    local spread=6+C.open*22
+    local tipx,tipz=C.x+math.sin(C.ax)*K.TIP,C.z+math.sin(C.az)*K.TIP
+    for k=1,3 do
+        local angle=(k-1)*2.094+.5
+        local ox,oz=math.cos(angle),math.sin(angle)
+        local kx,ky,ks=P(hx+ox*(spread+4),C.y-K.TIP*.55,hz+oz*(spread+4))
+        local px,py,ps=P(tipx+ox*spread*.55,C.y-K.TIP,tipz+oz*spread*.55)
+        Beam(cl.upper[k],headX,headY,kx,ky,5*(headS+ks)/2)
+        Beam(cl.lower[k],kx,ky,px,py,3*(ks+ps)/2)
+        PlacePart(cl.joints[k],kx,ky,6*ks,6*ks)
     end
-    if gw.x ~= C.x then
-        gw.x = C.x
-        Box(gw.cart, C.x - 17, C.x + 17, gy - 16, gy + 4, C.z - 13, C.z + 13)
-    end
-    -- the claw: cable, head, three prongs (open / closed)
-    local cl = view.claw
-    local hx, hz = C.x + math.sin(C.ax) * 6, C.z + math.sin(C.az) * 6
-    local tx, ty = P(C.x, gy - 16, C.z)
-    local headX, headY, headS, headD = P(hx, C.y, hz)
-    Line(cl.cable, tx, ty, headX, headY)
-    local spread = 6 + C.open * 22
-    local tipx, tipz = C.x + math.sin(C.ax) * K.TIP, C.z + math.sin(C.az) * K.TIP
-    for k = 1, 3 do
-        local an = (k - 1) * 2.094 + 0.5
-        local ox, oz = math.cos(an), math.sin(an)
-        local kx, ky = P(hx + ox * (spread + 4), C.y - K.TIP * 0.55, hz + oz * (spread + 4))
-        local px, py = P(tipx + ox * spread * 0.55, C.y - K.TIP, tipz + oz * spread * 0.55)
-        Line(cl.upper[k], headX, headY, kx, ky)
-        Line(cl.lower[k], kx, ky, px, py)
-        cl.upper[k]:SetThickness(math.max(2, 4 * K.DIST / headD))
-        cl.lower[k]:SetThickness(math.max(2, 4 * K.DIST / headD))
-    end
-    cl.head:ClearAllPoints()
-    cl.head:SetPoint("CENTER", view, "TOPLEFT", headX, -headY)
-    cl.head:SetSize(26 * headS, 26 * headS)
-    local glow = S.meter >= 5 and (0.5 + 0.5 * math.sin(GetTime() * 5.5)) or 0
-    local r, g, b = 0.9, 0.83, 0.64
-    if glow > 0 then r, g, b = 1, 0.78 + 0.16 * glow, 0.47 end
-    for k = 1, 3 do cl.upper[k]:SetColorTexture(r, g, b) cl.lower[k]:SetColorTexture(r, g, b) end
-    cl.head:SetVertexColor(r * 0.95, g * 0.92, b * 0.85)
+    PlacePart(cl.head,headX,headY,24*headS,24*headS)
+    local glow=S.meter>=5 and (.5+.5*math.sin(GetTime()*5.5)) or 0
+    PlacePart(cl.glow,headX,headY,50*headS,50*headS)
+    cl.glow:SetAlpha(glow*.45)
     local _, _, _, clawD = P(C.x, C.y - K.TIP / 2, C.z)
     cl.d = clawD - 2
     order[#order + 1] = cl
@@ -651,7 +591,7 @@ local function Draw()
 end
 
 local function Refresh()
-    panel.points:SetText(("%d test points"):format(S.points))
+    panel.points:SetText(("%d points"):format(Balance()))
     for i = 1, 5 do
         local lit = i <= S.meter
         panel.lights[i]:SetVertexColor(lit and 1 or 0.23, lit and 0.84 or 0.17, lit and 0.42 or 0.08)
@@ -660,12 +600,12 @@ local function Refresh()
     panel.insert:SetEnabled(S.state == "idle")
     panel.smash:SetEnabled(steer)
     panel.drop:SetEnabled(steer)
-    panel.stat:SetText(("%d capsules left   Lua %.1f ms"):format(#caps, S.cost))
+    panel.stat:SetText(("%d capsules left"):format(#caps))
     panel.timer:SetText(steer and ("Time %ds   Next smash: %d%% TILT"):format(math.ceil(S.timer), Tilt(S.smashes)) or "")
     if not S.wonDirty then return end
     S.wonDirty = false
     local won = {}
-    for _, p in ipairs(PIECES) do
+    for _, p in ipairs(S.pieces or {}) do
         if owned[p[1]] then
             local col = COLORS[p[3]]
             won[#won + 1] = ("|cff%02x%02x%02x%s|r"):format(math.floor(col[1] * 255), math.floor(col[2] * 255), math.floor(col[3] * 255), p[2])
@@ -728,11 +668,27 @@ local function HoldBtn(parent, text, key)  -- (held with the mouse, as the arrow
 end
 
 local function Build()
-    panel = CreateFrame("Frame", "SOLCClaw", UIParent, "BackdropTemplate")
+    shell = CreateFrame("Frame", "SOLCClaw", UIParent, "BackdropTemplate")
+    shell:SetBackdrop({ bgFile=WHITE })
+    shell:SetBackdropColor(.035,.055,.035,1)
+    shell:SetClipsChildren(true)
+    panel = CreateFrame("Frame", nil, shell, "BackdropTemplate")
+    panel:SetSize(827,584)
+    local function Fit()
+        panel:SetScale(math.min(shell:GetWidth()/827,shell:GetHeight()/584))
+        panel:ClearAllPoints()
+        panel:SetPoint("CENTER",shell,"CENTER")
+    end
+    shell:SetScript("OnSizeChanged",Fit)
+    shell:SetScript("OnShow",Fit)
+    shell:Hide()
+    local backdrop=panel:CreateTexture(nil,"BACKGROUND",nil,-8)
+    backdrop:SetAllPoints()
+    backdrop:SetTexture("Interface\\AddOns\\SOLC\\Media\\GamesRoom\\ClawBackdrop.blp")
     panel:SetBackdrop({ bgFile = WHITE })
-    panel:SetBackdropColor(0.18, 0.04, 0.06, 1)
+    panel:SetBackdropColor(0,0,0,0)
     panel:EnableMouse(true)
-    panel:Hide()
+    panel:Show()
     panel:HookScript("OnHide", function()
         wipe(S.keys)
         Motor(nil)
@@ -741,78 +697,30 @@ local function Build()
 
     view = CreateFrame("Frame", nil, panel)
     view:SetSize(K.VW, K.VH)
-    view:SetPoint("TOPLEFT", 16, -16)
+    view:SetPoint("TOPLEFT", 0, 0)
     view:SetClipsChildren(true)
-    local back = view:CreateTexture(nil, "BACKGROUND", nil, -8)
-    back:SetAllPoints()
-    back:SetColorTexture(0.07, 0.05, 0.06, 1)
-    -- the box: back wall, side walls, floor, the hole under the chute
-    local W, D, H, CX, CZ = K.W, K.D, K.H, K.CX, K.CZ
-    local function Face(r, g, b, a, sub, p1, p2, p3, p4)
-        local t = view:CreateTexture(nil, "BACKGROUND", nil, sub)
-        t:SetTexture(WHITE)
-        t:SetVertexColor(r, g, b, a)
-        Quad(t, p1, p2, p3, p4)
-        return t
-    end
-    Face(0.11, 0.1, 0.14, 1, -7, { 0, H, D }, { W, H, D }, { W, 0, D }, { 0, 0, D })
-    Face(0.09, 0.08, 0.11, 1, -6, { 0, H, 0 }, { 0, H, D }, { 0, 0, D }, { 0, 0, 0 })
-    Face(0.09, 0.08, 0.11, 1, -6, { W, H, D }, { W, H, 0 }, { W, 0, 0 }, { W, 0, D })
-    Face(0.17, 0.08, 0.09, 1, -5, { 0, 0, D }, { W, 0, D }, { W, 0, 0 }, { 0, 0, 0 })
-    Face(0.02, 0.01, 0.01, 1, -4, { 0, 0, CZ }, { CX, 0, CZ }, { CX, 0, 0 }, { 0, 0, 0 })
-    for x = 60, W - 1, 60 do  -- (faint lines on the floor, for depth)
-        local l = view:CreateLine(nil, "BACKGROUND", nil, -3)
-        l:SetThickness(1)
-        l:SetColorTexture(1, 1, 1, 0.05)
-        local ax, ay = P(x, 0, x < CX and CZ or 0)
-        local bx, by = P(x, 0, D)
-        Line(l, ax, ay, bx, by)
-    end
-    for z = 60, D - 1, 60 do
-        local l = view:CreateLine(nil, "BACKGROUND", nil, -3)
-        l:SetThickness(1)
-        l:SetColorTexture(1, 1, 1, 0.05)
-        local ax, ay = P(z < CZ and CX or 0, 0, z)
-        local bx, by = P(W, 0, z)
-        Line(l, ax, ay, bx, by)
-    end
-    local prize = Text(view, 13, { 0.95, 0.76, 0.3 })
-    local px, py = P(CX / 2, 0, CZ / 2)
-    prize:SetPoint("CENTER", view, "TOPLEFT", px, -py)
-    prize:SetText("PRIZE")
+    -- The painted bed and brass rear structure are baked at the same projection.
+    local hole=view:CreateTexture(nil,"BACKGROUND",nil,-4)
+    hole:SetColorTexture(.015,.009,.007,1)
+    Quad(hole,{0,0,K.CZ},{K.CX,0,K.CZ},{K.CX,0,0},{0,0,0})
     -- the claw (lines on a frame of its own, sorted in among the capsules)
     local cl = CreateFrame("Frame", nil, view)
     cl:SetAllPoints()
-    local function NewLine(thick, r, g, b, a)
-        local l = cl:CreateLine(nil, "ARTWORK")
-        l:SetThickness(thick)
-        l:SetColorTexture(r, g, b, a or 1)
-        return l
+    cl.cable=Part(cl,0,1,224/256,240/256,"ARTWORK",-2)
+    cl.upper,cl.lower,cl.joints={},{},{}
+    for k=1,3 do
+        cl.upper[k]=Part(cl,0,1,.5,160/256,"ARTWORK",0)
+        cl.lower[k]=Part(cl,0,1,.5,160/256,"ARTWORK",1)
+        cl.joints[k]=Part(cl,.5,1,0,.5,"OVERLAY",0)
     end
-    cl.cable = NewLine(2, 0.78, 0.71, 0.54)
-    cl.upper, cl.lower = {}, {}
-    for k = 1, 3 do cl.upper[k] = NewLine(3, 0.9, 0.83, 0.64) cl.lower[k] = NewLine(3, 0.9, 0.83, 0.64) end
-    cl.head = cl:CreateTexture(nil, "OVERLAY")
-    cl.head:SetTexture(ROUND)
-    view.claw = cl
-    -- the gantry: two brass rails along the side walls' tops (still), and the moving parts (Draw places them)
-    local gw = CreateFrame("Frame", nil, view)
-    gw:SetAllPoints()
-    local function Brass(r, g, b, sub)
-        local t = gw:CreateTexture(nil, "ARTWORK", nil, sub)
-        t:SetTexture(WHITE)
-        t:SetVertexColor(r, g, b, 1)
-        return t
-    end
-    local function Block(sub) return { top = Brass(0.83, 0.66, 0.33, sub + 1), front = Brass(0.47, 0.34, 0.16, sub) } end
-    local gy = K.H - 4
-    for _, x in ipairs({ 0, K.W - 10 }) do
-        local inner = x == 0 and 10 or K.W - 10
-        Quad(Brass(0.72, 0.56, 0.28, 0), { x, gy, K.D }, { x + 10, gy, K.D }, { x + 10, gy, 0 }, { x, gy, 0 })
-        Quad(Brass(0.36, 0.26, 0.12, -1), { inner, gy, 0 }, { inner, gy, K.D }, { inner, gy - 8, K.D }, { inner, gy - 8, 0 })
-    end
-    gw.bar, gw.left, gw.right, gw.cart = Block(2), Block(4), Block(4), Block(6)
-    view.gantry = gw
+    cl.head=Part(cl,0,.5,0,.5,"OVERLAY",1)
+    cl.glow=cl:CreateTexture(nil,"BACKGROUND") cl.glow:SetTexture(GLOW)
+    cl.glow:SetVertexColor(1,.76,.3) cl.glow:SetBlendMode("ADD") cl.glow:SetAlpha(0)
+    view.claw=cl
+    local gw=CreateFrame("Frame",nil,view) gw:SetAllPoints()
+    gw.rail=Part(gw,0,1,.5,160/256,"ARTWORK",0)
+    gw.carriage=Part(gw,0,1,160/256,224/256,"OVERLAY",0)
+    view.gantry=gw
     local sh = CreateFrame("Frame", nil, view)
     sh.tex = sh:CreateTexture(nil, "ARTWORK")
     sh.tex:SetTexture(ROUND)
@@ -822,113 +730,79 @@ local function Build()
     -- in front of everything: the chute's glass walls, the marquee
     local front = CreateFrame("Frame", nil, view)
     front:SetAllPoints()
-    local function Glass(p1, p2, p3, p4)
-        local t = front:CreateTexture(nil, "ARTWORK")
-        t:SetTexture(WHITE)
-        t:SetVertexColor(0.78, 0.9, 1, 0.1)
-        Quad(t, p1, p2, p3, p4)
-        local pts = { p1, p2, p3, p4 }
-        for i = 1, 4 do
-            local a, b = pts[i], pts[i % 4 + 1]
-            local l = front:CreateLine(nil, "OVERLAY")
-            l:SetThickness(1.5)
-            l:SetColorTexture(0.78, 0.9, 1, 0.5)
-            local ax, ay = P(a[1], a[2], a[3])
-            local bx, by = P(b[1], b[2], b[3])
-            Line(l, ax, ay, bx, by)
-        end
-    end
-    Glass({ CX, K.BH, 0 }, { CX, K.BH, CZ }, { CX, 0, CZ }, { CX, 0, 0 })
-    Glass({ 0, K.BH, CZ }, { CX, K.BH, CZ }, { CX, 0, CZ }, { 0, 0, CZ })
-    view.marquee = Text(front, 26)
-    view.marquee:SetPoint("TOP", 0, -8)
-    view.front = front
-    local frame = panel:CreateTexture(nil, "BORDER")  -- (a gold rim round the glass)
-    frame:SetColorTexture(0.79, 0.63, 0.29, 1)
-    frame:SetPoint("TOPLEFT", view, "TOPLEFT", -3, 3)
-    frame:SetPoint("BOTTOMRIGHT", view, "BOTTOMRIGHT", 3, -3)
+    local facade=front:CreateTexture(nil,"ARTWORK")
+    facade:SetAllPoints()
+    facade:SetTexture("Interface\\AddOns\\SOLC\\Media\\GamesRoom\\ClawForeground.blp")
+    view.marquee = Text(front,22)
+    view.marquee:SetPoint("TOP",0,-22)
+    view.marquee:Hide()
+    view.front=front
 
     -- the right side: points, buttons, CLAW POWER, what happened, what you've won
-    local x0 = 16 + K.VW + 18
-    panel.points = Text(panel, 20, { 0.95, 0.76, 0.3 })
-    panel.points:SetPoint("TOPLEFT", x0, -18)
-    panel.insert = Btn(panel, 150, 30, ("Insert %d"):format(K.PRICE), Insert)
-    panel.insert:SetPoint("TOPLEFT", x0, -50)
-    panel.smash = Btn(panel, 110, 30, "SMASH", Smash)
-    panel.smash:SetPoint("LEFT", panel.insert, "RIGHT", 6, 0)
-    panel.right = HoldBtn(panel, "RIGHT", "RIGHT")
-    panel.right:SetPoint("TOPLEFT", x0, -88)
-    panel.up = HoldBtn(panel, "UP", "UP")
-    panel.up:SetPoint("LEFT", panel.right, "RIGHT", 6, 0)
-    panel.drop = Btn(panel, 110, 30, "Drop", Drop)
-    panel.drop:SetPoint("LEFT", panel.up, "RIGHT", 6, 0)
-    local help = Text(panel, 12, { 0.73, 0.65, 0.51 })
-    help:SetPoint("TOPLEFT", x0, -126)
-    help:SetWidth(240)
-    help:SetJustifyH("LEFT")
-    help:SetText("Keys: Enter pays. Hold Right, let go; hold Up, letting go drops the claw. S smashes - each smash is riskier, a TILT loses the go and puts the lights out.")
-    local powerLabel = Text(panel, 15, { 0.79, 0.63, 0.29 })
-    powerLabel:SetPoint("TOPLEFT", x0, -200)
-    powerLabel:SetText("CLAW POWER")
-    panel.lights = {}
-    for i = 1, 5 do
-        local l = panel:CreateTexture(nil, "ARTWORK")
-        l:SetTexture(ROUND)
-        l:SetSize(22, 22)
-        l:SetPoint("TOPLEFT", x0 + (i - 1) * 30, -224)
-        panel.lights[i] = l
+    local x0=K.VW+16
+    local shade=panel:CreateTexture(nil,"BACKGROUND",nil,-7)
+    shade:SetColorTexture(.015,.035,.025,.88)
+    shade:SetPoint("TOPLEFT",K.VW,0) shade:SetPoint("BOTTOMRIGHT")
+    local room=Btn(panel,88,26,"< Room",function() shell:Hide() end)
+    room:SetPoint("TOPLEFT",x0,-12)
+    local title=Text(panel,26,{.95,.76,.4}) title:SetPoint("TOPLEFT",x0,-52) title:SetText("THE CLAW")
+    panel.points=Text(panel,22,{.95,.8,.48}) panel.points:SetPoint("TOPLEFT",x0,-90)
+    panel.lights={}
+    for i=1,5 do
+        local light=panel:CreateTexture(nil,"ARTWORK") light:SetTexture(ROUND)
+        light:SetSize(15,15) light:SetPoint("TOPLEFT",x0+(i-1)*24,-123) panel.lights[i]=light
     end
-    panel.timer = Text(panel, 14)
-    panel.timer:SetPoint("TOPLEFT", x0, -258)
-    panel.msg = Text(panel, 15)
-    panel.msg:SetPoint("TOPLEFT", x0, -284)
-    panel.msg:SetWidth(240)
-    panel.msg:SetJustifyH("LEFT")
-    panel.msg:SetText(S.msg)
-    panel.won = Text(panel, 12)
-    panel.won:SetPoint("TOPLEFT", x0, -360)
-    panel.won:SetWidth(240)
-    panel.won:SetJustifyH("LEFT")
-    panel.stat = Text(panel, 11, { 0.6, 0.55, 0.45 })
-    panel.stat:SetPoint("BOTTOMLEFT", x0, 40)
-    local reset = Btn(panel, 120, 22, "Refill (test)", function()
-        wipe(owned) S.points = math.max(S.points, 3000) S.meter = 0 S.state, S.go = "idle", nil Fill() Say("Refilled.")
-    end)
-    reset:SetPoint("BOTTOMRIGHT", -14, 12)
+    panel.insert=Btn(panel,250,30,("Insert %d"):format(K.PRICE),Insert) panel.insert:SetPoint("TOPLEFT",x0,-155)
+    panel.right=HoldBtn(panel,"Hold RIGHT","RIGHT") panel.right:SetSize(122,28) panel.right:SetPoint("TOPLEFT",x0,-190)
+    panel.up=HoldBtn(panel,"Hold UP","UP") panel.up:SetSize(122,28) panel.up:SetPoint("LEFT",panel.right,"RIGHT",6,0)
+    panel.msg=Text(panel,16) panel.msg:SetPoint("TOPLEFT",x0,-236) panel.msg:SetWidth(250) panel.msg:SetJustifyH("LEFT") panel.msg:SetText(S.msg)
+    panel.timer=Text(panel,13) panel.timer:SetPoint("TOPLEFT",x0,-294) panel.timer:SetWidth(250)
+    local help=Text(panel,13,{.76,.68,.52}) help:SetPoint("TOPLEFT",x0,-326) help:SetWidth(250) help:SetJustifyH("LEFT")
+    help:SetText("Hold Right, then release.\nHold Up, then release to drop.\n\nEnter pays. SMASH shakes the cabinet.")
+    panel.smash=Btn(panel,120,28,"SMASH",Smash) panel.smash:SetPoint("TOPLEFT",x0,-425)
+    panel.drop=Btn(panel,120,28,"Drop",Drop) panel.drop:SetPoint("LEFT",panel.smash,"RIGHT",6,0)
+    panel.won=Text(panel,12) panel.won:SetPoint("TOPLEFT",x0,-466) panel.won:SetWidth(250) panel.won:SetHeight(52) panel.won:SetJustifyH("LEFT")
+    panel.stat=Text(panel,11,{.6,.55,.45}) panel.stat:SetPoint("BOTTOMLEFT",x0,16)
 
     panel:EnableKeyboard(true)
     local KEYS = { RIGHT = true, UP = true }
     panel:SetScript("OnKeyDown", function(self, key)
-        local mine = KEYS[key] or key == "S" or key == "ENTER"
+        local mine = KEYS[key] or key == "ENTER" or key == "ESCAPE"
         if not InCombatLockdown() then self:SetPropagateKeyboardInput(not mine) end
         if KEYS[key] then S.keys[key] = true
-        elseif key == "S" then Smash()
-        elseif key == "ENTER" then Insert() end
+        elseif key == "ENTER" then Insert()
+        elseif key == "ESCAPE" then shell:Hide() end
     end)
     panel:SetScript("OnKeyUp", function(_, key) if KEYS[key] then S.keys[key] = nil end end)
+    ns.UI.CombatSafeKeys(panel)
     panel:SetScript("OnUpdate", OnUpdate)
-    Fill()
 end
 
--- Opens it in the window's page area, like Plinko (dev characters only for now: Core.lua).
+-- Opens it in the window's page area (the Games Room's claw machine).
 function ns.ShowClaw()
     if not panel then Build() end
+    -- (between goes: the pile as your unlocks are now, and your lights)
+    if S.state == "idle" then
+        S.meter = KillTrackerDB.claw and KillTrackerDB.claw.meter or 0
+        Fill()
+        if #caps == 0 then Say("The machine is empty: you have them all!") end
+    end
     local pageArea = ns.UI and ns.UI.pageArea
-    panel:ClearAllPoints()
+    shell:ClearAllPoints()
     if pageArea then
         if not pageArea:IsVisible() then ns.ToggleUI() end
-        panel:SetParent(pageArea)
-        panel:SetAllPoints(pageArea)
-        panel:SetFrameStrata(pageArea:GetFrameStrata())
-        panel:SetFrameLevel(pageArea:GetFrameLevel() + 50)
+        shell:SetParent(pageArea)
+        shell:SetAllPoints(pageArea)
+        shell:SetFrameStrata(pageArea:GetFrameStrata())
+        shell:SetFrameLevel(pageArea:GetFrameLevel() + 50)
     else
-        panel:SetParent(UIParent)
-        panel:SetSize(827, 584)
-        panel:SetPoint("CENTER")
-        panel:SetFrameStrata("DIALOG")
+        shell:SetParent(UIParent)
+        shell:SetSize(827, 584)
+        shell:SetPoint("CENTER")
+        shell:SetFrameStrata("DIALOG")
     end
-    panel:Show()
+    shell:Show()
     Wake()
     Draw()
-    if ns.UI.SetScreen then ns.UI.SetScreen("Claw", "CLAW", function() panel:Hide() end) end
+    if ns.UI.SetScreen then ns.UI.SetScreen("Claw", "CLAW", function() shell:Hide() end) end
 end

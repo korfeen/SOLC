@@ -48,7 +48,7 @@ console.log("Wrote " + OUT + " and " + PREVIEW);
 
 // The room until the shop floor is repainted: the concept painting (tools/proshop-mock/img/scene1.png, 827 x 584, the
 // page's size) in the top-left of a 1024 square (ProShopRoom.lua shows that part): Media/ProShop/Room.blp.
-const SCENE = path.join(__dirname, "proshop-mock", "img", "scene1.png");
+const SCENE = path.join(__dirname, "proshop-mock", "img", "scene3.png");  // (repainted 2026-11-01: tools/gen-proshop-room.js)
 const scene = decodePng(SCENE), room = Buffer.alloc(1024 * 1024 * 4);
 for (let y = 0; y < scene.height; y++) scene.rgba.copy(room, y * 1024 * 4, y * scene.width * 4, (y + 1) * scene.width * 4);
 writeBlp(path.join(path.dirname(OUT), "Room.blp"), 1024, 1024, room);
@@ -78,3 +78,35 @@ const blurRoom = Buffer.alloc(1024 * 1024 * 4);
 for (let y = 0; y < scene.height; y++) blurred.copy(blurRoom, y * 1024 * 4, y * scene.width * 4, (y + 1) * scene.width * 4);
 writeBlp(path.join(path.dirname(OUT), "Room-blur.blp"), 1024, 1024, blurRoom);
 console.log("Wrote Room-blur.blp");
+
+// The room's front (Media/ProShop/RoomFront.blp, laid like Room.blp): the counter and the till on it, cut out of the
+// painting, the rest see-through - drawn over the steward (ProShopRoom.lua: one of our ogres, standing behind them).
+// The counter: from its top board down (FRONT.counter); the till: its display and body whole (boxes), the thin crank on
+// its left by its brass (warm, colourful, bright pixels), gaps closed, and its wooden base. Painting pixels.
+// (2026-11-02: the till traced by hand round its real shape instead - display, body, crank, base - edges soft.)
+const FRONT = { counter: { x0: 252, x1: 578, y0: 319 },
+  till: [[490, 236], [494, 231], [545, 231], [548, 236], [548, 252], [553, 256], [556, 262], [555, 303], [559, 306], [559, 321],
+    [465, 321], [465, 312], [470, 306], [462, 296], [461, 289], [470, 283], [472, 268], [478, 264], [482, 256], [489, 251]] };
+const inside = (poly, x, y) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j];
+  if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c; } return c; };
+const front = Buffer.alloc(1024 * 1024 * 4), on = new Uint8Array(scene.width * scene.height);
+const hueSat = (r, g, b) => {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [(h * 60 + 360) % 360, mx ? d / mx : 0, mx / 255];
+};
+// (each pixel: how much of it is the counter or the till, 4x4 samples - soft edges)
+for (let y = 0; y < scene.height; y++) for (let x = 0; x < scene.width; x++) {
+  let n = 0;
+  for (let sy = 0; sy < 4; sy++) for (let sx = 0; sx < 4; sx++) {
+    const px = x + (sx + 0.5) / 4, py = y + (sy + 0.5) / 4, c = FRONT.counter;
+    if ((px >= c.x0 && px <= c.x1 && py >= c.y0) || inside(FRONT.till, px, py)) n++;
+  }
+  if (!n) continue;
+  scene.rgba.copy(front, (y * 1024 + x) * 4, (y * scene.width + x) * 4, (y * scene.width + x) * 4 + 4);
+  front[(y * 1024 + x) * 4 + 3] = Math.round((n / 16) * 255);
+}
+writeBlp(path.join(path.dirname(OUT), "RoomFront.blp"), 1024, 1024, front);
+writePng(path.join(path.dirname(PREVIEW), "room-front.png"), 1024, 1024, front);
+console.log("Wrote RoomFront.blp");

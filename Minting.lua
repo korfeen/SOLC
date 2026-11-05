@@ -9,13 +9,6 @@
 
 local _, ns = ...
 
--- The price of a mint: the guild's setting (Config.lua), less your rank's discount (Ranks.lua); each picture remembers
--- what it cost.
-function ns.MintCost()
-    local discount = ns.RankPerk and ns.RankPerk("discount") or 0
-    return math.max(1, math.floor(ns.Config("mintCost") * (1 - discount) + 0.5))
-end
-
 -- Four rarities; there is no common (uncommon is the everyday tier).
 local RARITY_WEIGHTS = { uncommon = 25, rare = 10, epic = 4, legendary = 1 }
 ns.MINT_WEIGHTS = RARITY_WEIGHTS
@@ -144,11 +137,15 @@ end
 -- Whether you have this frame (nil: free), and how to get it if not.
 function ns.FrameUnlocked(frame)
     local unlock = frame and frame.unlock
-    if not unlock or (ns.IsDev and ns.IsDev()) then return true end  -- (dev characters: all of them, to try)
+    if not unlock then return true end
+    -- (dev characters: all of them, to try - but the Pro Shop's, so buying them can be tested: 2026-11-02, for now)
+    if ns.IsDev and ns.IsDev() and not unlock:find("^shop:") then return true end
     local rank = unlock:match("^rank:(%d+)$")
     if rank then return ns.GetRank().rank >= tonumber(rank), ("Ogre Rank %s"):format(rank) end
     local deed = unlock:match("^deed:(.+)$")
     if deed then return (KillTrackerDB.achievements or {})[deed] ~= nil, "A deed" end
+    local shop = unlock:match("^shop:(.+)$")  -- (bought in the Pro Shop: ProShop.lua)
+    if shop then return (KillTrackerDB.frames or {})[shop] ~= nil, "The Pro Shop" end
     return false
 end
 function ns.SetMintFrame(mint, id)
@@ -293,17 +290,19 @@ function ns.ShowMintTale(canvas, mint, on)
     return true
 end
 
--- A picture drawn on canvas in its owner's chosen style and frame, redrawn only when its traits, style or frame changed.
+-- A picture drawn on canvas in its owner's chosen style and frame, redrawn only when its traits, style, frame or size
+-- changed (its pieces are placed in pixels: a bigger canvas needs them placed again).
 function ns.DrawMint(canvas, mint, tilt)
     local style = ns.MintStyle(mint)
     local key = ns.StyleKey(style)
     if canvas.drawnTraits == mint.traits and canvas.drawnStyle == key and canvas.drawnTilt == tilt
-        and canvas.drawnFrame == mint.frame then return end
+        and canvas.drawnFrame == mint.frame and canvas.drawnSize == canvas:GetWidth() then return end
     local target = Framed(canvas, mint)
     if target ~= canvas then ns.RenderMint(canvas, {}, tilt) end  -- (framed: the canvas's own layers cleared)
     ns.RenderMint(target, mint.traits, tilt, style)
     if canvas.framing and target ~= canvas then canvas.framing.tex:SetRotation(-math.rad(tilt or 0)) end
     canvas.drawnTraits, canvas.drawnStyle, canvas.drawnTilt, canvas.drawnFrame = mint.traits, key, tilt, mint.frame
+    canvas.drawnSize = canvas:GetWidth()
 end
 
 local function FindOption(layer, id)
@@ -312,18 +311,15 @@ local function FindOption(layer, id)
     end
 end
 
--- Your rank's luck while you mint (Ranks.lua): epic and legendary options weigh this much more. 1 otherwise (an
--- officer's mint battle rolls without it).
+-- Your rank's luck while you mint (Ranks.lua): epic and legendary options weigh this much more. 1 otherwise (the
+-- duel bot's random picture rolls without it).
 local luck = 1
 local LUCKY = { epic = true, legendary = true }
--- A dream being minted (ns.DreamMint): { milk = 0..3, asked = layer key, id = the bedtime story's piece }, else nil.
--- Each mug of Warm Milk weighs the rarer pieces more (MILK_LUCK: per mug, by rarity).
+-- A dream being minted (ns.DreamMint): { asked = layer key, id = the bedtime story's piece }, else nil.
 local dream
-local MILK_LUCK = { rare = 0.4, epic = 0.8, legendary = 1 }
 local function Weight(option)
     local weight = option.weight or RARITY_WEIGHTS[option.rarity]
     if LUCKY[option.rarity] then weight = weight * luck end
-    if dream and MILK_LUCK[option.rarity] then weight = weight * (1 + MILK_LUCK[option.rarity] * dream.milk) end
     return weight
 end
 
@@ -495,36 +491,15 @@ local function RollFree(taken)
     if possible <= 100000 then return PickUnowned(taken) end
 end
 
--- Rolls and saves a new picture nobody in your guild owns yet. Returns the mint, or nil and why not.
-function ns.Mint()
-    local db = KillTrackerDB
-    local balance, cost = ns.GetPoints().balance, ns.MintCost()
-    if balance < cost then
-        return nil, ("Not enough points (%d of %d)."):format(balance, cost)
-    end
-    luck = ns.RankPerk and ns.RankPerk("luck") or 1
-    local traits = RollFree(TakenPictures())
-    luck = 1
-    if not traits then return nil, "Every possible picture is already taken." end
-    db.points.spent = db.points.spent + cost
-    local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = cost, crayon = true }
-    db.mints[#db.mints + 1] = mint
-    ns.LearnTraits(mint.traits)  -- (your ogre can wear them now, for good)
-    ns.Touch(mint)  -- syncs it to guildmates
-    if ns.AddEvent then ns.AddEvent("M", mint.number) end
-    if ns.CheckAchievements then ns.CheckAchievements() end
-    return mint
-end
-
--- The Dream Bed's mint (DreamBed.lua): the ogre dreams it, you paint it. milk: mugs of Warm Milk (0..3: luck);
--- story: { layer, id } the bedtime story asked about (its piece for sure; Bedtime Stories by its rarity, STORY_COST), or
--- nil. The edition is rolled too (EDITION_ODDS: crayon the rarest; each mug makes both likelier) and fixed: mint.asked,
+-- The Dream Bed's mint (DreamBed.lua): the ogre dreams it, you paint it. story: { layer, id } the bedtime story asked
+-- about (its piece for sure; Bedtime Stories by its rarity, STORY_COST), or nil. The edition is rolled too
+-- (EDITION_ODDS, percent: crayon the rarest) and fixed: mint.asked,
 -- mint.paintedBy (you), mint.crayon = false (no switching). Ogres go to sleep by bonking their heads: every dream
 -- costs a Bonk (no points). Returns the mint, or nil and why not.
 ns.STORY_COST = { uncommon = 1, rare = 2, epic = 3, legendary = 5 }
-local EDITION_ODDS = { crayon = { 4, 2 }, sketch = { 10, 3 } }  -- { percent, + percent per mug }
+local EDITION_ODDS = { crayon = 4, sketch = 10 }
 -- Bonks come back one a day (at the daily reset), piling up to BONK_CAP while you're away; Bonks won elsewhere (chests,
--- bounties, plinko, Ogre Rank) go past it. KillTrackerDB.bonkDay: the last day counted. Call before showing the count.
+-- bounties, Ogre Rank) go past it. KillTrackerDB.bonkDay: the last day counted. Call before showing the count.
 local BONK_CAP = 3
 ns.BONK_CAP = BONK_CAP
 function ns.TopUpBonks()
@@ -542,12 +517,11 @@ function ns.BonksLine()
     local n = ns.Bonks()
     return ("One Bonk in the Dream Bed. You have %d%s"):format(n, n < BONK_CAP and " (one comes back each day)" or "")
 end
-function ns.DreamMint(milk, story)
+function ns.DreamMint(story)
+    ns.PixCollectionEntries()
     local db = KillTrackerDB
-    milk = math.max(0, math.min(3, milk or 0))
     ns.TopUpBonks()
     if ns.Tokens("bonk") < 1 then return nil, "No Bonks left. One comes back each day." end
-    if milk > ns.Tokens("milk") then return nil, "Not enough Warm Milk." end
     local storyCost, storyOption = 0, nil
     if story then
         for _, layer in ipairs(ns.MintLayers) do
@@ -558,22 +532,22 @@ function ns.DreamMint(milk, story)
         if storyCost > ns.Tokens("story") then return nil, "Not enough Bedtime Stories." end
     end
     luck = ns.RankPerk and ns.RankPerk("luck") or 1
-    dream = { milk = milk, asked = story and story.layer, id = story and story.id }
+    dream = { asked = story and story.layer, id = story and story.id }
     local traits = RollFree(TakenPictures())
     luck, dream = 1, nil
     if not traits then return nil, "Every possible picture is already taken." end
     local spend = {}
-    if milk > 0 then spend.milk = milk end
     if storyCost > 0 then spend.story = storyCost end
     spend.bonk = 1
     ns.SpendTokens(spend)
     local roll, edition = math.random() * 100, nil
-    if roll < EDITION_ODDS.crayon[1] + EDITION_ODDS.crayon[2] * milk then edition = "crayon"
-    elseif roll < EDITION_ODDS.crayon[1] + EDITION_ODDS.sketch[1] + (EDITION_ODDS.crayon[2] + EDITION_ODDS.sketch[2]) * milk then edition = "sketch" end
+    if roll < EDITION_ODDS.crayon then edition = "crayon"
+    elseif roll < EDITION_ODDS.crayon + EDITION_ODDS.sketch then edition = "sketch" end
     local mint = { number = ns.NextMintNumber(), traits = traits, time = time(), cost = 0, crayon = false, style = edition,
-        asked = story and story.layer, paintedBy = ns.MyName and Ambiguate(ns.MyName(), "short") or nil, milk = milk }
+        asked = story and story.layer, paintedBy = ns.MyName and Ambiguate(ns.MyName(), "short") or nil }
     db.mints[#db.mints + 1] = mint
     ns.LearnTraits(mint.traits)
+    ns.RecordCollectionMint(mint)
     ns.Touch(mint)  -- syncs it to guildmates
     if ns.AddEvent then ns.AddEvent("M", mint.number) end
     if ns.CheckAchievements then ns.CheckAchievements() end
@@ -591,45 +565,7 @@ function ns.NextMintNumber()
     return highest + 1
 end
 
--- Gives away your picture (won in a puzzle race, see SOLC Puzzle): removes it from your pictures and your
--- showcase, and records the removal so guildmates drop it too (Sync.lua). Returns its traits, or nil.
-function ns.RemoveMint(number)
-    local db = KillTrackerDB
-    for i, mint in ipairs(db.mints) do
-        if mint.number == number then
-            table.remove(db.mints, i)
-            local showcase = db.showcase
-            if showcase then
-                for j, n in ipairs(showcase.numbers) do
-                    if n == number then table.remove(showcase.numbers, j) ns.Touch(showcase) break end
-                end
-            end
-            db.removedMints = db.removedMints or {}  -- [number] = change number of the removal
-            db.seq = db.seq + 1
-            db.removedMints[number] = db.seq
-            if ns.OnKillsChanged then ns.OnKillsChanged() end
-            return mint.traits
-        end
-    end
-end
-
--- Adds a picture you won (from another player or an officer's mint battle) under your next number.
--- mintedAt: when it was first minted (kept, so it isn't taken for a later duplicate); now if new.
-function ns.AddWonMint(traits, from, mintedAt)
-    local db = KillTrackerDB
-    local copy = {}
-    for key, id in pairs(traits) do copy[key] = id end
-    local mint = { number = ns.NextMintNumber(), traits = copy, time = mintedAt or time(), cost = 0, wonFrom = from }
-    db.mints[#db.mints + 1] = mint
-    ns.LearnTraits(mint.traits)  -- (your ogre can wear them now, for good)
-    ns.Touch(mint)  -- syncs it to guildmates
-    if ns.AddEvent then ns.AddEvent("W", mint.number, from) end
-    if ns.CheckAchievements then ns.CheckAchievements() end
-    if ns.OnKillsChanged then ns.OnKillsChanged() end
-    return mint
-end
-
--- Rolls a picture nobody in the guild owns yet, without saving it (for an officer's mint battle).
+-- Rolls a picture nobody in the guild owns yet, without saving it (the puzzle's practice bot puts one up).
 function ns.RollFreePicture()
     return RollFree(TakenPictures())
 end
@@ -656,11 +592,13 @@ end
 
 -- Free reroll of a duplicate: a new picture nobody has, keeping its number.
 function ns.RerollMint(mint)
+    ns.PixCollectionEntries()
     if not mint.duplicateOf then return nil, "Only duplicates can be rerolled." end
     local traits = RollFree(TakenPictures(mint))
     if not traits then return nil, "Every possible picture is already taken." end
     mint.traits, mint.time, mint.duplicateOf = traits, time(), nil
     ns.LearnTraits(traits)
+    ns.RecordCollectionMint(mint)
     ns.Touch(mint)
     return mint
 end
@@ -1004,37 +942,10 @@ function ns.ConfirmReroll(mint)
     StaticPopup_Show("SOLC_REROLL", mint.duplicateOf, nil, mint)
 end
 
-StaticPopupDialogs["SOLC_MINT"] = {
-    text = "Mint a new picture for %d points?",
-    button1 = YES or "Yes",
-    button2 = NO or "No",
-    OnAccept = function() ns.DoMint() end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-}
-
--- Mints and plays the reel (MintReel.lua: it reveals the picture layer by layer and announces it). Returns the mint,
--- or nil (and says why).
-function ns.DoMint()
-    local mint, reason = ns.Mint()
-    if not mint then
-        ns.Print(reason)
-        return
-    end
-    if ns.OnKillsChanged then ns.OnKillsChanged() end
-    ns.PlayMintReel(mint)
-    return mint
-end
-
--- Minting happens in the Dream Bed (DreamBed.lua); a popup asks if it isn't there.
+-- Minting happens in the Dream Bed (DreamBed.lua).
 function ns.ConfirmMint()
-    if ns.ShowDreamBed then
-        local ok, err = pcall(ns.ShowDreamBed)
-        if ok then return end
-        ns.Print("|cffff5555The Dream Bed broke:|r " .. tostring(err))  -- (say so, rather than skip it quietly)
-    end
-    StaticPopup_Show("SOLC_MINT", ns.MintCost())
+    local ok, err = pcall(ns.ShowDreamBed)
+    if not ok then ns.Print("|cffff5555The Dream Bed broke:|r " .. tostring(err)) end  -- (say so, rather than skip it quietly)
 end
 
 -- Showcase: up to SHOWCASE_SIZE of your pictures on your Overview, synced to guildmates (Sync.lua):

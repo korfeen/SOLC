@@ -6,7 +6,6 @@
 local _, ns = ...
 
 local UI = ns.UI
-local WIDTH = UI.PAGE_WIDTH
 
 -- Everyone on the guild pages: you first, then synced guildmates, as
 -- { key (nil = you), name, kills, points, pvp, pictures, bounty (posters claimed this week), updated, officer, stats }.
@@ -306,11 +305,3 @@ UI.Crafters, UI.CraftersRows = Crafters, CraftersRows  -- (FRENZ, FrenzPage.lua)
 -- The Bounty Board is CAVE's HUNTS tab (CavePage.lua).
 function ns.ToggleBountyBoard() ns.OpenPage("bounties") end
 
--- Settings -----------------------------------------------------------------------------------------
-
-ns.RegisterPage({
-    key = "settings", label = "Settings", section = "settings", order = 1,
-    create = function(parent) return ns.EmbedConfig(parent, WIDTH) end,
-    refresh = function() if ns.RefreshConfigPanel then ns.RefreshConfigPanel() end end,
-})
-function ns.ToggleConfig() ns.OpenPage("settings") end

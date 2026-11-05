@@ -42,10 +42,15 @@ UI.lua
 IconStyles.lua
 ProfileHeader.lua
 GuildPages.lua
+Settings.lua
+WallpaperData.lua
+Wallpaper.lua
 OverviewCard.lua
 FeedDetail.lua
 Gallery.lua
 SmashPage.lua
+PixCollectionData.lua
+PixCollection.lua
 PixPage.lua
 Chests.lua
 Dev.lua
@@ -53,8 +58,8 @@ Tribute.lua
 DMSay.lua
 DreamBedArt.lua
 DreamBed.lua
-Plinko.lua
 ClawMachine.lua
+ArcadeMachine.lua
 Couronne.lua
 HuntsBoard.lua
 StewardLines.lua
@@ -65,3 +70,7 @@ CavePage.lua
 FrenzPage.lua
 Minimap.lua
 API.lua
+GamesRoomGlows.lua
+GamesRoom.lua
+Onboarding.lua
+UnknownMobs.lua

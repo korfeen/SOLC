@@ -22,6 +22,10 @@ const FRAMES = [
   { id: "gilded", name: "Gilded", unlock: "rank:12" },
   { id: "bone", name: "Bone and Tusk", unlock: "rank:20" },
   { id: "dungeon", name: "Dungeon Iron", unlock: "rank:8" },
+  // (the Pro Shop's, sold for points: ProShop.lua)
+  { id: "club_tartan", name: "Club Tartan", unlock: "shop:club_tartan" },
+  { id: "fairway_walnut", name: "Fairway Walnut", unlock: "shop:fairway_walnut" },
+  { id: "velvet_gilt", name: "Velvet & Gilt", unlock: "shop:velvet_gilt" },
 ];
 const r4 = (v) => Math.round(v * 10000) / 10000;
 

@@ -1,9 +1,6 @@
--- Pictures (PIX), a tab of the Guild page (under the window: Guild | Pictures): the guild's gallery and the shop. Your
--- own pictures live on your Overview (its gallery, Gallery.lua: minting, chests, your showcase and photo); a guildmate's
--- picture opened anywhere (ns.ShowMint) opens here. The key gallery opens it too. A split page
--- (ProfileHeader.lua: the profile header over the left page, the middle beam).
--- Left: tabs. GUILD: everyone's pictures, newest first, with whose. SHOP: the Collection's rows (minting, the
--- collectibles, the points and where they came from, saved paintings), in the Overview feed's style.
+-- Pictures (PIX), a tab of the Guild page (under the window: Guild | Pictures): everyone's pictures, newest first, with
+-- whose; a guildmate's picture opened anywhere (ns.ShowMint) opens here. The key gallery opens it too. A split page
+-- (ProfileHeader.lua: the profile header over the left page, the middle beam). (Your own: the Overview's INVENTORY.)
 -- Right: the picked picture filling the page (a Dream Bed picture: click it to turn it over and read its dream), its
 -- owner on the cross beam under it, its rarity under that; then
 -- its traits (on your own with the crayon edition: click one to draw it painted, in crayon or sketched), and buttons:
@@ -23,9 +20,8 @@ local GOLD = { 1, 0.85, 0.1 }
 local HOVER_COLOR = { 0.65, 0.53, 0.28 }
 local PLATE, PLATE_LIT = { 0.3, 0.22, 0.12 }, { 0.65, 0.53, 0.28 }
 
-local TABS = {  -- { key, label, ogre word }
-    { "guild", "GUILD", "CLAN" },
-    { "shop", "SHOP", "SHOP" },
+local KINDS = {  -- each page's tabs: { key, label, ogre word }
+    collection = { { "guild", "GUILD", "CLAN" } },
 }
 local TAB_FOR_PAGE = { gallery = "guild" }
 
@@ -74,7 +70,6 @@ local function GuildPictures()
     table.sort(list, function(a, b) return (a.mint.time or 0) > (b.mint.time or 0) end)
     return list
 end
-
 -- A flat wooden-looking button: plate:Set(text, enabled), its click and tooltip set by the caller.
 local function Plate(parent, w, h)
     local button = CreateFrame("Button", nil, parent)
@@ -96,8 +91,9 @@ local function Plate(parent, w, h)
     return button
 end
 
--- The page frame's own parts, made in create.
+-- The page being drawn (PIX or the Inventory: the one refreshed last, the one showing), and both by kind.
 local page
+local pages = {}
 
 -- Picks a picture ({ mint, owner, key }) for the right page.
 local function Pick(picture)
@@ -114,18 +110,20 @@ local function DrawTiles()
         local index = first + i
         local picture = list[index]
         tile.picture = picture
-        tile:SetShown(picture ~= nil)
-        if picture then
+        tile:SetShown(picture ~= nil and not picture.blank)
+        if picture and not picture.blank then
             tile.chest:SetShown(picture.chest ~= nil)
-            if picture.chest then  -- a dungeon chest to open (Chests.lua)
+            if picture.chest then  -- a dungeon chest to open (Chests.lua), or the Ogre Godz' tribute
                 local dungeon = ns.DungeonByKey and ns.DungeonByKey(picture.chest)
+                local tribute = picture.chest == ns.TRIBUTE
                 tile.canvas:Hide()
                 tile.plus:Hide()
                 tile.border:SetVertexColor(1, 0.82, 0.25)
-                tile.caption:SetText("|cffffd100OPEN|r")
+                tile.chest:SetVertexColor(1, tribute and 0.85 or 1, tribute and 0.45 or 1)
+                tile.caption:SetText(tribute and "|cffffd100TRIBUTE!|r" or "|cffffd100OPEN|r")
                 tile.band:Show()
                 tile.tag:SetText(picture.count > 1 and ("|cffffd100x%d|r"):format(picture.count) or "")
-                tile.dungeonName = dungeon and dungeon.name or "A dungeon"
+                tile.dungeonName = tribute and "Ogre Godz tribute" or dungeon and dungeon.name or "A dungeon"
             elseif picture.mintAction then
                 tile.canvas:Hide()
                 tile.plus:Show()
@@ -150,7 +148,7 @@ local function DrawTiles()
     page.empty:SetShown(#list == 0)
 end
 
--- The SHOP tab's rows, from page.offset on.
+-- The POINTS tab's rows, from page.offset on.
 local function DrawRows()
     for i, row in ipairs(page.rows) do
         local d = page.data[page.offset + i]
@@ -170,8 +168,8 @@ local function ShowBack(on) ns.ShowMintTale(page.canvas, page.shown and page.sho
 -- The right page: the picked picture, or (nothing picked) the first in the tab.
 local function DrawPick()
     local picture = page.pick
-    if not picture then  -- the tab's first picture; on SHOP, their newest
-        for _, p in ipairs(page.tab == "shop" and PicturesOf(state.viewing) or page.pictures or {}) do
+    if not picture then  -- the tab's first picture; on POINTS, your newest
+        for _, p in ipairs(page.tab == "points" and PicturesOf(nil) or page.pictures or {}) do
             if p.mint then picture = p break end
         end
     end
@@ -179,11 +177,7 @@ local function DrawPick()
     local mint = picture and picture.mint
     page.canvas:SetShown(mint ~= nil)
     page.nothing:SetShown(mint == nil)
-    -- Nothing to hang: on yours, an invitation to mint (the whole opening is the button).
-    local invite = mint == nil and not state.viewing
-    page.invite:SetShown(invite)
-    page.nothing:SetText(invite and ("|cffffd100+ MINT A PICTURE|r\n\n%s"):format(ns.BonksLine())
-        or "No pictures here yet.")
+    page.nothing:SetText("No pictures here yet.")
     for _, row in ipairs(page.traitRows) do row:Hide() end
     for _, button in ipairs(page.buttons) do button:Hide() end
     if page.taleOf ~= mint then page.taleOf, page.reading = mint, false end
@@ -261,14 +255,380 @@ function UI.PixShow(mint, owner)
         end
     end
     local wanted = { mint = mint, owner = owner, key = key }
-    if page then
-        page.pick = wanted
-        page.tab = "guild"
-        page.offset = 0
+    local pix = pages.collection
+    if pix then
+        pix.pick = wanted
+        pix.tab = "guild"
+        pix.offset = 0
     else
         UI.pendingPix = wanted
     end
     ns.OpenPage("collection")
+end
+
+-- Builds a page of this kind ("collection": PIX).
+local function Create(parent, kind)
+    local TABS = KINDS[kind]
+    page = CreateFrame("Frame", nil, parent)
+    page:SetAllPoints()
+    page.kind, page.tab, page.offset = kind, TABS[1][1] == "go" and TABS[2][1] or TABS[1][1], 0
+    pages[kind] = page
+    if kind == "collection" and UI.pendingPix then
+        page.pick = UI.pendingPix
+        UI.pendingPix = nil
+    end
+    local W = UI.window
+    local slot, under = UI.SPLIT.left, UI.SPLIT.under
+    local function At(region, point, x, y) region:SetPoint(point, W, "TOPLEFT", x, -y) end
+    local function Ogre() return KillTrackerDB and KillTrackerDB.ogreMode end
+
+    -- The boards.
+    local book = CreateFrame("Frame", nil, page)
+    book:SetAllPoints()
+    local function Band(top, bottom, color, left, right)
+        local fill = book:CreateTexture(nil, "BACKGROUND", nil, -8)
+        At(fill, "TOPLEFT", left or under.left, top)
+        fill:SetSize((right or under.middle) - (left or under.left), bottom - top)
+        fill:SetColorTexture(unpack(color))
+        return fill
+    end
+    Band(LEFT.tabs.top - 5, LEFT.tabs.bottom, LEFT.tabs.color)
+    Band(LEFT.line.top, LEFT.line.bottom, LEFT.line.color)
+    page.tilesBoard = Band(LEFT.line.bottom, under.bottom, LEFT.tiles.color)
+    page.rowsBoard = Band(LEFT.rows.top, under.bottom, LEFT.rows.empty)
+    page.tilesPaper, page.rowsPaper = UI.WallpaperOver(page.tilesBoard), UI.WallpaperOver(page.rowsBoard)  -- (your wallpaper, darkened: Wallpaper.lua)
+    Band(under.top, under.bottom, RIGHT.color, under.middle, under.right + 20)
+
+    local left = CreateFrame("Frame", nil, page)
+    left:SetAllPoints()
+    left:SetFrameLevel(book:GetFrameLevel() + 2)
+
+    -- The tabs.
+    page.tabs = {}
+    local tabWidth = (slot.right - slot.left) / #TABS
+    for i, tab in ipairs(TABS) do
+        local button = UI.TabButton(left, slot.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
+        function button:Redraw()
+            self:SetTab(Ogre() and tab[3] or tab[2], page.tab == tab[1])
+        end
+        button:SetScript("OnClick", function()
+            UI.ClickSound()
+            if tab[1] == "go" then  -- (the Overview, on that tab)
+                ns.OpenPage("overview")
+                local overview = UI.overviewPage
+                if overview and overview.ShowPanel then overview.ShowPanel(tab[4] or nil) end
+                return
+            end
+            page.tab, page.offset, page.pick = tab[1], 0, nil
+            ns.OpenPage(state.page)
+        end)
+        page.tabs[i] = button
+    end
+    page.line = left:CreateFontString(nil, "OVERLAY")
+    page.line:SetFont(NAME_FONT, LEFT.line.size, "")
+    page.line:SetTextColor(unpack(CREAM))
+    At(page.line, "LEFT", slot.left + 10, (LEFT.line.top + LEFT.line.bottom) / 2)
+    page.line:SetWidth(slot.right - slot.left - 20)
+    page.line:SetJustifyH("LEFT")
+    page.line:SetWordWrap(false)
+
+    -- Under the tiles and rows: the wheel scrolls.
+    local listArea = CreateFrame("Frame", nil, left)
+    At(listArea, "TOPLEFT", slot.left - 20, LEFT.rows.top)
+    listArea:SetSize(slot.right - slot.left + 40, slot.bottom - LEFT.rows.top)
+    listArea:EnableMouse(true)
+    listArea:EnableMouseWheel(true)
+    listArea:SetScript("OnMouseWheel", function(_, delta)
+        local most
+        if page.tab == "points" then
+            most = math.max(0, #(page.data or {}) - #page.rows)
+        else
+            most = math.max(0, math.ceil(#(page.pictures or {}) / #LEFT.tiles.lefts) - #page.tiles / #LEFT.tiles.lefts)
+        end
+        local offset = math.max(0, math.min(most, page.offset - delta * (page.tab == "points" and 3 or 1)))
+        if offset ~= page.offset then
+            page.offset = offset
+            if page.tab == "points" then DrawRows() else DrawTiles() end
+        end
+    end)
+
+    -- The tiles: the picture in its rarity's colour, a band with whose (GUILD), a mark (* showcased, DUP).
+    local spec = LEFT.tiles
+    page.tiles = {}
+    local visibleRows = math.floor((slot.bottom - spec.top + spec.step - spec.size) / spec.step)
+    for r = 1, visibleRows do
+        for c, x in ipairs(spec.lefts) do
+            local tile = CreateFrame("Button", nil, left)
+            tile:SetFrameLevel(listArea:GetFrameLevel() + 1)
+            tile:SetSize(spec.size, spec.size)
+            At(tile, "TOPLEFT", x, spec.top + (r - 1) * spec.step)
+            tile.border = tile:CreateTexture(nil, "BACKGROUND")
+            tile.border:SetAllPoints()
+            tile.border:SetColorTexture(1, 1, 1)
+            local inside = tile:CreateTexture(nil, "BORDER")
+            inside:SetPoint("TOPLEFT", spec.rim, -spec.rim)
+            inside:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
+            inside:SetColorTexture(0.06, 0.06, 0.06)
+            tile.canvas = CreateFrame("Frame", nil, tile)
+            tile.canvas:SetPoint("TOPLEFT", spec.rim, -spec.rim)
+            tile.canvas:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
+            local over = CreateFrame("Frame", nil, tile)
+            over:SetAllPoints()
+            over:SetFrameLevel(tile.canvas:GetFrameLevel() + 10)
+            tile.plus = over:CreateFontString(nil, "OVERLAY")
+            tile.plus:SetFont(NAME_FONT, 40, "")
+            tile.plus:SetPoint("CENTER", 0, 8)
+            tile.plus:SetText("+")
+            tile.plus:SetTextColor(unpack(GOLD))
+            tile.band = over:CreateTexture(nil, "ARTWORK")
+            tile.band:SetPoint("BOTTOMLEFT", spec.rim, spec.rim)
+            tile.band:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
+            tile.band:SetHeight(18)
+            tile.band:SetColorTexture(0, 0, 0, 0.65)
+            tile.caption = over:CreateFontString(nil, "OVERLAY")
+            tile.caption:SetFont(NAME_FONT, 12, "")
+            tile.caption:SetTextColor(unpack(CREAM))
+            tile.caption:SetPoint("BOTTOM", 0, spec.rim + 3)
+            tile.caption:SetWidth(spec.size - 8)
+            tile.caption:SetWordWrap(false)
+            tile.chest = over:CreateTexture(nil, "ARTWORK")
+            tile.chest:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Chest")
+            tile.chest:SetSize(spec.size - 30, spec.size - 30)
+            tile.chest:SetPoint("CENTER", 0, 8)
+            tile.chest:Hide()
+            tile.tag = over:CreateFontString(nil, "OVERLAY")
+            tile.tag:SetFont(NAME_FONT, 14, "")
+            tile.tag:SetPoint("TOPRIGHT", -6, -4)
+            UI.OutlineText(tile.tag, { 0, 0, 0 })
+            tile:SetScript("OnClick", function(self)
+                UI.ClickSound()
+                if self.picture.mintAction then return ns.ConfirmMint() end
+                if self.picture.chest then return ns.ShowChest(self.picture.chest) end
+                Pick(self.picture)
+            end)
+            tile:SetScript("OnEnter", function(self)
+                local picture = self.picture
+                if picture.chest then
+                    return Tooltip(self, { self.dungeonName .. (picture.count > 1 and (" chests (%d)"):format(picture.count) or " chest"),
+                        "Coins, and things for your pictures to roll. Click to open.", picture.count > 1 and "Open them one after another." or nil })
+                end
+                if picture.mintAction then
+                    return Tooltip(self, { "Mint a picture", ns.BonksLine() .. ". The ogre dreams it, you paint it." })
+                end
+                local mint = picture.mint
+                local rarity = ns.MintRarity(mint.traits, mint.asked)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(("%s #%d"):format(picture.owner and (picture.owner .. "'s") or "Picture", mint.number))
+                GameTooltip:AddLine(Capitalize(rarity), ns.RarityRGB(rarity))
+                for _, trait in ipairs(ns.MintTraits(mint.traits)) do
+                    GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
+                end
+                if mint.duplicateOf then GameTooltip:AddLine(("Duplicate of %s's"):format(mint.duplicateOf), 1, 0.4, 0.4) end
+                GameTooltip:Show()
+            end)
+            tile:SetScript("OnLeave", GameTooltip_Hide)
+            page.tiles[#page.tiles + 1] = tile
+        end
+    end
+
+    -- The POINTS rows.
+    local rowsSpec, overhang = LEFT.rows, 20
+    local rowWidth = slot.right - slot.left
+    page.rows = {}
+    for i = 1, math.floor((slot.bottom - rowsSpec.top) / rowsSpec.height) do
+        local row = CreateFrame("Button", nil, left)
+        row:SetFrameLevel(listArea:GetFrameLevel() + 1)
+        row:SetSize(rowWidth + 2 * overhang, rowsSpec.height)
+        At(row, "TOPLEFT", slot.left - overhang, rowsSpec.top + (i - 1) * rowsSpec.height)
+        local shade = rowsSpec.colors[i % 2 == 1 and 1 or 2]
+        row.stripe = row:CreateTexture(nil, "BACKGROUND")
+        row.stripe:SetAllPoints()
+        row.bar = row:CreateTexture(nil, "BORDER")
+        row.bar:SetPoint("BOTTOMLEFT", overhang, 0)
+        row.bar:SetHeight(rowsSpec.bar)
+        row.bar:SetColorTexture(1, 1, 1)
+        function row:SetBar(fraction) self.bar:SetWidth(math.max(1, rowWidth * math.min(1, fraction))) end
+        row.count = row:CreateFontString(nil, "OVERLAY")
+        row.count:SetFont(NAME_FONT, rowsSpec.size, "")
+        row.count:SetTextColor(1, 0.75, 0.4)
+        row.count:SetShadowOffset(1, -1)
+        row.count:SetPoint("RIGHT", -(overhang + 6), 1)
+        row.label = row:CreateFontString(nil, "OVERLAY")
+        row.label:SetFont(NAME_FONT, rowsSpec.size, "")
+        row.label:SetTextColor(0.94, 0.94, 0.94)
+        row.label:SetShadowOffset(1, -1)
+        row.label:SetPoint("LEFT", overhang + 8, 1)
+        row.label:SetPoint("RIGHT", row.count, "LEFT", -8, 0)
+        row.label:SetJustifyH("LEFT")
+        row.label:SetWordWrap(false)
+        function row:Paint(hovered) self.stripe:SetColorTexture(unpack(hovered and HOVER_COLOR or { shade, shade, shade })) end
+        row:SetScript("OnEnter", function(self)
+            if not self.data then return end
+            self:Paint(true)
+            List.RowTooltip(self)
+        end)
+        row:SetScript("OnLeave", function(self) self:Paint(false) GameTooltip_Hide() end)
+        row:SetScript("OnClick", function(self)
+            local d = self.data
+            if not d then return end
+            UI.ClickSound()
+            if d.item and not d.owned and not state.viewing then
+                ns.ConfirmBuy(d.item)
+            elseif d.mintAction then
+                ns.ConfirmMint()
+            elseif d.extra and d.extra.onClick then
+                d.extra.onClick()
+            end
+        end)
+        page.rows[i] = row
+    end
+    page.empty = left:CreateFontString(nil, "OVERLAY")
+    page.empty:SetFont(NAME_FONT, 14, "")
+    page.empty:SetTextColor(unpack(DIM))
+    At(page.empty, "TOP", (slot.left + slot.right) / 2, LEFT.rows.top + 40)
+
+    -- The right page.
+    local card = CreateFrame("Frame", nil, page)
+    card:SetAllPoints()
+    card:SetFrameLevel(book:GetFrameLevel() + 2)
+    local photo = CreateFrame("Frame", nil, card)
+    photo:SetSize(RIGHT.photo.w, RIGHT.photo.h)
+    At(photo, "CENTER", RIGHT.photo.x, RIGHT.photo.y)
+    local sky = photo:CreateTexture(nil, "BACKGROUND")
+    sky:SetAllPoints()
+    sky:SetColorTexture(0.06, 0.05, 0.05)
+    page.canvas = CreateFrame("Button", nil, card)
+    page.canvas:SetSize(RIGHT.picture.size, RIGHT.picture.size)
+    At(page.canvas, "CENTER", RIGHT.picture.x, RIGHT.picture.y)
+    page.canvas:SetFrameLevel(photo:GetFrameLevel() + 1)
+    -- (the picture's back, with its dream on: click the picture to turn it over and back)
+    local function TaleTip(self)
+        if not (page.shown and page.shown.mint) then return end
+        Tooltip(self, { page.reading and "Back to the picture" or page.shown.mint.tale and "Read the dream" or "Turn it over",
+            "Click to turn the picture over." })
+    end
+    page.canvas:SetScript("OnClick", function(self)
+        if not (page.shown and page.shown.mint) then return end
+        UI.ClickSound()
+        page.reading = not page.reading
+        ShowBack(page.reading)
+        TaleTip(self)
+    end)
+    page.canvas:SetScript("OnEnter", TaleTip)
+    page.canvas:SetScript("OnLeave", GameTooltip_Hide)
+    page.nothing = photo:CreateFontString(nil, "OVERLAY")
+    page.nothing:SetFont(NAME_FONT, 15, "")
+    page.nothing:SetTextColor(unpack(DIM))
+    page.nothing:SetPoint("CENTER")
+    page.nothing:SetWidth(RIGHT.photo.w - 40)
+    local hung = CreateFrame("Frame", nil, card)
+    hung:SetAllPoints()
+    hung:SetFrameLevel(page.canvas:GetFrameLevel() + 10)
+    page.rarity = hung:CreateFontString(nil, "OVERLAY")
+    page.rarity:SetFont(NAME_FONT, 13, "")
+    At(page.rarity, "CENTER", RIGHT.rarity.x, RIGHT.rarity.y)
+    UI.OutlineText(page.rarity, { 0, 0, 0 })
+    page.plaque = select(2, UI.PhotoBeam(hung, RIGHT.beam))  -- the photo's bottom edge, the name on it
+
+    local traits = RIGHT.traits
+    page.traitRows = {}
+    for i = 1, 7 do
+        local row = CreateFrame("Button", nil, card)
+        row:SetSize(traits.width, traits.line)
+        At(row, "TOPLEFT", traits.x, traits.top + (i - 1) * traits.line)
+        row.text = row:CreateFontString(nil, "OVERLAY")
+        row.text:SetFont(NAME_FONT, traits.size, "")
+        row.text:SetPoint("LEFT")
+        row.text:SetPoint("RIGHT", -52, 0)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(false)
+        row.mark = row:CreateFontString(nil, "OVERLAY")
+        row.mark:SetFont(NAME_FONT, traits.size, "")
+        row.mark:SetPoint("RIGHT")
+        local glow = row:CreateTexture(nil, "BACKGROUND")
+        glow:SetAllPoints()
+        glow:SetColorTexture(1, 1, 1, 0.08)
+        glow:Hide()
+        row:SetScript("OnClick", function(self)
+            if not self.editable then return end
+            UI.ClickSound()
+            ns.SetLayerEdition(self.mint, self.layer, ns.NextEdition(ns.LayerEdition(ns.MintStyle(self.mint), self.layer)))
+            ns.OpenPage(state.page)
+        end)
+        row:SetScript("OnEnter", function(self)
+            if not self.editable then return end
+            glow:Show()
+            Tooltip(self, { "Click to draw this one painted, in crayon or sketched, in turn" })
+        end)
+        row:SetScript("OnLeave", function() glow:Hide() GameTooltip_Hide() end)
+        page.traitRows[i] = row
+    end
+    local spec2 = RIGHT.buttons
+    page.buttons = {}
+    for i = 1, 4 do
+        local button = Plate(card, spec2.w, spec2.h)
+        At(button, "TOPLEFT", spec2.x, spec2.top + (i - 1) * (spec2.h + spec2.gap))
+        button:SetScript("OnClick", function(self)
+            UI.ClickSound()
+            if self.action then self.action() end
+            ns.OpenPage(state.page)
+        end)
+        button:Hide()
+        page.buttons[i] = button
+    end
+    return page
+end
+
+local function Refresh(p)
+    page = p  -- (the one showing: its tiles, rows and picture are drawn below, and its clicks act on it)
+    if state.viewing and not KillTrackerFriends[state.viewing] then state.viewing = nil end
+    -- The tab: GUILD when coming in from the Gallery.
+    if p.asked ~= state.page then
+        if p.kind == "collection" and TAB_FOR_PAGE[state.page] then p.tab, p.offset = TAB_FOR_PAGE[state.page], 0 end
+        p.asked = state.page
+    end
+    if p.who ~= state.viewing then
+        if p.tab ~= "guild" then p.pick, p.offset = nil, 0 end
+        p.who = state.viewing
+    end
+    for _, tab in ipairs(p.tabs) do tab:Redraw(false) end
+    ns.UpdateDuplicates()
+
+    local rows = p.tab == "points"
+    p.tilesBoard:SetShown(not rows)
+    p.rowsBoard:SetShown(rows)
+    p.tilesPaper:SetShown(not rows)
+    p.rowsPaper:SetShown(rows)
+    for _, tile in ipairs(p.tiles) do tile:SetShown(not rows) end
+    for _, row in ipairs(p.rows) do row:SetShown(rows) end
+    local points = ns.GetPoints()
+    if rows then
+        if state.listPage ~= "pix" or state.view ~= "collection" then state.path = {} end
+        state.view, state.listPage = "collection", "pix"
+        p.data = {}
+        for _, d in ipairs(List.BuildRows()) do
+            if not d.mint and not d.mintAction then p.data[#p.data + 1] = d end  -- (pictures and minting: on PIX)
+        end
+        p.total, p.max = 0, 0
+        p.pictures = nil
+        p.line:SetText(("|cffffbf66%d|r points  |cff999999(%d earned, %d spent)|r"):format(points.balance, points.earned, points.spent))
+        p.empty:SetText("")
+        p.offset = math.min(p.offset, math.max(0, #p.data - #p.rows))
+        DrawRows()
+    else
+        local guild = p.tab == "guild"
+        p.pictures = guild and GuildPictures() or PicturesOf(state.viewing)
+        local count = #p.pictures
+        p.line:SetText(guild and ("|cffffbf66%d|r pictures in the guild, newest first"):format(count)
+            or ("|cffffbf66%d|r points    |T%s:14|t %d Bonk%s    |T%s:14|t %d Bedtime Stor%s"):format(points.balance,
+                ns.IngredientIcon("bonk"), ns.Bonks(), ns.Bonks() == 1 and "" or "s",
+                ns.IngredientIcon("story"), ns.Tokens("story"), ns.Tokens("story") == 1 and "y" or "ies"))
+        p.empty:SetText(guild and "No pictures in the guild yet." or "")
+        local perRow = #LEFT.tiles.lefts
+        p.offset = math.min(p.offset, math.max(0, math.ceil(#p.pictures / perRow) - #p.tiles / perRow))
+        DrawTiles()
+    end
+    DrawPick()
 end
 
 ns.RegisterPage({
@@ -276,366 +636,7 @@ ns.RegisterPage({
     bare = true,
     split = true,
     covers = { gallery = true },  -- (UI.lua) on the GUILD tab
-    create = function(parent)
-        page = CreateFrame("Frame", nil, parent)
-        page:SetAllPoints()
-        page.tab, page.offset = "guild", 0
-        if UI.pendingPix then
-            page.pick = UI.pendingPix
-            UI.pendingPix = nil
-        end
-        local W = UI.window
-        local slot, under = UI.SPLIT.left, UI.SPLIT.under
-        local function At(region, point, x, y) region:SetPoint(point, W, "TOPLEFT", x, -y) end
-        local function Ogre() return KillTrackerDB and KillTrackerDB.ogreMode end
-
-        -- The boards.
-        local book = CreateFrame("Frame", nil, page)
-        book:SetAllPoints()
-        local function Band(top, bottom, color, left, right)
-            local fill = book:CreateTexture(nil, "BACKGROUND", nil, -8)
-            At(fill, "TOPLEFT", left or under.left, top)
-            fill:SetSize((right or under.middle) - (left or under.left), bottom - top)
-            fill:SetColorTexture(unpack(color))
-            return fill
-        end
-        Band(LEFT.tabs.top - 5, LEFT.tabs.bottom, LEFT.tabs.color)
-        Band(LEFT.line.top, LEFT.line.bottom, LEFT.line.color)
-        page.tilesBoard = Band(LEFT.line.bottom, under.bottom, LEFT.tiles.color)
-        page.rowsBoard = Band(LEFT.rows.top, under.bottom, LEFT.rows.empty)
-        Band(under.top, under.bottom, RIGHT.color, under.middle, under.right + 20)
-
-        local left = CreateFrame("Frame", nil, page)
-        left:SetAllPoints()
-        left:SetFrameLevel(book:GetFrameLevel() + 2)
-
-        -- The tabs.
-        page.tabs = {}
-        local tabWidth = (slot.right - slot.left) / #TABS
-        for i, tab in ipairs(TABS) do
-            local button = UI.TabButton(left, slot.left + (i - 1) * tabWidth, LEFT.tabs, tabWidth)
-            function button:Redraw()
-                self:SetTab(Ogre() and tab[3] or tab[2], page.tab == tab[1])
-            end
-            button:SetScript("OnClick", function()
-                UI.ClickSound()
-                page.tab, page.offset, page.pick = tab[1], 0, nil
-                ns.OpenPage(state.page)
-            end)
-            page.tabs[i] = button
-        end
-        page.line = left:CreateFontString(nil, "OVERLAY")
-        page.line:SetFont(NAME_FONT, LEFT.line.size, "")
-        page.line:SetTextColor(unpack(CREAM))
-        At(page.line, "LEFT", slot.left + 10, (LEFT.line.top + LEFT.line.bottom) / 2)
-        page.line:SetWidth(slot.right - slot.left - 20)
-        page.line:SetJustifyH("LEFT")
-        page.line:SetWordWrap(false)
-
-        -- Under the tiles and rows: the wheel scrolls.
-        local listArea = CreateFrame("Frame", nil, left)
-        At(listArea, "TOPLEFT", slot.left - 20, LEFT.rows.top)
-        listArea:SetSize(slot.right - slot.left + 40, slot.bottom - LEFT.rows.top)
-        listArea:EnableMouse(true)
-        listArea:EnableMouseWheel(true)
-        listArea:SetScript("OnMouseWheel", function(_, delta)
-            local most
-            if page.tab == "shop" then
-                most = math.max(0, #(page.data or {}) - #page.rows)
-            else
-                most = math.max(0, math.ceil(#(page.pictures or {}) / #LEFT.tiles.lefts) - #page.tiles / #LEFT.tiles.lefts)
-            end
-            local offset = math.max(0, math.min(most, page.offset - delta * (page.tab == "shop" and 3 or 1)))
-            if offset ~= page.offset then
-                page.offset = offset
-                if page.tab == "shop" then DrawRows() else DrawTiles() end
-            end
-        end)
-
-        -- The tiles: the picture in its rarity's colour, a band with whose (GUILD), a mark (* showcased, DUP).
-        local spec = LEFT.tiles
-        page.tiles = {}
-        local visibleRows = math.floor((slot.bottom - spec.top + spec.step - spec.size) / spec.step)
-        for r = 1, visibleRows do
-            for c, x in ipairs(spec.lefts) do
-                local tile = CreateFrame("Button", nil, left)
-                tile:SetFrameLevel(listArea:GetFrameLevel() + 1)
-                tile:SetSize(spec.size, spec.size)
-                At(tile, "TOPLEFT", x, spec.top + (r - 1) * spec.step)
-                tile.border = tile:CreateTexture(nil, "BACKGROUND")
-                tile.border:SetAllPoints()
-                tile.border:SetColorTexture(1, 1, 1)
-                local inside = tile:CreateTexture(nil, "BORDER")
-                inside:SetPoint("TOPLEFT", spec.rim, -spec.rim)
-                inside:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
-                inside:SetColorTexture(0.06, 0.06, 0.06)
-                tile.canvas = CreateFrame("Frame", nil, tile)
-                tile.canvas:SetPoint("TOPLEFT", spec.rim, -spec.rim)
-                tile.canvas:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
-                local over = CreateFrame("Frame", nil, tile)
-                over:SetAllPoints()
-                over:SetFrameLevel(tile.canvas:GetFrameLevel() + 10)
-                tile.plus = over:CreateFontString(nil, "OVERLAY")
-                tile.plus:SetFont(NAME_FONT, 40, "")
-                tile.plus:SetPoint("CENTER", 0, 8)
-                tile.plus:SetText("+")
-                tile.plus:SetTextColor(unpack(GOLD))
-                tile.band = over:CreateTexture(nil, "ARTWORK")
-                tile.band:SetPoint("BOTTOMLEFT", spec.rim, spec.rim)
-                tile.band:SetPoint("BOTTOMRIGHT", -spec.rim, spec.rim)
-                tile.band:SetHeight(18)
-                tile.band:SetColorTexture(0, 0, 0, 0.65)
-                tile.caption = over:CreateFontString(nil, "OVERLAY")
-                tile.caption:SetFont(NAME_FONT, 12, "")
-                tile.caption:SetTextColor(unpack(CREAM))
-                tile.caption:SetPoint("BOTTOM", 0, spec.rim + 3)
-                tile.caption:SetWidth(spec.size - 8)
-                tile.caption:SetWordWrap(false)
-                tile.chest = over:CreateTexture(nil, "ARTWORK")
-                tile.chest:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Chest")
-                tile.chest:SetSize(spec.size - 30, spec.size - 30)
-                tile.chest:SetPoint("CENTER", 0, 8)
-                tile.chest:Hide()
-                tile.tag = over:CreateFontString(nil, "OVERLAY")
-                tile.tag:SetFont(NAME_FONT, 14, "")
-                tile.tag:SetPoint("TOPRIGHT", -6, -4)
-                UI.OutlineText(tile.tag, { 0, 0, 0 })
-                tile:SetScript("OnClick", function(self)
-                    UI.ClickSound()
-                    if self.picture.mintAction then return ns.ConfirmMint() end
-                    if self.picture.chest then return ns.ShowChest(self.picture.chest) end
-                    Pick(self.picture)
-                end)
-                tile:SetScript("OnEnter", function(self)
-                    local picture = self.picture
-                    if picture.chest then
-                        return Tooltip(self, { self.dungeonName .. (picture.count > 1 and (" chests (%d)"):format(picture.count) or " chest"),
-                            "Coins, and things for your pictures to roll. Click to open.", picture.count > 1 and "Open them one after another." or nil })
-                    end
-                    if picture.mintAction then
-                        return Tooltip(self, { "Mint a picture", ns.BonksLine() .. ". The ogre dreams it, you paint it." })
-                    end
-                    local mint = picture.mint
-                    local rarity = ns.MintRarity(mint.traits, mint.asked)
-                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    GameTooltip:AddLine(("%s #%d"):format(picture.owner and (picture.owner .. "'s") or "Picture", mint.number))
-                    GameTooltip:AddLine(Capitalize(rarity), ns.RarityRGB(rarity))
-                    for _, trait in ipairs(ns.MintTraits(mint.traits)) do
-                        GameTooltip:AddDoubleLine(trait[1], ("|c%s%s|r"):format(ns.RARITY_COLORS[trait[3]], trait[2]))
-                    end
-                    if mint.duplicateOf then GameTooltip:AddLine(("Duplicate of %s's"):format(mint.duplicateOf), 1, 0.4, 0.4) end
-                    GameTooltip:Show()
-                end)
-                tile:SetScript("OnLeave", GameTooltip_Hide)
-                page.tiles[#page.tiles + 1] = tile
-            end
-        end
-
-        -- The SHOP rows.
-        local rowsSpec, overhang = LEFT.rows, 20
-        local rowWidth = slot.right - slot.left
-        page.rows = {}
-        for i = 1, math.floor((slot.bottom - rowsSpec.top) / rowsSpec.height) do
-            local row = CreateFrame("Button", nil, left)
-            row:SetFrameLevel(listArea:GetFrameLevel() + 1)
-            row:SetSize(rowWidth + 2 * overhang, rowsSpec.height)
-            At(row, "TOPLEFT", slot.left - overhang, rowsSpec.top + (i - 1) * rowsSpec.height)
-            local shade = rowsSpec.colors[i % 2 == 1 and 1 or 2]
-            row.stripe = row:CreateTexture(nil, "BACKGROUND")
-            row.stripe:SetAllPoints()
-            row.bar = row:CreateTexture(nil, "BORDER")
-            row.bar:SetPoint("BOTTOMLEFT", overhang, 0)
-            row.bar:SetHeight(rowsSpec.bar)
-            row.bar:SetColorTexture(1, 1, 1)
-            function row:SetBar(fraction) self.bar:SetWidth(math.max(1, rowWidth * math.min(1, fraction))) end
-            row.count = row:CreateFontString(nil, "OVERLAY")
-            row.count:SetFont(NAME_FONT, rowsSpec.size, "")
-            row.count:SetTextColor(1, 0.75, 0.4)
-            row.count:SetShadowOffset(1, -1)
-            row.count:SetPoint("RIGHT", -(overhang + 6), 1)
-            row.label = row:CreateFontString(nil, "OVERLAY")
-            row.label:SetFont(NAME_FONT, rowsSpec.size, "")
-            row.label:SetTextColor(0.94, 0.94, 0.94)
-            row.label:SetShadowOffset(1, -1)
-            row.label:SetPoint("LEFT", overhang + 8, 1)
-            row.label:SetPoint("RIGHT", row.count, "LEFT", -8, 0)
-            row.label:SetJustifyH("LEFT")
-            row.label:SetWordWrap(false)
-            function row:Paint(hovered) self.stripe:SetColorTexture(unpack(hovered and HOVER_COLOR or { shade, shade, shade })) end
-            row:SetScript("OnEnter", function(self)
-                if not self.data then return end
-                self:Paint(true)
-                List.RowTooltip(self)
-            end)
-            row:SetScript("OnLeave", function(self) self:Paint(false) GameTooltip_Hide() end)
-            row:SetScript("OnClick", function(self)
-                local d = self.data
-                if not d then return end
-                UI.ClickSound()
-                if d.item and not d.owned and not state.viewing then
-                    ns.ConfirmBuy(d.item)
-                elseif d.mintAction then
-                    ns.ConfirmMint()
-                elseif d.extra and d.extra.onClick then
-                    d.extra.onClick()
-                end
-            end)
-            page.rows[i] = row
-        end
-        page.empty = left:CreateFontString(nil, "OVERLAY")
-        page.empty:SetFont(NAME_FONT, 14, "")
-        page.empty:SetTextColor(unpack(DIM))
-        At(page.empty, "TOP", (slot.left + slot.right) / 2, LEFT.rows.top + 40)
-
-        -- The right page.
-        local card = CreateFrame("Frame", nil, page)
-        card:SetAllPoints()
-        card:SetFrameLevel(book:GetFrameLevel() + 2)
-        local photo = CreateFrame("Frame", nil, card)
-        photo:SetSize(RIGHT.photo.w, RIGHT.photo.h)
-        At(photo, "CENTER", RIGHT.photo.x, RIGHT.photo.y)
-        local sky = photo:CreateTexture(nil, "BACKGROUND")
-        sky:SetAllPoints()
-        sky:SetColorTexture(0.06, 0.05, 0.05)
-        page.canvas = CreateFrame("Button", nil, card)
-        page.canvas:SetSize(RIGHT.picture.size, RIGHT.picture.size)
-        At(page.canvas, "CENTER", RIGHT.picture.x, RIGHT.picture.y)
-        page.canvas:SetFrameLevel(photo:GetFrameLevel() + 1)
-        -- (the picture's back, with its dream on: click the picture to turn it over and back)
-        local function TaleTip(self)
-            if not (page.shown and page.shown.mint) then return end
-            Tooltip(self, { page.reading and "Back to the picture" or page.shown.mint.tale and "Read the dream" or "Turn it over",
-                "Click to turn the picture over." })
-        end
-        page.canvas:SetScript("OnClick", function(self)
-            if not (page.shown and page.shown.mint) then return end
-            UI.ClickSound()
-            page.reading = not page.reading
-            ShowBack(page.reading)
-            TaleTip(self)
-        end)
-        page.canvas:SetScript("OnEnter", TaleTip)
-        page.canvas:SetScript("OnLeave", GameTooltip_Hide)
-        page.nothing = photo:CreateFontString(nil, "OVERLAY")
-        page.nothing:SetFont(NAME_FONT, 15, "")
-        page.nothing:SetTextColor(unpack(DIM))
-        page.nothing:SetPoint("CENTER")
-        page.nothing:SetWidth(RIGHT.photo.w - 40)
-        page.invite = CreateFrame("Button", nil, card)
-        page.invite:SetAllPoints(photo)
-        page.invite:SetFrameLevel(page.canvas:GetFrameLevel() + 1)
-        local inviteGlow = page.invite:CreateTexture(nil, "HIGHLIGHT")
-        inviteGlow:SetAllPoints()
-        inviteGlow:SetColorTexture(1, 0.85, 0.3, 0.08)
-        page.invite:SetScript("OnClick", function() UI.ClickSound() ns.ConfirmMint() end)
-        page.invite:SetScript("OnEnter", function(self)
-            Tooltip(self, { "Mint a picture", "Rolls a random background, skin, clothes, expression, eyes, accessory and headwear. Rarer traits make a rarer picture." })
-        end)
-        page.invite:SetScript("OnLeave", GameTooltip_Hide)
-        page.invite:Hide()
-        local hung = CreateFrame("Frame", nil, card)
-        hung:SetAllPoints()
-        hung:SetFrameLevel(page.canvas:GetFrameLevel() + 10)
-        page.rarity = hung:CreateFontString(nil, "OVERLAY")
-        page.rarity:SetFont(NAME_FONT, 13, "")
-        At(page.rarity, "CENTER", RIGHT.rarity.x, RIGHT.rarity.y)
-        UI.OutlineText(page.rarity, { 0, 0, 0 })
-        page.plaque = select(2, UI.PhotoBeam(hung, RIGHT.beam))  -- the photo's bottom edge, the name on it
-
-        local traits = RIGHT.traits
-        page.traitRows = {}
-        for i = 1, 7 do
-            local row = CreateFrame("Button", nil, card)
-            row:SetSize(traits.width, traits.line)
-            At(row, "TOPLEFT", traits.x, traits.top + (i - 1) * traits.line)
-            row.text = row:CreateFontString(nil, "OVERLAY")
-            row.text:SetFont(NAME_FONT, traits.size, "")
-            row.text:SetPoint("LEFT")
-            row.text:SetPoint("RIGHT", -52, 0)
-            row.text:SetJustifyH("LEFT")
-            row.text:SetWordWrap(false)
-            row.mark = row:CreateFontString(nil, "OVERLAY")
-            row.mark:SetFont(NAME_FONT, traits.size, "")
-            row.mark:SetPoint("RIGHT")
-            local glow = row:CreateTexture(nil, "BACKGROUND")
-            glow:SetAllPoints()
-            glow:SetColorTexture(1, 1, 1, 0.08)
-            glow:Hide()
-            row:SetScript("OnClick", function(self)
-                if not self.editable then return end
-                UI.ClickSound()
-                ns.SetLayerEdition(self.mint, self.layer, ns.NextEdition(ns.LayerEdition(ns.MintStyle(self.mint), self.layer)))
-                ns.OpenPage(state.page)
-            end)
-            row:SetScript("OnEnter", function(self)
-                if not self.editable then return end
-                glow:Show()
-                Tooltip(self, { "Click to draw this one painted, in crayon or sketched, in turn" })
-            end)
-            row:SetScript("OnLeave", function() glow:Hide() GameTooltip_Hide() end)
-            page.traitRows[i] = row
-        end
-        local spec2 = RIGHT.buttons
-        page.buttons = {}
-        for i = 1, 4 do
-            local button = Plate(card, spec2.w, spec2.h)
-            At(button, "TOPLEFT", spec2.x, spec2.top + (i - 1) * (spec2.h + spec2.gap))
-            button:SetScript("OnClick", function(self)
-                UI.ClickSound()
-                if self.action then self.action() end
-                ns.OpenPage(state.page)
-            end)
-            button:Hide()
-            page.buttons[i] = button
-        end
-        return page
-    end,
-
-    refresh = function(p)
-        if state.viewing and not KillTrackerFriends[state.viewing] then state.viewing = nil end
-        -- The tab: GUILD when coming in from the Gallery.
-        if p.asked ~= state.page then
-            if TAB_FOR_PAGE[state.page] then p.tab, p.offset = TAB_FOR_PAGE[state.page], 0 end
-            p.asked = state.page
-        end
-        if p.who ~= state.viewing then
-            if p.tab ~= "guild" then p.pick, p.offset = nil, 0 end
-            p.who = state.viewing
-        end
-        for _, tab in ipairs(p.tabs) do tab:Redraw(false) end
-        ns.UpdateDuplicates()
-
-        local shop = p.tab == "shop"
-        p.tilesBoard:SetShown(not shop)
-        p.rowsBoard:SetShown(shop)
-        for _, tile in ipairs(p.tiles) do tile:SetShown(not shop) end
-        for _, row in ipairs(p.rows) do row:SetShown(shop) end
-        if shop then
-            if state.listPage ~= "pix" or state.view ~= "collection" then state.path = {} end
-            state.view, state.listPage = "collection", "pix"
-            p.data = {}
-            for _, d in ipairs(List.BuildRows()) do
-                if not d.mint then p.data[#p.data + 1] = d end  -- the pictures are in MINE
-            end
-            p.total, p.max = 0, 0
-            p.pictures = nil
-            local points = ns.GetPoints(List.Source())
-            p.line:SetText(("|cffffbf66%d|r points  |cff999999(%d earned, %d spent)|r"):format(points.balance, points.earned, points.spent))
-            p.empty:SetText("")
-            p.offset = math.min(p.offset, math.max(0, #p.data - #p.rows))
-            DrawRows()
-        else
-            local guild = p.tab == "guild"
-            p.pictures = guild and GuildPictures() or PicturesOf(state.viewing)
-            local count = #p.pictures
-            p.line:SetText(guild and ("|cffffbf66%d|r pictures in the guild, newest first"):format(count)
-                or ("|cffffbf66%d|r picture%s%s"):format(count, count == 1 and "" or "s",
-                    state.viewing and "" or ("  |cff999999- %d points|r"):format(ns.GetPoints().balance)))
-            p.empty:SetText(guild and "No pictures in the guild yet." or "No pictures yet.")
-            local perRow = #LEFT.tiles.lefts
-            p.offset = math.min(p.offset, math.max(0, math.ceil(#p.pictures / perRow) - #p.tiles / perRow))
-            DrawTiles()
-        end
-        DrawPick()
-    end,
+    create = function(parent) return Create(parent, "collection") end,
+    refresh = Refresh,
 })
+

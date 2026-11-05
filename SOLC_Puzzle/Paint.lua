@@ -178,7 +178,8 @@ function ns.CreateCanvas(parent, pixels)
         if canvas.ids[i] == id then return end
         local color = id == 0 and BLANK or palette[id]
         canvas.ids[i], canvas.cells[i] = id, color
-        textures[i]:SetColorTexture(color[1], color[2], color[3])
+        local ink = id==0 and canvas.paperColor or color
+        textures[i]:SetColorTexture(ink[1], ink[2], ink[3])
         if record then
             local rec = canvas.recording
             rec[#rec + 1] = { t = GetTime() - startedAt, i = i, id = id }

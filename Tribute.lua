@@ -1,10 +1,10 @@
 -- Ogre Godz tribute: a chest made by hand in the dev menu (Dev.lua) with whatever's put in it (pieces, ingredients,
--- points, plinko drops: Unlocks.lua's ns.AddTribute), for you or a guildmate. A guildmate's goes as addon whispers
+-- points: Unlocks.lua's ns.AddTribute), for you or a guildmate. A guildmate's goes as addon whispers
 -- (PREFIX), in parts (an addon message holds 255 characters): "T:<id>:<part>/<parts>:<text>", the text
--- "t=<tier>;p=<points>;d=<plinko drops>;u=<option key>;i=<ingredient>*<n>;...;n=<note>". Their SOLC only takes it
+-- "t=<tier>;p=<points>;u=<option key>;i=<ingredient>*<n>;...;n=<note>". Their SOLC only takes it
 -- from a dev character (ns.IsDevSender: the sender's character id in their own guild roster, Config.lua), only once
 -- (KillTrackerDB.giftsTaken, by id), and answers "OK:<id>". Then the Ogre Godz float down to tell them (DMSay.lua);
--- the chest waits on their PIX page, glowing (Gallery.lua), and opens with its own show (Chests.lua).
+-- the chest waits in their Inventory, glowing (Gallery.lua), and opens with its own show (Chests.lua).
 
 local _, ns = ...
 
@@ -12,7 +12,7 @@ local PREFIX = "SOLCTRIB"
 local PART_SIZE = 200
 local SEND_INTERVAL = 0.3  -- (WoW drops addon messages sent in a burst)
 local TIMEOUT = 15
-local MAX_POINTS, MAX_DROPS, MAX_COUNT = 100000, 10, 99
+local MAX_POINTS, MAX_COUNT = 100000, 99
 local issecret = issecretvalue or function() return false end
 
 -- The wire ----------------------------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ local issecret = issecretvalue or function() return false end
 local function Clean(note) return (tostring(note or ""):gsub("[;|\n]", " "):sub(1, 80)) end
 
 local function Serialize(spec)
-    local parts = { "t=" .. (tonumber(spec.tier) or 4), "p=" .. (tonumber(spec.points) or 0), "d=" .. (tonumber(spec.plinko) or 0) }
+    local parts = { "t=" .. (tonumber(spec.tier) or 4), "p=" .. (tonumber(spec.points) or 0) }
     for _, item in ipairs(spec.items or {}) do
         if item.kind == "unlock" then parts[#parts + 1] = "u=" .. item.key
         elseif item.kind == "ingredient" then parts[#parts + 1] = ("i=%s*%d"):format(item.key, item.n or 1) end
@@ -36,7 +36,6 @@ local function Parse(text)
         local key, value = part:match("^(%a)=(.*)$")
         if key == "t" then spec.tier = math.max(1, math.min(#ns.CHEST_TIERS, tonumber(value) or 4))
         elseif key == "p" then spec.points = math.max(0, math.min(MAX_POINTS, math.floor(tonumber(value) or 0)))
-        elseif key == "d" then spec.plinko = math.max(0, math.min(MAX_DROPS, math.floor(tonumber(value) or 0)))
         elseif key == "n" then spec.note = Clean(value)
         elseif key == "u" and ns.OptionByKey(value) and #spec.items < ns.TRIBUTE_MAX_ITEMS then
             spec.items[#spec.items + 1] = { kind = "unlock", key = value }
@@ -67,10 +66,10 @@ end
 -- Telling them -------------------------------------------------------------------------------------------------------
 
 -- A tribute that just came: the Ogre Godz float down to say so (DMSay.lua), and a line in the chat. Nothing opens:
--- it waits on the PIX page, glowing, until they open it.
+-- it waits in the Inventory, glowing, until they open it.
 function ns.AnnounceTribute(spec)
     if ns.ShowOgreGodz then ns.ShowOgreGodz(spec) end
-    ns.Print("|cffffd100The Ogre Godz have granted you a tribute chest!|r It waits on your PIX page.")
+    ns.Print("|cffffd100The Ogre Godz have granted you a tribute chest!|r It waits in your Inventory.")
 end
 
 -- Sending -------------------------------------------------------------------------------------------------------------

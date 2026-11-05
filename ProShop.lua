@@ -30,6 +30,34 @@ function ns.ShopSpecial()
     return specialKey
 end
 
+-- Besides the pieces: wallpapers (Wallpaper.lua, the ones with a price) and frames (Frames.lua, unlock "shop:<id>",
+-- FRAME_PRICES), on the try-on's PORTRAIT tabs (ProShopRoom.lua). Stock items like the pieces': { key "wallpaper:<id>" or
+-- "frame:<id>", layer = { key }, option = { id, name, rarity }, price, full, owned }; rarity by price, for the colour.
+ns.FRAME_PRICES = { club_tartan = 300, fairway_walnut = 400, velvet_gilt = 500 }
+local function PriceRarity(price) return price <= 150 and "uncommon" or price <= 300 and "rare" or "epic" end
+function ns.ShopExtraStock()
+    local stock = {}
+    for _, paper in ipairs(ns.WALLPAPER_LIST or {}) do
+        if paper.price then
+            stock[#stock + 1] = { key = "wallpaper:" .. paper.id, layer = { key = "wallpaper" }, price = paper.price, full = paper.price,
+                option = { id = paper.id, name = paper.name, rarity = PriceRarity(paper.price) }, owned = ns.WallpaperUnlocked(paper) == true }
+        end
+    end
+    for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
+        local price = tostring(frame.unlock or ""):find("^shop:") and ns.FRAME_PRICES[frame.id]
+        if price then
+            stock[#stock + 1] = { key = "frame:" .. frame.id, layer = { key = "frame" }, price = price, full = price,
+                option = { id = frame.id, name = frame.name, rarity = PriceRarity(price) }, owned = ns.FrameUnlocked(frame) == true }
+        end
+    end
+    return stock
+end
+local function Extra(key)
+    if not key:find("^wallpaper:") and not key:find("^frame:") then return end
+    for _, item in ipairs(ns.ShopExtraStock()) do if item.key == key then return item end end
+    return false
+end
+
 -- A piece's price in points (today's special: cheaper), or nil if the shop doesn't sell it; and its full price.
 function ns.ShopPrice(option)
     if not Sold(option) then return end
@@ -61,11 +89,12 @@ end
 function ns.ShopTotal(keys)
     local total, seen = 0, {}
     for _, key in ipairs(keys) do
-        local found = ns.OptionByKey(key)
-        local price = found and ns.ShopPrice(found.option)
+        local extra = Extra(key)
+        local found = extra and { option = extra.option } or ns.OptionByKey(key)
+        local price = extra and extra.price or found and ns.ShopPrice(found.option)
         if not price then return nil, "The shop doesn't sell that." end
         if seen[key] then return nil, found.option.name .. " is in the cart twice." end
-        if ns.IsUnlocked(key) then return nil, "You have " .. found.option.name .. " already." end
+        if (extra and extra.owned) or (not extra and ns.IsUnlocked(key)) then return nil, "You have " .. found.option.name .. " already." end
         seen[key] = true
         total = total + price
     end
@@ -85,8 +114,12 @@ function ns.ShopBuy(keys)
     db.shop.spent = db.shop.spent + total
     for _, key in ipairs(keys) do
         db.shop.bought[key] = time()
-        ns.UnlockOption(key)
+        local kind, id = key:match("^(%w+):(.+)$")
+        if kind == "wallpaper" then db.wallpapers = db.wallpapers or {} db.wallpapers[id] = time()
+        elseif kind == "frame" then db.frames = db.frames or {} db.frames[id] = time()
+        else ns.UnlockOption(key) end
     end
+    if ns.CheckAchievements then ns.CheckAchievements() end  -- (the Pro Shop spending deeds)
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     return true, total
 end

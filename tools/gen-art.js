@@ -6,6 +6,8 @@
 //   node tools/gen-art.js headwear gear_dm_head --from raw.png        (no generating: cut and place an image you have)
 //   node tools/gen-art.js headwear gear_dm_head --at 632,232 --width 280   (where it sits, if not the layer's usual)
 //   node tools/gen-art.js headwear gear_dm_head "..." --behind-ears   (its knot and tails behind the ears, the ears in front)
+//   node tools/gen-art.js outfit crit_ooze_body "..." --loose-ref   (its game picture, Unlocks\refs\<id>.png, as a loose
+//    reference: key features and colours in our painted style, not an exact copy - without it a ref is copied exactly)
 //   node tools/gen-art.js headwear gear_st_head --from raw.png --keep-greens   (a piece with bright greens of its own, an
 //     emerald, a fel glow: only the screen green round it keyed out, none in holes or small patches)
 //   node tools/gen-art.js --queue tools/gen-art-headwear.json [--redo]   (a list, one after another; then built for the game)
@@ -666,6 +668,7 @@ function main() {
   if (behindEars) args.splice(args.indexOf("--behind-ears"), 1);
   // (--covers-face: a mask meant to be over the nose and mouth; the eyes still free. Mark it in convert-art.js COVERS.)
   const hold = flag("--hold");
+  const looseRef = process.argv.includes("--loose-ref");  // (a refs\<id> picture as a loose reference, not to copy exactly)
   // (--tall: a two-hander, staff, bow or gun held standing tall beside it, leaning on its shoulder; else brandished at the
   // viewer)
   const tall = args.includes("--tall");
@@ -817,7 +820,10 @@ function main() {
         `Fit it naturally on its head, as the examples sit. ${coversFace ? "It covers the lower face (nose, mouth and tusks) as described: that is meant; the eyes stay uncovered." : eyeMask ? "It is a mask over the UPPER face as described: it covers the forehead, the brow, the area round the eyes and the bridge of the nose, with two open eye holes the ogre's own eyes look out through (keep its eyes exactly as they are, visible in the holes). The tip of the nose, the mouth, the tusks and the chin stay uncovered." : "It must not cover the eyes or the face: it sits on the head, above the brow."} ${style}`,
         behindEars ? "Its back parts (a knot, tails, straps) go BEHIND the ears: the ears are in front of them, covering them." : "",
         matchHat ? "The image after the examples shows the outfit of the same set: the headwear must match it (its colours, materials and theme), but the ogre keeps the clothes of image 1." : "",
-      ]).concat(realRef ? ["The LAST image is a screenshot of the real item from the game: copy its shape, colours and details exactly (only the item, not the character or background in it)."] : [], likeLine ? [likeLine] : []).join("\n");
+      ]).concat(realRef ? [looseRef
+        // (--loose-ref: the arcade's mob costumes - the user: "not exact copies, keep the vibe of the ogre art", "just not super realistic")
+        ? "The LAST image shows the real creature from the game, for reference only. Take its key features from it (its colours, shapes and the details that make it recognisable) and turn them into this piece for the ogre, in the painted style of the examples: stylised and a little playful, NOT realistic and NOT an exact copy of it. Only the creature, not the background in it."
+        : "The LAST image is a screenshot of the real item from the game: copy its shape, colours and details exactly (only the item, not the character or background in it)."] : [], likeLine ? [likeLine] : []).join("\n");
       fs.writeFileSync(path.join(work, "prompt_wear.txt"), wearPrompt);
       const worn = generate(work, refs, wearPrompt, "worn.png");
       fs.mkdirSync(path.join(OUT, "review"), { recursive: true });

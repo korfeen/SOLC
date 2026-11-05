@@ -45,11 +45,14 @@ const BASE_UNLOCKS = {
   "background/ancient_treasure_lounge": "deed:feat:chests:50",          // Treasure Hoarder
   "expression/ember_yawn": "deed:feat:elites:500",                      // Bigger They Are
   "eyes/dragon_gaze": "deed:subtype:Dragonkin:250",
-  "eyes/golden_oracle": "deed:feat:jackpot:1",                          // Jackpot!
+  "eyes/golden_oracle": "deed:feat:legendary:1",                        // Legendary Lounger
   "headwear/bald_with_fly": "deed:feat:total:10000",                    // Ten Thousand Thumps
   "headwear/tiny_top_hat": "deed:feat:pictures:10",                     // Art Hoarder
   "skin/obsidian_ember": "deed:feat:leaders:25",                        // No More Bosses
   "skin/gold": "deed:feat:bounties:50",                                 // Gold Digger
+  "skin/club_sage": "deed:feat:shop:6000",                              // The Steward's Favourite (the Pro Shop steward's skin)
+  "eyes/snooty_eyes": "deed:feat:shop:500",                             // Regular Customer (the steward's eyes)
+  "expression/snooty_sneer": "deed:feat:shop:3000",                     // Big Spender (the steward's mouth)
 };
 // Pieces that cover other layers ("<layer key>/<option id>": the layers they hide): those aren't drawn under them (still
 // rolled and kept: take the piece off and they're back).

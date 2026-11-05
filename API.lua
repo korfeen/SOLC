@@ -14,7 +14,12 @@ function SOLC.Print(text) ns.Print(text) end
 
 -- True for a guild officer or guild master.
 function SOLC.IsOfficer() return IsInGuild() and ns.CanEditConfig() end
-function SOLC.IsDev() return ns.IsDev() end  -- (the dev characters: Config.lua; the practice bot, Bot.lua)
+function SOLC.IsDev() return ns.IsDev() end
+-- Your Settings: a sound through SOLC (silent with sounds off), and do not disturb (no pop-ups, challenges declined).
+function SOLC.PlaySound(id, channel) return ns.PlaySound(id, channel) end
+function SOLC.DoNotDisturb() return ns.DoNotDisturb() end
+-- True if you're a member (the guild lock: Config.lua) and sender ("Name" or "Name-Realm") is in your guild.
+function SOLC.IsGuildmate(sender) return ns.IsMember() and ns.IsGuildMember(sender) end  -- (the dev characters: Config.lua; the practice bot, Bot.lua)
 function SOLC.RandomPicture() return ns.RollFreePicture() or ns.BaseTraits() end  -- traits, owned by nobody (nothing paid)
 
 -- Synced guildmates (and your other characters): { { key, name } }, sorted by name.
@@ -71,22 +76,16 @@ function SOLC.TextToTraits(text)
     return traits
 end
 
--- Handing pictures over after a race. GivePicture removes one of yours (returns its traits); the winner's
--- addon calls ReceivePicture with those traits. Both sync to the guild.
-function SOLC.GivePicture(number) return ns.RemoveMint(number) end
-function SOLC.ReceivePicture(traits, from, mintedAt) return ns.AddWonMint(traits, from, mintedAt) end
-
--- Mint battles: rolls a picture nobody owns and charges you the mint cost. Returns traits, or nil and why.
-function SOLC.MintCost() return ns.MintCost() end
-function SOLC.MintForBattle()
+-- Puzzle duels bet points (pictures never change hands). GetBalance: your points to spend. SettleDuel: a duel
+-- against a guildmate is over; the winner gets the loser's bet, the loser pays it (points.duels: spendable, but
+-- never earned - betting doesn't raise your Ogre Rank), and a win counts for the "Puzzle races won" deed.
+function SOLC.GetBalance() return ns.GetPoints().balance end
+function SOLC.SettleDuel(won, points)
     local db = KillTrackerDB
-    local balance, cost = ns.GetPoints().balance, ns.MintCost()
-    if balance < cost then return nil, ("Not enough points (%d of %d)."):format(balance, cost) end
-    local traits = ns.RollFreePicture()
-    if not traits then return nil, "Every possible picture is already taken." end
-    db.points.spent = db.points.spent + cost
+    points = math.max(0, math.floor(tonumber(points) or 0))
+    db.points.duels = (db.points.duels or 0) + (won and points or -points)
+    if won then ns.Tally("races") end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
-    return traits
 end
 
 -- A page in SOLC's sidebar: { key, label, section = "me" | "guild", order, create(parent) -> frame,

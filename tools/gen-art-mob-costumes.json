@@ -1,0 +1,143 @@
+[
+ {
+  "layer": "headwear",
+  "id": "mob_alarmbomb_head",
+  "rarity": "uncommon",
+  "unlock": "arcade:alarmbomb",
+  "material": "metal",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Alarm-a-bomb Hat: a playful costume hat made like the little gnomish alarm robot's head, stylised, not realistic: a big domed RED SIREN LIGHT on top, glowing like a police light, set in a riveted purple metal cap with gold trim, a small visor brim, and two round glowing yellow lamp eyes on the front of the cap. It sits on the head, above the brow, and the face is fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "mob_alarmbomb_body",
+  "rarity": "rare",
+  "unlock": "arcade:alarmbomb",
+  "material": "metal",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Alarm-a-bomb Suit: a playful outfit made like the alarm robot's body, stylised, not realistic: riveted purple metal plates with gold trim on the chest and shoulders, little pipes and cogs, chunky metal boot cuffs, and a big round brass GONG plate fixed on each forearm like the robot's hands. Fitted clothes, not a baggy onesie; no hood"
+ },
+ {
+  "layer": "headwear",
+  "id": "mob_lepergnome_head",
+  "rarity": "uncommon",
+  "unlock": "arcade:lepergnome",
+  "material": "leather",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Leper Gnome Hat: a playful gnome costume hat, stylised, not realistic: a sickly yellow-olive gnome head-cap with big pointy ears out to the sides, wild spiky grey hair sticking up, and big round brass goggles with glowing yellow lenses pushed up on the forehead (no bright lime green). It sits on the head, above the brow, and the face is fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "mob_lepergnome_body",
+  "rarity": "rare",
+  "unlock": "arcade:lepergnome",
+  "material": "leather",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Leper Gnome Overalls: a playful gnome tinker's outfit, stylised, not realistic: a grimy white vest under a black leather harness with straps and buckles, dark grey patched work trousers with knee pads, a tool belt with a big wrench and a screwdriver, and sickly yellow-olive patches stitched on where the 'skin' shows through the tears (no bright lime green). Fitted clothes, not a baggy onesie; no hood"
+ },
+ {
+  "layer": "headwear",
+  "id": "mob_ooze_head",
+  "rarity": "uncommon",
+  "unlock": "arcade:ooze",
+  "material": "jelly",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Ooze Hat: a playful slime costume hat, stylised, not realistic: a big wobbly dome of glossy jelly-like goo sitting on the head, in a PALE, NEUTRAL milky grey-white colour (it gets coloured and made see-through in the game, so it has NO strong colour of its own and is NOT green), with thick drips running down its sides, bright shiny highlights, a few bubbles, and a little cartoon skull floating inside the goo. It sits on the head, above the brow, and the face is fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "mob_ooze_body",
+  "rarity": "rare",
+  "unlock": "arcade:ooze",
+  "material": "jelly",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Ooze Suit: a playful slime outfit, stylised, not realistic: clothes made of glossy, wobbly, jelly-like goo in a PALE, NEUTRAL milky grey-white colour (it gets coloured and made see-through in the game, so it has NO strong colour of its own and is NOT green), thick drips hanging from the sleeves and the hem, bright shiny highlights, bubbles, and a few old bones floating inside the goo (a little rib cage, an old arrow stuck in it). Fitted over the body, not a baggy onesie; no hood"
+ },
+ {
+  "layer": "headwear",
+  "id": "mob_plant_head",
+  "rarity": "uncommon",
+  "unlock": "arcade:plant",
+  "material": "leaves",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Lasher Hat: a playful plant costume hat, stylised, not realistic: a big thorny flower head like a lasher's, with spiky petals in purple and magenta round a yellow centre, dark olive leaves and little thorny vines curling out to the sides (no bright lime green). It sits on the head, above the brow, and the face is fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "mob_plant_body",
+  "rarity": "rare",
+  "unlock": "arcade:plant",
+  "material": "bark",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Treant Suit: a playful plant outfit, stylised, not realistic: a body of twisted brown bark and wood like a treant's, with mossy patches, dark olive leaves sprouting at the shoulders, thorny vine whips coiled round the arms, and gnarled roots at the bottom (no bright lime green). Fitted, not a baggy onesie; no hood"
+ },
+ {
+  "layer": "headwear",
+  "id": "crit_snake_head",
+  "rarity": "uncommon",
+  "unlock": "arcade:snake",
+  "material": "felt",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Viper Hat: a cute homemade snake costume hat, sewn from thick colourful FELT, cut out and stitched together with big visible stitches, like a homemade school-play costume, with felt details: a cobra head with a wide flared felt hood behind it, felt spikes along the hood's edges, striped in bands of purple, pale pink and red felt like the Deviate vipers of the Wailing Caverns, two big button eyes and a little red felt forked tongue. Like the hood of a snake onesie, but worn on its own as a hat: it sits on the head, above the brow, and the face is fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "crit_snake_body",
+  "rarity": "rare",
+  "unlock": "arcade:snake",
+  "material": "felt",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Viper Onesie: a cute homemade snake onesie costume, sewn from thick colourful FELT, cut out and stitched together with big visible stitches, like a homemade school-play costume, with felt details: bands of purple, pale pink and red felt scales, a pale ribbed felt belly panel down the front, little felt spikes down the arms and a long stuffed felt tail. Closed down the front; just the body suit, no hood"
+ },
+ {
+  "layer": "suit",
+  "id": "crit_snake_suit",
+  "material": "felt",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Viper Hooded Onesie: the snake onesie with the snake hat sewn on as its hood, pulled up over the head, all sewn from thick colourful FELT with big visible stitches, like a homemade school-play costume: the hood a cobra head with a wide flared felt hood, felt spikes, striped purple, pale pink and red, button eyes and a red felt forked tongue; the suit the same felt stripes, a pale ribbed belly panel, felt spikes down the arms and a stuffed tail"
+ },
+ {
+  "layer": "headwear",
+  "id": "mob_golem_head",
+  "rarity": "uncommon",
+  "unlock": "arcade:golem",
+  "material": "stone",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Stone Golem Hat: a playful costume hat made like the head of an ancient titan-forged stone keeper, stylised, not realistic: chunky carved grey-tan stone blocks with glowing teal rune lines and a small stone crest. It sits on the head, above the brow, and the face is fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "mob_golem_body",
+  "rarity": "rare",
+  "unlock": "arcade:golem",
+  "material": "stone",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Stone Golem Suit: a playful outfit made to look like a stone keeper's body, stylised, not realistic: big carved grey-tan stone shoulder blocks with a few pale crystal spikes, a blocky stone chest plate with glowing teal rune grooves, and chunky stone forearms. Fitted, not a baggy onesie; no hood"
+ }
+]

@@ -1,3 +1,99 @@
+-- The room's puzzle cupboard, before a picture is taken to the table.
+local _, ns = ...
+function ns.CreateBookshelfScene(page)
+    local scene=CreateFrame("Frame",nil,page)
+    scene:SetAllPoints() scene:SetFrameLevel(page:GetFrameLevel()+110) scene:EnableMouse(true)
+    local shelf=CreateFrame("Frame",nil,scene)
+    shelf:SetPoint("TOPLEFT") shelf:SetPoint("BOTTOMRIGHT",-220,0)
+    local art=shelf:CreateTexture(nil,"BACKGROUND") art:SetAllPoints()
+    art:SetTexture("Interface\\AddOns\\SOLC_Puzzle\\Media\\Jigsaw\\Bookshelf.blp")
+    local right=CreateFrame("Frame",nil,scene,"BackdropTemplate")
+    right:SetPoint("TOPLEFT",shelf,"TOPRIGHT") right:SetPoint("BOTTOMRIGHT")
+    right:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8"}) right:SetBackdropColor(.025,.065,.04,1)
+    local function Text(size,y)
+        local t=right:CreateFontString(nil,"OVERLAY")
+        t:SetFont("Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf",size,"")
+        t:SetPoint("TOPLEFT",16,-y) t:SetWidth(188) t:SetJustifyH("LEFT") t:SetTextColor(.94,.84,.64)
+        return t
+    end
+    local function Button(label,y,fn)
+        local b=CreateFrame("Button",nil,right,"BackdropTemplate")
+        b:SetSize(188,30) b:SetPoint("TOPLEFT",16,-y)
+        b:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+        b:SetBackdropColor(.08,.12,.07,1) b:SetBackdropBorderColor(.6,.44,.23,1)
+        local labelFont=b:CreateFontString(nil,"OVERLAY","GameFontHighlight") labelFont:SetPoint("CENTER") b:SetFontString(labelFont)
+        b:SetText(label) b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square","ADD")
+        b:SetScript("OnClick",fn) return b
+    end
+    Button("Games Room",14,function()scene:Hide() SOLC.OpenPage("games")end)
+    Text(25,64):SetText("Puzzle cupboard")
+    local count=Text(13,100)
+    local preview=CreateFrame("Frame",nil,right) preview:SetSize(154,154) preview:SetPoint("TOPLEFT",33,-140)
+    local selected=Text(14,310)
+    Text(13,345):SetText("Choose a picture, then take it to the table.")
+    local function Play(mode)
+        local picture=page:Picture() if not picture then return end
+        scene:Hide()
+        if mode=="jigsaw" then
+            if not page.jigsaw then page.jigsaw=ns.CreateJigsawScene(page,function()return page:Picture()end) end
+            page.jigsaw:Open()
+        else page:OpenTablePuzzle(mode) end
+    end
+    local play={Button("Jigsaw",392,function()Play("jigsaw")end),Button("Swap pieces",428,function()Play("swap")end),Button("Sliding puzzle",464,function()Play("sliding")end)}
+    local offset,boxes=0,{}
+    local function Select(index)
+        page.index=index
+        scene:Refresh()
+    end
+    for i=1,12 do
+        local b=CreateFrame("Button",nil,shelf,"BackdropTemplate")
+        b:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=3})
+        b:SetBackdropColor(.16,.08,.025,1)
+        b.cover=CreateFrame("Frame",nil,b) b.cover:SetPoint("CENTER") b:SetClipsChildren(true)
+        b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square","ADD")
+        b:SetScript("OnClick",function()Select(offset+i)end)
+        boxes[i]=b
+    end
+    Button("Previous shelf",510,function()offset=math.max(0,offset-12)scene:Refresh()end)
+    Button("Next shelf",546,function()offset=offset+12 scene:Refresh()end)
+    local function Layout()
+        local w,h=shelf:GetWidth(),shelf:GetHeight()
+        for i,b in ipairs(boxes)do
+            local row,col=math.floor((i-1)/4),(i-1)%4
+            b:ClearAllPoints() b:SetPoint("BOTTOMLEFT",shelf,"TOPLEFT",w*(.16+col*.175),-h*({.408,.644,.908})[row+1])
+            b:SetSize(w*.155,h*.17)
+            -- RenderPicture wants a square canvas with its size known when it draws.
+            local s=math.max(0,math.floor(math.min(w*.155,h*.17)-10))
+            b.cover:SetSize(math.max(1,s),math.max(1,s))
+            if b.coverSize~=s then b.coverSize=s b.traits=nil end
+        end
+    end
+    function scene:Refresh()
+        local picture,list=page:Picture()
+        if offset>=#list then offset=math.max(0,math.floor(math.max(0,#list-1)/12)*12) end
+        count:SetText(("%d pictures · %d / %d"):format(#list,math.floor(offset/12)+1,math.max(1,math.ceil(#list/12))))
+        preview:SetShown(picture~=nil)
+        if picture then SOLC.RenderPicture(preview,picture.traits,picture.style) selected:SetText(("%s's #%d"):format(picture.owner or "Your",picture.number or 0))
+        else selected:SetText("Mint a picture to fill your shelf.") end
+        for _,b in ipairs(play)do b:SetEnabled(picture~=nil)end
+        Layout()
+        for i,b in ipairs(boxes)do
+            local p=list[offset+i] b:SetShown(p~=nil)
+            if p then
+                if b.coverSize>0 and (b.traits~=p.traits or b.style~=p.style) then SOLC.RenderPicture(b.cover,p.traits,p.style) b.traits,b.style=p.traits,p.style end
+                b:SetBackdropBorderColor(offset+i==page.index and 1 or .55,offset+i==page.index and .78 or .36,.12,1)
+            end
+        end
+    end
+    function scene:Open()
+        offset=math.floor((math.max(1,page.index)-1)/12)*12
+        self:Show()self:Refresh()
+    end
+    scene:SetScript("OnSizeChanged",function() scene:Refresh() end)
+    scene.boxes=boxes scene.playButtons=play
+    scene:Hide()return scene
+end
+
 -- The Puzzle page in SOLC's sidebar (Guild section). Practice: pick any picture in the guild and a mode -
 -- solve it as a puzzle (swap or sliding, 3x3-5x5) against the clock, or paint it (Paint.lua) before time runs
 -- out. Best per mode and size: SOLCPuzzleDB.best["swap4"] = { time, moves }, ["paint16"] = { score }.
@@ -5,7 +101,7 @@
 local _, ns = ...
 
 local BOARD = 384  -- px, whatever the grid size
-local MODES = { { key = "swap", label = "Swap pieces" }, { key = "sliding", label = "Sliding" }, { key = "paint", label = "Paint" } }
+local MODES = { { key = "swap", label = "Swap pieces" }, { key = "sliding", label = "Sliding" }, { key = "paint", label = "Paint" }, { key = "jigsaw", label = "Jigsaw" } }
 local MODE_HELP = {
     swap = "Click two pieces to swap them, or move with the arrow keys and press Space.",
     sliding = "Click a piece next to the gap to slide it in, or use the arrow keys.",
@@ -37,6 +133,7 @@ local function AllPictures()
     end
     return list
 end
+ns.AllPictures = AllPictures  -- (a duel's random picture: Duel.lua)
 
 local function Create(parent)
     local UI = SOLC.UI
@@ -44,7 +141,7 @@ local function Create(parent)
     page:SetAllPoints()
     page.title, page.line = UI.CreateHeader(page)
     page.title:SetText("Puzzle")
-    page.line:SetText("Practice: solve any picture in the guild against the clock. Duels and mint battles are coming.")
+    page.line:SetText("Practice: solve any picture in the guild against the clock.")
 
     page.board = ns.CreateBoard(page, BOARD)
     page.board:SetPoint("TOPLEFT", 12, -50)
@@ -89,7 +186,15 @@ local function Create(parent)
         button:SetSize(120, 24)
         button:SetPoint("TOPLEFT", (i - 1) * 126, -128)
         button:SetText(mode.label)
-        button:SetScript("OnClick", function() page:SetMode(mode.key) end)
+        button:SetScript("OnClick", function()
+            if mode.key == "jigsaw" then
+                page:StopPractice()
+                if not page.jigsaw then page.jigsaw = ns.CreateJigsawScene(page, function() return page:Picture() end) end
+                page.jigsaw:Open()
+            elseif mode.key=="swap" or mode.key=="sliding" then page:OpenTablePuzzle(mode.key)
+            elseif mode.key=="paint" then page:OpenPaintingScene()
+            else page:SetMode(mode.key) end
+        end)
         page.modeButtons[mode.key] = button
     end
     page.help = right:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -265,6 +370,7 @@ local function Create(parent)
         local style = self:PaintStyle(picture)
         local target = ns.PaintTarget(picture.traits, self.paintSize, style)
         painting = { target = target, palette = ns.PaintPalette(target) }
+        self.paintPalette=painting.palette
         self.board:Hide()
         self.canvas:Show()
         self.canvas:Start(self.paintSize, painting.palette)
@@ -378,6 +484,7 @@ local function Create(parent)
     end
 
     function page:SetMode(mode)
+        if mode=="paint" and self.tablePuzzle then self.tablePuzzle:Hide() end
         if self.board:IsPlaying() then self:StopPractice() end
         self.mode = mode
         self.result:SetText("")
@@ -468,7 +575,7 @@ local function Create(parent)
             self.bestHeading:SetText("Your best paintings")
         else
             for _, mode in ipairs(MODES) do
-                if mode.key ~= "paint" then
+                if mode.key ~= "paint" and mode.key ~= "jigsaw" then
                     local b = best[mode.key .. self.size]
                     lines[#lines + 1] = ("%s: %s"):format(mode.label, b and ("%s (%d moves)"):format(FormatTime(b.time), b.moves) or "-")
                 end
@@ -476,17 +583,89 @@ local function Create(parent)
             self.bestHeading:SetText(("Your best (%dx%d)"):format(self.size, self.size))
         end
         self.bestText:SetText(table.concat(lines, "\n"))
+        if self.tablePuzzle and self.tablePuzzle:IsShown() then self.tablePuzzle:Refresh() end
+        if self.paintingScene and self.paintingScene:IsShown() then self.paintingScene:Refresh() end
+    end
+
+    local roomBack = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    roomBack:SetSize(120, 24)
+    roomBack:SetPoint("TOPLEFT", 12, -456)
+    roomBack:SetText("Games Room")
+    roomBack:SetScript("OnClick", function() SOLC.OpenPage("games") end)
+
+    function page:OpenBookshelf()
+        local duel=ns.Duel and ns.Duel.Get()
+        if duel and (duel.phase=="countdown" or duel.phase=="racing") then self:SetTab("duel") return end
+        if self.tablePuzzle then self.tablePuzzle:Hide() end
+        if self.paintingScene then self.paintingScene:Hide() end
+        if self.jigsaw then self.jigsaw:Hide() end
+        self:ClosePaintings() self:CloseReplays() self:StopPainting() self:StopPractice()
+        self:SetTab("practice")
+        if not self.bookshelf then self.bookshelf=ns.CreateBookshelfScene(self) end
+        self.bookshelf:Open()
+    end
+
+    function page:OpenTablePuzzle(mode)
+        local duel=ns.Duel and ns.Duel.Get()
+        if duel and (duel.phase=="countdown" or duel.phase=="racing") then self:SetTab("duel") return end
+        if self.bookshelf then self.bookshelf:Hide() end
+        if self.tablePuzzle then self.tablePuzzle:Hide() end
+        if self.jigsaw then self.jigsaw:Hide() end
+        self:ClosePaintings() self:CloseReplays() self:StopPainting() self:StopPractice()
+        self:SetTab("practice") self:SetMode(mode=="sliding" and "sliding" or "swap")
+        if not self.tablePuzzle then self.tablePuzzle=ns.CreateTablePuzzleScene(self) end
+        self.tablePuzzle:Open()
+    end
+
+    function page:OpenPaintingScene()
+        local duel=ns.Duel and ns.Duel.Get()
+        if duel and (duel.phase=="countdown" or duel.phase=="racing") then self:SetTab("duel") return end
+        if self.paintingScene then self.paintingScene:Hide() end
+        if self.bookshelf then self.bookshelf:Hide() end
+        if self.tablePuzzle then self.tablePuzzle:Hide() end
+        if self.jigsaw then self.jigsaw:Hide() end
+        self:ClosePaintings() self:CloseReplays() self:StopPainting() self:StopPractice()
+        self:SetTab("practice") self:SetMode("paint")
+        if not self.paintingScene then self.paintingScene=ns.CreatePaintingScene(self) end
+        self.paintingScene:Open()
     end
 
     ns.page = page  -- for the duel tab and the challenge popup (DuelPanel.lua)
     ns.BuildDuelPanel(page)
+    local setTab=page.SetTab
+    function page:SetTab(key)
+        if key=="duel" and self.bookshelf then self.bookshelf:Hide() end
+        if key=="duel" and self.tablePuzzle then self.tablePuzzle:Hide() end
+        if key=="duel" and self.paintingScene then self.paintingScene:Hide() end
+        return setTab(self,key)
+    end
     local first = page:Picture()
     if first then page.board:ShowWhole(first.traits, page.size) end
     return page
 end
 
+-- Swap and Sliding enter the shared table; Paint retains its canvas/tools screen.
+function SOLC.OpenPuzzlePractice(mode)
+    SOLC.OpenPage("puzzle")
+    if not ns.page then return end
+    local duel = ns.Duel and ns.Duel.Get()
+    if duel and (duel.phase == "countdown" or duel.phase == "racing") then
+        ns.page:SetTab("duel")
+        return
+    end
+    if ns.page.tablePuzzle then ns.page.tablePuzzle:Hide() end
+    if ns.page.jigsaw then ns.page.jigsaw:Hide() end
+    ns.page:ClosePaintings()
+    ns.page:CloseReplays()
+    ns.page:StopPainting()
+    ns.page:SetTab("practice")
+    if mode=="bookshelf" then ns.page:OpenBookshelf()
+    elseif mode=="paint" then ns.page:OpenPaintingScene()
+    else ns.page:OpenTablePuzzle(mode) end
+end
+
 SOLC.RegisterPage({
-    key = "puzzle", label = "Puzzle", section = "guild", order = 5.5,
+    key = "puzzle", label = "Puzzle", section = "guild", under = "games", order = 5.5,
     create = Create,
     refresh = function(page)
         if not page.board:IsPlaying() then page:Update() end
@@ -498,7 +677,8 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:SetScript("OnEvent", function(self, _, name)
     if name ~= "SOLC_Puzzle" then return end
-    SOLCPuzzleDB = SOLCPuzzleDB or {}
+    -- The launch wipe (WoW Forever): best times, replays and paintings from testing go, once (as SOLC's, Core.lua).
+    if not SOLCPuzzleDB or SOLCPuzzleDB.epoch ~= "forever-launch" then SOLCPuzzleDB = { epoch = "forever-launch" } end
     -- Best times from before grid sizes were all 4x4.
     local best = SOLCPuzzleDB.best
     for _, mode in ipairs({ "swap", "sliding" }) do

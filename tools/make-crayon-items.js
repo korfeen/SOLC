@@ -51,6 +51,7 @@ const SKINS = {
   "celestial-blue": [66, 72, 107], "enchanted-jade": [112, 119, 58], gold: [182, 131, 40], "obsidian-ember": [92, 56, 43],
   "sea-cursed-teal": [70, 114, 104], "pale-lavender": [164, 127, 155], "slate-gray": [106, 101, 102], "sunburnt-red": [182, 67, 54],
   moss: [136, 107, 43], "mud-brown": [125, 82, 47], "swamp-green": [104, 94, 48],
+  "club-sage": [138, 147, 104], "grand-sleepy-pink": [180, 114, 135],  // (the Pro Shop steward's skin; Ogre Rank 30's pink)
 };
 const skinCrayon = (rgb) => rgb.map((v) => Math.min(255, v * 1.18 + 10));
 
@@ -278,6 +279,18 @@ const ITEMS = [
       for (const dx of [-16, 0, 16]) line(c, [[x + dx, y + 8], [x + dx * 1.2, y + 18]], 4, OUTLINE, r);
     }
   }],
+  // The Pro Shop steward's snooty eyes (tools/gen-face.js): half shut - the lid drawn down over each eye's top half -
+  // looking down the nose, the left brow raised.
+  ["Eyes/Epic/<skin>/snooty-eyes.png", (c, r, skin) => {
+    eyePatch(c, skin, r);
+    for (const [x, y] of EYE) {
+      openEye(c, r, x, y + 2, hex("#7a5a3a"), "dot");
+      fill(c, [[x - 32, y - 18], [x + 32, y - 18], [x + 32, y + 2], [x - 32, y + 2]], skin.map((v) => v * 0.85), r, { line: 0, hatch: 8 });
+      line(c, curve([[x - 32, y + 2], [x, y - 2], [x + 32, y + 2]]), 9, OUTLINE, r);
+    }
+    line(c, curve([[556, 206], [590, 190], [624, 200]]), 9, OUTLINE, r);  // (the left brow up)
+    line(c, curve([[670, 212], [702, 206], [736, 214]]), 9, OUTLINE, r);
+  }],
   ["Eyes/Uncommon/<skin>/heavy-bags.png", (c, r, skin) => {
     eyePatch(c, skin, r);
     for (const [x, y] of EYE) {
@@ -317,6 +330,13 @@ const ITEMS = [
     fill(c, ellipse(628, 350, 76, 30), hex("#4a1a18"), r, { line: 12 });
     soft(c, ellipse(628, 362, 44, 12), K.pink, r);
     tusks(c, r, 326);
+  }],
+  // His snooty sneer: a short tight mouth, one corner pulled down, a pucker line at the other.
+  ["Expression/Epic/<skin>/snooty-sneer.png", (c, r, skin) => {
+    mouthPatch(c, skin, r);
+    line(c, curve([[588, 344], [628, 338], [668, 358]]), 10, OUTLINE, r);
+    line(c, [[582, 336], [578, 350]], 5, OUTLINE, r);
+    tusks(c, r);
   }],
   ["Expression/Uncommon/<skin>/smug-smile.png", (c, r, skin) => {
     mouthPatch(c, skin, r);

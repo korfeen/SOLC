@@ -217,11 +217,12 @@ ns.RegisterPage({
             At(fill, "TOPLEFT", left or under.left, top)
             fill:SetSize((right or under.middle) - (left or under.left), bottom - top)
             fill:SetColorTexture(unpack(color))
+            return fill
         end
         Band(LEFT.tabs.top - 5, LEFT.tabs.bottom, LEFT.tabs.color)
         Band(LEFT.line.top, LEFT.line.bottom, LEFT.line.color)
-        Band(LEFT.rows.top, under.bottom, LEFT.rows.empty)
-        Band(under.top, under.bottom, RIGHT.color, under.middle, under.right + 20)
+        UI.WallpaperOver(Band(LEFT.rows.top, under.bottom, LEFT.rows.empty))  -- (your wallpaper, darkened: Wallpaper.lua)
+        UI.WallpaperOver(Band(under.top, under.bottom, RIGHT.color, under.middle, under.right + 20))
 
         local left = CreateFrame("Frame", nil, page)
         left:SetAllPoints()

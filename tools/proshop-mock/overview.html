@@ -1,0 +1,649 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overview Portrait</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap">
+<style>
+@font-face{font-family:"Germania One";src:url(fonts/GermaniaOne-Regular.ttf)}
+:root{--bg:#17130f;--text:#efe2c6;--muted:#b9a582;--gold:#f2c14e;--gilt:#c9a14a;--display:"Germania One",Georgia,serif;--body:Georgia,serif;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body)}
+main{max-width:960px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
+h1{font-family:var(--display);font-weight:400;font-size:2rem;color:var(--gold);margin:0}
+.lede{color:var(--muted);margin:.3em 0 0;max-width:75ch;line-height:1.5}
+nav a{color:var(--gold);font-family:var(--display)}
+/* the window: the real screenshot, the right side painted over */
+.win{position:relative;width:915px;height:685px;background:url(img/ov-now.jpg) -515px -138px no-repeat;transform-origin:0 0}
+.fit{width:100%;max-width:915px}
+.wall{position:absolute;left:477px;top:51px;width:398px;height:590px;overflow:hidden;
+  background:linear-gradient(rgba(20,10,4,.28),rgba(20,10,4,.42)),url(img/planks.png) -418px 0/813px 601px no-repeat,#3b2416}
+/* wallpapers: the wall behind your portrait (stand-ins drawn by code) */
+.wp-planks{background:linear-gradient(rgba(20,10,4,.28),rgba(20,10,4,.42)),url(img/planks.png) -418px 0/813px 601px no-repeat,#3b2416}
+.wp-stripes{background:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.3)),repeating-linear-gradient(90deg,#2f5a34 0 26px,#e9dfc4 26px 30px,#3a6a40 30px 56px,#c9a14a 56px 58px)}
+.wp-damask{background:radial-gradient(ellipse 14px 22px at 50% 50%,rgba(242,193,78,.22) 60%,transparent 64%) 0 0/56px 72px,radial-gradient(ellipse 14px 22px at 50% 50%,rgba(242,193,78,.16) 60%,transparent 64%) 28px 36px/56px 72px,linear-gradient(#6b1a21,#4a0f15)}
+.wp-brick{background:linear-gradient(rgba(0,0,0,.15),rgba(0,0,0,.35)),repeating-linear-gradient(0deg,#2a1810 0 3px,transparent 3px 28px),repeating-linear-gradient(90deg,#2a1810 0 3px,transparent 3px 56px),#7a3a24}
+.wp-brick{background-image:linear-gradient(rgba(0,0,0,.15),rgba(0,0,0,.35)),linear-gradient(#2a1810 3px,transparent 3px),linear-gradient(90deg,#2a1810 3px,transparent 3px),linear-gradient(90deg,#2a1810 3px,transparent 3px);background-size:auto,56px 28px,56px 56px,56px 56px;background-position:0 0,0 0,0 0,28px 28px;background-color:#7a3a24}
+.wp-garden{background:linear-gradient(rgba(20,10,4,.12),rgba(20,10,4,.3)),url(img/wallpapers/garden.png) 0 0/232px auto}
+.wp-mural{background:linear-gradient(rgba(20,10,4,.35),rgba(20,10,4,.55)),url(img/background-golf-course-at-dawn.png) center/cover}
+.wp-night{background:radial-gradient(circle,#fff6d0 1px,transparent 1.6px) 0 0/38px 38px,radial-gradient(circle,#fff6d0 .8px,transparent 1.3px) 19px 21px/38px 38px,linear-gradient(#1b2246,#2b1e3a)}
+.wall.dark{background:repeating-linear-gradient(180deg,#1b1b1b 0 52px,#101010 52px 54px),#181818}
+.wall::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 8px 0 14px rgba(0,0,0,.55),inset -6px 0 12px rgba(0,0,0,.45),inset 0 8px 12px rgba(0,0,0,.5)}
+.before .wall,.before .hang{display:none}
+.nail{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e8e0d0,#6d6458 60%,#2e2a25);box-shadow:0 2px 2px rgba(0,0,0,.6);z-index:3}
+.strings{position:absolute;inset:0;pointer-events:none;z-index:1}
+.pic{position:absolute;overflow:hidden;z-index:1;background:url(img/ov-now.jpg) no-repeat;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.frame9{position:absolute;z-index:2;pointer-events:none;box-sizing:border-box;border-style:solid;border-color:transparent;filter:drop-shadow(0 8px 10px rgba(0,0,0,.65))}
+.halo .frame9{animation:halo 3.6s ease-in-out infinite}
+.frameimg{position:absolute;z-index:2;pointer-events:none;filter:drop-shadow(0 8px 10px rgba(0,0,0,.65))}
+.fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.plate{position:absolute;z-index:3;left:50%;transform:translateX(-50%);padding:5px 26px 6px;border-radius:4px;white-space:nowrap;
+  background:linear-gradient(180deg,#2b1a10,#1a0f08);box-shadow:0 0 0 2px #c9a14a,0 0 0 3px #5c3d10,0 5px 9px rgba(0,0,0,.65)}
+.plate::before,.plate::after{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff0b8,#8a6420)}
+.plate::before{left:8px}.plate::after{right:8px}
+/* on a polaroid the name is written on its white strip in marker, no plate (centred on the strip's middle) */
+.plate.inked{background:none;box-shadow:none;padding:0;transform:translate(-50%,-50%)}
+.plate.inked::before,.plate.inked::after{display:none}
+.plate.inked .pname{font-family:"Caveat",cursive;font-size:34px;letter-spacing:0;text-shadow:none;filter:none;-webkit-background-clip:border-box;background:none;color:var(--ink,#2a2a3a)!important}
+.plate.inked .pname{text-shadow:-1px -1px 0 #2b2118,1px -1px 0 #2b2118,-1px 1px 0 #2b2118,1px 1px 0 #2b2118,0 0 2px #2b2118}
+.pname{font-family:var(--display);font-size:25px;letter-spacing:.06em;line-height:1.1;color:var(--nc,#f3e6c8);text-shadow:0 1px 2px #000}
+.n-gilded{background:linear-gradient(180deg,#fff3c4,#f2c14e 45%,#b0832f 60%,#f3d27a);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 1px 1px #000)}
+.n-rosegold{background:linear-gradient(180deg,#ffe4d6,#e8a48a 50%,#b8705a);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 1px 1px #000)}
+/* the pencil on the picture's corner: opens the mirror */
+.edit{position:absolute;z-index:4;display:flex;align-items:center;gap:7px;padding:7px 13px 6px 10px;border-radius:3px;cursor:pointer;text-decoration:none;transform:translate(-100%,-100%);font-family:var(--display);font-size:16px;letter-spacing:.06em;color:#f2c14e;border:1px solid #120b06;background:linear-gradient(180deg,#4a2e18,#2e1b0e);box-shadow:inset 0 1px 0 rgba(255,200,120,.15),0 3px 8px rgba(0,0,0,.7);text-shadow:0 1px 2px #000}
+.edit:hover{filter:brightness(1.12);opacity:1}
+.edit svg{width:18px;height:18px;stroke:#f2c14e}
+/* your motto under the plate (click it to write your own): a pinned note or a carved plaque */
+.motto{position:absolute;z-index:2;left:50%;top:532px;transform:translateX(-50%);max-width:340px;text-align:center;white-space:nowrap}
+.motto span{outline:none;display:inline-block;min-width:40px}
+.motto.paper{top:530px;padding:6px 22px 5px;transform:translateX(-50%);color:#2b2118;font-family:"Caveat",cursive;font-size:27px;line-height:1.05}
+/* (only the paper is tilted: WoW can't turn text, so the words stay level; no ruled lines to give it away) */
+.motto.paper::after{content:"";position:absolute;inset:0;z-index:-1;transform:rotate(-2deg);background:#f6ecd2;box-shadow:0 4px 8px rgba(0,0,0,.5);background-image:linear-gradient(180deg,rgba(0,0,0,0) 80%,rgba(120,90,50,.12))}
+.motto.paper::before{content:"";position:absolute;left:50%;top:-6px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff9b8a,#a82a1e 60%,#5c120c);box-shadow:0 2px 2px rgba(0,0,0,.5)}
+.motto.plaque{top:534px;padding:6px 26px 7px;border-radius:6px;font-family:var(--display);font-size:20px;letter-spacing:.03em;color:#2a1608;
+  background:linear-gradient(180deg,#b07a42,#8a5a2b 55%,#6b4220);box-shadow:inset 0 1px 0 rgba(255,220,160,.4),inset 0 -2px 0 rgba(0,0,0,.3),0 0 0 2px #3f2610,0 4px 8px rgba(0,0,0,.55);
+  text-shadow:0 1px 0 rgba(255,210,150,.45)}
+.motto.plaque::before,.motto.plaque::after{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e8e0d0,#6d6458 60%,#2e2a25)}
+.motto.plaque::before{left:9px}.motto.plaque::after{right:9px}
+/* the showcase: no boxes, the framed pictures hang on the page, a little crooked; rarity in the tooltip */
+.showcase{position:absolute;left:44px;top:226px;width:392px;height:138px}
+.showcase .cover{position:absolute;inset:0;background:var(--page,#1c1c1c)}
+.before .showcase{display:none}
+.sc{position:absolute;width:0;height:0;cursor:pointer}
+.sc .in{position:absolute;left:0;top:0;transition:transform .15s}
+.sc:hover .in{transform:scale(1.06)}
+.mp{position:absolute;overflow:hidden}
+.mp img{position:absolute;inset:0;width:100%;height:100%}
+.mf{position:absolute;pointer-events:none}
+/* the right side's other two modes: one picture big (with the strip of the rest under it), or the whole gallery */
+.hang.picture .pe,.hang.gallery .pe{display:none}
+.viewer,.gwall{position:absolute;inset:0;display:none}
+.hang.picture .viewer,.hang.gallery .gwall{display:block}
+.brass{position:relative;font-family:var(--display);font-size:14px;letter-spacing:.04em;line-height:1;padding:7px 14px 6px;border-radius:2px;cursor:pointer;color:#f2c14e;border:1px solid #120b06;
+  background:linear-gradient(180deg,#4a2e18,#2e1b0e);box-shadow:inset 0 1px 0 rgba(255,200,120,.15),0 2px 4px rgba(0,0,0,.6);text-shadow:0 1px 2px #000}
+.brass:hover:not(:disabled){filter:brightness(1.2)}
+.brass:active:not(:disabled){transform:translateY(1px)}
+.brass:disabled{color:#a88f66;cursor:default}
+.back{position:absolute;z-index:5;left:10px;top:10px;font-size:13px;padding:5px 14px 4px}
+/* the gear and the X on the top beam: three tries (over the screenshot's boxed ones) */
+.topbtns{position:absolute;left:782px;top:0;width:133px;height:52px;background:url(img/ov-now.jpg) -1150px -138px no-repeat;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-right:14px;box-sizing:border-box}
+.before .topbtns{display:none}
+.topbtns .tb{display:none}  /* (on the Overview the gear and X are hidden: the portrait hangs over the beam there) */
+.tb{width:30px;height:30px;padding:0;border:0;background:none;cursor:pointer;display:grid;place-items:center}
+.tb svg{width:24px;height:24px;overflow:visible}
+.tb.x svg{width:21px;height:21px}
+/* plain: cream icons right on the wood */
+.plain .tb svg{fill:#efe2c6;stroke:#efe2c6;filter:drop-shadow(0 1px 0 #000) drop-shadow(0 0 2px rgba(0,0,0,.8))}
+.plain .tb:hover svg{fill:#f2c14e;stroke:#f2c14e}
+/* burned: dark icons burned into the beam, a light edge under them */
+.burned .tb svg{fill:#140b05;stroke:#140b05;filter:drop-shadow(0 1px 0 rgba(255,210,150,.55)) drop-shadow(0 -1px 0 rgba(0,0,0,.6))}
+.burned .tb:hover svg{fill:#5c1a10;stroke:#5c1a10}
+/* nails: round iron nail heads with the icon on them */
+.nails .tb{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#9a9288,#5a534b 55%,#2a2622);box-shadow:inset 0 -2px 3px rgba(0,0,0,.5),0 2px 3px rgba(0,0,0,.6)}
+.nails .tb svg{width:18px;height:18px;fill:#efe2c6;stroke:#efe2c6;filter:drop-shadow(0 1px 0 #000)}
+.nails .tb.x svg{width:15px;height:15px}
+.nails .tb:hover{filter:brightness(1.2)}
+.big{position:absolute;left:196px;top:206px;width:0;height:0}
+.vplate{top:0}
+.vplate .pname{font-size:21px}
+.vplate small{font-family:var(--body);font-size:13px;margin-left:6px}
+/* the picture's info under it: its plate (arrows either side), a rarity plaque, then its layers */
+.vplate .pname{font-size:21px}
+.parrow{position:absolute;z-index:4;width:24px;height:24px;margin-top:-12px;border-radius:2px;cursor:pointer;color:#f2c14e;border:1px solid #120b06;font-size:10px;padding:0;background:linear-gradient(180deg,#4a2e18,#2e1b0e);box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.rplaque{position:absolute;z-index:3;transform:translateX(-50%);padding:3px 14px 3px;border-radius:3px;font-family:var(--display);font-size:14px;letter-spacing:.05em;white-space:nowrap;
+  background:linear-gradient(180deg,#2b1a10,#1a0f08);box-shadow:0 0 0 1px #8a6a3a,0 3px 6px rgba(0,0,0,.6);text-shadow:0 1px 2px #000}
+.traits{position:absolute;z-index:3;left:22px;right:22px;display:grid;grid-template-columns:1fr 1fr;gap:1px 14px;font-family:var(--display);font-size:12.5px;line-height:16px;text-shadow:0 1px 2px #000,0 0 3px #000}
+.traits span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e9d9b8}
+.traits b{font-weight:400;color:#b9a582}
+.strip{position:absolute;left:0;right:0;top:478px;height:56px;display:flex;justify-content:center;align-items:center;gap:6px}
+.thumb{position:relative;width:50px;height:50px;padding:0;border:2px solid #3a2a1a;border-radius:3px;cursor:pointer;overflow:hidden;background:#111;box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%}
+.thumb[aria-current="true"]{border-color:#f2c14e;box-shadow:0 0 0 1px #f2c14e,0 2px 6px rgba(0,0,0,.6)}
+.thumb .pin{position:absolute;right:2px;top:2px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff9b8a,#a82a1e 60%,#5c120c);box-shadow:0 1px 1px rgba(0,0,0,.6)}
+.arrow{width:26px;height:26px;border-radius:2px;cursor:pointer;color:#f2c14e;border:1px solid #120b06;font-size:11px;padding:0;background:linear-gradient(180deg,#4a2e18,#2e1b0e);box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.vbtns{position:absolute;left:0;right:0;top:554px;display:flex;justify-content:center;gap:8px}
+
+.gtitle{position:absolute;left:0;right:0;top:14px;text-align:center;font-family:var(--display);font-size:19px;color:#f6d98a;text-shadow:0 1px 3px #000}
+.gcell{position:absolute;width:0;height:0;cursor:pointer}
+.gcell .in{position:absolute;left:0;top:0;transition:transform .15s}
+.gcell:hover .in{transform:scale(1.07)}
+.gcell .num{position:absolute;left:-20px;width:40px;text-align:center;font-family:var(--display);font-size:12px;color:#f1dfb5;text-shadow:0 1px 2px #000}
+.gcell.inshow .num::after{content:" \2022";color:#ff8a7a}
+/* dragging a picture (as in the addon): a ghost under the cursor, the spot under it lit */
+.ghost{position:fixed;z-index:50;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;transform:rotate(-4deg);box-shadow:0 8px 16px rgba(0,0,0,.6);border:2px solid #f6ecd2;opacity:.92}
+.ghost img{position:absolute;inset:0;width:100%;height:100%}
+.sc.over .in,.sc.over .empty{filter:drop-shadow(0 0 8px #f2c14e) drop-shadow(0 0 3px #f2c14e)}
+.sc.shake .in,.sc.shake .empty{animation:shake .35s}
+@keyframes shake{20%{translate:-3px 0}40%{translate:3px 0}60%{translate:-2px 0}80%{translate:1px 0}}
+.sc.lifted .in{opacity:.3}
+/* editing your picture (the pencil): the left page under the profile header becomes the editor; the portrait shows every change */
+.editor{position:absolute;z-index:20;left:44px;top:227px;width:392px;height:411px;background:var(--page,#1c1c1c);display:none;flex-direction:column;box-shadow:inset 0 0 0 1px #000}
+.editing .editor{display:flex}
+.edit{display:none!important}  /* (the button on the portrait is gone: the EDIT tab and clicking the portrait open the editor) */
+/* the left page's tabs, as in the game, plus EDIT */
+.ltabs{position:absolute;z-index:21;left:44px;top:193px;width:392px;height:34px;display:flex;gap:3px;padding:2px 1px 0;box-sizing:border-box;background:var(--page,#1c1c1c)}
+.before .ltabs{display:none}
+.lt{flex:1;font-family:var(--display);font-size:16px;letter-spacing:.05em;cursor:pointer;color:#c9b58e;border:1px solid #000;border-bottom:0;background:linear-gradient(180deg,#2a2622,#1c1916);text-shadow:0 1px 2px #000;display:flex;align-items:center;justify-content:center;gap:6px}
+.lt:hover{color:#efe2c6}
+.lt[aria-selected="true"]{color:#f2c14e;background:linear-gradient(180deg,#4b3317,#2f1f0e);box-shadow:inset 0 1px 0 rgba(255,200,120,.2)}
+.lt svg{width:14px;height:14px}
+.hang:not(.picture):not(.gallery) .pic{cursor:pointer}
+.pichint{position:absolute;z-index:4;transform:translate(-50%,-100%);padding:4px 10px;border-radius:3px;font-family:var(--display);font-size:14px;color:#f2c14e;background:rgba(20,12,6,.88);border:1px solid #000;pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap}
+.portraithover .pichint{opacity:1}
+.editing .pichint{display:none}
+.ed-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 4px}
+.ed-head h3{margin:0;font-family:var(--display);font-weight:400;font-size:19px;color:#f2c14e;text-shadow:0 1px 2px #000}
+.ed-tabs{display:grid;grid-template-columns:56px 1fr;gap:3px 6px;padding:2px 12px 6px;align-items:center}
+.ed-tabs .g{font-family:var(--display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#b9a582}
+.ed-tabs .row{display:flex;gap:3px;flex-wrap:wrap}
+.wb{font-family:var(--display);font-size:13px;line-height:1;padding:6px 9px 5px;border-radius:2px;cursor:pointer;color:#e9d9b8;border:1px solid #120b06;background:linear-gradient(180deg,#3a2414,#24160b);box-shadow:inset 0 1px 0 rgba(255,200,120,.1);text-shadow:0 1px 2px #000}
+.wb:hover:not(:disabled){filter:brightness(1.25)}
+.wb[aria-pressed="true"]{color:#f2c14e;background:linear-gradient(180deg,#5a3a1e,#3a2414);border-color:#8a6a3a}
+.wb:disabled{color:#7a6a52;cursor:default}
+.ed-list{flex:1;overflow-y:auto;margin:0 12px;padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;background:rgba(0,0,0,.25);border:1px solid #000}
+.it{display:flex;align-items:center;gap:7px;padding:3px 6px 3px 3px;border-radius:2px;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,.03);text-align:left;font-family:var(--display);font-size:13px;min-height:40px}
+.it:hover{background:rgba(255,255,255,.08)}
+.it{position:relative}
+/* what you picked: a gold rim, a lit background and a tick; trying on something not yours: an orange dashed rim */
+.it[aria-current="true"]{border:2px solid #f2c14e;padding:2px 5px 2px 2px;background:linear-gradient(90deg,rgba(242,193,78,.28),rgba(242,193,78,.08));box-shadow:0 0 8px rgba(242,193,78,.35)}
+.it[aria-current="true"]::after{content:"✓";position:absolute;right:5px;top:3px;font:bold 14px var(--body);color:#f2c14e;text-shadow:0 1px 2px #000}
+.it.not[aria-current="true"]{opacity:1;border:2px dashed #e8a76a;background:rgba(232,167,106,.14);box-shadow:none}
+.it.not[aria-current="true"]::after{content:none}
+.it .th{position:relative;flex:none;width:34px;height:34px;border-radius:2px;overflow:hidden;background:#111}
+.it .th img{position:absolute;inset:0;width:100%;height:100%}
+.it .th.sw{border:1px solid #000}
+.it small{display:block;font-family:var(--body);font-size:10.5px;color:#9a8a6e}
+.it.not{opacity:.55}
+.it.not small{color:#e8a76a}
+.ed-info{min-height:18px;padding:5px 12px 0;font-family:var(--body);font-size:12px;color:#c9b58e}
+.ed-info a{color:#f2c14e}
+.ed-foot{display:flex;align-items:center;gap:6px;padding:6px 12px 10px}
+.ed-foot .sp{flex:1}
+.pic .lay{position:absolute;inset:0}
+.pic .lay img{position:absolute;inset:0;width:100%;height:100%}
+.hang.adjusting .pic{cursor:move;outline:2px dashed rgba(242,193,78,.8);outline-offset:4px}
+.hang.adjusting .edit{pointer-events:none}
+.dragging .gcell.inshow .in,.dragging .thumb.inshow{opacity:.3;transition:opacity .2s}
+.win img{-webkit-user-drag:none;user-select:none}
+.win{touch-action:none;user-select:none}
+.dragging,.dragging *{cursor:grabbing!important;user-select:none}
+.dropoff{position:absolute;left:44px;top:226px;width:392px;height:138px;pointer-events:none;border:2px dashed rgba(242,193,78,.0);border-radius:6px;transition:border-color .2s}
+.dragging .dropoff{border-color:rgba(242,193,78,.45)}
+.sc .empty{position:absolute;left:-46px;top:-46px;width:88px;height:88px;border:2px dashed rgba(220,210,190,.35);border-radius:4px;display:grid;place-items:center;color:rgba(220,210,190,.55);font:28px var(--display)}
+/* effects in the picture (same as the shop) */
+.ff{position:absolute;width:5px;height:5px;border-radius:50%;background:#fff6b0;box-shadow:0 0 6px 2px rgba(255,236,140,.7);animation:ff var(--t) ease-in-out infinite alternate}
+@keyframes ff{0%{transform:translate(0,0);opacity:.2}50%{opacity:.85}100%{transform:translate(var(--dx),var(--dy));opacity:.3}}
+.gd{position:absolute;top:-6px;width:4px;height:4px;border-radius:50%;background:#ffe08a;box-shadow:0 0 5px 1px rgba(255,207,64,.85);opacity:.95;animation:gd var(--t) linear infinite}
+@keyframes gd{to{transform:translate(var(--dx),300px);opacity:.1}}
+.beam{position:absolute;inset:-20%;background:linear-gradient(105deg,transparent 40%,rgba(255,250,225,.16) 48%,rgba(255,250,225,.22) 50%,rgba(255,250,225,.16) 52%,transparent 60%) 0 0/300% 100%;animation:beam 7s ease-in-out infinite}
+@keyframes beam{from{background-position:110% 0}to{background-position:-10% 0}}
+.halo .frameimg{animation:halo 3.6s ease-in-out infinite}
+@keyframes halo{0%,100%{filter:drop-shadow(0 8px 10px rgba(0,0,0,.65)) drop-shadow(0 0 5px rgba(255,214,110,.45))}50%{filter:drop-shadow(0 8px 10px rgba(0,0,0,.65)) drop-shadow(0 0 12px rgba(255,214,110,.8)) drop-shadow(0 0 26px rgba(255,214,110,.45))}}
+@media (prefers-reduced-motion:reduce){.ff,.gd,.beam,.halo .frameimg{animation:none}}
+/* the controls under the window */
+.ctl{display:grid;gap:8px}
+.ctl div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ctl b{font-family:var(--display);font-weight:400;color:var(--gold);min-width:92px}
+.ctl button{font-family:var(--display);font-size:14px;padding:4px 10px;border-radius:4px;cursor:pointer;border:1px solid var(--gilt);background:#2a1a0e;color:#e8cf9a}
+.ctl button[aria-pressed="true"]{background:linear-gradient(180deg,#8e2a33,#5c141b);color:#f6d98a}
+.notes{color:var(--muted);line-height:1.5;font-size:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 28px}
+.notes h2{font-family:var(--display);font-weight:400;color:var(--text);font-size:1.15rem;margin:0 0 4px}
+.notes p{margin:0}
+</style></head><body>
+<main>
+<div><nav><a href="./">&larr; Pro Shop</a></nav><h1>Overview: your portrait</h1>
+<p class="lede">Your Overview from the game (Josefin), with the right side redone: the picture hangs in the frame you picked, big, over the post and the window edge, so it is the only frame. The name plate under it is in your name colour; the effect plays inside. The pencil opens the mirror to change your ogre (the traits moved there); under the plate, your motto: click it to write your own.</p></div>
+<div class="fit" id="fit"><div class="win" id="win">
+  <div class="wall" id="wall"></div>
+  <div class="showcase" id="showcase"><div class="cover"></div></div>
+  <div class="dropoff"></div>
+  <div class="editor" id="editor"></div>
+  <div class="ltabs" id="ltabs"><button class="lt" data-lt="me">ME</button><button class="lt" data-lt="gearz">GEARZ</button><button class="lt" data-lt="crafts">CRAFTS</button><button class="lt" data-lt="edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>EDIT</button></div>
+  <div class="topbtns" id="topbtns"><button class="tb" title="Settings"><svg viewBox="0 0 24 24"><path stroke-width="0" d="M10.3 1.5h3.4l.5 2.9a8 8 0 0 1 2 .9l2.4-1.7 2.4 2.4-1.7 2.4c.4.6.7 1.3.9 2l2.9.5v3.4l-2.9.5a8 8 0 0 1-.9 2l1.7 2.4-2.4 2.4-2.4-1.7a8 8 0 0 1-2 .9l-.5 2.9h-3.4l-.5-2.9a8 8 0 0 1-2-.9l-2.4 1.7-2.4-2.4 1.7-2.4a8 8 0 0 1-.9-2l-2.9-.5v-3.4l2.9-.5c.2-.7.5-1.4.9-2L3.6 6l2.4-2.4 2.4 1.7c.6-.4 1.3-.7 2-.9zM12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z" fill-rule="evenodd"/></svg></button><button class="tb x" title="Close"><svg viewBox="0 0 24 24"><path stroke-width="4.2" stroke-linecap="round" fill="none" d="M4 4l16 16M20 4L4 20"/></svg></button></div>
+  <div class="hang" id="hang" style="position:absolute;left:478px;top:55px;width:393px;height:585px">
+    <div class="pic pe" id="pic"><div class="lay" id="lay"></div><div class="fx" id="fx"></div></div>
+    <img class="frameimg pe" id="frameimg" alt="">
+    <div class="frame9 pe" id="frame9"></div>
+    <div class="plate pe" id="plate"><span class="pname" id="pname">JOSEFIN</span></div>
+    <a class="edit pe" id="edit" href="#" title="Edit your picture"><svg viewBox="0 0 24 24" fill="none" stroke="#f2c14e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>EDIT</a>
+    <div class="pichint" id="pichint">Click to change your look</div>
+    <div class="motto pe" id="motto"><span id="mtext" contenteditable="true" spellcheck="false">Smash it like you mean it</span></div>
+    <div class="viewer" id="viewer"></div>
+    <div class="gwall" id="gwall"></div>
+  </div>
+</div></div>
+<div class="ctl">
+  <div><b>Show</b><span id="c-view"></span></div>
+  <div><b>Frame</b><span id="c-frame"></span></div>
+  <div><b>Name colour</b><span id="c-name"></span></div>
+  <div><b>Effect</b><span id="c-fx"></span></div>
+  <div><b>Wall</b><span id="c-wall"></span></div>
+  <div><b>Motto</b><span id="c-motto"></span></div>
+  <div><b>Saved sizes</b><span id="c-saves"></span></div>
+  <div><b>Move &amp; scale</b><span id="c-adjust"></span> <button id="asave">Save size</button> <button id="areset">Back to saved</button> <span id="readout" style="font-family:var(--body);color:var(--muted);font-size:13px"></span></div>
+  <div><b>Showcase</b><span id="c-sc"></span></div>
+</div>
+<div class="notes">
+  <div><h2>What's gone</h2><p>The post on the left and the beam under the picture with the name written on it: the frame you pick is the only frame now. The picture is the same size in every frame (320 px, was 390); the big frames hang over the post and the edge instead of shrinking it.</p></div>
+  <div><h2>The showcase</h2><p>No boxes or black borders: the three framed pictures hang right on the page, a little crooked, overlapping a touch like a crowded wall. Each frame sits centred in its square spot (the polaroid lifts its picture), the picture the same size in every frame. An empty spot is a chalk outline with a +.</p></div>
+  <div><h2>Pictures on the right</h2><p>Click a picture in the showcase: it comes up big on the right, in its frame. Under it its rarity and layers, arrows by its plate to flip through your pictures; "Hang it here" puts the one you're looking at in the spot you clicked (an empty spot opens the gallery to pick one). "Open gallery" shows every picture on the wall at once. "Back" goes back to your portrait. Dragging works as in the addon: drag any picture (gallery, strip, the big one) onto a showcase spot to hang it; drag a showcase picture onto another spot to swap, or anywhere else to take it down. Picking up a showcase picture switches the right side to the full gallery.</p></div>
+  <div><h2>The same everywhere</h2><p>This is the picture the shop's Picture tabs show, and what guildmates see on your card. The frame comes from the one collection (free, Ogre Rank, shop); the name colour also colours your name in guild lists.</p></div>
+</div>
+</main>
+<script>
+const FIT = {"taped":{"inner":{"x":0.0809,"y":0.077,"w":0.8441,"h":0.8441},"outer":{"x":0.0234,"y":0.0195,"w":0.959,"h":0.959}},"polaroid":{"inner":{"x":0.1738,"y":0.0879,"w":0.6563,"h":0.6563},"outer":{"x":0.1055,"y":0.0156,"w":0.791,"h":0.9688}},"wood":{"inner":{"x":0.1816,"y":0.1777,"w":0.6387,"h":0.6406},"outer":{"x":0.0566,"y":0.0527,"w":0.8887,"h":0.8945}},"driftwood":{"inner":{"x":0.1895,"y":0.1836,"w":0.625,"h":0.625},"outer":{"x":0.0488,"y":0.0176,"w":0.9063,"h":0.9648}},"gilded":{"inner":{"x":0.1895,"y":0.1895,"w":0.6211,"h":0.6211},"outer":{"x":0.0254,"y":0.0254,"w":0.9492,"h":0.9395}},"bone":{"inner":{"x":0.1875,"y":0.1777,"w":0.627,"h":0.627},"outer":{"x":0.0371,"y":0.0137,"w":0.9277,"h":0.9668}},"dungeon":{"inner":{"x":0.1895,"y":0.1738,"w":0.623,"h":0.625},"outer":{"x":0.0547,"y":0.0313,"w":0.8926,"h":0.9121}}};
+const FRAMES = [["taped","Taped Up"],["polaroid","Polaroid"],["wood","Honey Wood"],["driftwood","Driftwood"],["dungeon","Dungeon Iron"],["gilded","Gilded"],["bone","Bone and Tusk"]];
+const NAMES = [["ivory","Ivory","#f3e6c8"],["moss","Moss Green","#9bd36f"],["royal","Royal Blue","#86b9ff"],["ember","Ember","#ff9a5c"],["amethyst","Amethyst","#cfa2ff"],["rosegold","Rose Gold","#f0b49c"],["gilded","Gilded","#f2c14e"]];
+const FX = [["","None"],["moonbeam","Moonbeam"],["fireflies","Fireflies"],["golddust","Gold Dust"],["halo","Halo"]];
+const S = { view: "after", frame: "wood", name: "ivory", fx: "", wall: "planks", motto: "paper", sc: "mixed", slots: [0, 1, 2], top: "plain", size: "342", dx: 3, dy: -48, even: "" };
+try { Object.assign(S, JSON.parse(localStorage.getItem("ovmock") || "{}")); } catch (e) {}
+// Saved sizes (Save size): the newest is used on every reload, the older ones stay in the list to go back to.
+const PICKED = { size: "342", dx: 3, dy: -48, name: "First pick" };
+let SAVES = [PICKED];
+try { const l = JSON.parse(localStorage.getItem("ovmock-saves") || "[]"); if (Array.isArray(l) && l.length) SAVES = l; } catch (e) {}
+const useSave = v => Object.assign(S, { size: String(v.size), dx: +v.dx, dy: +v.dy });
+useSave(SAVES[SAVES.length - 1]); S.adjust = "";  // (every reload: the newest saved size and spot, Move & scale off)
+const $ = id => document.getElementById(id);
+const W = 393;
+let CX = W / 2;
+let SIDE = 320, CY = 234;  // (set from S.size in draw: bigger pictures move up, their frames over the top beam)  // (the wall; the picture: the same size and place in every frame, the frame goes round it)
+const SRC = { x: 993, y: 193, w: 393, h: 389 };     // (the picture in the screenshot)
+const rnd = (a, b) => (a + Math.random() * (b - a)).toFixed(1);
+function fxHtml(k) {
+  let h = "";
+  if (k === "fireflies") for (let i = 0; i < 10; i++) h += '<span class="ff" style="left:' + rnd(5, 92) + '%;top:' + rnd(20, 90) + '%;--t:' + rnd(4, 8) + 's;--dx:' + rnd(-40, 40) + 'px;--dy:' + rnd(-50, 20) + 'px;animation-delay:-' + rnd(0, 6) + 's"></span>';
+  if (k === "golddust") for (let i = 0; i < 16; i++) h += '<span class="gd" style="left:' + rnd(0, 100) + '%;--t:' + rnd(6, 11) + 's;--dx:' + rnd(-25, 25) + 'px;animation-delay:-' + rnd(0, 11) + 's"></span>';
+  if (k === "moonbeam") h = '<div class="beam"></div>';
+  return h;
+}
+let lastFx = null;
+// ---- the showcase: three minted pictures (made from the shop's pieces), each in its frame
+const RAR = { uncommon: ["Uncommon", "#5be04a"], rare: ["Rare", "#5aaeff"], epic: ["Epic", "#c98cff"], legendary: ["Legendary", "#ffa63d"] };
+const PICS = [
+  { n: 1, rarity: "uncommon", frame: "taped", layers: ["background-golf-course-at-dawn", "skin-moss", "outfit-golf-polo", "expression-smug-smile", "eyes-heavy-bags", "headwear-bucket-hat"] },
+  { n: 2, rarity: "epic", frame: "gilded", layers: ["background-clubhouse-lounge", "skin-mud-brown", "outfit-tweed-vest", "expression-smug-smile-mud-brown", "accessory-monocle", "headwear-tiny-top-hat"] },
+  { n: 3, rarity: "legendary", frame: "polaroid", layers: ["background-pool-with-floaties", "skin-slate-gray", "outfit-royal-nap-robe", "eyes-dreamy-swirl-slate-gray", "headwear-astral-nightcap"] },
+  { n: 4, rarity: "epic", frame: "driftwood", layers: ["background-ghost-ship-cove", "skin-moss", "outfit-pirate-captain-coat", "expression-sea-dog-grin", "headwear-captain-tricorn"] },
+  { n: 5, rarity: "rare", frame: "dungeon", layers: ["background-bg_dm", "skin-mud-brown", "outfit-blazer-with-club-crest", "expression-mid-yawn-mud-brown", "headwear-crown-of-eternal-rest"] },
+  { n: 6, rarity: "uncommon", frame: "wood", layers: ["background-bg_rfc", "skin-slate-gray", "outfit-tweed-vest", "eyes-single-eye-open-slate-gray", "headwear-bucket-hat"] },
+  { n: 7, rarity: "rare", frame: "bone", layers: ["background-golf-course-at-dawn", "skin-sunburnt-red", "outfit-blazer-with-club-crest", "expression-mouth-hanging-open-sunburnt-red", "headwear-tiny-top-hat"] },
+  { n: 8, rarity: "legendary", frame: "gilded", layers: ["background-clubhouse-lounge", "skin-gold", "outfit-royal-nap-robe", "eyes-golden-oracle-gold", "accessory-gold-chain", "headwear-crown-of-eternal-rest"] },
+  { n: 9, rarity: "rare", frame: "polaroid", layers: ["background-pool-with-floaties", "skin-moss", "outfit-pirate-captain-coat", "expression-mid-yawn", "accessory-sleepy-parrot"] },
+  { n: 10, rarity: "legendary", frame: "bone", layers: ["background-ghost-ship-cove", "skin-sunburnt-red", "outfit-pirate-captain-coat", "expression-sea-dog-grin-sunburnt-red", "headwear-captain-tricorn", "accessory-phoenix-on-shoulder"] },
+];
+// A picture in its frame, round a point: "fixed" keeps the picture's middle on it (the frame goes round it); otherwise
+// the frame's outside is centred (Minting.lua, for square spots: the polaroid lifts its picture). Returns its html and
+// the frame's bottom.
+FIT.polaroid.inner = { x: 0.1426, y: 0.0898, w: 0.7168, h: 0.6543 };  // (measured: the real opening, not squared)
+FIT.polaroid.hand = 442 / 512;  // (the middle of the white strip under the opening, for the written name)
+function framed(pic, P, fixed, frameOverride) {
+  const fr = frameOverride || pic.frame, { inner, outer } = FIT[fr], t = P / (Math.max(inner.w, inner.h) * 1.03);
+  const icx = inner.x + inner.w / 2, icy = inner.y + inner.h / 2, bx = outer.x + outer.w / 2, by = outer.y + outer.h / 2;
+  const ox = fixed ? -icx * t : -bx * t, oy = fixed ? -icy * t : -by * t;
+  const px = fixed ? -P / 2 : (icx - bx) * t - P / 2, py = fixed ? -P / 2 : (icy - by) * t - P / 2;
+  return { bottom: oy + (outer.y + outer.h) * t, hand: FIT[fr].hand != null ? oy + FIT[fr].hand * t : null,
+    html: '<div class="mp" style="left:' + px + 'px;top:' + py + 'px;width:' + P + 'px;height:' + P + 'px">' + pic.layers.map(l => '<img alt="" src="img/' + l + '.png">').join("") + '</div>' +
+      '<img class="mf" alt="" src="img/frames/' + fr + '.png" style="left:' + ox + 'px;top:' + oy + 'px;width:' + t + 'px;height:' + t + 'px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.7))">' };
+}
+const R = { mode: "portrait", pick: 0, slot: null };  // (the right side: your portrait, one picture big, or the gallery)
+const SLOTS = [{ x: 65, tilt: -3 }, { x: 194, tilt: 2 }, { x: 323, tilt: -1.5 }], SCY = 67, P = 86;  // (centres in the showcase box; the picture's size)
+const SC_SETS = { mixed: null, gilded: "gilded", polaroid: "polaroid", taped: "taped" };
+function showcase() {
+  const box = $("showcase");
+  box.querySelectorAll(".sc").forEach(e => e.remove());
+  SLOTS.forEach((slot, i) => {
+    const el = document.createElement("div"); el.className = "sc"; el.dataset.slot = i;
+    el.style.left = slot.x + "px"; el.style.top = SCY + "px"; el.style.zIndex = [1, 3, 2][i];
+    const pi = S.slots[i], pic = pi == null ? null : PICS[pi];
+    el.onclick = () => { if (S.view === "before" || dragJustEnded) return; Object.assign(R, pic ? { mode: "picture", pick: pi, slot: i } : { mode: "gallery", slot: i }); draw(); };
+    el.title = pic ? "Picture #" + pic.n + " (" + RAR[pic.rarity][0] + "): click to see it" : "Empty: click to hang a picture here";
+    if (!pic) { el.innerHTML = '<div class="empty" style="transform:rotate(' + slot.tilt + 'deg)">+</div>'; box.appendChild(el); return; }
+    el.innerHTML = '<div class="in" style="transform:rotate(' + slot.tilt + 'deg)">' + framed(pic, P, false, SC_SETS[S.sc]).html + '</div>';
+    box.appendChild(el);
+  });
+}
+// the layers' names and rarities (from the shop's pieces), for the info under a picture
+const LAYER_NAMES = { background: "Back", skin: "Skin", outfit: "Outfit", expression: "Mouth", eyes: "Eyes", accessory: "Accessory", headwear: "Hat" };
+const TRAIT_RARITY = { "golf-course-at-dawn": "uncommon", "clubhouse-lounge": "uncommon", "pool-with-floaties": "epic", "ghost-ship-cove": "legendary", bg_dm: "rare", bg_rfc: "uncommon",
+  moss: "uncommon", "mud-brown": "uncommon", "slate-gray": "rare", "sunburnt-red": "rare", gold: "legendary",
+  "golf-polo": "uncommon", "tweed-vest": "rare", "blazer-with-club-crest": "rare", "royal-nap-robe": "legendary", "pirate-captain-coat": "epic",
+  "bucket-hat": "uncommon", "tiny-top-hat": "rare", "captain-tricorn": "rare", "astral-nightcap": "epic", "crown-of-eternal-rest": "legendary",
+  "smug-smile": "uncommon", "mouth-hanging-open": "uncommon", "mid-yawn": "rare", "sea-dog-grin": "epic",
+  "heavy-bags": "uncommon", "single-eye-open": "rare", "dreamy-swirl": "epic", "golden-oracle": "legendary",
+  monocle: "rare", "gold-chain": "rare", "sleepy-parrot": "epic", "phoenix-on-shoulder": "legendary" };
+const BG_NAMES = { bg_dm: "The Deadmines", bg_rfc: "Ragefire Chasm" };
+function traits(pic) {
+  const order = ["background", "skin", "outfit", "headwear", "eyes", "expression", "accessory"], got = {};
+  for (const l of pic.layers) { const k = l.split("-")[0]; let id = l.slice(k.length + 1).replace(/-(mud-brown|slate-gray|sunburnt-red|gold)$/, ""); got[k] = id; }
+  return order.filter(k => got[k]).map(k => {
+    const id = got[k], name = BG_NAMES[id] || id.split("-").map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+    return '<span><b>' + LAYER_NAMES[k] + ':</b> <i style="font-style:normal;color:' + RAR[TRAIT_RARITY[id] || "uncommon"][1] + '">' + name + '</i></span>';
+  }).join("");
+}
+// Picture names: placeholders for what the storyteller would write from what a picture contains
+const TITLES = ["Fore and Snore", "The Clubhouse Gent", "Robes by the Pool", "Captain of the Ghost Cove", "King of the Deadmines", "One Eye on the Chasm", "Sunburnt on the Green", "His Golden Majesty", "Parrot Nap Ahoy", "Phoenix of the Cove"];
+// The layer list sits at one height whatever the frame: under the lowest any frame reaches (plate or frame bottom).
+// One spot for the name plate under every frame: on the polaroid's white bottom, over the lower edge of the thick
+// frames (picked 2026-10-25: 250 px under the picture's middle at 342 px, scaled with the size).
+function plateY() { return CY + SIDE * 250 / 342; }
+function ink(hex) {  // (the colour itself, with a thin dark outline so it reads on the white paper)
+  const n = parseInt(hex.slice(1), 16), k = 1;
+  return "rgb(" + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => Math.round(v * k)).join(",") + ")";
+}
+function traitsTop() {
+  let top = 0;
+  for (const id in FIT) {
+    const f = framed({ frame: id, layers: [] }, SIDE, true), drop = id === "taped" || id === "polaroid" ? 0 : 36;
+    const plate = plateY();
+    top = Math.max(top, (id === "polaroid" ? 0 : plate + 48), CY + f.bottom + 8);
+  }
+  return top;
+}
+function viewer() {
+  const pic = PICS[R.pick], f = framed(pic, SIDE, true);  // (as big as your portrait, in the same spot)
+  const drop = pic.frame === "taped" || pic.frame === "polaroid" ? 0 : 36;
+  const inShow = S.slots.indexOf(R.pick);
+  // the strip: five at a time round the one you're on
+  const n = PICS.length, from = Math.max(0, Math.min(n - 5, R.pick - 2));
+  const thumbs = PICS.slice(from, from + 5).map((p, k) => '<button class="thumb' + (S.slots.includes(from + k) ? ' inshow' : '') + '" data-i="' + (from + k) + '" aria-current="' + (from + k === R.pick) + '" title="Picture #' + p.n + '">' +
+    p.layers.map(l => '<img alt="" src="img/' + l + '.png">').join("") + (S.slots.includes(from + k) ? '<span class="pin"></span>' : '') + '</button>').join("");
+  const hang = R.slot == null ? (inShow >= 0 ? '<button class="brass" disabled>In your showcase</button>' : '<button class="brass" data-a="hangfree">Hang it in the showcase</button>')
+    : S.slots[R.slot] === R.pick ? '<button class="brass" disabled>Hanging in spot ' + (R.slot + 1) + '</button>' : '<button class="brass" data-a="hang">Hang it in spot ' + (R.slot + 1) + '</button>';
+  const plateTop = f.hand != null ? CY + f.hand : plateY();
+  $("viewer").innerHTML =
+    '<div class="big" data-drag="' + R.pick + '" style="left:' + CX + 'px;top:' + CY + 'px">' + f.html + '</div>' +
+    '<div class="plate vplate' + (f.hand != null ? ' inked' : '') + '" style="left:' + CX + 'px;top:' + plateTop + 'px"><span class="pname" style="color:' + RAR[pic.rarity][1] + ';--ink:' + ink(RAR[pic.rarity][1]) + '" title="' + RAR[pic.rarity][0] + ' &middot; picture #' + pic.n + '">' + TITLES[R.pick] + '</span></div>' +
+    '<div class="traits" style="top:' + traitsTop() + 'px">' + traits(pic) + '</div>' +
+    '<div class="vbtns"><button class="brass" data-a="back">&larr; Back</button>' + hang + '<button class="brass" data-a="gallery">Open gallery</button></div>';
+}
+function gallery() {
+  const cols = 3, cw = 124, rh = 116, x0 = (393 - cols * cw) / 2 + cw / 2, y0 = 100;
+  const title = R.slot != null && S.slots[R.slot] == null ? "Pick a picture for spot " + (R.slot + 1) : "Your gallery &middot; " + PICS.length + " pictures";
+  $("gwall").innerHTML = '<button class="brass back" data-a="' + (R.slot != null && S.slots[R.slot] != null || R.mode === "gallery" && R.from === "picture" ? "topicture" : "back") + '">&larr; ' + "Back" + '</button><div class="gtitle">' + title + '</div>' +
+    PICS.map((p, i) => {
+      const x = x0 + (i % cols) * cw, y = y0 + Math.floor(i / cols) * rh, tilt = [-2, 1.5, -1, 2.5, -2.5, 1][i % 6];
+      return '<div class="gcell' + (S.slots.includes(i) ? ' inshow' : '') + '" data-i="' + i + '" style="left:' + x + 'px;top:' + y + 'px" title="Picture #' + p.n + '"><div class="in" style="transform:rotate(' + tilt + 'deg)">' + framed(p, 62, false).html + '</div><div class="num" style="top:50px">#' + p.n + '</div></div>';
+    }).join("");
+}
+function hangIn(slot) {  // (already in another spot: the two swap)
+  const was = S.slots.indexOf(R.pick);
+  if (was >= 0 && was !== slot) S.slots[was] = S.slots[slot];
+  S.slots[slot] = R.pick; R.slot = slot;
+}
+document.getElementById("hang").addEventListener("click", e => {
+  if (dragJustEnded) return;
+  const t = e.target.closest("[data-a],[data-i]"); if (!t) return;
+  const a = t.dataset.a, n = PICS.length;
+  if (a === "back") Object.assign(R, { mode: "portrait", slot: null, from: null });
+  else if (a === "topicture") Object.assign(R, { mode: "picture", from: null });
+  else if (a === "prev") R.pick = (R.pick - 1 + n) % n;
+  else if (a === "next") R.pick = (R.pick + 1) % n;
+  else if (a === "gallery") Object.assign(R, { mode: "gallery", from: "picture" });
+  else if (a === "hang") hangIn(R.slot);
+  else if (a === "hangfree") { const free = S.slots.indexOf(null); hangIn(free >= 0 ? free : 2); }
+  else if (t.dataset.i != null) {
+    R.pick = +t.dataset.i;
+    if (R.mode === "gallery" && R.slot != null && S.slots[R.slot] == null) hangIn(R.slot);  // (picked for an empty spot: it hangs there)
+    Object.assign(R, { mode: "picture", from: null });
+  }
+  draw();
+});
+function draw() {
+  if (!Array.isArray(S.slots)) S.slots = [0, 1, 2];
+  SIDE = +S.size || 390; CX = W / 2 + (+S.dx || 0); CY = 234 - (SIDE - 320) * 0.5 + (+S.dy || 0);  // (Move & scale: S.dx, S.dy)
+  showcase();
+  const mode = S.view === "before" ? "portrait" : R.mode;
+  $("hang").classList.toggle("picture", mode === "picture"); $("hang").classList.toggle("gallery", mode === "gallery");
+  if (mode === "picture") viewer();
+  if (mode === "gallery") gallery();
+  $("win").classList.toggle("before", S.view === "before");
+  $("wall").className = "wall wp-" + (S.wallpaper || "planks");  // (your wallpaper: the editor's Me group)
+  $("wall").classList.toggle("dark", S.wall === "dark" && !S.wallpaper);
+  // the frame round the picture, as Minting.lua does it: the frame's outside centred, the picture in its opening
+  const { inner, outer } = FIT[S.frame], t = SIDE / (Math.max(inner.w, inner.h) * 1.03);
+  const bx = outer.x + outer.w / 2, by = outer.y + outer.h / 2;
+  const icx = inner.x + inner.w / 2, icy = inner.y + inner.h / 2;
+  const fl = CX - icx * t, ft = CY - icy * t;  // (the frame's opening on the picture)
+  const img = $("frameimg"); img.src = "img/frames/" + S.frame + ".png";
+  const f9 = $("frame9"), EVEN = 54;
+  img.style.display = S.even ? "none" : ""; f9.style.display = S.even ? "block" : "none";
+  if (S.even) {
+    // slices: from each edge of the 512 art to its opening; widths: as painted, but no side thicker than EVEN
+    const px = 512, sl = [inner.y * px, (1 - inner.x - inner.w) * px, (1 - inner.y - inner.h) * px, inner.x * px];
+    const k = Math.min(t / px, EVEN / Math.max(...sl)), w = sl.map(v => v * k);
+    const op = SIDE * 1.03 * 0.985;  // (the opening a touch smaller than the picture, its edge under the frame)
+    Object.assign(f9.style, { left: CX - op / 2 - w[3] + "px", top: CY - op / 2 - w[0] + "px", width: op + w[1] + w[3] + "px", height: op + w[0] + w[2] + "px",
+      borderWidth: w.map(v => v + "px").join(" "), borderImage: "url(img/frames/" + S.frame + ".png) " + sl.map(v => Math.round(v)).join(" ") + " stretch" });
+  }
+  Object.assign(img.style, { left: fl + "px", top: ft + "px", width: t + "px", height: t + "px" });
+  const pcx = CX, pcy = CY;
+  const sc = SIDE / SRC.w, pic = $("pic");
+  Object.assign(pic.style, { left: pcx - SIDE / 2 + "px", top: pcy - SIDE / 2 + "px", width: SIDE + "px", height: SIDE + "px",
+    backgroundSize: 1920 * sc + "px auto", backgroundPosition: -SRC.x * sc + "px " + -SRC.y * sc + "px" });
+  const layered = E.on || (E.look && E.look.changed);
+  $("lay").innerHTML = layered ? lookLayers(E.look).map(l => '<img alt="" src="' + l + '">').join("") : "";
+  // the nail above it and the string to the frame's top corners
+  // the plate and the traits under it
+  let bottom = ft + (outer.y + outer.h) * t;
+  if (S.even) bottom = parseFloat($("frame9").style.top) + parseFloat($("frame9").style.height);
+  const drop = S.frame === "taped" || S.frame === "polaroid" ? 0 : 36;  // (lower under every frame but the tape and the polaroid)
+  const hand = S.frame === "polaroid" ? ft + FIT.polaroid.hand * t : null;
+  $("plate").classList.toggle("inked", hand != null);
+  $("plate").style.top = (hand != null ? hand : plateY()) + "px";
+  $("plate").style.left = CX + "px";  // (a tall frame, like the polaroid's thick bottom: the plate sits on it)
+  Object.assign($("edit").style, { left: pcx + SIDE / 2 - 8 + "px", top: pcy + SIDE / 2 - 8 + "px" });
+  $("motto").className = "motto pe " + S.motto;  // (fixed under the tallest frame's plate, so it never moves)
+  const nm = NAMES.find(n => n[0] === S.name);
+  $("pname").className = "pname" + (S.name === "gilded" || S.name === "rosegold" ? " n-" + S.name : "");
+  $("pname").style.setProperty("--nc", nm[2]);
+  $("pname").style.setProperty("--ink", ink(nm[2]));
+  $("pname").textContent = hand != null ? "Josefin" : "JOSEFIN";
+  $("hang").classList.toggle("halo", S.fx === "halo");
+  if (lastFx !== S.fx) { lastFx = S.fx; $("fx").innerHTML = fxHtml(S.fx); }
+  editor();
+  const btns = (id, list, key) => $(id).innerHTML = list.map(([v, n]) => '<button data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (S[key] === v) + '">' + n + '</button>').join(" ");
+  btns("c-view", [["after", "New"], ["before", "Now (in game)"]], "view");
+  S.even = "";  // (decided: frames as painted)
+  $("c-saves").innerHTML = SAVES.map((v, i) => '<button data-s="' + i + '" aria-pressed="' + (+v.size === Math.round(SIDE) && +v.dx === Math.round(+S.dx || 0) && +v.dy === Math.round(+S.dy || 0)) + '">' + v.name + ": " + v.size + " px (" + v.dx + ", " + v.dy + ")" + (i === SAVES.length - 1 ? " &middot; on reload" : "") + '</button>').join(" ");
+  btns("c-adjust", [["", "Off"], ["on", "On: drag the picture, mouse wheel to resize"]], "adjust");
+  $("hang").classList.toggle("adjusting", S.adjust === "on");
+  // (the numbers, in window pixels of this screenshot: the picture's middle from the window's top-left, and its size)
+  $("readout").textContent = "Picture " + Math.round(SIDE) + " px, middle at x " + Math.round(478 + CX) + ", y " + Math.round(55 + CY) + " (moved " + Math.round(+S.dx || 0) + ", " + Math.round(+S.dy || 0) + ")";
+  $("topbtns").className = "topbtns " + (S.top || "plain");
+  btns("c-frame", FRAMES, "frame"); btns("c-name", NAMES, "name"); btns("c-fx", FX, "fx"); btns("c-wall", [["planks", "Planks"], ["dark", "Dark boards"]], "wall"); btns("c-motto", [["paper", "Paper note"], ["plaque", "Wooden plaque"]], "motto"); btns("c-sc", [["mixed", "Their own frames"], ["gilded", "All Gilded"], ["polaroid", "All Polaroid"], ["taped", "All Taped"], ["one", "Only one picture"], ["three", "Three pictures"]], "sc");
+  try { localStorage.setItem("ovmock", JSON.stringify(S)); } catch (e) {}
+}
+document.querySelector(".ctl").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.k === "sc" && (b.dataset.v === "one" || b.dataset.v === "three")) { S.slots = b.dataset.v === "one" ? [S.slots[0] ?? 0, null, null] : [0, 1, 2]; S.sc = "mixed"; }
+  else S[b.dataset.k] = b.dataset.v;
+  draw();
+});
+// ---- dragging, as in the addon (Gallery.lua): a picture from the gallery, the strip or the big one onto a showcase spot
+// hangs it there; a showcase picture onto another spot swaps them, dropped anywhere else it comes down. Picking up a
+// showcase picture opens the full gallery on the right.
+let drag = null, dragJustEnded = false;
+document.getElementById("win").addEventListener("dragstart", e => e.preventDefault());  // (no browser image dragging)
+addEventListener("pointercancel", () => { if (drag && drag.ghost) drag.ghost.remove(); drag = null; document.body.classList.remove("dragging"); draw(); });
+function pictureUnder(e) {
+  const sc = e.target.closest(".sc"); if (sc && S.slots[+sc.dataset.slot] != null) return { pic: S.slots[+sc.dataset.slot], fromSlot: +sc.dataset.slot };
+  const g = e.target.closest(".gcell,.thumb,[data-drag]"); if (g) return { pic: +(g.dataset.i ?? g.dataset.drag), fromSlot: null };
+  return null;
+}
+function slotAt(x, y) { const el = document.elementFromPoint(x, y); const sc = el && el.closest(".sc"); return sc ? +sc.dataset.slot : null; }
+document.getElementById("win").addEventListener("pointerdown", e => {
+  if (S.view === "before" || e.button !== 0 || E.on) return;
+  const what = pictureUnder(e); if (!what) return;
+  e.preventDefault();
+  drag = Object.assign(what, { x: e.clientX, y: e.clientY, on: false, over: null });
+});
+addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.on) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+    drag.on = true;
+    document.body.classList.add("dragging");
+    drag.ghost = document.createElement("div"); drag.ghost.className = "ghost";
+    drag.ghost.innerHTML = PICS[drag.pic].layers.map(l => '<img alt="" src="img/' + l + '.png">').join("");
+    document.body.appendChild(drag.ghost);
+    if (drag.fromSlot != null) { Object.assign(R, { mode: "gallery", slot: null, from: null }); draw(); document.querySelector('.sc[data-slot="' + drag.fromSlot + '"]').classList.add("lifted"); }  // (the gallery opens to drop it on)
+  }
+  drag.ghost.style.left = e.clientX + "px"; drag.ghost.style.top = e.clientY + "px";
+  const over = slotAt(e.clientX, e.clientY);
+  if (over !== drag.over) {
+    document.querySelectorAll(".sc.over").forEach(el => el.classList.remove("over"));
+    drag.over = over;
+    if (over != null) { const el = document.querySelector('.sc[data-slot="' + over + '"]'); el.classList.add("over"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+  }
+});
+addEventListener("pointerup", e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (!d.on) return;
+  d.ghost.remove(); document.body.classList.remove("dragging");
+  const to = slotAt(e.clientX, e.clientY);
+  if (to != null) {
+    if (d.fromSlot != null) { const t = S.slots[to]; S.slots[to] = S.slots[d.fromSlot]; S.slots[d.fromSlot] = t; }
+    else { const was = S.slots.indexOf(d.pic); if (was >= 0) S.slots[was] = S.slots[to]; S.slots[to] = d.pic; }
+  } else if (d.fromSlot != null) S.slots[d.fromSlot] = null;  // (dropped off the showcase: it comes down)
+  dragJustEnded = true; setTimeout(() => dragJustEnded = false, 0);
+  draw();
+  if (to != null) { const el = document.querySelector('.sc[data-slot="' + to + '"]'); if (el) el.classList.add("shake"); }
+});
+// ---- Move & scale (the mock only): drag the portrait, the wheel resizes it
+{
+  let mv = null;
+  $("pic").addEventListener("pointerdown", e => { if (S.adjust !== "on") return; e.preventDefault(); mv = { x: e.clientX, y: e.clientY, dx: +S.dx || 0, dy: +S.dy || 0 }; });
+  addEventListener("pointermove", e => { if (!mv) return; const k = 915 / $("win").getBoundingClientRect().width; S.dx = mv.dx + (e.clientX - mv.x) * k; S.dy = mv.dy + (e.clientY - mv.y) * k; draw(); });
+  addEventListener("pointerup", () => { mv = null; });
+  $("hang").addEventListener("wheel", e => { if (S.adjust !== "on" || R.mode !== "portrait") return; e.preventDefault();
+    const old = SIDE, side = Math.max(200, Math.min(520, SIDE - Math.sign(e.deltaY) * 6));
+    S.size = String(side); S.dy = (+S.dy || 0) + (side - old) * 0.5;  // (grows round its middle)
+    draw(); }, { passive: false });
+  $("areset").onclick = () => { useSave(SAVES[SAVES.length - 1]); draw(); };
+  $("asave").onclick = () => {
+    const d = new Date(), v = { size: Math.round(SIDE), dx: Math.round(+S.dx || 0), dy: Math.round(+S.dy || 0), name: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + " " + d.toTimeString().slice(0, 5) };
+    SAVES.push(v); try { localStorage.setItem("ovmock-saves", JSON.stringify(SAVES)); } catch (e) {}
+    draw();
+  };
+  $("c-saves").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) { useSave(SAVES[+b.dataset.s]); draw(); } });
+}
+// ---- editing your picture, in place (the pencil): tabs on the left page, the portrait changes as you pick
+const PCS = {"skin":[{"id":"moss","name":"Moss","rarity":"skin","wood":true},{"id":"mud-brown","name":"Mud Brown","rarity":"uncommon","wood":false},{"id":"slate-gray","name":"Slate Gray","rarity":"rare","wood":false},{"id":"sunburnt-red","name":"Sunburnt Red","rarity":"rare","wood":false},{"id":"gold","name":"Gold","rarity":"legendary","wood":false}],"background":[{"id":"golf-course-at-dawn","name":"Golf Course At Dawn","rarity":"uncommon","wood":false},{"id":"clubhouse-lounge","name":"Clubhouse Lounge","rarity":"uncommon","wood":false},{"id":"pool-with-floaties","name":"Pool With Floaties","rarity":"epic","wood":false},{"id":"ghost-ship-cove","name":"Ghost Ship Cove","rarity":"legendary","wood":false}],"outfit":[{"id":"golf-polo","name":"Golf Polo","rarity":"uncommon","wood":false},{"id":"tweed-vest","name":"Tweed Vest","rarity":"rare","wood":false},{"id":"blazer-with-club-crest","name":"Blazer With Club Crest","rarity":"rare","wood":false},{"id":"royal-nap-robe","name":"Royal Nap Robe","rarity":"legendary","wood":false},{"id":"pirate-captain-coat","name":"Pirate Captain Coat","rarity":"epic","wood":false}],"expression":[{"id":"smug-smile","name":"Smug Smile","rarity":"uncommon","wood":true},{"id":"mouth-hanging-open","name":"Mouth Hanging Open","rarity":"uncommon","wood":true},{"id":"mid-yawn","name":"Mid Yawn","rarity":"rare","wood":true},{"id":"sea-dog-grin","name":"Sea Dog Grin","rarity":"epic","wood":true}],"eyes":[{"id":"heavy-bags","name":"Heavy Bags","rarity":"uncommon","wood":true},{"id":"single-eye-open","name":"Single Eye Open","rarity":"rare","wood":true},{"id":"dreamy-swirl","name":"Dreamy Swirl","rarity":"epic","wood":true},{"id":"golden-oracle","name":"Golden Oracle","rarity":"legendary","wood":true}],"accessory":[{"id":"monocle","name":"Monocle","rarity":"rare","wood":false},{"id":"gold-chain","name":"Gold Chain","rarity":"rare","wood":false},{"id":"sleepy-parrot","name":"Sleepy Parrot","rarity":"epic","wood":false},{"id":"phoenix-on-shoulder","name":"Phoenix On Shoulder","rarity":"legendary","wood":false}],"headwear":[{"id":"bucket-hat","name":"Bucket Hat","rarity":"uncommon","wood":false},{"id":"tiny-top-hat","name":"Tiny Top Hat","rarity":"rare","wood":false},{"id":"captain-tricorn","name":"Captain Tricorn","rarity":"rare","wood":false},{"id":"astral-nightcap","name":"Astral Nightcap","rarity":"epic","wood":false},{"id":"crown-of-eternal-rest","name":"Crown Of Eternal Rest","rarity":"legendary","wood":false}]};
+const PRICE = { uncommon: 100, rare: 250, epic: 600, legendary: 1500 };
+const EGROUPS = [["Ogre", [["skin", "Skin"], ["eyes", "Eyes"], ["expression", "Mouth"]]], ["Wear", [["outfit", "Outfit"], ["headwear", "Headwear"], ["accessory", "Accessory"]]],
+  ["Picture", [["background", "Background"], ["frame", "Frame"], ["effect", "Effect"]]], ["Me", [["name", "Name colour"], ["wallpaper", "Wallpaper"]]]];
+const UNDER_HAT = { monocle: 1, "gold-chain": 1 };
+// what you have (the mock's wardrobe), and the look you start from
+const MINE = new Set(["wallpaper:planks", "wallpaper:stripes", "skin:moss", "skin:mud-brown", "outfit:golf-polo", "outfit:tweed-vest", "headwear:bucket-hat", "headwear:tiny-top-hat", "eyes:heavy-bags", "expression:smug-smile",
+  "expression:mid-yawn", "accessory:monocle", "background:golf-course-at-dawn", "background:clubhouse-lounge", "frame:taped", "frame:polaroid", "frame:wood", "frame:driftwood",
+  "name:ivory", "name:royal", "effect:", "effect:moonbeam"]);
+const FROM = { dungeon: "Ogre Rank 8", gilded: "Ogre Rank 12", bone: "Ogre Rank 20" };
+const E = { on: false, tab: "outfit", seen: false, look: null, saved: null };
+const lists = {
+  frame: () => FRAMES.map(([id, n]) => ({ id, name: n, rarity: { taped: "uncommon", polaroid: "uncommon", wood: "uncommon", driftwood: "rare", dungeon: "rare", gilded: "epic", bone: "legendary" }[id] })),
+  name: () => NAMES.map(([id, n, c]) => ({ id, name: n, c, rarity: { ivory: "uncommon", moss: "uncommon", royal: "rare", ember: "rare", amethyst: "epic", rosegold: "epic", gilded: "legendary" }[id] })),  // (a rarity and its price, not shown in the editor)
+  wallpaper: () => [{id:"planks",name:"Plank Wall",rarity:"uncommon"},{id:"stripes",name:"Club Stripes",rarity:"uncommon"},{id:"garden",name:"Garden Trellis",rarity:"rare"},{id:"brick",name:"Tavern Brick",rarity:"rare"},{id:"damask",name:"Velvet Damask",rarity:"epic"},{id:"night",name:"Starry Nap",rarity:"epic"},{id:"mural",name:"Fairway Mural",rarity:"legendary"}],
+  effect: () => FX.map(([id, n]) => ({ id, name: n, rarity: { "": "uncommon", moonbeam: "uncommon", fireflies: "rare", golddust: "epic", halo: "legendary" }[id] })),
+};
+const piecesOf = k => (lists[k] ? lists[k]() : PCS[k]);
+const has = (k, id) => MINE.has(k + ":" + id);
+const current = k => k === "frame" ? S.frame : k === "name" ? S.name : k === "effect" ? S.fx : k === "wallpaper" ? (S.wallpaper || "planks") : E.look[k];
+function face(k, id, body) { return "img/" + k + "-" + id + (body === "moss" ? "" : "-" + body) + ".png"; }
+function lookLayers(look) {
+  const body = look.skin || "moss", out = [];
+  if (look.background) out.push("img/background-" + look.background + ".png");
+  out.push("img/skin-" + body + ".png");
+  if (look.outfit) out.push("img/outfit-" + look.outfit + ".png");
+  for (const k of ["expression", "eyes"]) if (look[k]) out.push(face(k, look[k], body));
+  if (look.accessory && UNDER_HAT[look.accessory]) out.push("img/accessory-" + look.accessory + ".png");
+  if (look.headwear) out.push("img/headwear-" + look.headwear + ".png");
+  if (look.accessory && !UNDER_HAT[look.accessory]) out.push("img/accessory-" + look.accessory + ".png");
+  return out;
+}
+function thumb(k, p) {
+  if (k === "frame") return '<span class="th"><img alt="" src="img/frames/' + p.id + '.png"></span>';
+  if (k === "name") return '<span class="th sw" style="background:#1a0f08;display:grid;place-items:center;color:' + p.c + ';font:15px var(--display)">Aa</span>';
+  if (k === "wallpaper") return '<span class="th sw"><span class="wp-' + p.id + '" style="position:absolute;inset:0"></span></span>';
+  if (k === "effect") return '<span class="th sw" style="background:radial-gradient(circle,' + (p.id ? "#6a5a2a" : "#222") + ',#111);display:grid;place-items:center;color:#f6e3b0">' + (p.id ? "&#10022;" : "&ndash;") + '</span>';
+  const look = Object.assign({}, E.look, { [k]: p.id });
+  const lay = k === "background" ? ["img/background-" + p.id + ".png"] : k === "skin" ? ["img/skin-" + p.id + ".png"] : lookLayers(Object.assign(look, { background: null }));
+  return '<span class="th">' + lay.map(l => '<img alt="" src="' + l + '">').join("") + '</span>';
+}
+function editor() {
+  $("ltabs").querySelectorAll(".lt").forEach(b => b.setAttribute("aria-selected", String(E.on ? b.dataset.lt === "edit" : b.dataset.lt === "me")));
+  Object.assign($("pichint").style, { left: CX + "px", top: CY - SIDE / 2 + 30 + "px" });
+  if (!E.on) { $("win").classList.remove("editing"); return; }
+  $("win").classList.add("editing");
+  const k = E.tab, all = piecesOf(k), shown = E.seen ? all : all.filter(p => has(k, p.id)), cur = current(k), p = all.find(q => q.id === cur);
+  const bad = EGROUPS.flatMap(g => g[1]).map(([t]) => [t, current(t)]).filter(([t, id]) => id != null && !has(t, id));
+  $("editor").innerHTML = '<div class="ed-head" style="padding-top:6px"><span style="font:12px var(--body);color:#9a8a6e">Changes show on your portrait as you pick</span></div>' +
+    '<div class="ed-tabs">' + EGROUPS.map(([g, tabs]) => '<span class="g">' + g + '</span><span class="row">' + tabs.map(([t, n]) => '<button class="wb" data-t="' + t + '" aria-pressed="' + (t === k) + '">' + n + '</button>').join("") + '</span>').join("") + '</div>' +
+    '<div class="ed-list">' + shown.map(q => {
+      const mine = has(k, q.id), why = mine ? "" : (k === "frame" && FROM[q.id]) || PRICE[q.rarity].toLocaleString() + " points in the Pro Shop";
+      return '<button class="it' + (mine ? "" : " not") + '" data-p="' + q.id + '" aria-current="' + (q.id === cur) + '">' + thumb(k, q) + '<span><span style="color:' + (k === "name" ? q.c : RAR[q.rarity][1]) + '">' + q.name + '</span>' + (why ? '<small>' + why + '</small>' : '') + '</span></button>';
+    }).join("") + '</div>' +
+    '<div class="ed-foot"><button class="wb" data-a="seen" aria-pressed="' + E.seen + '">' + (E.seen ? "Mine + seen" : "Mine") + '</button><span class="sp"></span>' +
+    '<button class="wb" data-a="cancel">Cancel</button><button class="wb" data-a="save"' + (bad.length ? ' disabled title="Take off what isn\'t yours first">' : ' style="color:#f2c14e">') + 'Save</button></div>';
+}
+function lookChanged() { E.look.changed = true; }
+function openEditor() {
+  if (!E.look) E.look = { skin: "mud-brown", outfit: "tweed-vest", headwear: "tiny-top-hat", eyes: "heavy-bags", expression: "smug-smile", accessory: "monocle", background: "clubhouse-lounge" };
+  E.saved = { look: Object.assign({}, E.look), frame: S.frame, name: S.name, fx: S.fx, wallpaper: S.wallpaper };
+  Object.assign(R, { mode: "portrait" }); E.on = true; draw();
+}
+function cancelEditor() { if (!E.on) return; E.look = E.saved.look; Object.assign(S, { frame: E.saved.frame, name: E.saved.name, fx: E.saved.fx, wallpaper: E.saved.wallpaper }); E.on = false; draw(); }
+$("ltabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-lt]"); if (!b) return;
+  if (b.dataset.lt === "edit") { if (!E.on) openEditor(); } else cancelEditor();  // (another tab: leaves the editor, unsaved changes dropped)
+});
+$("pic").addEventListener("click", () => { if (!E.on && R.mode === "portrait" && S.view !== "before" && S.adjust !== "on") openEditor(); });
+$("pic").addEventListener("pointerenter", () => $("hang").classList.add("portraithover"));
+$("pic").addEventListener("pointerleave", () => $("hang").classList.remove("portraithover"));
+$("editor").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.t) E.tab = b.dataset.t;
+  else if (b.dataset.a === "seen") E.seen = !E.seen;
+  else if (b.dataset.a === "cancel") { cancelEditor(); return; }
+  else if (b.dataset.a === "save") { E.on = false; E.look.changed = true; }
+  else if (b.dataset.p != null) {
+    const k = E.tab, id = b.dataset.p;
+    if (k === "frame") S.frame = id; else if (k === "name") S.name = id; else if (k === "effect") S.fx = id; else if (k === "wallpaper") S.wallpaper = id;
+    else { E.look[k] = E.look[k] === id && !["skin", "background"].includes(k) ? null : id; lookChanged(); }  // (click again: take it off)
+  }
+  draw();
+});
+addEventListener("keydown", e => {
+  if (!E.on) return;
+  if (e.key === "Escape") { $("editor").querySelector('[data-a="cancel"]').click(); return; }
+  const tabs = EGROUPS.flatMap(g => g[1]).map(t => t[0]);
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); const i = tabs.indexOf(E.tab); E.tab = tabs[(i + (e.key === "ArrowUp" ? -1 : 1) + tabs.length) % tabs.length]; draw(); }
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    e.preventDefault();
+    const items = [...$("editor").querySelectorAll(".it")], i = items.findIndex(x => x.getAttribute("aria-current") === "true");
+    const next = items[(i + (e.key === "ArrowLeft" ? -1 : 1) + items.length) % items.length]; if (next) next.click();
+  }
+});
+function fit() { const s = Math.min(1, $("fit").clientWidth / 915); $("win").style.transform = "scale(" + s + ")"; $("fit").style.height = 685 * s + "px"; }
+addEventListener("resize", fit); fit(); draw();
+(() => { const im = new Image(); im.onload = () => { const c = document.createElement("canvas"); c.width = c.height = 1; const g = c.getContext("2d");
+  g.drawImage(im, 688, 440, 1, 1, 0, 0, 1, 1); const d = g.getImageData(0, 0, 1, 1).data; $("win").style.setProperty("--page", "rgb(" + d[0] + "," + d[1] + "," + d[2] + ")"); }; im.src = "img/ov-now.jpg"; })();
+</script>
+</body></html>

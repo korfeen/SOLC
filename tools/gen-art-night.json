@@ -1,0 +1,265 @@
+[
+ {
+  "layer": "outfit",
+  "id": "mob_golem_body",
+  "rarity": "rare",
+  "unlock": "arcade:golem",
+  "material": "stone",
+  "flags": [
+   "--loose-ref"
+  ],
+  "desc": "Stone Golem Suit: a playful outfit made to look like a stone keeper's body, stylised, not realistic: big carved grey-tan stone shoulder blocks with a few pale crystal spikes, a blocky stone chest plate with glowing teal rune grooves, and chunky stone forearms. Fitted, not a baggy onesie; no hood"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_excav_shadetooth_head",
+  "rarity": "rare",
+  "unlock": "boss:excav:shadetooth",
+  "set": "boss:excav:shadetooth",
+  "setName": "Shadetooth",
+  "flags": [
+   "--like",
+   "crit_raptor_head",
+   "--loose-ref"
+  ],
+  "desc": "Shadetooth's Hat: Shadetooth's look from World of Warcraft (a fierce raptor of the Excavation Site): the same homemade painted-cardboard raptor hat, repainted with poster paint in orange-pink with magenta-purple stripes and a few teal touches, and ONE new detail: a curved cardboard horn sticking up from the tip of the snout. A toothy jaw on top. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224287928
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_excav_shadetooth_body",
+  "rarity": "rare",
+  "unlock": "boss:excav:shadetooth",
+  "set": "boss:excav:shadetooth",
+  "setName": "Shadetooth",
+  "flags": [
+   "--like",
+   "crit_raptor_body",
+   "--loose-ref"
+  ],
+  "desc": "Shadetooth's Onesie: Shadetooth's look from World of Warcraft: the same homemade painted-cardboard raptor onesie, repainted with poster paint in orange-pink with magenta-purple stripes, a cream belly, and a string of chunky teal-painted cardboard beads round the neck. A loose, roomy costume",
+  "since": 1793224287928
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_rfc_jergosh_head",
+  "desc": "Jergosh's Topknot: Jergosh the Invoker's look from World of Warcraft Classic (an orc warlock): a tall tuft of dark purple hair tied up in a topknot on top of the head with a gold band - his hairdo worn as the piece. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfc_jergosh_body",
+  "desc": "Jergosh's Robes: Jergosh the Invoker's look from World of Warcraft Classic: a long dark brown-maroon warlock robe with thin red trim lines down the front, HUGE rounded lavender-purple shoulder pads, wide red-orange banded bracers and a red-orange sash",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_sfk_springvale_head",
+  "desc": "Springvale's Hair: Commander Springvale's look from World of Warcraft Classic (a human paladin): long ginger-red hair swept back off the face down to the shoulders - his hairdo worn as the piece. The face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_sfk_springvale_body",
+  "desc": "Springvale's Plate: Commander Springvale's look from World of Warcraft Classic: polished silver-white plate armour with blue trim lines, rounded silver shoulder pads edged in blue, and plated gauntlets with blue bands",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_sfk_silverlaine_head",
+  "desc": "Silverlaine's Grey Hair: Baron Silverlaine's look from World of Warcraft Classic (an old human nobleman): neat grey hair combed back at the sides and the back of the head, thin on top - his hairdo worn as the piece. The face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_sfk_silverlaine_body",
+  "desc": "Silverlaine's Finery: Baron Silverlaine's look from World of Warcraft Classic: a white shirt with full puffy sleeves and an ornate buttoned front, a short rust-red vest with silver and maroon trim, a purple-and-silver chained belt, green trousers with gold piping and purple trim at the knees. No ghostly blue, no cape",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_bfd_kelris_head",
+  "desc": "Kelris's Beard: Twilight Lord Kelris's look from World of Warcraft Classic (an orc): a long dark purple braided beard hanging down onto the chest, tied with gold rings, covering the chin and mouth (and the tusks); the eyes stay uncovered",
+  "flags": [
+   "--covers-face"
+  ],
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_bfd_kelris_body",
+  "desc": "Kelris's Twilight Robes: Twilight Lord Kelris's look from World of Warcraft Classic: a long dark maroon-black robe with thin pink trim, HUGE ornate lavender-purple shoulder pads with swirling teal filigree, magenta-pink banded bracers, and a glowing blue collar at the neck",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_rfk_aggem_head",
+  "desc": "Aggem's Quill Mane: Aggem Thorncurse's look from World of Warcraft Classic (a quilboar shaman): a huge spiky crest of long grey-white and brown quills fanning up and out like a quilboar's mane, with two curved pale boar tusks at the sides. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfk_aggem_body",
+  "desc": "Aggem's Shaman Hides: Aggem Thorncurse's look from World of Warcraft Classic: a shaggy grey-white hide shawl over the shoulders, maroon-red spiked leather bracers, and a maroon-red cloth wrap round the hips tied with a thick yellow rope belt",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_rfk_ramtusk_head",
+  "desc": "Ramtusk's War Helm: Overlord Ramtusk's look from World of Warcraft Classic (a quilboar warlord): a red-brown iron war helm with a tall spike on top tied with an orange rope tuft and pink quills poking out round it, open-faced: the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfk_ramtusk_body",
+  "desc": "Ramtusk's Spiked Plate: Overlord Ramtusk's look from World of Warcraft Classic: heavy red-brown plate armour with huge boxy shoulder pads studded with big steel spikes, and red scale mail over the chest and arms",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_rfc_head",
+  "desc": "Bazzalan's Horns: Bazzalan's look from World of Warcraft Classic (a red-skinned satyr): two long dark horns curving up and back, with long shaggy dark brown hair. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_rfc_body",
+  "desc": "Bazzalan's Satyr Fur: Bazzalan's look from World of Warcraft Classic: a bare chest, shaggy dark brown goat-fur legs like a satyr's, long fur tufts at the forearms, and a thin silver-studded belt",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_smlib_head",
+  "desc": "Doan's Beard: Arcanist Doan's look from World of Warcraft Classic (a bald human arcanist): a short pointed ginger-red beard and moustache covering the chin and mouth (and the tusks); the eyes stay uncovered",
+  "flags": [
+   "--covers-face"
+  ],
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_smlib_body",
+  "desc": "Doan's Robes: Arcanist Doan's look from World of Warcraft Classic: a long red-orange Scarlet mage robe with purple trim, tall violet-edged shoulder panels, a wide purple sash, and an open front showing a pale grey undershirt",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_smarm_head",
+  "desc": "Herod's Helm: Herod's look from World of Warcraft Classic (the Scarlet Champion): a red Scarlet Crusade helm with gold trim and two white swept-back wing horns at the sides, open-faced: the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_smarm_body",
+  "desc": "Herod's Armour: Herod's look from World of Warcraft Classic: a bare muscular chest, one big red-and-gold shoulder pad with white spikes, red plate gauntlets, a red belt with a gold buckle, and red plate legs with gold swirls",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_rfd_head",
+  "desc": "Amnennar's Mitre: Amnennar the Coldbringer's look from World of Warcraft Classic (a lich): a tall pointed purple-and-gold lich mitre. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_rfd_body",
+  "desc": "Amnennar's Robes: Amnennar the Coldbringer's look from World of Warcraft Classic: long purple lich robes with gold trim, heavy chains draped across the chest, gold claw-shaped shoulder pieces, and blue crystal gems at the hem",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_ulda_head",
+  "desc": "Archaedas's Hood: Archaedas's look from World of Warcraft Classic (an ancient stone keeper): a deep hood of carved grey stone. It sits on the head; the face stays fully visible in its opening",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_ulda_body",
+  "desc": "Archaedas's Stone Robes: Archaedas's look from World of Warcraft Classic: a long robe of carved grey stone with big stone shoulder plates, stone bands wrapping the arms like chains, and a long stone tabard down the front",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_mara_head",
+  "desc": "Theradras's Crown: Princess Theradras's look from World of Warcraft Classic: a tall golden fan-shaped crown. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_mara_body",
+  "desc": "Theradras's Gold: Princess Theradras's look from World of Warcraft Classic: a golden band top with a big green gem in the middle, gold arm bands with green stones, and a short gold-and-yellow fringed skirt; lots of bare skin",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_brd_head",
+  "desc": "Thaurissan's Crown and Beard: Emperor Dagran Thaurissan's look from World of Warcraft Classic (a Dark Iron dwarf): a squat white cap with a big red jewel on top, and a huge long braided black dwarf beard hanging down over the chest, covering the mouth and chin (and the tusks); the eyes stay uncovered",
+  "flags": [
+   "--covers-face"
+  ],
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_brd_body",
+  "desc": "Emperor's Robes: Emperor Dagran Thaurissan's look from World of Warcraft Classic: black robes with a big white-and-red front panel, wide angular red-and-gold shoulder pads, gold-trimmed black sleeves with ornate silver patterns, and a gold-banded belt piece",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_lbrs_head",
+  "desc": "Omokk's Helm: Highlord Omokk's look from World of Warcraft Classic (an ogre chieftain): a dark red-and-black spiked ogre helm with a big pale horn on top, open-faced: the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_lbrs_body",
+  "desc": "Omokk's War Harness: Highlord Omokk's look from World of Warcraft Classic: big red-and-black spiked shoulder pads, a black iron chest plate hung on chains across the bare belly, black-and-red banded bracers with grey fur, and a red-and-black armoured kilt",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_ubrs_head",
+  "desc": "Drakkisath's Skull Crest: General Drakkisath's look from World of Warcraft Classic (a dragonkin general): a dragon skull headdress with long curved horns. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_ubrs_body",
+  "desc": "Drakkisath's Scales: General Drakkisath's look from World of Warcraft Classic: orange-and-black dragonkin scale armour with a tall flame-painted orange-red war banner rising behind the back and orange bat-like wings",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_dme_head",
+  "desc": "Alzzin's Horns: Alzzin the Wildshaper's look from World of Warcraft Classic (a teal-skinned satyr): two long curved golden-olive horns, with long shaggy golden hair. It sits on the head above the brow; the face stays fully visible",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_dme_body",
+  "desc": "Alzzin's Wild Fur: Alzzin the Wildshaper's look from World of Warcraft Classic: a bare chest, shaggy golden-olive goat-fur legs like a satyr's, long golden fur tufts at the forearms, and a thin studded belt",
+  "since": 1793224520251
+ },
+ {
+  "layer": "headwear",
+  "id": "gear_scholo_head",
+  "desc": "Gandling's Headdress: Darkmaster Gandling's look from World of Warcraft Classic: a tall silver-and-gold horned headpiece, with a black cloth over the lower face (the mouth, chin and tusks); the eyes stay uncovered",
+  "flags": [
+   "--covers-face"
+  ],
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_scholo_body",
+  "desc": "Gandling's Robes: Darkmaster Gandling's look from World of Warcraft Classic: a long dark grey-black robe with a wide blue front panel, angular silver-trimmed shoulder pads, and a silver belt with a skull buckle",
+  "since": 1793224520251
+ },
+ {
+  "layer": "outfit",
+  "id": "gear_rfk_body",
+  "desc": "Charlga's Dress: Charlga Razorflank's look from World of Warcraft Classic (a quilboar priestess): a teal-turquoise dress with crimson zigzag and triangle trim patterns, short wide sleeves and a darker teal striped hem",
+  "since": 1793224520251
+ }
+]

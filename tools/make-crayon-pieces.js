@@ -91,6 +91,7 @@ function smooth(labels, k, rad, times) {
   return labels;
 }
 
+// own: true - the recipe draws the whole piece from its own shapes (no traced outline or painting colours).
 // The recipes, by piece id. draw(d, r): d = { fill(points, colour, opts), line(points, width, colour),
 // circle(x, y, radius, colour), rect(x0, y0, x1, y1, colour) }, all in the piece's box (0..1; a radius in box widths).
 const GREY = "#9a9aa4", BONE = "#f0e6d0", GOLD = "#e8b84a", INK = "#2b1a10";
@@ -230,6 +231,68 @@ const RECIPES = {
   gear_brd_head: { base: "#4a3426", areas: false, draw: (d) => {
     d.rect(0.3, 0.0, 0.72, 0.09, "#c8282e"); d.rect(0.28, 0.08, 0.74, 0.12, "#e8a830");
     for (const [x0, y0] of [[0.22, 0.58], [0.67, 0.58], [0.44, 0.72]]) d.rect(x0, y0, x0 + 0.1, y0 + 0.08, "#e8a830");
+  } },
+  // Held and perched things (creature, faction and gacha accessories) whose plain colour areas came out as blobs: the
+  // faces, eyes and bits that make them what they are.
+  acc_pigeon: { base: "#8a8494", draw: (d) => { eyes(d, [[0.64, 0.24]], 0.03); tri(d, [0.72, 0.26], [0.84, 0.31], [0.72, 0.34], "#e8a040");
+    d.fill([[0.3, 0.42], [0.62, 0.38], [0.5, 0.66], [0.22, 0.62]], "#6a6478"); d.line([[0.4, 0.86], [0.42, 0.98]], 6, "#e07a8a"); d.line([[0.56, 0.86], [0.56, 0.98]], 6, "#e07a8a"); } },
+  acc_rat: { base: "#8a6a5a", draw: (d) => { d.circle(0.42, 0.22, 0.08, "#f0a8b0"); d.line([[0.56, 0.42], [0.64, 0.45], [0.72, 0.42]], 5, INK);
+    d.circle(0.92, 0.55, 0.035, "#f07a8a"); d.line([[0.12, 0.7], [0.02, 0.8], [0.1, 0.95]], 7, "#f0a8b0"); } },
+  acc_scratchcard: { base: "#f4c838", areas: false, draw: (d) => { d.rect(0.1, 0.06, 0.9, 0.3, "#d8302a");
+    for (const [x, y, c] of [[0.3, 0.5, "#2f8a4a"], [0.5, 0.5, "#2f6ad8"], [0.7, 0.5, "#d8302a"], [0.3, 0.75, "#e07a20"], [0.5, 0.75, "#2f8a4a"], [0.7, 0.75, "#a050c0"]]) d.circle(x, y, 0.07, c); } },
+  crit_bear_acc: { base: "#d86a2a", draw: (d) => { for (const x of [0.2, 0.8]) d.circle(x, 0.12, 0.1, "#a8582a"); d.rect(0.08, 0.36, 0.92, 0.48, "#f4b830");
+    eyes(d, [[0.4, 0.25], [0.6, 0.25]], 0.035); d.circle(0.5, 0.32, 0.04, INK); } },
+  crit_crocolisk_acc: { base: "#4a7a3a", draw: (d) => { googly(d, [[0.32, 0.1], [0.5, 0.08]], 0.06); teeth(d, 0.12, 0.62, 0.42, 6); d.circle(0.7, 0.28, 0.025, INK); } },
+  crit_dwarf_acc: { base: "#d0602a", draw: (d) => { d.fill([[0.02, 0.32], [0.2, 0.06], [0.5, 0.0], [0.8, 0.06], [0.98, 0.32]], "#f4ead0");
+    for (const y of [0.55, 0.7]) d.line([[0.08, y], [0.25, y - 0.06], [0.42, y], [0.6, y - 0.06], [0.78, y], [0.92, y - 0.06]], 7, "#f4ead0"); } },
+  crit_gorilla_acc: { base: "#f4d040", draw: (d) => { for (const x of [0.36, 0.56]) d.line([[x, 0.15], [x + 0.06, 0.9]], 6, "#c8901e"); d.circle(0.5, 0.06, 0.05, "#5a4026"); } },
+  crit_human_acc: { base: "#e8dcc0", areas: false, draw: (d) => { d.circle(0.55, 0.55, 0.3, "#d8902a"); d.circle(0.55, 0.58, 0.18, "#f0c060");
+    eyes(d, [[0.48, 0.52], [0.62, 0.52]], 0.03); d.circle(0.55, 0.62, 0.03, INK); } },
+  crit_kodo_acc: { base: "#a8682e", draw: (d) => { d.circle(0.5, 0.55, 0.26, "#d89858"); eyes(d, [[0.4, 0.5], [0.6, 0.5]], 0.04); d.circle(0.5, 0.66, 0.06, "#6a3a1e");
+    tri(d, [0.22, 0.3], [0.08, 0.14], [0.3, 0.22], BONE); tri(d, [0.78, 0.3], [0.92, 0.14], [0.7, 0.22], BONE); } },
+  crit_murloc_acc: { base: "#3aa8a0", draw: (d) => { googly(d, [[0.44, 0.17]], 0.09); d.fill([[0.3, 0.3], [0.62, 0.3], [0.5, 0.38]], "#f07a6a"); d.line([[0.5, 0.45], [0.5, 0.98]], 10, "#8a5a2e"); } },
+  crit_satyr_acc: { base: "#d0943a", areas: false, draw: (d) => { for (let k = 0; k < 6; k++) { const x = 0.12 + k * 0.13; d.rect(x, 0.05 + k * 0.07, x + 0.1, 0.95, "#e0a848"); }
+    d.rect(0.08, 0.5, 0.92, 0.62, "#a82a2e"); } },
+  crit_tallstrider_acc: { base: "#c88a48", areas: false, draw: (d) => { d.fill([[0.04, 0.5], [0.96, 0.5], [0.82, 0.98], [0.18, 0.98]], "#c88a48");
+    for (const [x, y, c] of [[0.35, 0.36, "#f0b8c8"], [0.6, 0.3, "#b8d8f0"], [0.48, 0.42, "#f4e0a8"]]) d.fill(Array.from({ length: 16 }, (_, k) => { const t = (k / 16) * 2 * Math.PI; return [x + Math.cos(t) * 0.12, y + Math.sin(t) * 0.17]; }), c, { hatch: 10, line: 8 });
+    for (const y of [0.66, 0.82]) d.line([[0.12, y], [0.88, y]], 6, "#8a5a2e"); } },
+  crit_troll_acc: { base: "#7a9a3a", draw: (d) => { for (const [x, y] of [[0.38, 0.3], [0.62, 0.3]]) { d.line([[x - 0.05, y - 0.05], [x + 0.05, y + 0.05]], 7, INK); d.line([[x - 0.05, y + 0.05], [x + 0.05, y - 0.05]], 7, INK); }
+    teeth(d, 0.38, 0.62, 0.42, 3, 0.06); for (const [x, c] of [[0.4, "#2f6ad8"], [0.5, "#d8302a"], [0.6, "#f4c838"]]) d.circle(x, 0.04, 0.03, c); } },
+  crit_wolf_acc: { base: "#9a9aa8", draw: (d) => { tri(d, [0.3, 0.06], [0.24, 0.24], [0.4, 0.2], "#6a6a78"); tri(d, [0.62, 0.02], [0.52, 0.18], [0.68, 0.2], "#6a6a78");
+    d.line([[0.42, 0.3], [0.48, 0.28]], 5, INK); d.line([[0.56, 0.26], [0.62, 0.25]], 5, INK); d.fill([[0.36, 0.42], [0.66, 0.42], [0.6, 0.66], [0.42, 0.66]], "#f0ece8"); } },
+  crit_zombie_acc: { base: "#f0a0b0", draw: (d) => { for (const y of [0.15, 0.28, 0.4]) d.line([[0.12, y], [0.3, y - 0.05], [0.5, y + 0.03], [0.7, y - 0.05], [0.88, y]], 6, "#c86a80"); } },
+  // The dragonflight whelps, perched: drawn whole (own) as one cute crayon whelp in each flight's colours - spread
+  // wings, a curled tail, a round body with a pale belly, a big head with a snout, eyes and two little horns.
+  ...Object.fromEntries([["black", "#3a3440", "#f07a20", "#f0a040"], ["blue", "#2f6ad8", "#e8f0f8", "#9ac8f0"],
+    ["bronze", "#c8782e", "#f0d8a8", "#f0c050"], ["green", "#2f8a4a", "#f0dcb0", "#a8d878"], ["red", "#d8302a", "#f8c840", "#f8a040"]]
+    .map(([k, base, belly, wing]) => ["crit_" + k + "flight_acc", { own: true, draw: (d) => {
+      d.fill([[0.4, 0.42], [0.04, 0.12], [0.1, 0.36], [0.02, 0.5], [0.32, 0.56]], wing, { hatch: 10, line: 9 });
+      d.fill([[0.6, 0.42], [0.96, 0.12], [0.9, 0.36], [0.98, 0.5], [0.68, 0.56]], wing, { hatch: 10, line: 9 });
+      d.fill([[0.58, 0.78], [0.86, 0.86], [0.96, 0.7], [0.93, 0.9], [0.62, 0.97]], base, { hatch: 10, line: 9 });
+      d.fill(Array.from({ length: 22 }, (_, i) => { const t = (i / 22) * 2 * Math.PI; return [0.5 + Math.cos(t) * 0.2, 0.64 + Math.sin(t) * 0.27]; }), base, { hatch: 12, line: 10 });
+      d.fill(Array.from({ length: 22 }, (_, i) => { const t = (i / 22) * 2 * Math.PI; return [0.5 + Math.cos(t) * 0.11, 0.68 + Math.sin(t) * 0.19]; }), belly, { hatch: 10, line: 7 });
+      for (const y of [0.6, 0.68, 0.76]) d.line([[0.42, y], [0.58, y]], 4, "#8a6a4a");
+      for (const x of [0.38, 0.62]) d.fill(Array.from({ length: 22 }, (_, i) => { const t = (i / 22) * 2 * Math.PI; return [x + Math.cos(t) * 0.07, 0.92 + Math.sin(t) * 0.05]; }), base, { hatch: 8, line: 7 });
+      tri(d, [0.4, 0.16], [0.36, 0.0], [0.47, 0.12], belly); tri(d, [0.6, 0.16], [0.64, 0.0], [0.53, 0.12], belly);
+      d.fill(Array.from({ length: 22 }, (_, i) => { const t = (i / 22) * 2 * Math.PI; return [0.5 + Math.cos(t) * 0.17, 0.27 + Math.sin(t) * 0.15]; }), base, { hatch: 12, line: 10 });
+      d.fill(Array.from({ length: 22 }, (_, i) => { const t = (i / 22) * 2 * Math.PI; return [0.5 + Math.cos(t) * 0.1, 0.35 + Math.sin(t) * 0.065]; }), belly, { hatch: 8, line: 7 });
+      d.circle(0.465, 0.34, 0.012, INK, { line: 0 }); d.circle(0.535, 0.34, 0.012, INK, { line: 0 });
+      googly(d, [[0.43, 0.24], [0.57, 0.24]], 0.045);
+    } }])),
+  // The Pro Shop steward's set (tools/gen-art-proshop-club.json): his striped waistcoat over a cream shirt, navy bow tie,
+  // gold buttons; his straw boater with its blue-and-white band.
+  shop_steward_vest: { base: "#f2ead8", areas: false, draw: (d) => {
+    d.fill([[0.22, 0.14], [0.78, 0.14], [0.82, 0.99], [0.18, 0.99]], "#f4f0e4");
+    for (const x of [0.25, 0.37, 0.49, 0.61, 0.73]) d.fill([[x, 0.15], [x + 0.06, 0.15], [x + 0.06 + (x - 0.47) * 0.06, 0.98], [x + (x - 0.47) * 0.06, 0.98]], "#2f62c8", { line: 0, hatch: 8 });
+    d.fill([[0.5, 0.17], [0.37, 0.1], [0.37, 0.24]], "#1e2c5a"); d.fill([[0.5, 0.17], [0.63, 0.1], [0.63, 0.24]], "#1e2c5a");
+    d.circle(0.5, 0.17, 0.028, "#1e2c5a");
+    buttons(d, 0.52, [0.38, 0.5, 0.62, 0.74], GOLD, 0.02);
+  } },
+  shop_steward_boater: { base: "#e8b45a", areas: false, draw: (d) => {
+    d.fill(Array.from({ length: 28 }, (_, k) => { const a = (k / 28) * 2 * Math.PI; return [0.5 + Math.cos(a) * 0.49, 0.8 + Math.sin(a) * 0.17]; }), "#e8b45a", { hatch: 10, line: 10 });
+    d.rect(0.2, 0.04, 0.84, 0.74, "#e8b45a");
+    d.rect(0.2, 0.24, 0.84, 0.64, "#f6f2e8");
+    for (const x of [0.24, 0.36, 0.48, 0.6, 0.72]) d.rect(x, 0.24, x + 0.07, 0.64, "#2f62c8");
   } },
   gear_dm_body: { base: "#2e3448", areas: false, draw: (d) => {
     for (const x of [0.44, 0.56]) d.line([[x, 0.05], [x, 0.92]], 10, "#d8a030");
@@ -778,8 +841,9 @@ for (const f of fs.existsSync(RECIPE_DIR) ? fs.readdirSync(RECIPE_DIR).filter((f
   Object.assign(RECIPES, require(path.join(RECIPE_DIR, f))(H));
 }
 
-function draw(id) {
-  const img = decodePng(path.join(GEN, "painted", id + ".png"));
+// (file: a painting elsewhere, 1254 square - the arcade's props, tools/make-crayon-props.js)
+function draw(id, file) {
+  const img = decodePng(file || path.join(GEN, "painted", id + ".png"));
   const small = resample(img, 0, 0, img.width, img.height, L, L);
   const px = [], idx = [];
   for (let i = 0; i < L * L; i++) if (small[i * 4 + 3] > 110) { px.push([small[i * 4], small[i * 4 + 1], small[i * 4 + 2]]); idx.push(i); }
@@ -833,6 +897,9 @@ function draw(id) {
       rect: (x0, y0, x1, y1, col, o) => fill([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], col, o),
       circle: (x, y, rad, col, o) => crayonShape(c, crayon.circle(u(x), v(y), rad * box[2], 24), hex(col), r, { fit: true, hatch: 10, line: 8, ...o }) }, r);
   }
+  // (own: the recipe draws the whole piece itself - its shapes, each with its own outline - in the painting's box; no
+  // traced outline or fill: a creature whose traced outline comes out ragged)
+  if (recipe.own && !process.env.CRAYON_TRACED) return Buffer.from(crayon.toRgba(c));  // (CRAYON_TRACED=1: drawn on the traced outline anyway, to compare)
   const top = Buffer.from(crayon.toRgba(c)), out = fillRgba;  // (the areas and details over the fill, cut to the shape; then the outline)
   for (let i = 0; i < S * S; i++) if (edge[i * 4 + 3] <= 127) top[i * 4 + 3] = 0;
   const lines = crayon.toRgba(line);
@@ -847,8 +914,8 @@ function draw(id) {
 
 // The painting's holes stay holes (a mask's eye holes, where the picture's eyes show through): see-through areas of
 // the painting enclosed by it, too small for the traced outline to keep, cut out of the crayon piece again.
-function keepHoles(id, rgba) {
-  const p = decodePng(path.join(GEN, "painted", id + ".png")).rgba;
+function keepHoles(id, rgba, file) {
+  const p = decodePng(file || path.join(GEN, "painted", id + ".png")).rgba;
   const clear = (i) => p[i * 4 + 3] < 24, outside = new Uint8Array(S * S), st = [];
   for (let x = 0; x < S; x++) st.push(x, (S - 1) * S + x);
   for (let y = 0; y < S; y++) st.push(y * S, y * S + S - 1);
@@ -862,6 +929,8 @@ function keepHoles(id, rgba) {
   for (let i = 0; i < S * S; i++) if (clear(i) && !outside[i]) rgba[i * 4 + 3] = 0;
 }
 
+module.exports = { draw, keepHoles, RECIPES, S };
+if (require.main === module) {
 // (and the Pro Shop's pieces, the bounty props, and the claw machine's series: tools/gen-art-gacha<n>.json, ids as painted)
 const gachaIds = new Set(fs.readdirSync(__dirname).filter((f) => /^gen-art-gacha\d+\.json$/.test(f))
   .flatMap((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), "utf8")).map((j) => j.id)));
@@ -909,3 +978,4 @@ if (shown.length) {
   try { writePng(path.join(GEN, sheetName ? "crayon-pieces-" + sheetName + ".png" : "crayon-pieces.png"), T * cols, T * 2 * rows, sheet); } catch (e) { console.log("(crayon-pieces.png is open: not updated)"); }
 }
 console.log(`Drew ${shown.length} crayon pieces into ${path.join(GEN, "crayon")}`);
+}

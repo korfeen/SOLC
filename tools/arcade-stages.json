@@ -1,0 +1,3178 @@
+{
+ "_": "SOLC Survivors (the Games Room arcade machine): each stage a dungeon, unlocked by its game card (clear the dungeon in WoW once). Three rooms, a boss cut out of each room's back wall (the cut is the timer), the hole it leaves the way on; the last is the end boss. Boss loot counts for minting (user). Made by a scratch script; change it here.",
+ "rooms": {
+  "count": 3,
+  "wakeTime": 180,
+  "wakeKills": 220
+ },
+ "loot": {
+  "chance": 0.25,
+  "pity": 4,
+  "noDuplicates": true,
+  "what": "a piece of the beaten boss's own set you don't own yet; the end boss can also drop its dungeon's chase item",
+  "alsoInChests": true
+ },
+ "cards": {
+  "tiers": [
+   1,
+   3,
+   10
+  ],
+  "names": [
+   "card",
+   "silver card",
+   "gold card"
+  ],
+  "what": "clears in WoW (Achievements.lua CLEAR_TIERS): silver and gold play harder with better drops (idea)"
+ },
+ "stages": [
+  {
+   "key": "rfc",
+   "name": "Ragefire Chasm",
+   "stage": "bg_rfc",
+   "foes": [
+    "trogg",
+    "elemental",
+    "burningblade"
+   ],
+   "bosses": [
+    {
+     "name": "Jergosh the Invoker",
+     "set": "boss:rfc:jergosh"
+    },
+    {
+     "name": "Taragaman the Hungerer",
+     "set": "boss:rfc:taragaman"
+    },
+    {
+     "name": "Bazzalan",
+     "set": "dungeon:rfc"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Ragefire Trogg",
+     "costume": "trogg",
+     "sig": "burrow"
+    },
+    {
+     "name": "Ragefire Shaman",
+     "costume": "trogg",
+     "sig": "healwave",
+     "acc": "fac_deadwind_acc"
+    },
+    {
+     "name": "Molten Elemental",
+     "costume": "elemental",
+     "sig": "eruption"
+    },
+    {
+     "name": "Searing Blade Warlock",
+     "costume": "burningblade",
+     "sig": "summonimp",
+     "acc": "crit_demon_acc"
+    },
+    {
+     "name": "Searing Blade Enforcer",
+     "costume": "burningblade",
+     "sig": "burnbrand",
+     "acc": "fac_burningblade_acc"
+    }
+   ]
+  },
+  {
+   "key": "wc",
+   "name": "Wailing Caverns",
+   "stage": "bg_wc",
+   "foes": [
+    "raptor",
+    "crocolisk",
+    "naga",
+    "elemental"
+   ],
+   "bosses": [
+    {
+     "name": "Lady Anacondra",
+     "set": "boss:wc:anacondra"
+    },
+    {
+     "name": "Lord Serpentis",
+     "set": "boss:wc:serpentis"
+    },
+    {
+     "name": "Mutanus the Devourer",
+     "set": "dungeon:wc"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Deviate Ravager",
+     "costume": "raptor",
+     "sig": "leap"
+    },
+    {
+     "name": "Deviate Crocolisk",
+     "costume": "crocolisk",
+     "sig": "deathroll"
+    },
+    {
+     "name": "Deviate Viper",
+     "costume": "snake",
+     "borrows": "naga",
+     "paint": true,
+     "sig": "poisonspit"
+    },
+    {
+     "name": "Deviate Lasher",
+     "costume": "plant",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "lash"
+    },
+    {
+     "name": "Druid of the Fang",
+     "costume": "snake",
+     "borrows": "naga",
+     "paint": true,
+     "sig": "shapeshift",
+     "acc": "crit_elemental_acc"
+    }
+   ]
+  },
+  {
+   "key": "dm",
+   "name": "The Deadmines",
+   "stage": "bg_dm",
+   "foes": [
+    "venture",
+    "defias",
+    "bloodsail"
+   ],
+   "bosses": [
+    {
+     "name": "Rhahk'Zor",
+     "set": "boss:dm:rhahkzor",
+     "moves": [
+      {
+       "move": "slam",
+       "every": 5,
+       "what": "Rhahk'Zor Slam: a circle under you, then a stunning slam"
+      }
+     ]
+    },
+    {
+     "name": "Mr. Smite",
+     "set": "boss:dm:smite",
+     "moves": [
+      {
+       "move": "stomp",
+       "every": 7,
+       "what": "Smite Stomp: a ring round him that stuns"
+      },
+      {
+       "move": "swap",
+       "at": [
+        0.66,
+        0.33
+       ],
+       "what": "runs to his chest, kneels (can't be hurt), swaps weapons and comes back faster"
+      }
+     ]
+    },
+    {
+     "name": "Edwin VanCleef",
+     "set": "dungeon:dm",
+     "moves": [
+      {
+       "move": "charge",
+       "every": 6,
+       "what": "a lane lights up, then he charges down it"
+      },
+      {
+       "move": "adds",
+       "at": [
+        0.5
+       ],
+       "count": 4,
+       "look": "defias",
+       "what": "calls Defias Blackguards down from the wall"
+      }
+     ]
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Goblin Engineer",
+     "costume": "venture",
+     "sig": "bomblob",
+     "acc": "fac_firegut_acc"
+    },
+    {
+     "name": "Defias Overseer",
+     "costume": "defias",
+     "sig": "rally",
+     "acc": "fac_splinterfist_acc"
+    },
+    {
+     "name": "Defias Evoker",
+     "costume": "defias",
+     "sig": "missiles",
+     "acc": "fac_gordunni_acc"
+    },
+    {
+     "name": "Defias Pirate",
+     "costume": "bloodsail",
+     "sig": "lunge"
+    },
+    {
+     "name": "Defias Miner",
+     "costume": "defias",
+     "sig": "minecart",
+     "acc": "fac_venture_acc"
+    }
+   ]
+  },
+  {
+   "key": "sfk",
+   "name": "Shadowfang Keep",
+   "stage": "bg_sfk",
+   "foes": [
+    "wolf",
+    "ghost",
+    "bat"
+   ],
+   "bosses": [
+    {
+     "name": "Commander Springvale",
+     "set": "boss:sfk:springvale"
+    },
+    {
+     "name": "Baron Silverlaine",
+     "set": "boss:sfk:silverlaine"
+    },
+    {
+     "name": "Archmage Arugal",
+     "set": "dungeon:sfk"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Shadowfang Moonwalker",
+     "costume": "wolf",
+     "sig": "packhowl"
+    },
+    {
+     "name": "Shadowfang Darksoul",
+     "costume": "wolf",
+     "sig": "shadowcurse",
+     "acc": "fac_moshogg_acc",
+     "tint": "shadow"
+    },
+    {
+     "name": "Haunted Servitor",
+     "costume": "ghost",
+     "sig": "phase"
+    },
+    {
+     "name": "Vile Bat",
+     "costume": "bat",
+     "sig": "zigzagdrain"
+    },
+    {
+     "name": "Lupine Horror",
+     "costume": "wolf",
+     "sig": "illusions",
+     "acc": "crit_wolf_acc",
+     "size": 1.25
+    }
+   ]
+  },
+  {
+   "key": "bfd",
+   "name": "Blackfathom Deeps",
+   "stage": "bg_bfd",
+   "foes": [
+    "naga",
+    "murloc",
+    "crab",
+    "turtle",
+    "satyr"
+   ],
+   "bosses": [
+    {
+     "name": "Lady Sarevess",
+     "set": "boss:bfd:sarevess"
+    },
+    {
+     "name": "Twilight Lord Kelris",
+     "set": "boss:bfd:kelris"
+    },
+    {
+     "name": "Aku'mai",
+     "set": "dungeon:bfd"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Blackfathom Sea Witch",
+     "costume": "naga",
+     "sig": "blizzard",
+     "acc": "crit_elemental_acc",
+     "tint": "frost"
+    },
+    {
+     "name": "Blackfathom Myrmidon",
+     "costume": "naga",
+     "sig": "tailsweep",
+     "acc": "crit_naga_acc"
+    },
+    {
+     "name": "Blindlight Murloc",
+     "costume": "murloc",
+     "sig": "flee",
+     "acc": "crit_murloc_acc"
+    },
+    {
+     "name": "Snapping Crustacean",
+     "costume": "crab",
+     "sig": "scuttle"
+    },
+    {
+     "name": "Blindlight Oracle",
+     "costume": "murloc",
+     "sig": "waterbolt",
+     "acc": "fac_deadwind_acc",
+     "tint": "water"
+    },
+    {
+     "name": "Aku'mai Snapjaw",
+     "costume": "turtle",
+     "sig": "shell"
+    },
+    {
+     "name": "Fallenroot Shadowstalker",
+     "costume": "satyr",
+     "sig": "stealth",
+     "tint": "shadow"
+    }
+   ]
+  },
+  {
+   "key": "stocks",
+   "name": "The Stockade",
+   "stage": "bg_stocks",
+   "foes": [
+    "defias",
+    "human"
+   ],
+   "bosses": [
+    {
+     "name": "Kam Deepfury",
+     "set": "boss:stocks:deepfury"
+    },
+    {
+     "name": "Hamhock",
+     "set": "boss:stocks:hamhock"
+    },
+    {
+     "name": "Bazil Thredd",
+     "set": "dungeon:stocks"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Defias Prisoner",
+     "costume": "defias",
+     "sig": "riot",
+     "size": 0.8
+    },
+    {
+     "name": "Defias Convict",
+     "costume": "defias",
+     "sig": "shank",
+     "acc": "fac_defias_acc"
+    },
+    {
+     "name": "Defias Insurgent",
+     "costume": "defias",
+     "sig": "molotov",
+     "acc": "fac_firegut_acc"
+    },
+    {
+     "name": "Defias Inmate",
+     "costume": "human",
+     "sig": "grabthrow"
+    }
+   ]
+  },
+  {
+   "key": "gnomer",
+   "name": "Gnomeregan",
+   "stage": "bg_gnomer",
+   "foes": [
+    "dwarf",
+    "elemental",
+    "darkiron"
+   ],
+   "bosses": [
+    {
+     "name": "Electrocutioner 6000",
+     "set": "boss:gnomer:electrocutioner"
+    },
+    {
+     "name": "Crowd Pummeler 9-60",
+     "set": "boss:gnomer:pummeler"
+    },
+    {
+     "name": "Mekgineer Thermaplugg",
+     "set": "dungeon:gnomer"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Alarm-a-bomb 2600",
+     "costume": "alarmbomb",
+     "borrows": "dwarf",
+     "paint": true,
+     "sig": "alarm"
+    },
+    {
+     "name": "Leprous Machinesmith",
+     "costume": "lepergnome",
+     "borrows": "dwarf",
+     "paint": true,
+     "sig": "repairbots",
+     "acc": "fac_darkiron_acc"
+    },
+    {
+     "name": "Mechano-Frostwalker",
+     "costume": "lepergnome",
+     "borrows": "dwarf",
+     "paint": true,
+     "sig": "icetrail",
+     "tint": "frost",
+     "size": 1.3
+    },
+    {
+     "name": "Irradiated Slime",
+     "costume": "ooze",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "split",
+     "tint": "radiation"
+    },
+    {
+     "name": "Dark Iron Agent",
+     "costume": "darkiron",
+     "sig": "mines"
+    },
+    {
+     "name": "Leprous Technician",
+     "costume": "lepergnome",
+     "borrows": "dwarf",
+     "paint": true,
+     "sig": "wrenchbounce",
+     "acc": "fac_venture_acc"
+    }
+   ]
+  },
+  {
+   "key": "rfk",
+   "name": "Razorfen Kraul",
+   "stage": "bg_rfk",
+   "foes": [
+    "quilboar",
+    "boar",
+    "bat"
+   ],
+   "bosses": [
+    {
+     "name": "Aggem Thorncurse",
+     "set": "boss:rfk:aggem"
+    },
+    {
+     "name": "Overlord Ramtusk",
+     "set": "boss:rfk:ramtusk"
+    },
+    {
+     "name": "Charlga Razorflank",
+     "set": "dungeon:rfk"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Razorfen Quilguard",
+     "costume": "quilboar",
+     "sig": "quillnova",
+     "acc": "crit_quilboar_acc"
+    },
+    {
+     "name": "Razorfen Geomancer",
+     "costume": "quilboar",
+     "sig": "earthspikes",
+     "acc": "crit_trogg_acc"
+    },
+    {
+     "name": "Agam'ar",
+     "costume": "boar",
+     "sig": "charge"
+    },
+    {
+     "name": "Kraul Bat",
+     "costume": "bat",
+     "sig": "screech"
+    },
+    {
+     "name": "Razorfen Beastmaster",
+     "costume": "quilboar",
+     "sig": "beastcall",
+     "acc": "fac_urok_acc"
+    }
+   ]
+  },
+  {
+   "key": "sm",
+   "name": "Scarlet Monastery",
+   "stage": "bg_smgy",
+   "foes": [
+    "ghost",
+    "zombie",
+    "scarlet",
+    "wolf"
+   ],
+   "bosses": [
+    {
+     "name": "Interrogator Vishas",
+     "room": 0,
+     "wake": 130,
+     "hp": 320,
+     "size": 1.6,
+     "look": {
+      "headwear": "fac_scarlet_head",
+      "outfit": "fac_scarlet_body",
+      "skin": "slate_gray",
+      "accessory": "chase_smgy_torturing_poker"
+     },
+     "moves": [
+      {
+       "move": "swpain",
+       "every": 6,
+       "what": "Shadow Word: Pain: a shadow bolt; a hit hurts you over time"
+      },
+      {
+       "move": "poker",
+       "every": 9,
+       "what": "the hot poker: a circle on you, then a brand that burns"
+      },
+      {
+       "move": "tellme",
+       "at": [
+        0.6,
+        0.3
+       ],
+       "what": "\"Tell me... tell me everything!\": calls Scarlet Torturers"
+      }
+     ]
+    },
+    {
+     "name": "Bloodmage Thalnos",
+     "room": 0,
+     "wake": 70,
+     "hp": 460,
+     "set": "dungeon:smgy",
+     "moves": [
+      {
+       "move": "flamespike",
+       "every": 6,
+       "what": "Flame Spike: three lanes of fire fanning out at you"
+      },
+      {
+       "move": "firenova",
+       "every": 11,
+       "what": "Fire Nova: a big ring of fire round him, run out"
+      }
+     ]
+    },
+    {
+     "name": "Houndmaster Loksey",
+     "room": 1,
+     "wake": 130,
+     "hp": 420,
+     "size": 1.6,
+     "look": {
+      "headwear": "fac_scarlet_head",
+      "outfit": "fac_scarlet_body",
+      "skin": "sunburnt_red",
+      "accessory": "crit_wolf_acc"
+     },
+     "moves": [
+      {
+       "move": "hounds",
+       "every": 16,
+       "onLand": true,
+       "count": 3,
+       "what": "\"Release the hounds!\": Scarlet Tracking Hounds come running"
+      },
+      {
+       "move": "bloodlust",
+       "at": [
+        0.5
+       ],
+       "what": "Bloodlust: faster and fiercer"
+      }
+     ]
+    },
+    {
+     "name": "Arcanist Doan",
+     "room": 1,
+     "wake": 70,
+     "hp": 620,
+     "set": "dungeon:smlib",
+     "moves": [
+      {
+       "move": "polymorph",
+       "every": 9,
+       "what": "Polymorph: a circle on you; caught, you're a sheep a moment (slow, no attacks)"
+      },
+      {
+       "move": "bubble",
+       "every": 14,
+       "what": "Arcane Bubble (can't be hurt), then Detonation: a huge circle to run out of"
+      }
+     ],
+     "land": [
+      0.5,
+      0.88
+     ],
+     "wakeZone": 2,
+     "areaName": "the Athenaeum"
+    },
+    {
+     "name": "Herod",
+     "room": 2,
+     "wake": 170,
+     "hp": 900,
+     "set": "dungeon:smarm",
+     "moves": [
+      {
+       "move": "whirlwind",
+       "every": 10,
+       "what": "\"Blades of Light!\": spins and chases you with a damage ring round him - run"
+      },
+      {
+       "move": "charge",
+       "every": 13,
+       "what": "Rushing Charge: a lane, then he charges down it"
+      },
+      {
+       "move": "enrage",
+       "at": [
+        0.3
+       ],
+       "what": "Frenzy: faster"
+      },
+      {
+       "move": "flood",
+       "onDeath": true,
+       "count": 12,
+       "kind": "human",
+       "what": "Scarlet Trainees flood in when he falls"
+      }
+     ]
+    },
+    {
+     "name": "Scarlet Commander Mograine",
+     "room": 3,
+     "wake": 150,
+     "hp": 800,
+     "size": 2,
+     "look": {
+      "headwear": "fac_scarlet_head",
+      "outfit": "fac_scarlet_body",
+      "skin": "pale_lavender",
+      "accessory": "chase_smcath_hand_of_righteousness"
+     },
+     "moves": [
+      {
+       "move": "hammer",
+       "every": 8,
+       "what": "Hammer of Justice: a quick circle on you; caught, stunned"
+      },
+      {
+       "move": "crusader",
+       "every": 5,
+       "what": "Crusader Strike: a cone in front of him"
+      },
+      {
+       "move": "divineshield",
+       "at": [
+        0.5
+       ],
+       "what": "Divine Shield: can't be hurt a while"
+      },
+      {
+       "move": "layonhands",
+       "at": [
+        0.15
+       ],
+       "what": "Lay on Hands: heals himself back to half, once"
+      }
+     ]
+    },
+    {
+     "name": "High Inquisitor Whitemane",
+     "room": 3,
+     "enter": "after",
+     "hp": 700,
+     "set": "dungeon:smcath",
+     "look": {
+      "accessory": "fac_scarlet_acc"
+     },
+     "moves": [
+      {
+       "move": "smite",
+       "every": 3.5,
+       "what": "Holy Smite: a bolt at you"
+      },
+      {
+       "move": "sleep",
+       "every": 9,
+       "what": "Deep Sleep: a circle on you; caught, your ogre falls asleep (mash to wake)"
+      },
+      {
+       "move": "resurrect",
+       "at": [
+        0.5
+       ],
+       "who": "Scarlet Commander Mograine",
+       "what": "\"Arise, my champion!\": brings Mograine back once"
+      }
+     ]
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Haunting Phantasm",
+     "costume": "ghost",
+     "sig": "blink",
+     "room": 0
+    },
+    {
+     "name": "Anguished Dead",
+     "costume": "zombie",
+     "sig": "gravegrab",
+     "room": 0
+    },
+    {
+     "name": "Unfettered Spirit",
+     "costume": "ghost",
+     "sig": "chilltouch",
+     "tint": "ghost",
+     "room": 0
+    },
+    {
+     "name": "Scarlet Torturer",
+     "costume": "scarlet",
+     "sig": "thumbscrews",
+     "acc": "fac_darkiron_acc",
+     "tint": "blood",
+     "room": 0
+    },
+    {
+     "name": "Scarlet Monk",
+     "costume": "scarlet",
+     "sig": "dodge",
+     "room": 1
+    },
+    {
+     "name": "Scarlet Tracking Hound",
+     "costume": "wolf",
+     "sig": "bleedbite",
+     "room": 1
+    },
+    {
+     "name": "Scarlet Diviner",
+     "costume": "scarlet",
+     "sig": "bookthrow",
+     "acc": "fac_gordunni_acc",
+     "room": 1
+    },
+    {
+     "name": "Scarlet Adept",
+     "costume": "scarlet",
+     "sig": "renew",
+     "acc": "fac_scarlet_acc",
+     "room": 1
+    },
+    {
+     "name": "Scarlet Soldier",
+     "costume": "scarlet",
+     "sig": "shieldbash",
+     "acc": "crit_human_acc",
+     "room": 2
+    },
+    {
+     "name": "Scarlet Defender",
+     "costume": "scarlet",
+     "sig": "brace",
+     "acc": "crit_human_acc",
+     "size": 1.3,
+     "room": 2
+    },
+    {
+     "name": "Scarlet Myrmidon",
+     "costume": "scarlet",
+     "sig": "enrage",
+     "acc": "fac_blackrock_acc",
+     "room": 2
+    },
+    {
+     "name": "Scarlet Trainee",
+     "costume": "scarlet",
+     "sig": "drill",
+     "size": 0.75,
+     "room": 2
+    },
+    {
+     "name": "Scarlet Chaplain",
+     "costume": "scarlet",
+     "sig": "shieldally",
+     "acc": "fac_scarlet_acc",
+     "room": 3
+    },
+    {
+     "name": "Scarlet Sorcerer",
+     "costume": "scarlet",
+     "sig": "frostbolt",
+     "acc": "fac_gordunni_acc",
+     "tint": "frost",
+     "room": 3
+    },
+    {
+     "name": "Scarlet Champion",
+     "costume": "scarlet",
+     "sig": "crusaderstrike",
+     "acc": "fac_darkiron_acc",
+     "size": 1.3,
+     "room": 3
+    },
+    {
+     "name": "Scarlet Abbot",
+     "costume": "scarlet",
+     "sig": "consecrate",
+     "acc": "crit_kobold_acc",
+     "room": 3
+    }
+   ],
+   "rooms": [
+    {
+     "name": "Graveyard",
+     "stage": "bg_smgy",
+     "props": "graves",
+     "what": "the churchyard: painted gravestones stand about (cover, and the dead climb out of them)",
+     "layout": {
+      "floor": "smgy",
+      "what": "the Forlorn Cloister (warcraft.wiki.gg map + screenshots): a cobblestone path up the middle, narrow from the Chamber of Atonement, widening towards Honor's Tomb; lawns either side with rows of graves, cypresses lining the path, the Scarlet's corpse pyres; stocks and a rack by the entrance (Vishas's torture hall)",
+      "path": {
+       "x": 0.5,
+       "half": [
+        [
+         0,
+         0.075
+        ],
+        [
+         0.58,
+         0.075
+        ],
+        [
+         0.68,
+         0.14
+        ],
+        [
+         1,
+         0.14
+        ]
+       ]
+      },
+      "graves": [
+       [
+        0.045,
+        0.25,
+        7
+       ],
+       [
+        0.203,
+        0.252,
+        3
+       ],
+       [
+        0.282,
+        0.247,
+        3
+       ],
+       [
+        0.652,
+        0.237,
+        0
+       ],
+       [
+        0.829,
+        0.239,
+        0
+       ],
+       [
+        0.059,
+        0.324,
+        2
+       ],
+       [
+        0.13,
+        0.335,
+        1
+       ],
+       [
+        0.228,
+        0.327,
+        3
+       ],
+       [
+        0.296,
+        0.341,
+        3
+       ],
+       [
+        0.741,
+        0.321,
+        5
+       ],
+       [
+        0.83,
+        0.328,
+        6
+       ],
+       [
+        0.917,
+        0.337,
+        2
+       ],
+       [
+        0.044,
+        0.414,
+        5
+       ],
+       [
+        0.117,
+        0.415,
+        6
+       ],
+       [
+        0.203,
+        0.426,
+        2
+       ],
+       [
+        0.649,
+        0.419,
+        4
+       ],
+       [
+        0.717,
+        0.417,
+        6
+       ],
+       [
+        0.9,
+        0.426,
+        4
+       ],
+       [
+        0.041,
+        0.516,
+        7
+       ],
+       [
+        0.141,
+        0.505,
+        6
+       ],
+       [
+        0.256,
+        0.498,
+        1
+       ],
+       [
+        0.341,
+        0.521,
+        5
+       ],
+       [
+        0.883,
+        0.508,
+        0
+       ],
+       [
+        0.333,
+        0.603,
+        2
+       ],
+       [
+        0.753,
+        0.603,
+        4
+       ],
+       [
+        0.824,
+        0.611,
+        0
+       ],
+       [
+        0.91,
+        0.589,
+        7
+       ],
+       [
+        0.058,
+        0.678,
+        1
+       ],
+       [
+        0.704,
+        0.695,
+        3
+       ],
+       [
+        0.872,
+        0.685,
+        4
+       ],
+       [
+        0.114,
+        0.791,
+        6
+       ],
+       [
+        0.216,
+        0.771,
+        1
+       ],
+       [
+        0.291,
+        0.781,
+        6
+       ],
+       [
+        0.711,
+        0.768,
+        6
+       ],
+       [
+        0.813,
+        0.775,
+        0
+       ],
+       [
+        0.901,
+        0.781,
+        3
+       ]
+      ],
+      "trees": [
+       [
+        0.39,
+        0.2
+       ],
+       [
+        0.61,
+        0.2
+       ],
+       [
+        0.39,
+        0.34
+       ],
+       [
+        0.61,
+        0.34
+       ],
+       [
+        0.39,
+        0.48
+       ],
+       [
+        0.61,
+        0.48
+       ],
+       [
+        0.68,
+        0.9
+       ]
+      ],
+      "pyres": [
+       [
+        0.2,
+        0.56
+       ],
+       [
+        0.79,
+        0.41
+       ]
+      ],
+      "fences": [
+       [
+        0.21,
+        0.15
+       ],
+       [
+        0.79,
+        0.15
+       ]
+      ],
+      "stocks": [
+       0.37,
+       0.06
+      ],
+      "rack": [
+       0.63,
+       0.06
+      ],
+      "tomb": [
+       0.5,
+       0.91
+      ]
+     },
+     "floor": "smgy"
+    },
+    {
+     "name": "Library",
+     "stage": "bg_smlib",
+     "props": "shelves",
+     "what": "rows of bookshelves: walls to break line with, corridors between them",
+     "floor": "smlib",
+     "layout": {
+      "floor": "smlib",
+      "size": [
+       3600,
+       4400
+      ],
+      "what": "the Library wing (warcraft.wiki.gg map + screenshots), two screens deep: the open Huntsman's Cloister (a lawn with a tree, a walkway round it, the arcade's columns, Loksey's kennels), a doorway into the long Gallery of Treasures (red carpet edged in gold, candelabras, lecterns, the knight's portrait, Scarlet armour, bookcase alcoves either side), a doorway into Doan's round Athenaeum",
+      "walk": [
+       [
+        0.1,
+        0,
+        0.9,
+        0.36
+       ],
+       [
+        0.41,
+        0.35,
+        0.59,
+        0.43
+       ],
+       [
+        0.3,
+        0.425,
+        0.7,
+        0.79
+       ],
+       [
+        0.2,
+        0.48,
+        0.31,
+        0.57
+       ],
+       [
+        0.2,
+        0.63,
+        0.31,
+        0.72
+       ],
+       [
+        0.69,
+        0.48,
+        0.8,
+        0.57
+       ],
+       [
+        0.69,
+        0.63,
+        0.8,
+        0.72
+       ],
+       [
+        0.42,
+        0.78,
+        0.58,
+        0.82
+       ],
+       [
+        0.5,
+        0.885,
+        0.155
+       ]
+      ],
+      "zones": [
+       [
+        0,
+        1
+       ],
+       [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       [
+        8
+       ]
+      ],
+      "doors": [
+       [
+        0.5,
+        0.43
+       ],
+       [
+        0.5,
+        0.81
+       ]
+      ],
+      "lawn": [
+       0.33,
+       0.06,
+       0.67,
+       0.28
+      ],
+      "tree": [
+       0.58,
+       0.17
+      ],
+      "kennels": [
+       [
+        0.17,
+        0.08
+       ],
+       [
+        0.83,
+        0.08
+       ]
+      ],
+      "arcade": [
+       [
+        0.28,
+        0.05
+       ],
+       [
+        0.28,
+        0.17
+       ],
+       [
+        0.28,
+        0.29
+       ],
+       [
+        0.72,
+        0.05
+       ],
+       [
+        0.72,
+        0.17
+       ],
+       [
+        0.72,
+        0.29
+       ]
+      ],
+      "threshold": 0.36,
+      "carpet": {
+       "x": 0.5,
+       "half": 0.05,
+       "z0": 0.36
+      },
+      "inlay": {
+       "x": 0.5,
+       "z": 0.885,
+       "r": 0.155
+      },
+      "candelabras": [
+       [
+        0.43,
+        0.48
+       ],
+       [
+        0.57,
+        0.48
+       ],
+       [
+        0.43,
+        0.58
+       ],
+       [
+        0.57,
+        0.58
+       ],
+       [
+        0.43,
+        0.68
+       ],
+       [
+        0.57,
+        0.68
+       ],
+       [
+        0.43,
+        0.76
+       ],
+       [
+        0.57,
+        0.76
+       ],
+       [
+        0.36,
+        0.9
+       ],
+       [
+        0.64,
+        0.9
+       ]
+      ],
+      "lecterns": [
+       [
+        0.36,
+        0.52
+       ],
+       [
+        0.64,
+        0.7
+       ]
+      ],
+      "easels": [
+       [
+        0.36,
+        0.68
+       ]
+      ],
+      "armour": [
+       [
+        0.64,
+        0.54
+       ]
+      ],
+      "shelves": [
+       [
+        0.255,
+        0.55
+       ],
+       [
+        0.255,
+        0.7
+       ],
+       [
+        0.745,
+        0.55
+       ],
+       [
+        0.745,
+        0.7
+       ],
+       [
+        0.355,
+        0.785
+       ],
+       [
+        0.645,
+        0.785
+       ],
+       [
+        0.4,
+        0.97
+       ],
+       [
+        0.6,
+        0.97
+       ]
+      ],
+      "books": [
+       [
+        0.33,
+        0.61
+       ],
+       [
+        0.67,
+        0.62
+       ],
+       [
+        0.46,
+        0.96
+       ]
+      ]
+     }
+    },
+    {
+     "name": "Armory",
+     "stage": "bg_smarm",
+     "props": "racks",
+     "dais": true,
+     "what": "weapon racks down the sides; Herod's dais at the back, up a flight of stairs (the only way up)",
+     "floor": "smarm"
+    },
+    {
+     "name": "Cathedral",
+     "stage": "bg_smcath",
+     "props": "pews",
+     "what": "pews either side of the red carpet aisle, the altar at the back",
+     "floor": "smcath"
+    }
+   ]
+  },
+  {
+   "key": "rfd",
+   "name": "Razorfen Downs",
+   "stage": "bg_rfd",
+   "foes": [
+    "skeleton",
+    "quilboar",
+    "ghoul",
+    "boar"
+   ],
+   "bosses": [
+    {
+     "name": "Tuten'kash",
+     "set": null
+    },
+    {
+     "name": "Mordresh Fire Eye",
+     "set": null
+    },
+    {
+     "name": "Amnennar the Coldbringer",
+     "set": "dungeon:rfd"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Splinterbone Skeleton",
+     "costume": "skeleton",
+     "sig": "reassemble",
+     "acc": "crit_skeleton_acc"
+    },
+    {
+     "name": "Skeletal Frostweaver",
+     "costume": "skeleton",
+     "sig": "chillaura",
+     "tint": "frost"
+    },
+    {
+     "name": "Death's Head Necromancer",
+     "costume": "quilboar",
+     "sig": "bonepiles"
+    },
+    {
+     "name": "Boneflayer Ghoul",
+     "costume": "ghoul",
+     "sig": "frenzy"
+    },
+    {
+     "name": "Withered Battle Boar",
+     "costume": "boar",
+     "sig": "trample"
+    }
+   ]
+  },
+  {
+   "key": "ulda",
+   "name": "Uldaman",
+   "stage": "bg_ulda",
+   "foes": [
+    "darkiron",
+    "elemental",
+    "crocolisk",
+    "trogg",
+    "scorpid"
+   ],
+   "bosses": [
+    {
+     "name": "Revelosh",
+     "set": null
+    },
+    {
+     "name": "Ironaya",
+     "set": null
+    },
+    {
+     "name": "Archaedas",
+     "set": "dungeon:ulda"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Shadowforge Sharpshooter",
+     "costume": "darkiron",
+     "sig": "snipe"
+    },
+    {
+     "name": "Earthen Rocksmasher",
+     "costume": "golem",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "slamstun",
+     "acc": "fac_boulderfist_acc"
+    },
+    {
+     "name": "Jadespine Basilisk",
+     "costume": "basilisk",
+     "borrows": "crocolisk",
+     "paint": false,
+     "sig": "petrify"
+    },
+    {
+     "name": "Stonevault Cave Lurker",
+     "costume": "trogg",
+     "sig": "rockdisguise"
+    },
+    {
+     "name": "Venomlash Scorpid",
+     "costume": "scorpid",
+     "sig": "stackpoison"
+    },
+    {
+     "name": "Stone Keeper",
+     "costume": "golem",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "rockarmor",
+     "size": 1.35
+    }
+   ]
+  },
+  {
+   "key": "zf",
+   "name": "Zul'Farrak",
+   "stage": "bg_zf",
+   "foes": [
+    "troll",
+    "crocolisk",
+    "zombie"
+   ],
+   "bosses": [
+    {
+     "name": "Gahz'rilla",
+     "set": null
+    },
+    {
+     "name": "Witch Doctor Zum'rah",
+     "set": null
+    },
+    {
+     "name": "Chief Ukorz Sandscalp",
+     "set": "dungeon:zf"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Sandfury Shadowhunter",
+     "costume": "troll",
+     "sig": "hex",
+     "acc": "crit_troll_acc"
+    },
+    {
+     "name": "Sandfury Blood Drinker",
+     "costume": "troll",
+     "sig": "drainlife",
+     "acc": "crit_ghoul_acc",
+     "tint": "blood"
+    },
+    {
+     "name": "Sandfury Witch Doctor",
+     "costume": "troll",
+     "sig": "healtotem",
+     "acc": "fac_moshogg_acc"
+    },
+    {
+     "name": "Sul'lithuz Sandcrawler",
+     "costume": "basilisk",
+     "borrows": "crocolisk",
+     "paint": false,
+     "sig": "quicksand"
+    },
+    {
+     "name": "Zul'Farrak Zombie",
+     "costume": "zombie",
+     "sig": "graverise"
+    }
+   ]
+  },
+  {
+   "key": "mara",
+   "name": "Maraudon",
+   "stage": "bg_mara",
+   "foes": [
+    "elemental",
+    "satyr"
+   ],
+   "bosses": [
+    {
+     "name": "Noxxion",
+     "set": null
+    },
+    {
+     "name": "Landslide",
+     "set": null
+    },
+    {
+     "name": "Princess Theradras",
+     "set": "dungeon:mara"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Theradrim Guardian",
+     "costume": "golem",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "boulderroll"
+    },
+    {
+     "name": "Constrictor Vine",
+     "costume": "plant",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "vinepull"
+    },
+    {
+     "name": "Noxious Slime",
+     "costume": "ooze",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "poisoncloud",
+     "tint": "noxious"
+    },
+    {
+     "name": "Putridus Shadowstalker",
+     "costume": "satyr",
+     "sig": "hitandrun"
+    },
+    {
+     "name": "Poison Sprite",
+     "costume": "elemental",
+     "sig": "sprites",
+     "tint": "poison"
+    }
+   ]
+  },
+  {
+   "key": "st",
+   "name": "Sunken Temple",
+   "stage": "bg_st",
+   "foes": [
+    "dragonkin",
+    "troll",
+    "zombie",
+    "elemental"
+   ],
+   "bosses": [
+    {
+     "name": "Jammal'an the Prophet",
+     "set": null
+    },
+    {
+     "name": "Avatar of Hakkar",
+     "set": null
+    },
+    {
+     "name": "Shade of Eranikus",
+     "set": "dungeon:st"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Nightmare Wyrmkin",
+     "costume": "dragonkin",
+     "sig": "dragonsleep"
+    },
+    {
+     "name": "Atal'ai Deathwalker",
+     "costume": "troll",
+     "sig": "ghostafter",
+     "acc": "crit_ghost_acc",
+     "tint": "ghost"
+    },
+    {
+     "name": "Mummified Atal'ai",
+     "costume": "zombie",
+     "sig": "wrapped"
+    },
+    {
+     "name": "Atal'ai Priest",
+     "costume": "troll",
+     "sig": "linkedpair",
+     "acc": "crit_troll_acc"
+    },
+    {
+     "name": "Saturated Ooze",
+     "costume": "ooze",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "absorb",
+     "tint": "saturated"
+    }
+   ]
+  },
+  {
+   "key": "brd",
+   "name": "Blackrock Depths",
+   "stage": "bg_brd",
+   "foes": [
+    "darkiron",
+    "elemental",
+    "wolf"
+   ],
+   "bosses": [
+    {
+     "name": "Bael'Gar",
+     "set": null
+    },
+    {
+     "name": "General Angerforge",
+     "set": null
+    },
+    {
+     "name": "Emperor Dagran Thaurissan",
+     "set": "dungeon:brd",
+     "partner": {
+      "name": "Princess Moira Bronzebeard",
+      "hp": 420,
+      "heal": {
+       "every": 4,
+       "cast": 1.3,
+       "pct": 0.06
+      },
+      "look": {
+       "skin": "pale_lavender",
+       "headwear": "flower_crown",
+       "outfit": "royal_nap_robe",
+       "eyes": "heavy_bags",
+       "expression": "smug_smile"
+      },
+      "sp": 130,
+      "dps": 6
+     }
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Anvilrage Guardsman",
+     "costume": "darkiron",
+     "sig": "shieldfront",
+     "acc": "crit_human_acc"
+    },
+    {
+     "name": "Fireguard",
+     "costume": "elemental",
+     "sig": "firetrail"
+    },
+    {
+     "name": "Bloodhound",
+     "costume": "wolf",
+     "sig": "sniff"
+    },
+    {
+     "name": "Doomforge Arcanasmith",
+     "costume": "darkiron",
+     "sig": "arcanebomb",
+     "acc": "pocket_portal"
+    },
+    {
+     "name": "Warbringer Construct",
+     "costume": "golem",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "smashpillar"
+    }
+   ]
+  },
+  {
+   "key": "lbrs",
+   "name": "Lower Blackrock Spire",
+   "stage": "bg_lbrs",
+   "foes": [
+    "troll",
+    "blackrock",
+    "spider",
+    "spirestone"
+   ],
+   "bosses": [
+    {
+     "name": "Mother Smolderweb",
+     "set": null
+    },
+    {
+     "name": "Overlord Wyrmthalak",
+     "set": null
+    },
+    {
+     "name": "Highlord Omokk",
+     "set": "dungeon:lbrs"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Smolderthorn Axe Thrower",
+     "costume": "troll",
+     "sig": "axeboomerang",
+     "acc": "crit_orc_acc"
+    },
+    {
+     "name": "Firebrand Pyromancer",
+     "costume": "blackrock",
+     "sig": "firewall",
+     "acc": "fac_firegut_acc"
+    },
+    {
+     "name": "Spire Spider",
+     "costume": "spider",
+     "sig": "webroot",
+     "acc": "crit_spider_acc"
+    },
+    {
+     "name": "Spire Spiderling",
+     "costume": "spider",
+     "sig": "spiderlings",
+     "size": 0.55
+    },
+    {
+     "name": "Spirestone Ogre Magus",
+     "costume": "spirestone",
+     "sig": "bloodlust",
+     "acc": "fac_spirestone_acc"
+    },
+    {
+     "name": "Scarshield Legionnaire",
+     "costume": "blackrock",
+     "sig": "sunder",
+     "acc": "fac_blackrock_acc"
+    }
+   ]
+  },
+  {
+   "key": "ubrs",
+   "name": "Upper Blackrock Spire",
+   "stage": "bg_ubrs",
+   "foes": [
+    "blackrock",
+    "dragonkin",
+    "blackflight"
+   ],
+   "bosses": [
+    {
+     "name": "Pyroguard Emberseer",
+     "set": null
+    },
+    {
+     "name": "Warchief Rend Blackhand",
+     "set": null
+    },
+    {
+     "name": "General Drakkisath",
+     "set": "dungeon:ubrs"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Blackhand Dreadweaver",
+     "costume": "blackrock",
+     "sig": "volleyfan",
+     "acc": "fac_moshogg_acc"
+    },
+    {
+     "name": "Rage Talon Flamescale",
+     "costume": "dragonkin",
+     "sig": "flamebreath",
+     "acc": "crit_dragonkin_acc",
+     "tint": "fire"
+    },
+    {
+     "name": "Blackhand Incarcerator",
+     "costume": "blackrock",
+     "sig": "tether",
+     "acc": "fac_splinterfist_acc"
+    },
+    {
+     "name": "Rage Talon Dragonspawn",
+     "costume": "dragonkin",
+     "sig": "cleaveknock",
+     "acc": "fac_dreadmaul_acc",
+     "size": 1.3
+    },
+    {
+     "name": "Black Whelp",
+     "costume": "blackflight",
+     "sig": "swoopline",
+     "size": 0.7
+    }
+   ]
+  },
+  {
+   "key": "dme",
+   "name": "Dire Maul: East",
+   "stage": "bg_dme",
+   "foes": [
+    "satyr",
+    "elemental",
+    "demon"
+   ],
+   "bosses": [
+    {
+     "name": "Zevrim Thornhoof",
+     "set": null
+    },
+    {
+     "name": "Lethtendris",
+     "set": null
+    },
+    {
+     "name": "Alzzin the Wildshaper",
+     "set": "dungeon:dme"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Wildspawn Hellcaller",
+     "costume": "satyr",
+     "sig": "rainoffire",
+     "acc": "fac_firegut_acc"
+    },
+    {
+     "name": "Wildspawn Trickster",
+     "costume": "satyr",
+     "sig": "swapplaces",
+     "acc": "crit_satyr_acc"
+    },
+    {
+     "name": "Warpwood Treant",
+     "costume": "plant",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "seedlings",
+     "size": 1.4
+    },
+    {
+     "name": "Whip Lasher",
+     "costume": "plant",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "rootpatch",
+     "acc": "gacha_acc_riding_crop",
+     "size": 0.8
+    },
+    {
+     "name": "Wildspawn Imp",
+     "costume": "demon",
+     "sig": "imppop"
+    }
+   ]
+  },
+  {
+   "key": "dmw",
+   "name": "Dire Maul: West",
+   "stage": "bg_dmw",
+   "foes": [
+    "ghost",
+    "skeleton",
+    "elemental",
+    "zombie"
+   ],
+   "bosses": [
+    {
+     "name": "Illyanna Ravenoak",
+     "set": null
+    },
+    {
+     "name": "Immol'thar",
+     "set": null
+    },
+    {
+     "name": "Prince Tortheldrin",
+     "set": "dungeon:dmw"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Eldreth Apparition",
+     "costume": "ghost",
+     "sig": "possess"
+    },
+    {
+     "name": "Skeletal Highborne",
+     "costume": "skeleton",
+     "sig": "manaburn"
+    },
+    {
+     "name": "Arcane Aberration",
+     "costume": "elemental",
+     "sig": "chainbolt",
+     "acc": "pocket_portal",
+     "tint": "arcane"
+    },
+    {
+     "name": "Mana Remnant",
+     "costume": "elemental",
+     "sig": "eatgems",
+     "tint": "arcane",
+     "size": 0.7
+    },
+    {
+     "name": "Petrified Treant",
+     "costume": "plant",
+     "borrows": "elemental",
+     "paint": true,
+     "sig": "statue"
+    },
+    {
+     "name": "Rotting Highborne",
+     "costume": "zombie",
+     "sig": "rotcloud"
+    }
+   ]
+  },
+  {
+   "key": "dmn",
+   "name": "Dire Maul: North",
+   "stage": "bg_dmn",
+   "foes": [
+    "gordok",
+    "wolf"
+   ],
+   "bosses": [
+    {
+     "name": "Guard Mol'dar",
+     "set": null
+    },
+    {
+     "name": "Captain Kromcrush",
+     "set": null
+    },
+    {
+     "name": "King Gordok",
+     "set": "dungeon:dmn"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Gordok Brute",
+     "costume": "gordok",
+     "sig": "shove"
+    },
+    {
+     "name": "Gordok Mastiff",
+     "costume": "wolf",
+     "sig": "holdbite"
+    },
+    {
+     "name": "Gordok Mage-Lord",
+     "costume": "gordok",
+     "sig": "blinkfire",
+     "acc": "fac_gordunni_acc"
+    },
+    {
+     "name": "Gordok Captain",
+     "costume": "gordok",
+     "sig": "warcry",
+     "acc": "fac_gordok_acc"
+    },
+    {
+     "name": "Gordok Reaver",
+     "costume": "gordok",
+     "sig": "spin",
+     "acc": "fac_blackrock_acc"
+    }
+   ]
+  },
+  {
+   "key": "scholo",
+   "name": "Scholomance",
+   "stage": "bg_scholo",
+   "foes": [
+    "zombie",
+    "ghost",
+    "ghoul",
+    "skeleton",
+    "dragonkin",
+    "scourge"
+   ],
+   "bosses": [
+    {
+     "name": "Rattlegore",
+     "set": null
+    },
+    {
+     "name": "Ras Frostwhisperer",
+     "set": null
+    },
+    {
+     "name": "Darkmaster Gandling",
+     "set": "dungeon:scholo"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Unstable Corpse",
+     "costume": "zombie",
+     "sig": "deathburst"
+    },
+    {
+     "name": "Spectral Tutor",
+     "costume": "ghost",
+     "sig": "silence"
+    },
+    {
+     "name": "Diseased Ghoul",
+     "costume": "ghoul",
+     "sig": "disease"
+    },
+    {
+     "name": "Risen Bonewarder",
+     "costume": "skeleton",
+     "sig": "bonearmor"
+    },
+    {
+     "name": "Plagued Hatchling",
+     "costume": "dragonkin",
+     "sig": "plaguewhelps"
+    },
+    {
+     "name": "Scholomance Necromancer",
+     "costume": "scourge",
+     "sig": "deathcoil"
+    }
+   ]
+  },
+  {
+   "key": "stratl",
+   "name": "Stratholme: Live",
+   "stage": "bg_stratl",
+   "foes": [
+    "scarlet",
+    "ghost",
+    "bat",
+    "ghoul"
+   ],
+   "bosses": [
+    {
+     "name": "Timmy the Cruel",
+     "set": null
+    },
+    {
+     "name": "Archivist Galford",
+     "set": null
+    },
+    {
+     "name": "Balnazzar",
+     "set": "dungeon:stratl"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Crimson Priest",
+     "costume": "scarlet",
+     "sig": "holynova",
+     "acc": "fac_scarlet_acc"
+    },
+    {
+     "name": "Crimson Gallant",
+     "costume": "scarlet",
+     "sig": "divineshield",
+     "acc": "crit_human_acc"
+    },
+    {
+     "name": "Wailing Banshee",
+     "costume": "ghost",
+     "sig": "fear"
+    },
+    {
+     "name": "Rockwing Gargoyle",
+     "costume": "gargoyle",
+     "borrows": "bat",
+     "paint": false,
+     "sig": "stoneform",
+     "tint": "stone"
+    },
+    {
+     "name": "Plague Ghoul",
+     "costume": "ghoul",
+     "sig": "pileon"
+    }
+   ]
+  },
+  {
+   "key": "stratu",
+   "name": "Stratholme: Undead",
+   "stage": "bg_stratu",
+   "foes": [
+    "zombie",
+    "spider",
+    "scourge"
+   ],
+   "bosses": [
+    {
+     "name": "Ramstein the Gorger",
+     "set": null
+    },
+    {
+     "name": "Magistrate Barthilas",
+     "set": null
+    },
+    {
+     "name": "Baron Rivendare",
+     "set": "dungeon:stratu"
+    }
+   ],
+   "mobs": [
+    {
+     "name": "Bile Spewer",
+     "costume": "abomination",
+     "borrows": "zombie",
+     "paint": false,
+     "sig": "vomitcone",
+     "size": 1.3
+    },
+    {
+     "name": "Patchwork Horror",
+     "costume": "abomination",
+     "borrows": "zombie",
+     "paint": false,
+     "sig": "hookpull",
+     "acc": "crit_ghoul_acc",
+     "size": 1.3
+    },
+    {
+     "name": "Crypt Crawler",
+     "costume": "spider",
+     "sig": "cocoon"
+    },
+    {
+     "name": "Thuzadin Necromancer",
+     "costume": "scourge",
+     "sig": "corpseboom",
+     "acc": "fac_scourge_acc"
+    },
+    {
+     "name": "Ravaged Cadaver",
+     "costume": "zombie",
+     "sig": "cadaverbits"
+    }
+   ]
+  },
+  {
+   "key": "thanes",
+   "name": "The Hall of Thanes",
+   "stage": "bg_thanes",
+   "foes": [
+    "dwarf",
+    "elemental",
+    "ghost",
+    "skeleton"
+   ],
+   "bosses": [
+    {
+     "name": "Faldrim Anvilmar",
+     "set": null
+    },
+    {
+     "name": "Infurnus",
+     "set": null
+    },
+    {
+     "name": "Durgen Dirgehammer",
+     "set": "dungeon:thanes"
+    }
+   ]
+  },
+  {
+   "key": "ruins",
+   "name": "Ruins of Lordaeron",
+   "stage": "bg_ruins",
+   "foes": [
+    "zombie",
+    "ghoul",
+    "skeleton",
+    "bat"
+   ],
+   "bosses": [
+    {
+     "name": "Witherfang",
+     "set": null
+    },
+    {
+     "name": "The Butcher",
+     "set": null
+    },
+    {
+     "name": "Rath'mael",
+     "set": "dungeon:ruins"
+    }
+   ]
+  },
+  {
+   "key": "excav",
+   "name": "Excavation Site",
+   "stage": "bg_excav",
+   "foes": [
+    "trogg",
+    "dwarf",
+    "elemental",
+    "crocolisk"
+   ],
+   "bosses": [
+    {
+     "name": "Saltspine",
+     "set": "boss:excav:saltspine"
+    },
+    {
+     "name": "Shadetooth",
+     "set": "boss:excav:shadetooth"
+    },
+    {
+     "name": "Relic Guardian",
+     "set": "dungeon:excav"
+    }
+   ]
+  },
+  {
+   "key": "ony",
+   "name": "Onyxia's Lair",
+   "stage": "bg_ony",
+   "foes": [
+    "dragonkin",
+    "blackflight"
+   ],
+   "bosses": [
+    {
+     "name": "Onyxia",
+     "set": "dungeon:ony",
+     "moves": [
+      {
+       "move": "breath",
+       "every": 5,
+       "what": "Flame Breath: a cone in front"
+      },
+      {
+       "move": "tail",
+       "every": 7,
+       "what": "Tail Sweep: a cone behind, knocks you away"
+      },
+      {
+       "move": "roar",
+       "every": 14,
+       "phase": 3,
+       "what": "Bellowing Roar: fear, you run wild"
+      },
+      {
+       "move": "eruption",
+       "every": 4,
+       "phase": 3,
+       "what": "lava cracks: circles round you"
+      }
+     ]
+    },
+    {
+     "name": "Onyxia (in the air)",
+     "set": "dungeon:ony",
+     "moves": [
+      {
+       "move": "deepbreath",
+       "every": 2.5,
+       "what": "Deep Breath: lanes of fire across the arena"
+      }
+     ]
+    },
+    {
+     "name": "Onyxia",
+     "set": "dungeon:ony",
+     "moves": [
+      {
+       "move": "breath",
+       "every": 5,
+       "what": "Flame Breath: a cone in front"
+      },
+      {
+       "move": "tail",
+       "every": 7,
+       "what": "Tail Sweep: a cone behind, knocks you away"
+      },
+      {
+       "move": "roar",
+       "every": 14,
+       "phase": 3,
+       "what": "Bellowing Roar: fear, you run wild"
+      },
+      {
+       "move": "eruption",
+       "every": 4,
+       "phase": 3,
+       "what": "lava cracks: circles round you"
+      }
+     ]
+    }
+   ],
+   "phases": true,
+   "whelps": [
+    "blackflight"
+   ],
+   "mobs": [
+    {
+     "name": "Onyxian Warder",
+     "costume": "dragonkin",
+     "sig": "firenova"
+    },
+    {
+     "name": "Onyxian Whelp",
+     "costume": "blackflight",
+     "sig": "eggs",
+     "size": 0.6
+    }
+   ]
+  },
+  {
+   "key": "barrow",
+   "name": "Barrow Deeps",
+   "stage": "bg_barrow",
+   "foes": [
+    "furbolg",
+    "ghost",
+    "wolf",
+    "elemental"
+   ],
+   "bosses": [
+    {
+     "name": null,
+     "set": null
+    },
+    {
+     "name": null,
+     "set": null
+    },
+    {
+     "name": "Sonya Darkhallow",
+     "set": "dungeon:barrow"
+    }
+   ],
+   "pending": "boss names when Forever is out"
+  },
+  {
+   "key": "hyjal",
+   "name": "Hyjal Summit",
+   "stage": "bg_hyjal",
+   "foes": [
+    "demon",
+    "elemental",
+    "furbolg",
+    "wolf"
+   ],
+   "bosses": [
+    {
+     "name": null,
+     "set": null
+    },
+    {
+     "name": null,
+     "set": null
+    },
+    {
+     "name": "The Wild King",
+     "set": "dungeon:hyjal"
+    }
+   ],
+   "pending": "boss names when Forever is out"
+  }
+ ],
+ "signatures": {
+  "frostbolt": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "a slow bolt; a hit slows you"
+  },
+  "bomblob": {
+   "family": "caster",
+   "verb": "lob",
+   "what": "lobs a bomb at a red circle where you stand"
+  },
+  "snipe": {
+   "family": "caster",
+   "verb": "snipe",
+   "what": "a red laser line, then a fast shot down it"
+  },
+  "axeboomerang": {
+   "family": "caster",
+   "verb": "boomerang",
+   "what": "throws an axe that flies past you and comes back"
+  },
+  "waterbolt": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "a water bolt that knocks you back"
+  },
+  "missiles": {
+   "family": "caster",
+   "verb": "volley",
+   "what": "three small arcane missiles, one after another"
+  },
+  "shadowcurse": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "a shadow bolt; a hit curses you (half speed a while)"
+  },
+  "summonimp": {
+   "family": "caster",
+   "verb": "summon",
+   "what": "keeps calling imps that run at you throwing firebolts"
+  },
+  "poisonspit": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "spits poison: a hit poisons you (damage over time)"
+  },
+  "shapeshift": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "lightning bolts; at half health turns into a fast snake"
+  },
+  "earthspikes": {
+   "family": "caster",
+   "verb": "below",
+   "what": "a circle under you, then spikes burst up out of it"
+  },
+  "blizzard": {
+   "family": "caster",
+   "verb": "rain",
+   "what": "a field of falling ice: slows you while you're in it"
+  },
+  "hex": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "hex: a hit turns you into a frog for 2 s (slow, no attacks)"
+  },
+  "drainlife": {
+   "family": "caster",
+   "verb": "beam",
+   "what": "a beam on you that heals it while it drains you; break line behind a pillar"
+  },
+  "arcanebomb": {
+   "family": "caster",
+   "verb": "mark",
+   "what": "marks you; in 3 s the mark blows up round you"
+  },
+  "firewall": {
+   "family": "caster",
+   "verb": "wall",
+   "what": "a line of fire across the floor that cuts the room"
+  },
+  "volleyfan": {
+   "family": "caster",
+   "verb": "volley",
+   "what": "a fan of five shadow bolts"
+  },
+  "rainoffire": {
+   "family": "caster",
+   "verb": "rain",
+   "what": "fire circles fall at random round you"
+  },
+  "chainbolt": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "a bolt that jumps on to you from foe to foe"
+  },
+  "blinkfire": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "blinks to a new spot, then a big fireball"
+  },
+  "corpseboom": {
+   "family": "caster",
+   "verb": "mark",
+   "what": "makes a corpse near you blow up"
+  },
+  "silence": {
+   "family": "caster",
+   "verb": "mark",
+   "what": "silence: your attacks stop for 1.5 s, and it splits into mirror images"
+  },
+  "holynova": {
+   "family": "healer",
+   "verb": "nova",
+   "what": "holy nova: heals foes round it and hurts you if close"
+  },
+  "healbeam": {
+   "family": "healer",
+   "verb": "beam",
+   "what": "follows you, stops now and then to heal the boss (Moira, a boss partner)"
+  },
+  "deathcoil": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "a death coil: hurts you, heals the undead it flies past"
+  },
+  "beastcall": {
+   "family": "healer",
+   "verb": "summon",
+   "what": "whistles: boars come charging in from the edge"
+  },
+  "divineshield": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "when low: a bubble (can't be hurt) while it heals itself up"
+  },
+  "pileon": {
+   "family": "runner",
+   "verb": "dash",
+   "what": "the more ghouls close together, the faster they all go"
+  },
+  "flamebreath": {
+   "family": "floor",
+   "verb": "cone",
+   "what": "fire breath cone that leaves the floor burning"
+  },
+  "trample": {
+   "family": "runner",
+   "verb": "circle",
+   "what": "runs circles round you, tighter and tighter"
+  },
+  "wrenchbounce": {
+   "family": "caster",
+   "verb": "bolt",
+   "what": "throws wrenches that bounce off pillars and walls"
+  },
+  "minecart": {
+   "family": "runner",
+   "verb": "lane",
+   "what": "rides a minecart down a lane across the room"
+  },
+  "burnbrand": {
+   "family": "brute",
+   "verb": "touch",
+   "what": "a branding hit: sets you burning a while"
+  },
+  "shieldally": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "puts a shield on a friend: can't be hurt for 3 s"
+  },
+  "healtotem": {
+   "family": "healer",
+   "verb": "plonk",
+   "what": "plants a healing ward that heals foes round it; break the ward"
+  },
+  "healwave": {
+   "family": "healer",
+   "verb": "beam",
+   "what": "a big heal on the most hurt foe nearby"
+  },
+  "bonearmor": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "bone armor on the undead round it: half damage"
+  },
+  "repairbots": {
+   "family": "healer",
+   "verb": "beam",
+   "what": "repairs robots: mechanical foes near it heal"
+  },
+  "bloodlust": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "bloodlust on its own kind: faster and fiercer"
+  },
+  "warcry": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "war cry: brutes round it enrage (bigger, harder hits)"
+  },
+  "bonepiles": {
+   "family": "healer",
+   "verb": "summon",
+   "what": "raises skeletons from bone piles on the floor; smash the piles"
+  },
+  "linkedpair": {
+   "family": "healer",
+   "verb": "beam",
+   "what": "comes in pairs that heal each other; kill both close together"
+  },
+  "packhowl": {
+   "family": "runner",
+   "verb": "pack",
+   "what": "a howl, then the whole pack comes in from one side"
+  },
+  "leap": {
+   "family": "runner",
+   "verb": "leap",
+   "what": "crouches, then leaps onto your spot"
+  },
+  "holdbite": {
+   "family": "runner",
+   "verb": "hold",
+   "what": "bites and holds on: you're slowed until you shake it (keys)"
+  },
+  "zigzagdrain": {
+   "family": "runner",
+   "verb": "zigzag",
+   "what": "zig-zags in; its bites heal it"
+  },
+  "bleedbite": {
+   "family": "runner",
+   "verb": "dash",
+   "what": "a bite that bleeds you a while"
+  },
+  "frenzy": {
+   "family": "runner",
+   "verb": "dash",
+   "what": "gets faster the more hurt it is"
+  },
+  "sniff": {
+   "family": "runner",
+   "verb": "dash",
+   "what": "beelines for you, faster when you're low"
+  },
+  "lunge": {
+   "family": "runner",
+   "verb": "dash",
+   "what": "a cutlass lunge: short dash, then a stab"
+  },
+  "shank": {
+   "family": "runner",
+   "verb": "dash",
+   "what": "stabs and runs off, then back again"
+  },
+  "imppop": {
+   "family": "bomber",
+   "verb": "burst",
+   "what": "dashes in and pops in a puff of flame"
+  },
+  "swoopline": {
+   "family": "runner",
+   "verb": "lane",
+   "what": "swoops in from the sky along a line"
+  },
+  "hitandrun": {
+   "family": "runner",
+   "verb": "bolt",
+   "what": "throws a spear, then runs off to throw again"
+  },
+  "shove": {
+   "family": "brute",
+   "verb": "shove",
+   "what": "shoves you far away on touch"
+  },
+  "shieldfront": {
+   "family": "brute",
+   "verb": "guard",
+   "what": "a shield that blocks hits from the front; get round it"
+  },
+  "slamstun": {
+   "family": "brute",
+   "verb": "slam",
+   "what": "a ground slam round it: stuns"
+  },
+  "deathroll": {
+   "family": "brute",
+   "verb": "hold",
+   "what": "grabs you and rolls: you're held a moment"
+  },
+  "quillnova": {
+   "family": "brute",
+   "verb": "nova",
+   "what": "sprays quills all round it"
+  },
+  "charge": {
+   "family": "brute",
+   "verb": "lane",
+   "what": "scrapes its hoof, then charges along a line"
+  },
+  "tailsweep": {
+   "family": "brute",
+   "verb": "cone",
+   "what": "sweeps its tail behind/beside it"
+  },
+  "grabthrow": {
+   "family": "brute",
+   "verb": "hold",
+   "what": "grabs you and throws you across the room"
+  },
+  "sunder": {
+   "family": "brute",
+   "verb": "touch",
+   "what": "each hit makes the next one hurt more"
+  },
+  "cleaveknock": {
+   "family": "brute",
+   "verb": "cone",
+   "what": "a wide cleave that knocks you away"
+  },
+  "tether": {
+   "family": "brute",
+   "verb": "tether",
+   "what": "chains you: you can't get far from it"
+  },
+  "smashpillar": {
+   "family": "brute",
+   "verb": "touch",
+   "what": "huge and slow; walks through pillars and breaks them"
+  },
+  "spin": {
+   "family": "brute",
+   "verb": "nova",
+   "what": "a short spin with its axe"
+  },
+  "rockarmor": {
+   "family": "brute",
+   "verb": "guard",
+   "what": "harder and harder the longer it stands still"
+  },
+  "boulderroll": {
+   "family": "brute",
+   "verb": "lane",
+   "what": "rolls a boulder down a lane"
+  },
+  "hookpull": {
+   "family": "brute",
+   "verb": "pull",
+   "what": "throws a hook and pulls you in"
+  },
+  "eruption": {
+   "family": "brute",
+   "verb": "nova",
+   "what": "stops, then a ring of fire bursts out of it"
+  },
+  "firenova": {
+   "family": "brute",
+   "verb": "nova",
+   "what": "a fire nova round it, now and then"
+  },
+  "firetrail": {
+   "family": "floor",
+   "verb": "trail",
+   "what": "leaves a trail of fire where it walks"
+  },
+  "icetrail": {
+   "family": "floor",
+   "verb": "trail",
+   "what": "leaves ice: you slide on it"
+  },
+  "vomitcone": {
+   "family": "floor",
+   "verb": "cone",
+   "what": "vomits a cone that leaves a puddle"
+  },
+  "quicksand": {
+   "family": "floor",
+   "verb": "puddle",
+   "what": "leaves quicksand that pulls you to its middle"
+  },
+  "poisoncloud": {
+   "family": "floor",
+   "verb": "aura",
+   "what": "a poison cloud round it"
+  },
+  "chillaura": {
+   "family": "floor",
+   "verb": "aura",
+   "what": "a chill round it: slows you when close"
+  },
+  "rootpatch": {
+   "family": "floor",
+   "verb": "puddle",
+   "what": "drops seeds that grow roots: stuck if you step in"
+  },
+  "rotcloud": {
+   "family": "floor",
+   "verb": "aura",
+   "what": "a cloud of rot: your healing stops while you're in it"
+  },
+  "alarm": {
+   "family": "bomber",
+   "verb": "burst",
+   "what": "beeps and rolls straight at you; if it reaches you: boom + the alarm calls a wave of gnomes"
+  },
+  "deathburst": {
+   "family": "bomber",
+   "verb": "deathpuddle",
+   "what": "slow and harmless, but bursts into poison when it dies: don't kill it close"
+  },
+  "molotov": {
+   "family": "bomber",
+   "verb": "lob",
+   "what": "throws a bottle that leaves burning floor"
+  },
+  "mines": {
+   "family": "bomber",
+   "verb": "plonk",
+   "what": "lays mines behind it as it walks"
+  },
+  "scuttle": {
+   "family": "swarm",
+   "verb": "swarm",
+   "what": "scuttles sideways in big groups"
+  },
+  "spiderlings": {
+   "family": "swarm",
+   "verb": "swarm",
+   "what": "a flood of tiny spiders"
+  },
+  "sprites": {
+   "family": "swarm",
+   "verb": "swarm",
+   "what": "little clouds of poison sprites"
+  },
+  "plaguewhelps": {
+   "family": "swarm",
+   "verb": "swarm",
+   "what": "plagued hatchlings, a lot of them, weak"
+  },
+  "eggs": {
+   "family": "swarm",
+   "verb": "swarm",
+   "what": "whelps pour out of the egg clutches by the walls"
+  },
+  "riot": {
+   "family": "swarm",
+   "verb": "swarm",
+   "what": "a riot: prisoners burst out in big waves"
+  },
+  "cadaverbits": {
+   "family": "swarm",
+   "verb": "split",
+   "what": "falls apart into crawling bits when killed"
+  },
+  "burrow": {
+   "family": "trick",
+   "verb": "below",
+   "what": "burrows, then pops up under you"
+  },
+  "phase": {
+   "family": "trick",
+   "verb": "phase",
+   "what": "a ghost: goes through pillars, fades in and out"
+  },
+  "blink": {
+   "family": "trick",
+   "verb": "blink",
+   "what": "blinks to a spot right next to you"
+  },
+  "stealth": {
+   "family": "trick",
+   "verb": "stealth",
+   "what": "invisible until it's close"
+  },
+  "illusions": {
+   "family": "trick",
+   "verb": "split",
+   "what": "splits into three; only one is real"
+  },
+  "flee": {
+   "family": "trick",
+   "verb": "flee",
+   "what": "runs off when hurt and comes back with friends"
+  },
+  "shell": {
+   "family": "trick",
+   "verb": "guard",
+   "what": "hides in its shell when hit: can't be hurt a moment"
+  },
+  "reassemble": {
+   "family": "trick",
+   "verb": "revive",
+   "what": "falls to bits, then gets back up once"
+  },
+  "split": {
+   "family": "trick",
+   "verb": "split",
+   "what": "splits into two small ones when killed"
+  },
+  "rockdisguise": {
+   "family": "trick",
+   "verb": "stealth",
+   "what": "looks like a rock until you pass, then wakes"
+  },
+  "statue": {
+   "family": "trick",
+   "verb": "stealth",
+   "what": "a statue that wakes when you come close"
+  },
+  "stoneform": {
+   "family": "trick",
+   "verb": "guard",
+   "what": "turns to stone (can't be hurt), then dives at you"
+  },
+  "petrify": {
+   "family": "trick",
+   "verb": "cone",
+   "what": "a gaze cone in front of it: stand in it and you're stone for 1 s"
+  },
+  "stackpoison": {
+   "family": "trick",
+   "verb": "touch",
+   "what": "each sting stacks more poison"
+  },
+  "swapplaces": {
+   "family": "trick",
+   "verb": "blink",
+   "what": "swaps places with you"
+  },
+  "possess": {
+   "family": "trick",
+   "verb": "buff",
+   "what": "flies into another foe, which grows stronger"
+  },
+  "manaburn": {
+   "family": "trick",
+   "verb": "touch",
+   "what": "a hit burns your XP bar back"
+  },
+  "eatgems": {
+   "family": "trick",
+   "verb": "pull",
+   "what": "pulls your XP gems to it and eats them"
+  },
+  "ghostafter": {
+   "family": "trick",
+   "verb": "revive",
+   "what": "when it dies its ghost keeps chasing you a while"
+  },
+  "wrapped": {
+   "family": "trick",
+   "verb": "guard",
+   "what": "wrapped up: half damage until its wraps are off"
+  },
+  "absorb": {
+   "family": "trick",
+   "verb": "grow",
+   "what": "eats slain foes and grows bigger"
+  },
+  "webroot": {
+   "family": "trick",
+   "verb": "bolt",
+   "what": "shoots web: stuck in place a moment"
+  },
+  "cocoon": {
+   "family": "trick",
+   "verb": "hold",
+   "what": "wraps you in a cocoon: mash keys to break out"
+  },
+  "fear": {
+   "family": "trick",
+   "verb": "nova",
+   "what": "a wail: you run in fear for 1.5 s"
+  },
+  "disease": {
+   "family": "trick",
+   "verb": "touch",
+   "what": "disease: no healing for a while after a hit"
+  },
+  "graverise": {
+   "family": "trick",
+   "verb": "below",
+   "what": "rise out of the sand in rows"
+  },
+  "screech": {
+   "family": "trick",
+   "verb": "cone",
+   "what": "a screech cone: your attacks stop for 1 s"
+  },
+  "vinepull": {
+   "family": "trick",
+   "verb": "pull",
+   "what": "a vine from far off that pulls you in"
+  },
+  "dodge": {
+   "family": "trick",
+   "verb": "blink",
+   "what": "sidesteps your shots"
+  },
+  "shieldbash": {
+   "family": "brute",
+   "verb": "touch",
+   "what": "a shield bash: stuns a moment"
+  },
+  "lash": {
+   "family": "brute",
+   "verb": "nova",
+   "what": "rooted to the spot, whips all round it"
+  },
+  "seedlings": {
+   "family": "healer",
+   "verb": "summon",
+   "what": "slow; drops seeds that grow into lashers"
+  },
+  "rally": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "rallies the Defias round it: they take less damage"
+  },
+  "dragonsleep": {
+   "family": "trick",
+   "verb": "cone",
+   "what": "sleep breath cone: you fall asleep (mash keys)"
+  },
+  "gravegrab": {
+   "family": "trick",
+   "verb": "below",
+   "what": "climbs out of the grave nearest you; its first touch grabs you (stuck a moment)"
+  },
+  "chilltouch": {
+   "family": "runner",
+   "verb": "drift",
+   "what": "drifts in loops through the gravestones; its touch chills you (slowed)"
+  },
+  "thumbscrews": {
+   "family": "brute",
+   "verb": "touch",
+   "what": "a pinch: your attacks come slower for a while"
+  },
+  "bookthrow": {
+   "family": "caster",
+   "verb": "volley",
+   "what": "flings books off the shelves: three in a curve"
+  },
+  "renew": {
+   "family": "healer",
+   "verb": "buff",
+   "what": "renew on hurt Scarlets near it: they heal over time"
+  },
+  "brace": {
+   "family": "brute",
+   "verb": "guard",
+   "what": "hit, it braces behind its shield (half damage), then rushes a short way"
+  },
+  "enrage": {
+   "family": "brute",
+   "verb": "grow",
+   "what": "at half health: a roar, grows and turns red, comes fast"
+  },
+  "drill": {
+   "family": "swarm",
+   "verb": "line",
+   "what": "trainees in a squad of five, marching in step in a line"
+  },
+  "crusaderstrike": {
+   "family": "brute",
+   "verb": "cone",
+   "what": "a big overhead swing: a red cone in front of it, then a heavy hit"
+  },
+  "consecrate": {
+   "family": "floor",
+   "verb": "puddle",
+   "what": "consecrates the floor round it: hurts you, Scarlets in it take less damage"
+  }
+ },
+ "newCostumes": {
+  "alarmbomb": "dwarf",
+  "lepergnome": "dwarf",
+  "ooze": "elemental",
+  "plant": "elemental",
+  "snake": "naga",
+  "golem": "elemental"
+ },
+ "laterCostumes": {
+  "basilisk": "crocolisk",
+  "abomination": "zombie",
+  "gargoyle": "bat"
+ }
+}

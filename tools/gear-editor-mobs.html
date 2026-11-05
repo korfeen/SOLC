@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arcade Mobs</title>
+<style>
+:root{--bg:#17130f;--panel:#24180f;--panel2:#2c1e12;--line:#4a3420;--text:#efe2c6;--muted:#b9a582;--gold:#f2c14e;--velvet:#6b1a21;--gap:#c0473f;
+  --caster:#6fa8ff;--healer:#6dff8f;--runner:#ffd84a;--brute:#ff8a5a;--floor:#c58bff;--bomber:#ff5a5a;--swarm:#7fe3d4;--trick:#ff9ad5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13px/1.4 Georgia,serif}
+header{background:#1f150d;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;position:sticky;top:0;z-index:2}
+h1{margin:0;font-size:19px;color:var(--gold);font-weight:400}a{color:var(--gold)}
+button,input{font:13px Georgia,serif;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:3px 8px;cursor:pointer}
+button:hover{border-color:var(--gold)}button.on{background:var(--velvet);border-color:var(--gold)}input{background:#120d09;cursor:text}
+.tally{color:var(--muted)}
+main{padding:10px 14px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.card h2{margin:2px 0 6px;font-size:16px;font-weight:400;color:var(--gold);display:flex;gap:8px;align-items:baseline}
+.card h2 small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-left:auto}
+.mob{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:5px 0;border-top:1px solid #3a2918}
+.th{width:52px;height:52px;border-radius:4px;border:2px solid #555;background:#0e0a07 center/contain no-repeat;position:relative}
+.th.new{border-style:dashed;border-color:var(--gap);opacity:.75}
+.th .tag{position:absolute;left:0;right:0;bottom:-1px;font-size:9px;text-align:center;background:#000a;color:var(--gap)}
+.nm{font-size:14px}.nm .cos{color:var(--muted);font-size:11px;margin-left:6px}
+.fam{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-radius:3px;padding:0 5px;color:#120d09;margin-right:6px}
+.sig{color:var(--gold)}.verb{color:var(--muted);font-size:11px;margin-left:6px}
+.what{color:var(--text)}
+.legend{display:flex;gap:4px;flex-wrap:wrap}
+.pics{display:flex;gap:3px}.th.acc{width:40px;height:40px;margin-top:6px;border-color:#7a5a30}
+.mark{font-size:11px;color:var(--muted);margin-left:6px}.mark b{color:var(--gold);font-weight:400}
+</style></head><body>
+<header>
+  <h1>Arcade Mobs</h1>
+  <a href="/">← Gear sets</a>
+  <div class="legend" id="fams"></div>
+  <button id="byStage" class="on">By dungeon</button><button id="byVerb">By attack</button>
+  <input id="q" placeholder="Search mobs" size="18">
+  <span class="tally" id="tally"></span>
+</header>
+<main id="main"></main>
+<script>
+// A look at tools/arcade-stages.json's mobs (written by tools/arcade-mobs.js - change them there and rerun it).
+const $ = (id) => document.getElementById(id);
+let A, G, view = "stage", fam = "all";
+const FAMS = ["caster", "healer", "runner", "brute", "floor", "bomber", "swarm", "trick"];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const famChip = (f) => `<span class="fam" style="background:var(--${f})">${f}</span>`;
+function costumeArt(k) { const id = G.pieces[`crit_${k}_head`] ? `crit_${k}_head` : `fac_${k}_head`; return G.pieces[id] ? `/art/${id}.png` : ""; }
+function mobRow(m, where) {
+  const s = A.signatures[m.sig], art = costumeArt(m.borrows || m.costume);
+    const acc = m.acc && G.pieces[m.acc], marks = [acc ? "holds <b>" + esc(acc.name) + "</b>" : "", m.tint ? "<b>" + esc(m.tint) + "</b> tint" : "", m.size ? "size <b>" + m.size + "</b>" : ""].filter(Boolean).join(" · ");
+  return `<div class="mob"><div class="pics"><div class="th${m.borrows ? " new" : ""}" style="background-image:url('${art}')">${m.borrows ? `<span class="tag">new: ${esc(m.costume)}</span>` : ""}</div>${acc ? `<div class="th acc" style="background-image:url('/art/${m.acc}.png')"></div>` : ""}</div>
+    <div><div class="nm">${esc(m.name)}<span class="cos">${esc(m.costume)}${m.borrows ? " (borrows " + esc(m.borrows) + ")" : ""}${where ? " · " + esc(where) : ""}</span>${marks ? `<span class="mark">${marks}</span>` : ""}</div>
+    <div>${famChip(s.family)}<span class="sig">${esc(m.sig)}</span><span class="verb">${esc(s.verb)}</span></div><div class="what">${esc(s.what)}</div></div></div>`;
+}
+function render() {
+  const q = $("q").value.toLowerCase();
+  const ok = (m) => (fam === "all" || A.signatures[m.sig].family === fam) && (!q || (m.name + " " + m.sig + " " + m.costume + " " + A.signatures[m.sig].what).toLowerCase().includes(q));
+  const all = A.stages.flatMap((st) => (st.mobs || []).map((m) => ({ ...m, stage: st })));
+  $("fams").innerHTML = ["all"].concat(FAMS).map((f) => `<button data-f="${f}" class="${f === fam ? "on" : ""}">${f === "all" ? "All" : f} ${f === "all" ? all.length : all.filter((m) => A.signatures[m.sig].family === f).length}</button>`).join("");
+  const shown = all.filter(ok);
+  $("tally").textContent = `${shown.length} mobs · ${new Set(shown.map((m) => m.sig)).size} signatures · ${new Set(all.filter((m) => m.paint).map((m) => m.costume)).size} costumes to paint`;
+  if (view === "stage") {
+    $("main").innerHTML = A.stages.filter((st) => (st.mobs || []).some(ok)).map((st) => `<div class="card"><h2>${esc(st.name)}<small>${st.mobs.filter(ok).length} mobs</small></h2>${st.mobs.filter(ok).map((m) => mobRow(m)).join("")}</div>`).join("");
+  } else {  // grouped by the shared attack verb: what our own weapons could borrow
+    const by = {}; for (const m of shown) (by[A.signatures[m.sig].verb] = by[A.signatures[m.sig].verb] || []).push(m);
+    $("main").innerHTML = Object.keys(by).sort((a, b) => by[b].length - by[a].length).map((v) => `<div class="card"><h2>${esc(v)}<small>${by[v].length} mobs</small></h2>${by[v].map((m) => mobRow(m, m.stage.name)).join("")}</div>`).join("");
+  }
+}
+$("fams").onclick = (e) => { const f = e.target.dataset.f; if (f) { fam = f; render(); } };
+$("byStage").onclick = () => { view = "stage"; $("byStage").classList.add("on"); $("byVerb").classList.remove("on"); render(); };
+$("byVerb").onclick = () => { view = "verb"; $("byVerb").classList.add("on"); $("byStage").classList.remove("on"); render(); };
+$("q").oninput = render;
+Promise.all([fetch("/arcade.json").then((r) => r.json()), fetch("/gear.json").then((r) => r.json())]).then(([a, g]) => { A = a; G = g; render(); });
+</script></body></html>

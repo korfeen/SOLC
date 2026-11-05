@@ -1,7 +1,7 @@
--- The Overview's gallery (OverviewCard.lua): your pictures over the right page, instead of the photo, opened by clicking
--- your showcase. It starts with a tile to mint a new one (the Dream Bed, DreamBed.lua), your ogre (built from what
--- you have, Minting.lua: click to build it, drag it onto PHOTO to show it) and one per dungeon with chests to open
--- (Chests.lua). Click a picture to look at it (on the photo's place: its traits, editions, reroll). Drag
+-- Your inventory: the Overview's INVENTORY tab (OverviewCard.lua), in the left slot where GEARZ and CRAFTS go. Your chests first, one tile per dungeon
+-- (Chests.lua) and the Ogre Godz' tribute, a row of their own; then a tile to mint (the Dream Bed, DreamBed.lua) and
+-- your pictures. Click a picture to look at it (on the right page, as a showcase picture: its traits, editions,
+-- reroll). Drag
 -- one onto a showcase slot to put it there; drag a showcase picture onto another to swap them, or anywhere else to take
 -- it off. Newest first; the mouse wheel scrolls. Showcased ones wear their slot's number. The PHOTO slot in its header is the big photo's: drag a
 -- picture onto it to show it there, drag it out to show your character again.
@@ -17,9 +17,13 @@ local function Hue(h)  -- a crayon rainbow colour, h going round 0..1 (as the ch
     local rgb = ({ { 1, f, 0 }, { 1 - f, 1, 0 }, { 0, 1, f }, { 0, 1 - f, 1 }, { f, 0, 1 }, { 1, 0, 1 - f } })[i + 1]
     return rgb[1] * 0.6 + 0.4, rgb[2] * 0.6 + 0.4, rgb[3] * 0.6 + 0.4
 end
--- In window pixels (from its top-left, y down), on the right page (UI.SPLIT.right: x 674..1064, y 146..730).
-local G = { heading = { x = 692, y = 172 }, hint = { x = 692, y = 196 }, grid = { top = 214, cols = 3, cell = 112, gap = 14 },
-    footer = 716, tilts = { -2, 1.5, -1, 2.5, -2.5, 1 } }
+-- In window pixels (from its top-left, y down), in the left slot under the ME tab's showcase (it stays, to drag onto:
+-- the gallery covers the news feed from its heading down; UI.SPLIT.left: x 237..627).
+-- Its ground: your wallpaper (Wallpaper.lua), darkened, its border along the top, between it and the showcase (their
+-- sizes: ns.WallpaperTune).
+local G = { top = 452, grid = { top = 482, cols = 4, cell = 84, gap = 12 }, footer = 722,
+    tilts = { -2, 1.5, -1, 2.5, -2.5, 1 } }
+
 
 -- A picture being dragged (from the gallery or a showcase slot), following the cursor; the slot under it lit.
 local ghost = CreateFrame("Frame", nil, UIParent)
@@ -42,37 +46,39 @@ function UI.Gallery(page)
     local split = UI.SPLIT
     local function At(region, point, x, y) region:SetPoint(point, UI.window, "TOPLEFT", x, -y) end
     local gallery = CreateFrame("Frame", nil, page)
-    gallery:SetAllPoints()
-    gallery:SetFrameLevel(page.photo:GetFrameLevel() + 5)
+    gallery:SetPoint("TOPLEFT", UI.window, "TOPLEFT", split.under.left, -G.top)
+    gallery:SetPoint("BOTTOMRIGHT", UI.window, "TOPLEFT", split.under.middle, -split.under.bottom)
+    gallery:EnableMouse(true)  -- (over the feed: its rows don't take the clicks)
     gallery:EnableMouseWheel(true)
     gallery:Hide()
     gallery.offset = 0  -- rows scrolled
 
     local board = gallery:CreateTexture(nil, "BACKGROUND", nil, -8)
-    At(board, "TOPLEFT", split.under.middle, split.under.top)
-    board:SetPoint("BOTTOMRIGHT", UI.window, "TOPLEFT", split.under.right, -split.under.bottom)
+    board:SetAllPoints()
     board:SetColorTexture(0.05, 0.03, 0.02)
-    local heading = gallery:CreateFontString(nil, "OVERLAY")
-    heading:SetFont(NAME_FONT, 22, "")
-    heading:SetTextColor(unpack(GOLD))
-    UI.OutlineText(heading, { 0, 0, 0 })
-    At(heading, "LEFT", G.heading.x, G.heading.y)
-    heading:SetText("YOUR PIX")
-    local hint = gallery:CreateFontString(nil, "OVERLAY")
-    hint:SetFont(NAME_FONT, 13, "")
-    hint:SetTextColor(unpack(CREAM))
-    At(hint, "LEFT", G.hint.x, G.hint.y)
-    hint:SetText("Click to look, drag onto your showcase")
+    local width, height = split.under.middle - split.under.left, split.under.bottom - G.top
+    gallery.paper = gallery:CreateTexture(nil, "BACKGROUND", nil, -7)
+    gallery.paper:SetAllPoints()
+    local dim = gallery:CreateTexture(nil, "BACKGROUND", nil, -6)
+    dim:SetAllPoints()
+    -- (its border: patterned or plain, its height and darkening from the PAPER tab, Wallpaper.lua)
+    local border = CreateFrame("Frame", nil, gallery)
+    border:SetPoint("TOPLEFT")
+    border:SetPoint("TOPRIGHT")
+    border:SetHeight(1)
+    UI.PlainBorderIn(border, { height = "border", pattern = "invPattern", dim = "borderDim" })
+    function gallery:SetPaper()
+        dim:SetColorTexture(0, 0, 0, ns.WallpaperTune("dim"))
+        UI.SetWallpaper(self.paper, ns.GetWallpaper(), width, height, ns.WallpaperTune("inventory"))
+        ns.RefreshWallpapers()  -- (the border too: its width is known once the panel is laid out)
+    end
     local footer = gallery:CreateFontString(nil, "OVERLAY")
     footer:SetFont(NAME_FONT, 12, "")
     footer:SetTextColor(0.62, 0.56, 0.48)
-    At(footer, "CENTER", (split.right.left + split.right.right) / 2, G.footer)
-    local close = CreateFrame("Button", nil, gallery, "UIPanelCloseButton")
-    At(close, "CENTER", split.right.right - 14, G.heading.y)
-    close:SetScript("OnClick", function() page.CloseGallery() end)
+    At(footer, "CENTER", (split.left.left + split.left.right) / 2, G.footer)
 
     -- The photo's slot: a little polaroid (YOU while it's your character).
-    local P = { x = split.right.right - 66, y = G.heading.y + 10, size = 50 }
+    local P = { x = split.right.right - 66, y = 182, size = 50 }
     local photo = CreateFrame("Button", nil, gallery)
     photo:SetSize(P.size, P.size + 8)
     At(photo, "CENTER", P.x, P.y)
@@ -134,7 +140,7 @@ function UI.Gallery(page)
     -- The grid.
     local g = G.grid
     local width = g.cols * g.cell + (g.cols - 1) * g.gap
-    local left = (split.right.left + split.right.right - width) / 2
+    local left = (split.left.left + split.left.right - width) / 2
     local rows = math.floor((G.footer - 12 - g.top) / (g.cell + g.gap))
     gallery.thumbs = {}
     for i = 1, rows * g.cols do
@@ -272,7 +278,7 @@ function UI.Gallery(page)
         thumb:SetScript("OnEnter", function(self)
             local entry = self.entry
             if entry and entry.mintAction then
-                return UI.Tooltip(self, { "Mint a picture", ns.BonksLine() })
+                return UI.Tooltip(self, { "Mint a picture", "Off to the Dream Bed: the ogre dreams it, you paint it." })
             elseif entry and entry.ogre then
                 return UI.Tooltip(self, { "Your ogre", "Click to build it from what you have. Drag it onto PHOTO to show it" })
             elseif entry and entry.chest then
@@ -284,6 +290,7 @@ function UI.Gallery(page)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(("Picture #%d"):format(self.mint.number))
             GameTooltip:AddLine((rarity:gsub("^%l", string.upper)), ns.RarityRGB(rarity))
+            GameTooltip:AddLine("Click to look, drag onto your showcase", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
         thumb:SetScript("OnLeave", GameTooltip_Hide)
@@ -295,12 +302,17 @@ function UI.Gallery(page)
     end)
 
     function gallery:Refresh()
+        self:SetPaper()
         local mints = {}
         for _, mint in ipairs(KillTrackerDB.mints or {}) do mints[#mints + 1] = mint end
         table.sort(mints, function(a, b) return a.number > b.number end)
-        local entries = { { mintAction = true } }  -- (your ogre isn't here: it's changed in the Overview's EDIT)
+        -- Your chests first, a row of their own (gaps fill it out), then minting, then your pictures. (Your ogre isn't
+        -- here: it's changed in the Overview's EDIT.)
+        local entries = {}
         local counts, order = ns.ChestCounts()
         for _, key in ipairs(order or {}) do entries[#entries + 1] = { chest = key, count = counts[key] } end
+        while #entries % g.cols ~= 0 do entries[#entries + 1] = { blank = true } end
+        entries[#entries + 1] = { mintAction = true }
         for _, mint in ipairs(mints) do entries[#entries + 1] = { mint = mint } end
         local slotOf = {}
         for i, mint in ipairs(ns.GetShowcase()) do slotOf[mint.number] = i end
@@ -309,6 +321,7 @@ function UI.Gallery(page)
         self.offset = math.min(self.offset, self.maxOffset)
         for i, thumb in ipairs(self.thumbs) do
             local entry = entries[self.offset * g.cols + i]
+            if entry and entry.blank then entry = nil end  -- (a gap after the chests)
             local mint = entry and entry.mint
             thumb.entry, thumb.mint = entry, mint
             thumb:SetShown(entry ~= nil)
@@ -336,7 +349,7 @@ function UI.Gallery(page)
                         entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
                     thumb.border:SetColorTexture(1, 0.82, 0.25)
                 else
-                    thumb.caption:SetText(("MINT  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))
+                    thumb.caption:SetText("MINT")
                     thumb.border:SetColorTexture(0.5, 0.4, 0.2)
                 end
             end

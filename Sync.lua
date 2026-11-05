@@ -10,7 +10,7 @@
 --                                                to anyone whose hello shows older settings
 -- Updates carry totals ("52 kills"), never increments, so applying one twice is harmless. An update
 -- is applied only once complete and only if it continues from the receiver's copy; otherwise the
--- receiver asks for a catch-up. A new syncID (after /kt reset) makes friends fetch everything again.
+-- receiver asks for a catch-up. A new syncID (fresh saved data) makes friends fetch everything again.
 -- Addon messages are blocked inside instances in 12.0.0, so nothing is sent there.
 --
 -- Wire format: H|6|syncID|seq|wantReply|configVersion|addonVersion   G|6|syncID|haveSeq   N|6
@@ -36,12 +36,13 @@
 --                behind their model, see Minting.lua; only when changed, empty otherwise; the "S" tells
 --                "none" from "unchanged")
 --   removed    = number,number                      (pictures given away since baseSeq, see Minting.lua)
---   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor^ogre^photoOgre^ogreStyle^glowColor^bgColor^main^frame^motto   (their character
+--   card       = C^gender^portrait^headerBg^cropX^cropY^cropZoom^nameColor^ogre^photoOgre^ogreStyle^glowColor^bgColor^main^frame^motto^wallpaper   (their character
 --                card's choices: gender icon, the picture shown instead of their model (OverviewCard.lua), their profile
 --                header's background, its crop (thousandths; zoom in hundredths) and their name colour (ProfileHeader.lua),
 --                the ogre they built (layer:id,...; Minting.lua), "1" if it's their photo, and its layers' editions
 --                (ns.StyleKey: layer=c,layer=s) (all those from 0.41.0 on); their portrait's frame and their motto
---                (OverviewCard.lua; from 0.42.0 on); only when changed, empty otherwise)
+--                (OverviewCard.lua; from 0.42.0 on) and their wallpaper (Wallpaper.lua; 0.41.0 on); only when changed,
+--                empty otherwise)
 
 local addonName, ns = ...
 
@@ -187,7 +188,7 @@ local function SerializeCard(db, baseSeq)
     return table.concat({ "C", Clean(card.gender), card.portrait and Base36(card.portrait) or "", Clean(card.headerBg),
         Scaled(card.cropX, 1000), Scaled(card.cropY, 1000), Scaled(card.cropZoom, 100), Clean(card.nameColor),
         table.concat(ogre, ","), card.photoOgre and "1" or "", ns.StyleKey(card.ogreStyle), Clean(card.glowColor), Clean(card.bgColor),
-        Clean(card.main), Clean(card.frame), Clean(card.motto) }, FIELD)
+        Clean(card.main), Clean(card.frame), Clean(card.motto), Clean(card.wallpaper) }, FIELD)
 end
 
 -- Pictures given away after baseSeq (won by someone in a puzzle race), so receivers drop them.
@@ -390,6 +391,7 @@ local function Deserialize(payload)
         update.card.glowColor, update.card.bgColor = Optional(f[12]), Optional(f[13])  -- (from 0.41.0 on)
         update.card.main = Optional(f[14])  -- (an alt: its main's name; from 0.41.0 on)
         update.card.frame, update.card.motto = Optional(f[15]), Optional(f[16])  -- (their portrait's frame, their motto; 0.42.0 on)
+        update.card.wallpaper = Optional(f[17])  -- (behind their photo: Wallpaper.lua)
     end
     return update
 end
@@ -857,12 +859,6 @@ end
 -- New guild settings saved here: send them to the guild.
 function ns.BroadcastConfig()
     if CanSend() then SendConfig(nil) end
-end
-
--- After /kt reset: friends must drop their copy, which the new syncID in our hello tells them.
-function ns.OnDataReset()
-    lastBroadcastSeq = 0
-    if CanSend() then SendHello(nil, false) end
 end
 
 -- Synced friends, sorted by name: { { key, name, stats } }.

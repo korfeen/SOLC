@@ -51,8 +51,9 @@ local LEFT = {
 local RIGHT = {
     color = { 0.094, 0.094, 0.094 },
     tabs = { top = 146, bottom = 182, size = 16, color = { 0.16, 0.11, 0.08 } },
-    -- The podium: { centre x, top, picture size } for first, second, third; the name and the number under each.
-    podium = { { 869, 196, 116 }, { 752, 222, 92 }, { 986, 222, 92 } }, rim = 3,
+    -- The podium: { centre x, top, picture size, its place number's size } for first, second, third (smaller each
+    -- step, their bottoms level); the name and the number under each. No box round them: the picture and its place.
+    podium = { { 869, 196, 122, 24 }, { 752, 224, 98, 20 }, { 986, 242, 80, 17 } },
     rows = { top = 384, height = 24, size = 13, colors = { 0.25, 0.18 } },
 }
 
@@ -202,6 +203,20 @@ local function DrawRankings()
             if picture then ns.DrawMint(stand.canvas, picture) end
             Fit(stand.name, NAME_FONT, 14, 9, m.me and ("|cffffd100%s|r"):format(m.name) or m.name, stand.size + 30)
             stand.value:SetText(m[metric])
+            -- (the plate round the place number, the name and the points: from the number's left to the longer line's
+            -- right, both rows tall or the number's height, whichever is more; offsets from the name's middle)
+            local nw, vw, kw = stand.name:GetStringWidth(), stand.value:GetStringWidth(), stand.number:GetStringWidth()
+            local left = math.min(-nw / 2 - 4 - kw, -vw / 2) - 9
+            local right = math.max(nw / 2, vw / 2) + 9
+            local tall = math.max(stand.name:GetStringHeight() + stand.value:GetStringHeight() + 1, stand.number:GetStringHeight()) + 8
+            -- (all of it centred under the picture: the name - and the points under it - moved so the plate's middle is
+            -- the picture's)
+            local shift = math.floor(-(left + right) / 2 + 0.5)
+            stand.name:ClearAllPoints()
+            stand.name:SetPoint("TOP", stand.canvas, "BOTTOM", shift, -3)
+            stand.plate:ClearAllPoints()
+            stand.plate:SetPoint("TOPLEFT", stand.name, "TOP", math.floor(left + 0.5), 4)
+            stand.plate:Fit(right - left, tall)
         end
     end
     for i, row in ipairs(page.rankRows) do
@@ -247,10 +262,10 @@ ns.RegisterPage({
         Band(LEFT.tabs.top - 5, LEFT.tabs.bottom, LEFT.tabs.color)
         page.bountyBand = Band(LEFT.bounty.top, LEFT.bounty.bottom, LEFT.bounty.color)
         page.chipsBand = Band(LEFT.chips.top, LEFT.chips.bottom, LEFT.chips.color)
-        Band(LEFT.chips.bottom, under.bottom, LEFT.rows.empty)
+        UI.WallpaperOver(Band(LEFT.chips.bottom, under.bottom, LEFT.rows.empty))  -- (your wallpaper, darkened: Wallpaper.lua)
         page.huntsBand = Band(LEFT.hunts.top, under.bottom, { 0.08, 0.07, 0.06 })
         Band(under.top, RIGHT.tabs.bottom, RIGHT.tabs.color, under.middle, under.right + 20)
-        Band(RIGHT.tabs.bottom, under.bottom, RIGHT.color, under.middle, under.right + 20)
+        UI.WallpaperOver(Band(RIGHT.tabs.bottom, under.bottom, RIGHT.color, under.middle, under.right + 20))  -- (the toplist's board)
 
         local left = CreateFrame("Frame", nil, page)
         left:SetAllPoints()
@@ -379,47 +394,74 @@ ns.RegisterPage({
             local size = spot[3]
             local stand = CreateFrame("Button", nil, board)
             stand.size = size
-            stand:SetSize(size + 2 * RIGHT.rim, size + 2 * RIGHT.rim + 34)
+            stand:SetSize(size, size + 34)
             At(stand, "TOP", spot[1], spot[2])
-            local rim = stand:CreateTexture(nil, "BACKGROUND")
-            rim:SetPoint("TOP")
-            rim:SetSize(size + 2 * RIGHT.rim, size + 2 * RIGHT.rim)
-            rim:SetColorTexture(unpack(MEDALS[i]))
-            local backing = stand:CreateTexture(nil, "BORDER")
-            backing:SetPoint("TOP", 0, -RIGHT.rim)
-            backing:SetSize(size, size)
-            backing:SetColorTexture(0.06, 0.06, 0.06)
             stand.canvas = CreateFrame("Frame", nil, stand)
-            stand.canvas:SetPoint("TOP", 0, -RIGHT.rim)
+            stand.canvas:SetPoint("TOP")
             stand.canvas:SetSize(size, size)
             stand.none = stand:CreateFontString(nil, "OVERLAY")
             stand.none:SetFont(NAME_FONT, 30, "")
             stand.none:SetTextColor(unpack(DIM))
-            stand.none:SetPoint("CENTER", backing)
+            stand.none:SetPoint("CENTER", stand.canvas)
             stand.none:SetText("?")
             local place = CreateFrame("Frame", nil, stand)
             place:SetAllPoints()
             place:SetFrameLevel(stand.canvas:GetFrameLevel() + 5)
+            stand.name = place:CreateFontString(nil, "OVERLAY")
+            stand.name:SetPoint("TOP", stand.canvas, "BOTTOM", 0, -3)
+            stand.name:SetTextColor(unpack(CREAM))
+            UI.OutlineText(stand.name, { 0, 0, 0 })
             local number = place:CreateFontString(nil, "OVERLAY")
-            number:SetFont(NAME_FONT, i == 1 and 26 or 20, "")
-            number:SetPoint("TOPLEFT", 4, -2)
+            number:SetFont(NAME_FONT, spot[4], "")
+            number:SetPoint("RIGHT", stand.name, "BOTTOMLEFT", -4, 0)  -- (beside the name and the points, between them)
             number:SetText(i)
             number:SetTextColor(unpack(MEDALS[i]))
             UI.OutlineText(number, { 0, 0, 0 })
-            stand.name = place:CreateFontString(nil, "OVERLAY")
-            stand.name:SetPoint("TOP", rim, "BOTTOM", 0, -3)
-            stand.name:SetTextColor(unpack(CREAM))
-            UI.OutlineText(stand.name, { 0, 0, 0 })
             stand.value = place:CreateFontString(nil, "OVERLAY")
             stand.value:SetFont(NAME_FONT, 13, "")
             stand.value:SetTextColor(unpack(AGO_COLOR))
             stand.value:SetPoint("TOP", stand.name, "BOTTOM", 0, -1)
+            -- (a dark plate with rounded corners behind the name and the points, over the wallpaper: sized to them on
+            -- refresh; nine pieces of Media/Overview/RoundPlate so its corners stay round)
+            stand.plate = CreateFrame("Frame", nil, place)
+            stand.plate:SetFrameLevel(place:GetFrameLevel() - 1)
+
+            -- (three pieces of the 32 px texture, split 10 | 12 | 10 across: the round ends kept, the middle stretched;
+            -- opaque, on whole pixels: see-through pieces showed lines where they met)
+            local cuts = { 0, 10 / 32, 22 / 32, 1 }
+            stand.plate.pieces = {}
+            for col = 1, 3 do
+                local t = stand.plate:CreateTexture(nil, "BACKGROUND")
+                t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Overview\\RoundPlate")
+                t:SetTexCoord(cuts[col], cuts[col + 1], 0, 1)
+                stand.plate.pieces[col] = t
+            end
+            function stand.plate:Light()  -- (a warm wood tone, PAPER's Podium plates: brightness)
+                local v = ns.WallpaperTune and ns.WallpaperTune("plateLight") or 0.3
+                for _, t in ipairs(self.pieces) do t:SetVertexColor(v, v * 0.8, v * 0.62, 1) end
+            end
+            stand.plate:Light()
+            function stand.plate:Fit(w, h)
+                w, h = math.floor(w + 0.5), math.floor(h + 0.5)
+                self:SetSize(w, h)
+                local p = self.pieces
+                p[1]:ClearAllPoints() p[1]:SetPoint("TOPLEFT") p[1]:SetSize(10, h)
+                p[3]:ClearAllPoints() p[3]:SetPoint("TOPRIGHT") p[3]:SetSize(10, h)
+                p[2]:ClearAllPoints() p[2]:SetPoint("TOPLEFT", 10, 0) p[2]:SetPoint("BOTTOMRIGHT", -10, 0)
+            end
+            stand.number = number
             stand:SetScript("OnClick", function(self) UI.ClickSound() View(self.member) end)
             stand:SetScript("OnEnter", function(self) if self.member then Tooltip(self, { self.member.name, "Click to view them" }) end end)
             stand:SetScript("OnLeave", GameTooltip_Hide)
             page.podium[i] = stand
         end
+        function UI.RefreshPlates() for _, stand in ipairs(page.podium) do stand.plate:Light() end end
         page.rankRows = Rows(board, right.left, right.right, RIGHT.rows, right.bottom, 20)
+        -- (your wallpaper's plain border over the toplist's rows, under the podium: Wallpaper.lua)
+        local divider = CreateFrame("Frame", nil, board)
+        At(divider, "TOPLEFT", under.middle, RIGHT.rows.top - 26)  -- (as wide as the board: its ends under the wood)
+        divider:SetSize(under.right + 20 - under.middle, 22)
+        UI.PlainBorderIn(divider)
         for _, row in ipairs(page.rankRows) do
             row:SetScript("OnEnter", function(self)
                 if not self.member then return end

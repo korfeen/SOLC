@@ -1,6 +1,5 @@
 -- Ogre Rank: the meta progression. Your rank comes from the points you've ever earned (spending them on pictures
--- never costs rank), 30 ranks from Pebble Kicker to Grand Sleepy Ogre. Ranks unlock perks: cheaper and luckier
--- minting, more ogre crayons and voices, a coloured name on your card. Guildmates' ranks come from their synced
+-- never costs rank), 30 ranks from Pebble Kicker to Grand Sleepy Ogre. Ranks unlock perks: luckier minting, more ogre crayons and voices, a coloured name on your card. Guildmates' ranks come from their synced
 -- points, so everyone sees everyone's. Reaching a rank shows a popup and goes in the activity feed (event K).
 
 local _, ns = ...
@@ -24,16 +23,16 @@ local MAX_RANK = #ns.RANKS
 ns.RANK_PERKS = {
     { rank = 3, kind = "crayons", value = 2, text = "Two more ogre crayons (ogre mode's letters)" },
     { rank = 4, kind = "nameColor", id = "silver", name = "Silver", value = { 0.8, 0.84, 0.9 }, text = "Silver name on your card" },
-    { rank = 6, kind = "discount", value = 0.1, text = "Pictures cost 10% less" },
+    { rank = 6, kind = "ogreStyle", value = "sketch", text = "Your ogre in pencil sketch (EDIT's STYLE)" },
     { rank = 8, kind = "voices", value = 2, text = "Ogre voices on clicks twice as often" },
     { rank = 10, kind = "luck", value = 1.25, text = "Lucky minting: epic and legendary layers 25% likelier" },
     { rank = 12, kind = "nameColor", id = "gold", name = "Gold", value = { 1, 0.82, 0.25 }, text = "Gold name on your card" },
     { rank = 12, kind = "crayons", value = 2, text = "Two more ogre crayons" },
-    { rank = 14, kind = "discount", value = 0.2, text = "Pictures cost 20% less" },
+    { rank = 14, kind = "ogreStyle", value = "crayon", text = "Your ogre in crayon (EDIT's STYLE)" },
     { rank = 16, kind = "voices", value = 3, text = "Ogre voices on clicks three times as often" },
     { rank = 18, kind = "luck", value = 1.5, text = "Luckier minting: epic and legendary layers 50% likelier" },
     { rank = 20, kind = "crayons", value = 3, text = "Three more ogre crayons" },
-    { rank = 22, kind = "discount", value = 0.3, text = "Pictures cost 30% less" },
+    { rank = 22, kind = "wallpaper", value = "blocks", text = "The Blue Blocks wallpaper (EDIT's Wallpaper)" },
     { rank = 24, kind = "nameColor", id = "orange", name = "Ogre Orange", value = { 1, 0.5, 0.2 }, text = "Ogre-orange name on your card" },
     { rank = 26, kind = "luck", value = 2, text = "Luckiest minting: epic and legendary layers twice as likely" },
     { rank = 30, kind = "nameColor", id = "pink", name = "Grand Sleepy Pink", value = { 1, 0.4, 0.75 }, text = "Grand Sleepy Ogre pink name on your card" },
@@ -59,6 +58,19 @@ function ns.GetRank(key)
 end
 
 -- The best value of one kind of perk at a rank (the latest unlocked), or nil.
+-- Your ogre's styles (the Overview's EDIT, its STYLE row): painted always; sketch and crayon from their Ogre Ranks
+-- (the ogreStyle perks; dev characters: all). OgreStyleRank: the rank one comes at.
+function ns.OgreStyleRank(edition)
+    for _, perk in ipairs(ns.RANK_PERKS) do
+        if perk.kind == "ogreStyle" and perk.value == edition then return perk.rank end
+    end
+end
+function ns.OgreStyleUnlocked(edition)
+    if not edition or (ns.IsDev and ns.IsDev()) then return true end
+    local rank = ns.OgreStyleRank(edition)
+    return rank ~= nil and ns.GetRank().rank >= rank
+end
+
 function ns.RankPerk(kind, rank)
     rank = rank or ns.GetRank().rank
     local best

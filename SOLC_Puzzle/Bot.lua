@@ -2,9 +2,9 @@
 -- the duel messages (Duel.lua's list at the top) from inside the addon: Duel.lua hands it what's sent to its name
 -- (Send) and it answers through Duel.Deliver, a moment later, as if over the wire. It can be challenged from the
 -- duel panel (it's first in the list of who's online) or challenge you (the dev menu: Bot.ChallengeMe). At the
--- table it puts up a picture nobody owns and gets ready; in the race it "solves" at its speed (SPEEDS: seconds a
--- piece) or, in a paint duel, scores something at the end. Nothing changes hands (Duel.lua: duel.bot): losing keeps
--- your picture, winning shows its picture as the prize without adding it.
+-- table it bets nothing and gets ready (challenging, it rolls the picture); in the race it "solves" at its speed
+-- (SPEEDS: seconds a piece) or, in a paint duel, scores something at the end. No points change hands (Duel.lua:
+-- duel.bot).
 
 local _, ns = ...
 
@@ -32,23 +32,24 @@ local function Say(delay, ...)
     end)
 end
 
--- Its picture on the table, then Ready.
+-- Its bet (nothing) on the table, then Ready.
 local function SitDown()
-    state.offer = state.offer or { number = 1, traits = SOLC.RandomPicture() }
-    Say(LAG + 0.6, "O", state.id, state.offer.number, 0, SOLC.TraitsToText(state.offer.traits))
+    state.theirs = state.theirs or 0
+    Say(LAG + 0.6, "O", state.id, 0)
     Say(LAG + 1.4, "R", state.id, 1)
 end
 
--- The challenger starts once both are ready with offers (Duel.lua's MaybeStart, for the bot).
+-- The challenger starts once both are ready (Duel.lua's MaybeStart, for the bot): a random picture, both bets.
 local function MaybeStart()
-    if state.role ~= "challenger" or not state.theirReady or not state.theirs or state.started then return end
+    if state.role ~= "challenger" or not state.theirReady or state.started then return end
     state.started = true
     state.seed = math.random(1, 2 ^ 30)
-    Say(LAG, "S", state.id, state.seed, state.offer.number, state.theirs)
+    local traits, owner, number = Duel.PickPicture()
+    Say(LAG, "S", state.id, state.seed, SOLC.TraitsToText(traits), 0, state.theirs or 0, owner or "", number or 0)
 end
 
 -- After the countdown: it races. Puzzles: done after its time (pieces x its speed, give or take 25%), unless you
--- were faster - then, once its clock passes yours, it gives up and hands its picture over. Paint: a score at the end.
+-- were faster - then, once its clock passes yours, it gives up. Paint: a score at the end.
 local function Race()
     local id = state.id
     state.raceStart = GetTime() + COUNTDOWN
@@ -74,7 +75,6 @@ local function YouSolved(seconds)
     state.lost = true
     local wait = math.max(0, state.raceStart + seconds - GetTime()) + 0.2
     Say(wait, "L", state.id)
-    Say(wait + 0.3, "G", state.id, 0, SOLC.TraitsToText(state.offer.traits))
 end
 
 -- What you sent the bot.
@@ -91,9 +91,10 @@ function Bot.Receive(message)
     if not state or state.id ~= id then return end
     if kind == "A" then
         SitDown()
-    elseif kind == "O" then  -- your offer changed: both Ready marks are off; it gets ready again
-        state.theirs, state.theirReady = fields[3] ~= "-" and tonumber(fields[3]) or nil, false
-        if state.theirs then Say(LAG + 0.5, "R", id, 1) end
+    elseif kind == "O" then  -- your bet changed: both Ready marks are off; it gets ready again
+        state.theirs, state.theirReady = tonumber(fields[3]) or 0, false
+        state.started = nil
+        Say(LAG + 0.5, "R", id, 1)
     elseif kind == "R" then
         state.theirReady = fields[3] == "1"
         if not state.theirReady then state.started = nil end  -- (you weren't ready for its start: it can start again)
@@ -107,8 +108,8 @@ function Bot.Receive(message)
         YouSolved(fields[3])
     elseif kind == "E" and math.random() < 0.6 then
         Say(LAG + 0.5, "E", id, REACTIONS[math.random(#REACTIONS)])
-    elseif kind == "D" or kind == "L" or kind == "G" then
-        state = nil  -- (you left, lost or paid up: the duel's over for it)
+    elseif kind == "D" or kind == "L" then
+        state = nil  -- (you left or lost: the duel's over for it)
     end
 end
 

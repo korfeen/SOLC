@@ -1,6 +1,6 @@
 -- The Duel tab of the Puzzle page (Duel.lua does the duel itself). Right column: challenge an online
--- guildmate, answer a challenge, then at the duel table pick your offer, react and press Ready; during the race
--- the clocks. Over the board area, the duel table: both offers side by side like a trade window, with Ready
+-- guildmate, answer a challenge, then at the duel table set your bet, react and press Ready; during the race
+-- the clocks. Over the board area, the duel table: both bets side by side like a trade window, with Ready
 -- marks and reaction bubbles. Adds Practice / Duel tabs to the page; the board is shared with practice.
 
 local _, ns = ...
@@ -9,10 +9,7 @@ local Duel = ns.Duel
 local MODES = { { key = "swap", label = "Swap pieces" }, { key = "sliding", label = "Sliding" }, { key = "paint", label = "Paint" } }
 local MODE_NAMES = { swap = "Swap pieces", sliding = "Sliding", paint = "Paint" }
 local BUBBLE_TIME = 4  -- seconds a reaction stays up
-
-local function PictureLabel(owner, picture)
-    return ("%s's #%d %s"):format(owner, picture.number or 0, SOLC.RarityText(SOLC.PictureRarity(picture.traits)))
-end
+local BETS = { 0, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000 }  -- points, stepped through at the table
 
 local function Button(parent, label, width, x, y, onClick)
     local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -23,8 +20,8 @@ local function Button(parent, label, width, x, y, onClick)
     return button
 end
 
--- One side of the duel table: a heading, the offered picture with a rarity border, its label, a Ready mark
--- and a reaction bubble above it.
+-- One side of the duel table: a heading, the bet (or, after the race, the picture with a rarity border), its
+-- label, a Ready mark and a reaction bubble above it.
 local function TableCard(parent, heading, x, width)
     local UI = SOLC.UI
     local card = CreateFrame("Frame", nil, parent)
@@ -44,6 +41,9 @@ local function TableCard(parent, heading, x, width)
     card.empty = card.frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     card.empty:SetPoint("CENTER")
     card.empty:SetWidth(width - 30)
+    card.bet = card.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    card.bet:SetPoint("CENTER")
+    card.bet:SetWidth(width - 30)
     card.label = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     card.label:SetPoint("TOP", card.frame, "BOTTOM", 0, -6)
     card.ready = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -60,19 +60,25 @@ local function TableCard(parent, heading, x, width)
     card.bubble.text:SetPoint("CENTER")
     card.bubble:Hide()
 
-    function card:Set(offer, owner, emptyText, ready)
-        self.canvas:SetShown(offer ~= nil)
-        self.empty:SetShown(offer == nil)
-        self.empty:SetText(emptyText or "")
-        if offer then
-            SOLC.RenderPicture(self.canvas, offer.traits)
-            self.frame:SetBackdropBorderColor(SOLC.RarityColor(SOLC.PictureRarity(offer.traits)))
-            self.label:SetText(PictureLabel(owner, offer))
-        else
-            self.frame:SetBackdropBorderColor(0.4, 0.4, 0.4)
-            self.label:SetText("")
-        end
+    -- A bet (points) on the table, with a Ready mark.
+    function card:SetBet(bet, ready)
+        self.canvas:Hide()
+        self.empty:Hide()
+        self.bet:Show()
+        self.bet:SetText(bet > 0 and ("%d\npoints"):format(bet) or "|cff999999No bet|r")
+        self.frame:SetBackdropBorderColor(1, 0.82, 0)
+        self.label:SetText("")
         self.ready:SetText(ready and "|cff40ff40READY|r" or "|cff777777not ready|r")
+    end
+    -- A picture (traits), with a label under it.
+    function card:SetPicture(traits, label)
+        self.canvas:Show()
+        self.empty:Hide()
+        self.bet:Hide()
+        SOLC.RenderPicture(self.canvas, traits)
+        self.frame:SetBackdropBorderColor(SOLC.RarityColor(SOLC.PictureRarity(traits)))
+        self.label:SetText(label or "")
+        self.ready:SetText("")
     end
 
     function card:React(reaction)
@@ -122,7 +128,7 @@ function ns.BuildDuelPanel(page)
     duelTable.settings = duelTable:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     duelTable.settings:SetPoint("BOTTOM", 0, 14)
     local cardWidth = 190
-    local myCard = TableCard(duelTable, "You put up", 12, cardWidth)
+    local myCard = TableCard(duelTable, "You bet", 12, cardWidth)
     local theirCard = TableCard(duelTable, "", 12 + cardWidth + 10, cardWidth)
 
     -- Right column. Setting up a challenge: opponent, mode, size.
@@ -130,7 +136,7 @@ function ns.BuildDuelPanel(page)
     setup:SetAllPoints()
     UI.CreateSection(setup, "Opponent", 0)
     local opponentText = setup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    local opponentIndex, stakeIndex = 1, 1
+    local opponentIndex = 1
     local mode, size = "swap", ns.DEFAULT_SIZE
     local prevOpponent = Button(setup, "<", 32, 0, 20, function() opponentIndex = opponentIndex - 1 page:UpdateDuel() end)
     local nextOpponent = Button(setup, ">", 32, 0, 20, function() opponentIndex = opponentIndex + 1 page:UpdateDuel() end)
@@ -182,42 +188,45 @@ function ns.BuildDuelPanel(page)
     accept.note:SetText("Off: challenges are declined without asking you. Someone you decline can't challenge you again for a minute.")
     accept:SetScript("OnClick", function(self) Duel.SetAcceptDuels(self:GetChecked()) end)
 
-    -- At the table: your offer, Ready, reactions, leave.
+    -- At the table: your bet (stepped through BETS, up to what you have to spend), Ready, reactions, leave.
     local atTable = CreateFrame("Frame", nil, panel)
     atTable:SetAllPoints()
-    UI.CreateSection(atTable, "Your offer", 0)
-    local offerText = atTable:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    offerText:SetPoint("TOPLEFT", 0, -22)
-    offerText:SetPoint("RIGHT", atTable, "RIGHT")
-    offerText:SetJustifyH("LEFT")
-    local function StepOffer(delta)
-        local stakes = SOLC.GetPictures(nil)
-        if #stakes == 0 then return end
-        stakeIndex = (stakeIndex - 1 + delta) % #stakes + 1
-        Duel.Offer(stakes[stakeIndex])
+    UI.CreateSection(atTable, "Your bet", 0)
+    local betText = atTable:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local function StepBet(delta)
+        local d = Duel.Get()
+        if not d or not d.mine then return end
+        local index = 1
+        for i, points in ipairs(BETS) do if points <= d.mine.bet then index = i end end
+        index = math.max(1, math.min(#BETS, index + delta))
+        if BETS[index] > SOLC.GetBalance() then return end
+        Duel.Bet(BETS[index])
     end
-    local prevOffer = Button(atTable, "< Previous", 120, 0, 44, function() StepOffer(-1) end)
-    local nextOffer = Button(atTable, "Next >", 120, 126, 44, function() StepOffer(1) end)
-    ns.SpreadRow(atTable, { prevOffer, nextOffer }, 44)
+    local lessBet = Button(atTable, "-", 40, 0, 20, function() StepBet(-1) end)
+    local moreBet = Button(atTable, "+", 40, 0, 20, function() StepBet(1) end)
+    moreBet:ClearAllPoints()
+    moreBet:SetPoint("TOPRIGHT", atTable, "TOPRIGHT", 0, -20)
+    betText:SetPoint("LEFT", lessBet, "RIGHT", 4, 0)
+    betText:SetPoint("RIGHT", moreBet, "LEFT", -4, 0)
     local ready = CreateFrame("Button", nil, atTable, "UIPanelButtonTemplate")
     ready:SetSize(246, 30)
-    ready:SetPoint("TOPLEFT", 0, -80)
+    ready:SetPoint("TOPLEFT", 0, -56)
     ready:SetScript("OnClick", function()
         local d = Duel.Get()
         if d then Duel.SetReady(not d.myReady) end
     end)
-    ns.SpreadRow(atTable, { ready }, 80)
-    UI.CreateSection(atTable, "React", 124)
+    ns.SpreadRow(atTable, { ready }, 56)
+    UI.CreateSection(atTable, "React", 100)
     local reactionRows = { {}, {} }
     for i, r in ipairs(ns.REACTIONS) do
         local column, row = (i - 1) % 3, math.floor((i - 1) / 3)
         local list = reactionRows[row + 1]
-        list[#list + 1] = Button(atTable, r.text, 78, column * 84, 144 + row * 28, function() Duel.React(r.key) end)
+        list[#list + 1] = Button(atTable, r.text, 78, column * 84, 120 + row * 28, function() Duel.React(r.key) end)
     end
-    ns.SpreadRow(atTable, reactionRows[1], 144)
-    ns.SpreadRow(atTable, reactionRows[2], 172)
-    local leave = Button(atTable, "Leave table", 246, 0, 214, function() Duel.Cancel() end)
-    ns.SpreadRow(atTable, { leave }, 214)
+    ns.SpreadRow(atTable, reactionRows[1], 120)
+    ns.SpreadRow(atTable, reactionRows[2], 148)
+    local leave = Button(atTable, "Leave table", 246, 0, 190, function() Duel.Cancel() end)
+    ns.SpreadRow(atTable, { leave }, 190)
 
     -- The main button for the other phases (Challenge / Withdraw / Accept / Give up / OK), and Decline.
     local action = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
@@ -228,11 +237,8 @@ function ns.BuildDuelPanel(page)
     local saveDuel = Button(panel, "Save my painting", 246, 0, 0, function()
         local d = Duel.Get()
         if not d or not d.painting or d.painting.saved then return end
-        -- Which picture it copied: theirs or yours (the puzzle is one of the two offers).
         local info = d.painting.info
-        local theirs = d.theirs and SOLC.TraitsToText(d.theirs.traits) == SOLC.TraitsToText(d.puzzle)
-        info.owner = theirs and d.opponent or SOLC.MyName()
-        info.number = theirs and d.theirs.number or d.mine.number
+        info.owner, info.number = d.puzzleOwner, d.puzzleNumber
         local count = ns.SavePainting(page.canvas, d.painting.size, d.painting.palette, info)
         d.painting.saved = true
         SOLC.Refresh()  -- the Collection page lists saved paintings
@@ -304,7 +310,7 @@ function ns.BuildDuelPanel(page)
             if k == key then tab:LockHighlight() else tab:UnlockHighlight() end
         end
         self.line:SetText(key == "practice" and "Practice: solve any picture in the guild against the clock."
-            or "Duel: challenge a guildmate. You both put up a picture; the faster solver takes the other's.")
+            or "Duel: challenge a guildmate. You both bet points; the faster solver takes the other's bet.")
         if key == "practice" then
             duelTable:Hide()
             self.board:Show()
@@ -378,8 +384,8 @@ function ns.BuildDuelPanel(page)
             end)
             Place(status, 240)
             status:SetFontObject("GameFontHighlightSmall")
-            status:SetText("You'll both put up a picture at the duel table and press Ready. The puzzle is one of the "
-                .. "two pictures; the faster solver takes the other's.")
+            status:SetText("At the duel table you both bet points and press Ready. You race on the same random "
+                .. "picture; the faster solver takes the other's bet.")
             return
         end
 
@@ -401,28 +407,24 @@ function ns.BuildDuelPanel(page)
             status:SetText(("%s challenges you to a puzzle race!\n%s"):format(d.opponent, settings))
         elseif atTheTable then
             action:Hide()
-            local stakes = SOLC.GetPictures(nil)
-            if not d.mine and #stakes > 0 and phase == "table" then
-                Duel.Offer(stakes[(stakeIndex - 1) % #stakes + 1])  -- start with a picture on the table
-                return
-            end
-            offerText:SetText(d.mine and PictureLabel(SOLC.MyName(), d.mine)
-                or "|cff999999You have no pictures to put up. Mint one in Collection.|r")
-            prevOffer:SetEnabled(phase == "table" and #stakes > 1)
-            nextOffer:SetEnabled(phase == "table" and #stakes > 1)
+            local bet, balance = d.mine.bet, SOLC.GetBalance()
+            betText:SetText(("%d points  |cff999999(you have %d)|r"):format(bet, balance))
+            local nextBet
+            for _, points in ipairs(BETS) do if not nextBet and points > bet then nextBet = points end end
+            lessBet:SetEnabled(phase == "table" and bet > 0)
+            moreBet:SetEnabled(phase == "table" and nextBet ~= nil and nextBet <= balance)
             ready:SetText(phase == "starting" and "Starting..." or d.myReady and "Not ready" or "Ready")
-            ready:SetEnabled(phase == "table" and d.mine ~= nil)
+            ready:SetEnabled(phase == "table")
             leave:SetEnabled(true)
-            Place(status, 250)
+            Place(status, 226)
             status:SetFontObject("GameFontHighlightSmall")
-            status:SetText(d.theirs and (d.myReady and d.theirReady and "Both ready - starting!"
-                or "When you both press Ready, the race starts. Changing an offer clears both Ready marks.")
-                or ("Waiting for %s to put up a picture..."):format(d.opponent))
+            status:SetText(d.myReady and d.theirReady and "Both ready - starting!"
+                or "When you both press Ready, the race starts. Changing a bet clears both Ready marks.")
             duelTable.title:SetText(("Duel with %s"):format(d.opponent))
-            duelTable.settings:SetText(settings .. "  -  the puzzle will be one of these two pictures")
-            theirCard.heading:SetText(("%s puts up"):format(d.opponent))
-            myCard:Set(d.mine, SOLC.MyName(), "No picture", d.myReady)
-            theirCard:Set(d.theirs, d.opponent, "Choosing...", d.theirReady)
+            duelTable.settings:SetText(settings .. "  -  on a random picture")
+            theirCard.heading:SetText(("%s bets"):format(d.opponent))
+            myCard:SetBet(bet, d.myReady)
+            theirCard:SetBet(d.theirs.bet, d.theirReady)
         elseif phase == "countdown" or phase == "racing" or phase == "waiting" then
             Place(action, 0)
             action:SetText(phase == "waiting" and "Waiting..." or "Give up")
@@ -430,8 +432,8 @@ function ns.BuildDuelPanel(page)
             action:SetScript("OnClick", function() Duel.GiveUp() end)
             Place(status, 40)
             status:SetFontObject("GameFontHighlightSmall")
-            status:SetText(((d.mode == "paint" and "Painting against %s" or "Racing %s") .. ": your %s vs their %s\n%s"):format(d.opponent,
-                SOLC.RarityText(SOLC.PictureRarity(d.mine.traits)), SOLC.RarityText(SOLC.PictureRarity(d.theirs.traits)), settings))
+            status:SetText(((d.mode == "paint" and "Painting against %s" or "Racing %s") .. ": your %d points vs their %d\n%s")
+                :format(d.opponent, d.mine.bet, d.theirs.bet, settings))
             Place(clock, 80)
         elseif phase == "done" then
             local r = d.result
@@ -455,15 +457,16 @@ function ns.BuildDuelPanel(page)
                     r.theirScore and ("%.1f%%"):format(r.theirScore) or "-")
                 or ("You %s  -  %s %s"):format(r.myTime and ns.FormatTime(r.myTime) or "-", d.opponent,
                     r.theirTime and ns.FormatTime(r.theirTime) or "-")
+            local points = r.points or 0
             if r.won then
-                status:SetText(("|cff40ff40You won!|r %s\n%s"):format(r.prize and "You get their picture:"
-                    or "Waiting for their picture...", times))
-                resultThumb:Set(d.theirs, d.opponent, nil, false)
+                status:SetText(("|cff40ff40You won!|r %s\n%s"):format(points > 0 and ("+%d points."):format(points)
+                    or "Nothing was bet.", times))
             else
-                status:SetText(("|cffff4040You lost|r (%s). %s takes your picture.\n%s"):format(r.reason, d.opponent, times))
-                resultThumb:Set(d.mine, SOLC.MyName(), nil, false)
+                status:SetText(("|cffff4040You lost|r (%s). %s\n%s"):format(r.reason, points > 0
+                    and ("%s takes your %d points."):format(d.opponent, points) or "Nothing was bet.", times))
             end
-            resultThumb.ready:SetText("")
+            resultThumb:SetPicture(d.puzzle or {}, d.puzzleOwner and ("%s's #%d"):format(d.puzzleOwner, d.puzzleNumber or 0)
+                or "The picture")
             resultThumb:ClearAllPoints()
             resultThumb:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -(statusY + 50))
             resultThumb:Show()
@@ -510,10 +513,8 @@ function ns.BuildDuelPanel(page)
     function ns.SaveDuelReplay(d)
         if not d or d.mode == "paint" or d.replaySaved or not d.result or not d.seed then return end
         d.replaySaved = true
-        local theirs = d.theirs and SOLC.TraitsToText(d.theirs.traits) == SOLC.TraitsToText(d.puzzle)
         ns.SaveReplay({ kind = "duel", mode = d.mode, size = d.size, seed = d.seed, traits = d.puzzle,
-            owner = theirs and d.opponent or SOLC.MyName(), number = theirs and d.theirs.number or d.mine.number,
-            moves = d.myMoves, time = d.result.myTime, opponent = d.opponent, theirMoves = d.theirMoves,
+            owner = d.puzzleOwner, number = d.puzzleNumber, moves = d.myMoves, time = d.result.myTime, opponent = d.opponent, theirMoves = d.theirMoves,
             theirTime = d.result.theirTime, won = d.result.won })
     end
 
@@ -598,7 +599,7 @@ function ns.BuildDuelPanel(page)
         UpdateLive(d)
     end
     Duel.OnReaction = function()
-        pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_CHAT_EMOTE_BUTTON or 1115)
+        SOLC.PlaySound(SOUNDKIT and SOUNDKIT.IG_CHAT_EMOTE_BUTTON or 1115)
     end
     page:SetTab("practice")
 end
@@ -620,7 +621,7 @@ StaticPopupDialogs["SOLC_PUZZLE_CHALLENGE"] = {
     hideOnEscape = true,
 }
 Duel.OnInvited = function(d)
-    StaticPopup_Show("SOLC_PUZZLE_CHALLENGE", d.opponent, ("%s, %dx%d. You'll both put up a picture at the duel table.")
+    StaticPopup_Show("SOLC_PUZZLE_CHALLENGE", d.opponent, ("%s, %dx%d. You'll both bet points at the duel table.")
         :format(MODE_NAMES[d.mode], d.size, d.size))
 end
 

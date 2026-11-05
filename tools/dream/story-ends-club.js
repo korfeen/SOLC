@@ -13,6 +13,7 @@ Object.assign(PIECE_ENDS, {
   "grand_sleepy_pink": ["And somebody tried to blow him up like bubblegum.", "And he was so pink and soft that {boss} hugged him by accident."],
   "obsidian_ember": ["And he toasted marshmallows on his own elbow.", "And he sat down and set the chair on fire. Again."],
   "sea_cursed_teal": ["And a crab climbed out of his ear and walked off.", "And he dripped seawater everywhere, miles from any sea."],
+  "club_sage": ["And he smelled faintly of herbs and old money.", "And a cook tried to chop a bit of him into the stuffing."],
 
   // club hats
   "bucket_hat": ["And it rained, and his bucket hat filled up like a bucket.", "And he pulled his bucket hat right down and said he wasn't there."],
@@ -105,6 +106,11 @@ Object.assign(PIECE_ENDS, {
   "gacha_hair_powdered_wig": ["And he banged a gavel and sentenced {boss} to bed.", "And he sneezed, and a cloud of powder filled the room."],
   "gacha_head_ascot_hat": ["And a bee spent all afternoon in the flowers on his hat.", "And nobody behind him saw a thing all day."],
   "gacha_head_fishbowl": ["And the goldfish in his helmet gave the orders. He followed them.", "And he tried to eat a sandwich and bonked it on the glass."],
+  "gacha_hair_curlers": ["And he took his curlers out at the end, and he was still bald.", "And he leaned on a fence and gossiped with {boss} all afternoon."],
+  "gacha_head_ear_cigarette": ["And he finally lit his cigarette and coughed for an hour.", "And {boss} asked to bum a smoke. He said it was his last."],
+  "gacha_hair_mohawk": ["And his mohawk got stuck in a doorframe. It didn't bend.", "And he started a band. Nobody could play anything."],
+  "shop_steward_boater": ["And he raised his boater only to people he liked. Not me.", "And the real steward saw it and asked for it back. Coldly."],
+  "crit_tallstrider_head": ["And his crocheted beak pecked at crumbs all on its own.", "And his feather tuft stood straight up whenever he got cross."],
 
   // gacha series 1 outfits
   "gacha_outfit_cricket_whites": ["And he stopped for tea at four sharp, right in the middle of a fight.", "And he stood still for hours, waiting for a ball nobody bowled."],
@@ -118,4 +124,7 @@ Object.assign(PIECE_ENDS, {
   "gacha_outfit_parka": ["And he got so hot in his parka he steamed like a pudding.", "And he ordered a hot chocolate and never went skiing."],
   "gacha_outfit_rowing_blazer": ["And he rowed a chair across the room and said he'd won.", "And he shouted 'stroke, stroke!' and nobody knew what he meant."],
   "gacha_outfit_umpire": ["And he gave {boss} out, and {boss} actually walked off.", "And everyone kept handing him their jumpers."],
+  "gacha_outfit_shellsuit": ["And he walked past a candle and nearly went up like a torch.", "And he swished so loudly the {mobs} heard him coming a mile off."],
+  "gacha_outfit_sleeping_bag": ["And he lay down on a bench and that was him done for the day.", "And he zipped it right up over his head and wouldn't come out."],
+  "shop_steward_vest": ["And he rang up everything I touched and charged me double.", "And he looked at my outfit and said 'hmm'. Just 'hmm'."],
 });

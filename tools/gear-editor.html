@@ -1,0 +1,412 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gear Sets</title>
+<style>
+:root{--bg:#17130f;--panel:#24180f;--panel2:#2c1e12;--line:#4a3420;--text:#efe2c6;--muted:#b9a582;--gold:#f2c14e;--velvet:#6b1a21;--gap:#c0473f;
+  --uncommon:#3fbf4a;--rare:#3a8ee6;--epic:#b04ef0;--legendary:#ff8a1a}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--text);font:13px/1.4 Georgia,serif;display:flex;flex-direction:column}
+header{background:#1f150d;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+h1{margin:0;font-size:19px;color:var(--gold);font-weight:400}
+.tally{color:var(--muted)}.tally b{color:var(--text)}.tally b.bad{color:var(--gap)}
+button,select,input{font:13px Georgia,serif;color:var(--text);background:#120d09;border:1px solid var(--line);border-radius:4px;padding:3px 8px}
+button{cursor:pointer;background:var(--panel2)}button:hover{border-color:var(--gold)}button.on{background:var(--velvet);border-color:var(--gold)}
+button.save{background:#3b2a0c;border-color:var(--gold);color:var(--gold)}button.save.dirty{background:var(--gold);color:#1b120a}
+.tabs{display:flex;gap:4px}
+.wrap{flex:1;display:flex;min-height:0}
+main{flex:1;overflow:auto;padding:10px 14px 40px}
+aside{width:360px;border-left:1px solid var(--line);background:#1b130c;display:flex;flex-direction:column;min-height:0}
+aside .detail{padding:10px 12px;border-bottom:1px solid var(--line);max-height:58%;overflow:auto}
+aside .tray{flex:1;overflow:auto;padding:8px 10px}
+aside .tray.drop{outline:2px dashed var(--gold);outline-offset:-4px}
+h2{color:var(--gold);font-weight:400;margin:14px 0 6px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:3px}
+.sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(600px,1fr));gap:8px}
+.set{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.set.sel{border-color:var(--gold)}.set.drop{outline:2px dashed var(--gold)}
+.set .hd{display:flex;gap:8px;align-items:baseline;cursor:pointer}
+.set .nm{font-size:15px;color:var(--gold)}.set .kd{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.set .cov{margin-left:auto;font-size:12px;color:var(--muted)}.set .cov b{color:var(--text)}.set .cov b.full{color:var(--uncommon)}
+.slots{display:grid;grid-template-columns:repeat(3,1.2fr) repeat(3,.8fr);gap:4px;margin-top:4px}
+.slot{background:#1a120b;border:1px solid #3a2918;border-radius:4px;padding:2px 3px 3px;min-height:72px}
+.slot.gap{border:1px dashed var(--gap);background:#2a1310}.slot.extra{opacity:.6;background:#16100a}.slot.extra:hover{opacity:1}
+.slot label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.slot .items{display:flex;flex-wrap:wrap;gap:2px}
+.th{width:48px;height:48px;border-radius:4px;border:2px solid #555;background:#0e0a07 center/contain no-repeat;position:relative;cursor:grab;flex:none}
+.th.big{width:120px;height:120px;cursor:default}
+.th.uncommon{border-color:var(--uncommon)}.th.rare{border-color:var(--rare)}.th.epic{border-color:var(--epic)}.th.legendary{border-color:var(--legendary)}
+.th.sel{box-shadow:0 0 0 2px var(--gold)}.th.pass::after{content:"P";position:absolute;right:1px;bottom:-1px;font-size:10px;color:var(--gold)}
+.th.pend{opacity:.55;border-style:dashed}.th .noart{position:absolute;inset:2px;font-size:8px;line-height:1.1;color:var(--muted);overflow:hidden}
+.want{width:48px;height:48px;border:1px dashed var(--gold);border-radius:4px;font-size:9px;line-height:1.1;color:var(--gold);padding:2px;overflow:hidden;cursor:pointer;flex:none}
+.add{width:22px;height:48px;border:1px dashed #5a4228;border-radius:4px;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.add:hover{border-color:var(--gold);color:var(--gold)}
+.bon{margin-top:4px;font-size:12px;color:var(--muted)}.bon span{margin-right:10px}.bon .ev{color:var(--epic)}
+.tray .items{display:flex;flex-wrap:wrap;gap:3px}
+.tray .bar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.row{display:flex;gap:6px;align-items:center;margin:4px 0}.row label{width:64px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 10px;margin-top:4px}
+.stats div{display:flex;justify-content:space-between;align-items:center}.stats input{width:46px;text-align:right}
+.hint{color:var(--muted);font-size:12px}
+.pname{font-size:16px;color:var(--gold)}.uncommon{color:var(--uncommon)}.rare{color:var(--rare)}.epic{color:var(--epic)}.legendary{color:var(--legendary)}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}th{color:var(--muted);font-weight:400}
+.pop{position:fixed;z-index:9;background:var(--panel2);border:1px solid var(--gold);border-radius:6px;padding:8px;width:260px;box-shadow:0 6px 20px #000a}
+.pop input{width:100%;margin:3px 0}
+</style></head><body>
+<header>
+  <h1>Gear Sets</h1>
+  <div class="tabs" id="kinds"></div>
+  <input id="q" placeholder="Search sets and pieces" size="22">
+  <label><input type="checkbox" id="gaps"> gaps only</label>
+  <button id="wantedBtn">Wanted list</button>
+  <button onclick="location.href='/mobs'">Mobs</button>
+  <button id="newSet">New set</button>
+  <span class="tally" id="tally"></span>
+  <button class="save" id="save" title="Ctrl+S">Save</button>
+</header>
+<div class="wrap">
+  <main id="main"></main>
+  <aside><div class="detail" id="detail"></div><div class="tray" id="tray"></div></aside>
+</div>
+<script>
+const LAYERS = [["headwear", "Hat"], ["outfit", "Outfit"], ["accessory", "Accessory"], ["eyes", "Eyes"], ["expression", "Mouth"], ["background", "Stage"], ["skin", "Skin"]];
+// Set pieces: hat, outfit, accessory (several on a layer is fine). Eyes, mouths and stages can go with a set but don't
+// count; skins are starting classes, never in sets.
+const CORE = ["headwear", "outfit", "accessory"];
+const SLOT_LAYERS = LAYERS.filter(([l]) => l !== "skin");
+const LAYER_NAME = Object.fromEntries(LAYERS);
+const KINDS = ["all", "theme", "dungeon", "boss", "faction", "creature"];
+const RARITY = { uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+let doc = null, dirty = false, kind = "theme", view = "sets", selPiece = null, selSet = null, trayAll = false, trayLayer = "";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const setById = (id) => doc.sets.find((s) => s.id === id);
+const liveSets = () => doc.sets.filter((s) => !s.deleted);
+
+// --- Thumbnails: the piece's picture cropped to what's drawn (most pieces sit small on a 1254 square) -----------------
+const crops = {}, waiting = new Map();
+function cropOf(id) {
+  if (crops[id] !== undefined) return Promise.resolve(crops[id]);
+  if (waiting.has(id)) return waiting.get(id);
+  const job = new Promise((done) => {
+    const img = new Image();
+    img.onload = () => {
+      const S = 256, c = document.createElement("canvas");
+      c.width = c.height = S;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0, S, S);
+      const d = g.getImageData(0, 0, S, S).data;
+      let x0 = S, y0 = S, x1 = -1, y1 = -1;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (d[(y * S + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (x1 < 0) { crops[id] = null; return done(null); }
+      const side = Math.max(x1 - x0, y1 - y0) + 8, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const o = document.createElement("canvas");
+      o.width = o.height = 120;
+      o.getContext("2d").drawImage(c, cx - side / 2, cy - side / 2, side, side, 0, 0, 120, 120);
+      crops[id] = o.toDataURL();
+      done(crops[id]);
+    };
+    img.onerror = () => { crops[id] = null; done(null); };
+    img.src = "/art/" + id + ".png";
+  });
+  waiting.set(id, job);
+  return job;
+}
+const seen = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    seen.unobserve(e.target);
+    const el = e.target, id = el.dataset.id;
+    cropOf(id).then((url) => {
+      if (url) el.style.backgroundImage = `url(${url})`;
+      else el.innerHTML = `<span class="noart">${esc(doc.pieces[id].name)}</span>`;
+    });
+  }
+}, { rootMargin: "300px" });
+function thumb(id, big) {
+  const p = doc.pieces[id];
+  const eff = p.cornerstone && doc.cornerstones && doc.cornerstones[p.cornerstone];
+  const tip = `${p.name} (${p.rarity} ${LAYER_NAME[p.layer]})` + (p.role === "attack" ? ` - ${attackName(p)}` : eff ? ` - ${eff.name}: ${eff.what}` : p.role === "passive" ? " - passive" : "") + (p.item ? " - mouth item (a set piece)" : "") + (p.pending ? " - not built yet" : "");
+  const url = crops[id];
+  return `<div class="th ${p.rarity}${big ? " big" : ""}${p.role === "passive" ? " pass" : ""}${p.pending ? " pend" : ""}${selPiece === id ? " sel" : ""}" data-id="${id}" draggable="${!big}" title="${esc(tip)}"` +
+    (url ? ` style="background-image:url(${url})"` : "") + `>${url === null ? `<span class="noart">${esc(p.name)}</span>` : ""}</div>`;
+}
+function hookThumbs(root) { for (const el of root.querySelectorAll(".th[data-id]")) if (crops[el.dataset.id] === undefined) seen.observe(el); }
+function attackName(p) {
+  if (p.weapon) return doc.weapons[p.weapon]?.name || p.weapon;
+  const a = doc.attacks[p.layer];
+  return a ? `${a.name} (${p.attack})` : "";
+}
+const statText = (stats) => Object.entries(stats || {}).filter(([, v]) => v).map(([k, v]) => `+${v} ${doc.stats[k]?.name || k}`).join(", ");
+
+// --- Sets ---------------------------------------------------------------------------------------------------------
+function coverage(s) {
+  const has = new Set(s.pieces.map((id) => doc.pieces[id].layer));
+  const want = new Set((s.wanted || []).map((w) => w.layer));
+  const covered = CORE.filter((l) => has.has(l)).length;
+  const gaps = CORE.filter((l) => !has.has(l) && !want.has(l));
+  const item = s.pieces.some((id) => doc.pieces[id].item);
+  return { covered, gaps, item };
+}
+function bonusText(s) {
+  const out = [];
+  for (const b of s.bonuses || []) {
+    if (b.evolve) {
+      const e = b.evolve;
+      out.push(`<span class="ev">Evolve: ${esc(doc.pieces[e.piece]?.name)} (max) + ${e.with.map((id) => esc(doc.pieces[id]?.name)).join(" + ")} &rarr; ${e.into ? "<b>" + esc(e.into) + "</b>" : "<i>name it</i>"}</span>`);
+    } else if (b.union) out.push(`<span class="ev">Union: ${b.union.from.map((id) => esc(doc.pieces[id]?.name || id)).join(" + ")} &rarr; ${esc(doc.pieces[b.union.into]?.name)}</span>`);
+    else {
+      const bits = [];
+      if (b.stats) bits.push(statText(b.stats));
+      if (b.regen) bits.push(`${esc(b.name || "Regeneration")}: ${b.regen}% health a second, double below half`);
+      if (b.fluff) bits.push(`${esc(b.name || "Fluff")}: sheep grow their wool back ${b.fluff}x as fast`);
+      if (b.vs) bits.push(`+${b.dmg}% vs ${esc(b.vs)}`);
+      if (b.look) bits.push(esc(b.look));
+      out.push(`<span>${b.at} worn: ${bits.join(", ")}</span>`);
+    }
+  }
+  return out.join("") || "<span>no bonus yet (needs 2 layers)</span>";
+}
+function matches(s, q) {
+  if (!q) return true;
+  return s.name.toLowerCase().includes(q) || s.pieces.some((id) => doc.pieces[id].name.toLowerCase().includes(q)) || (s.wanted || []).some((w) => w.name.toLowerCase().includes(q));
+}
+function renderSets() {
+  const q = $("q").value.trim().toLowerCase(), gapsOnly = $("gaps").checked;
+  const list = liveSets().filter((s) => (kind === "all" || s.kind === kind) && matches(s, q) && (!gapsOnly || coverage(s).gaps.length));
+  $("main").innerHTML = `<div class="sets">${list.map(setCard).join("")}</div>` + (list.length ? "" : `<p class="hint">No sets here.</p>`);
+  hookThumbs($("main"));
+}
+function setCard(s) {
+  const cov = coverage(s);
+  const slots = SLOT_LAYERS.map(([layer, label]) => {
+    const ids = s.pieces.filter((id) => doc.pieces[id].layer === layer).sort((a, b) => RARITY[doc.pieces[a].rarity] - RARITY[doc.pieces[b].rarity]);
+    const wanted = (s.wanted || []).map((w, i) => [w, i]).filter(([w]) => w.layer === layer);
+    const gap = CORE.includes(layer) && !ids.length && !wanted.length;
+    return `<div class="slot${gap ? " gap" : ""}${CORE.includes(layer) || (layer === "expression" && ids.some((id) => doc.pieces[id].item)) ? "" : " extra"}"><label>${label}${ids.length > 1 ? " &times;" + ids.length : ""}</label><div class="items">` +
+      ids.map((id) => thumb(id)).join("") +
+      wanted.map(([w, i]) => `<div class="want" data-set="${s.id}" data-want="${i}" title="${esc(w.note || "")}">${esc(w.name)}</div>`).join("") +
+      `<div class="add" data-set="${s.id}" data-layer="${layer}" title="Add a wanted ${label.toLowerCase()} (a piece to paint)">+</div></div></div>`;
+  }).join("");
+  return `<div class="set${selSet === s.id ? " sel" : ""}" data-set="${s.id}"><div class="hd"><span class="nm">${esc(s.name)}</span><span class="kd">${s.kind}${s.edited ? " &middot; edited" : ""}</span>` +
+    `<span class="cov"><b class="${cov.covered === 3 ? "full" : ""}">${cov.covered}/3</b> set pieces${cov.item ? " + mouth item" : ""}${cov.gaps.length ? " &middot; missing " + cov.gaps.map((l) => LAYER_NAME[l]).join(", ") : ""}</span></div>` +
+    `<div class="slots">${slots}</div><div class="bon">${bonusText(s)}</div></div>`;
+}
+function renderWanted() {
+  const rows = [];
+  for (const s of liveSets()) for (const [i, w] of (s.wanted || []).entries()) rows.push(`<tr><td>${esc(s.name)}</td><td>${LAYER_NAME[w.layer]}</td><td class="want-name" data-set="${s.id}" data-want="${i}">${esc(w.name)}</td><td>${esc(w.rarity || "")}</td><td>${esc(w.note || "")}</td></tr>`);
+  $("main").innerHTML = `<h2>Wanted pieces (${rows.length})</h2><p class="hint">Pieces to paint for the sets' gaps. Click one to change it.</p>` +
+    (rows.length ? `<table><tr><th>Set</th><th>Layer</th><th>Piece</th><th>Rarity</th><th>Note</th></tr>${rows.join("")}</table>` : `<p class="hint">Nothing yet: click a + in a set's slot.</p>`);
+}
+function renderTally() {
+  const sets = liveSets(), loose = Object.values(doc.pieces).filter((p) => !p.set).length;
+  const gappy = sets.filter((s) => coverage(s).gaps.length).length, full = sets.filter((s) => coverage(s).covered === 3).length;
+  const wanted = sets.reduce((n, s) => n + (s.wanted || []).length, 0);
+  $("tally").innerHTML = `<b>${sets.length}</b> sets &middot; <b>${full}</b> complete &middot; <b class="${gappy ? "bad" : ""}">${gappy}</b> with gaps &middot; <b>${loose}</b> loose &middot; <b>${wanted}</b> wanted`;
+  $("kinds").innerHTML = KINDS.map((k) => `<button data-kind="${k}" class="${k === kind && view === "sets" ? "on" : ""}">${k === "all" ? "All" : k[0].toUpperCase() + k.slice(1) + "s"} ${k === "all" ? sets.length : sets.filter((s) => s.kind === k).length}</button>`).join("");
+  $("save").classList.toggle("dirty", dirty);
+  $("save").textContent = dirty ? "Save *" : "Save";
+  $("wantedBtn").classList.toggle("on", view === "wanted");
+}
+
+// --- Side: the selected piece or set, and the tray -----------------------------------------------------------------
+function renderDetail() {
+  const el = $("detail");
+  if (selPiece) {
+    const p = doc.pieces[selPiece];
+    const setOpts = `<option value="">(loose)</option>` + liveSets().slice().sort((a, b) => a.name.localeCompare(b.name)).map((s) => `<option value="${s.id}"${p.set === s.id ? " selected" : ""}>${esc(s.name)} (${s.kind})</option>`).join("");
+    let body = `<div style="display:flex;gap:10px">${thumb(selPiece, true)}<div><div class="pname">${esc(p.name)}</div><div class="${p.rarity}">${p.rarity} ${LAYER_NAME[p.layer]}</div>` +
+      `<div class="hint">${esc(selPiece)}${p.pending ? " &middot; not built yet" : ""}${p.edited ? " &middot; edited" : ""}</div></div></div>` +
+      `<div class="row"><label>Set</label><select data-f="set">${setOpts}</select></div>` +
+      (p.layer === "expression" ? `<div class="row"><label></label><label style="width:auto;color:var(--text)"><input type="checkbox" data-f="item"${p.item ? " checked" : ""}> Mouth item (worn gear: counts as a set piece)</label></div>` : "");
+    // (eyes and mouths don't attack: each is a cornerstone, a scaling passive for the whole build)
+    const faceLayer = p.layer === "eyes" || p.layer === "expression";
+    if (faceLayer) body += `<div class="row"><label>Cornerstone</label><select data-f="cornerstone"><option value="">none</option>${Object.entries(doc.cornerstones || {}).map(([k, e]) => `<option value="${k}"${k === p.cornerstone ? " selected" : ""}>${e.name}: ${esc(e.what)}</option>`).join("")}</select></div>`;
+    if (p.role === "attack" || p.role === "passive") {
+      if (!faceLayer) body += `<div class="row"><label>Role</label><select data-f="role"><option${p.role === "attack" ? " selected" : ""}>attack</option><option${p.role === "passive" ? " selected" : ""}>passive</option></select></div>`;
+      if (p.role === "attack") {
+        const kinds = p.layer === "accessory" ? Object.entries(doc.weapons).map(([k, w]) => [k, w.name + ": " + w.what]) : Object.entries(doc.attacks[p.layer].variants).map(([k, w]) => [k, k + ": " + w]);
+        const cur = p.layer === "accessory" ? p.weapon : p.attack;
+        body += `<div class="row"><label>${p.layer === "accessory" ? "Weapon" : esc(doc.attacks[p.layer].name)}</label><select data-f="${p.layer === "accessory" ? "weapon" : "attack"}">${kinds.map(([k, t]) => `<option value="${k}"${k === cur ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>` +
+          `<div class="row"><label>Twist</label><select data-f="twist"><option value="">none</option>${Object.entries(doc.twists).map(([k, t]) => `<option value="${k}"${k === p.twist ? " selected" : ""}>${t.name}: ${esc(t.what)}</option>`).join("")}</select></div>` +
+          `<div class="hint">Power x${p.power} (by rarity)</div>`;
+      }
+      const budget = (p.role === "attack" ? doc.rules.attackStats : doc.rules.passiveStats)[p.rarity];
+      const sum = Object.values(p.stats || {}).reduce((a, b) => a + b, 0);
+      body += `<div class="hint" style="margin-top:6px">Stats: ${sum} points (a ${p.rarity} ${p.role} gets ${budget})</div><div class="stats">` +
+        Object.entries(doc.stats).map(([k, s]) => `<div title="${esc(s.what)} ${esc(s.per)}"><span>${s.name}</span><input type="number" min="0" max="9" data-stat="${k}" value="${p.stats?.[k] || ""}"></div>`).join("") + `</div>`;
+    } else if (p.role === "character") body += `<div class="row"><label>Perk</label><input data-f="perk" value="${esc(p.perk)}" style="flex:1"></div><div class="stats">` +
+      Object.entries(doc.stats).map(([k, s]) => `<div><span>${s.name}</span><input type="number" min="0" max="9" data-stat="${k}" value="${p.stats?.[k] || ""}"></div>`).join("") + `</div>`;
+    else if (p.role === "stage") body += `<div class="hint">Stage, tier ${p.tier}${p.foes ? ", foes of " + esc(p.foes) : ""}${p.drops ? ", drops " + esc(setById(p.drops)?.name || p.drops) + " more often" : ""}</div>`;
+    el.innerHTML = body;
+  } else if (selSet) {
+    const s = setById(selSet);
+    const ev = (s.bonuses || []).filter((b) => b.evolve);
+    el.innerHTML = `<div class="row"><label>Name</label><input data-sf="name" value="${esc(s.name)}" style="flex:1"></div>` +
+      `<div class="row"><label>Kind</label><select data-sf="kind">${["theme", "dungeon", "faction", "creature"].map((k) => `<option${k === s.kind ? " selected" : ""}>${k}</option>`).join("")}</select></div>` +
+      ev.map((b, i) => `<div class="row"><label>Evolves</label><input data-evolve="${i}" value="${esc(b.evolve.into || "")}" placeholder="name of ${esc(doc.pieces[b.evolve.piece]?.name)}, evolved" style="flex:1"></div>`).join("") +
+      `<div class="bon">${bonusText(s)}</div>` +
+      `<div class="row" style="margin-top:8px"><label>Merge</label><select id="mergeTo"><option value="">into set...</option>${liveSets().filter((x) => x.id !== s.id).sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${x.id}">${esc(x.name)} (${x.kind})</option>`).join("")}</select></div>` +
+      `<div class="row"><button id="delSet">Delete set</button><span class="hint">its pieces go loose</span></div>` +
+      `<p class="hint">Bonuses are worked out again on Save.</p>`;
+  } else el.innerHTML = `<p class="hint">Click a piece to change its attack and stats, or a set's name to rename, merge or delete it. Drag pieces between sets and the tray. Set pieces are the hat, outfit and accessory, plus mouth items (cigars, moustaches; any 3 layers = the full set); a red slot is one the set has nothing for: + adds a wanted piece there. Eyes, plain mouths and stage (greyed) can go with a set but don't count. Skins are starting classes.</p>`;
+  hookThumbs(el);
+}
+function renderTray() {
+  const q = $("q").value.trim().toLowerCase();
+  let ids = Object.keys(doc.pieces).filter((id) => trayAll || !doc.pieces[id].set);
+  if (trayLayer) ids = ids.filter((id) => doc.pieces[id].layer === trayLayer);
+  if (trayAll && q) ids = ids.filter((id) => doc.pieces[id].name.toLowerCase().includes(q));
+  ids.sort((a, b) => LAYERS.findIndex(([l]) => l === doc.pieces[a].layer) - LAYERS.findIndex(([l]) => l === doc.pieces[b].layer) || RARITY[doc.pieces[a].rarity] - RARITY[doc.pieces[b].rarity]);
+  $("tray").innerHTML = `<div class="bar"><button data-tray="loose" class="${trayAll ? "" : "on"}">Loose</button><button data-tray="all" class="${trayAll ? "on" : ""}">All pieces</button>` +
+    `<select id="trayLayer"><option value="">every layer</option>${LAYERS.map(([l, n]) => `<option value="${l}"${l === trayLayer ? " selected" : ""}>${n}</option>`).join("")}</select></div>` +
+    `<div class="hint" style="margin-bottom:4px">${ids.length} pieces${trayAll ? " (search filters these too)" : " in no set: drop a piece here to take it out of its set"}</div><div class="items">${ids.map((id) => thumb(id)).join("")}</div>`;
+  hookThumbs($("tray"));
+}
+function render() {
+  renderTally();
+  if (view === "wanted") renderWanted(); else renderSets();
+  renderDetail();
+  renderTray();
+}
+
+// --- Changes --------------------------------------------------------------------------------------------------------
+function touch() { dirty = true; }
+function movePiece(id, toSet) {
+  const p = doc.pieces[id];
+  if ((p.set || "") === (toSet || "")) return;
+  const from = p.set && setById(p.set);
+  if (from) { from.pieces = from.pieces.filter((x) => x !== id); from.edited = true; }
+  const to = toSet && setById(toSet);
+  if (to) { to.pieces.push(id); to.edited = true; }
+  p.set = toSet || null;
+  touch();
+}
+function popup(x, y, html, onOk) {
+  closePop();
+  const el = document.createElement("div");
+  el.className = "pop";
+  el.innerHTML = html + `<div class="row" style="justify-content:flex-end"><button data-pop="del" style="margin-right:auto">Remove</button><button data-pop="cancel">Cancel</button><button data-pop="ok">OK</button></div>`;
+  el.style.left = Math.min(x, innerWidth - 280) + "px";
+  el.style.top = Math.min(y, innerHeight - 220) + "px";
+  document.body.appendChild(el);
+  el.querySelector("input")?.focus();
+  el.onclick = (e) => { const a = e.target.dataset.pop; if (a) { if (a !== "cancel") onOk(a === "del" ? null : el); closePop(); } };
+  el.onkeydown = (e) => { if (e.key === "Enter") { onOk(el); closePop(); } if (e.key === "Escape") closePop(); };
+}
+function closePop() { document.querySelector(".pop")?.remove(); }
+function editWanted(setId, index, layer, x, y) {
+  const s = setById(setId), w = index != null ? s.wanted[index] : { layer, name: "", rarity: "", note: "" };
+  popup(x, y, `<div class="hint">${esc(s.name)}: wanted ${LAYER_NAME[w.layer].toLowerCase()}</div><input data-w="name" placeholder="Name" value="${esc(w.name)}">` +
+    `<select data-w="rarity" style="width:100%">${["", "uncommon", "rare", "epic", "legendary"].map((r) => `<option value="${r}"${r === w.rarity ? " selected" : ""}>${r || "rarity?"}</option>`).join("")}</select>` +
+    `<input data-w="note" placeholder="What it looks like (for the painter)" value="${esc(w.note)}">`, (el) => {
+    s.wanted = s.wanted || [];
+    if (!el) { if (index != null) s.wanted.splice(index, 1); }
+    else {
+      const v = (k) => el.querySelector(`[data-w=${k}]`).value.trim();
+      if (!v("name")) return;
+      const entry = { layer: w.layer, name: v("name") };
+      if (v("rarity")) entry.rarity = v("rarity");
+      if (v("note")) entry.note = v("note");
+      if (index != null) s.wanted[index] = entry; else s.wanted.push(entry);
+    }
+    s.edited = true;
+    touch();
+    render();
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest(".pop")) return;
+  closePop();
+  if (t.dataset.kind) { kind = t.dataset.kind; view = "sets"; return render(); }
+  if (t.dataset.tray) { trayAll = t.dataset.tray === "all"; return renderTray(); }
+  if (t.classList.contains("add")) return editWanted(t.dataset.set, null, t.dataset.layer, e.clientX, e.clientY);
+  if (t.dataset.want != null && t.dataset.set) { const s = setById(t.dataset.set); return editWanted(s.id, +t.dataset.want, s.wanted[+t.dataset.want].layer, e.clientX, e.clientY); }
+  const th = t.closest(".th[data-id]");
+  if (th && !th.classList.contains("big")) { selPiece = th.dataset.id; selSet = null; return render(); }
+  const hd = t.closest(".set .hd");
+  if (hd) { selSet = hd.parentElement.dataset.set; selPiece = null; return render(); }
+  if (t.id === "delSet") {
+    const s = setById(selSet);
+    for (const id of s.pieces) doc.pieces[id].set = null;
+    s.pieces = []; s.deleted = true; s.edited = true; selSet = null; touch(); return render();
+  }
+});
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.id === "gaps") return render();
+  if (t.id === "trayLayer") { trayLayer = t.value; return renderTray(); }
+  if (t.id === "mergeTo" && t.value) {
+    const s = setById(selSet), to = setById(t.value);
+    for (const id of s.pieces.slice()) movePiece(id, to.id);
+    to.wanted = (to.wanted || []).concat(s.wanted || []);
+    s.deleted = true; s.edited = true; s.wanted = []; selSet = to.id; touch(); return render();
+  }
+  if (selPiece) {
+    const p = doc.pieces[selPiece];
+    if (t.dataset.f === "set") { movePiece(selPiece, t.value); return render(); }
+    if (t.dataset.f === "item") { if (t.checked) p.item = true; else delete p.item; }
+    else if (t.dataset.f === "role") {
+      p.role = t.value;
+      if (p.role === "attack" && p.layer === "accessory" && !p.weapon) p.weapon = "swipe";
+      if (p.role === "attack" && p.layer !== "accessory" && !p.attack) p.attack = Object.keys(doc.attacks[p.layer].variants)[0];
+      if (p.role === "attack" && !p.power) p.power = doc.rules.power[p.rarity];
+      if (p.role === "passive") { delete p.weapon; delete p.attack; delete p.twist; delete p.power; }
+    } else if (t.dataset.f === "twist") { if (t.value) p.twist = t.value; else delete p.twist; }
+    else if (t.dataset.f) p[t.dataset.f] = t.value;
+    else if (t.dataset.stat) {
+      p.stats = p.stats || {};
+      const v = Math.max(0, Math.min(9, parseInt(t.value, 10) || 0));
+      if (v) p.stats[t.dataset.stat] = v; else delete p.stats[t.dataset.stat];
+    } else return;
+    p.edited = true; touch(); return render();
+  }
+  if (selSet) {
+    const s = setById(selSet);
+    if (t.dataset.sf) s[t.dataset.sf] = t.value.trim() || s[t.dataset.sf];
+    else if (t.dataset.evolve != null) (s.bonuses || []).filter((b) => b.evolve)[+t.dataset.evolve].evolve.into = t.value.trim() || null;
+    else return;
+    s.edited = true; touch(); return render();
+  }
+});
+$("q").addEventListener("input", () => { if (view === "wanted") view = "sets"; renderSets(); if (trayAll) renderTray(); });
+$("wantedBtn").onclick = () => { view = view === "wanted" ? "sets" : "wanted"; render(); };
+$("newSet").onclick = (e) => popup(e.clientX, e.clientY + 10, `<div class="hint">New theme set</div><input data-n="name" placeholder="Name, e.g. Yacht Club">`, (el) => {
+  if (!el) return;
+  const name = el.querySelector("[data-n=name]").value.trim();
+  if (!name) return;
+  let id = "theme:" + name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  while (setById(id)) id += "x";
+  doc.sets.push({ id, name, kind: "theme", pieces: [], bonuses: [], edited: true });
+  kind = "theme"; view = "sets"; selSet = id; selPiece = null; touch(); render();
+  document.querySelector(`.set[data-set="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "center" });
+});
+
+// Drag: pieces onto a set (it joins that set) or onto the tray (it goes loose).
+document.addEventListener("dragstart", (e) => { const th = e.target.closest?.(".th[data-id]"); if (th) e.dataTransfer.setData("text/plain", th.dataset.id); });
+const dropTarget = (e) => e.target.closest?.(".set[data-set]") || e.target.closest?.("#tray");
+document.addEventListener("dragover", (e) => {
+  const d = dropTarget(e);
+  document.querySelectorAll(".drop").forEach((x) => x !== d && x.classList.remove("drop"));
+  if (d) { e.preventDefault(); d.classList.add("drop"); }
+});
+document.addEventListener("drop", (e) => {
+  const d = dropTarget(e), id = e.dataTransfer.getData("text/plain");
+  document.querySelectorAll(".drop").forEach((x) => x.classList.remove("drop"));
+  if (!d || !doc.pieces[id]) return;
+  e.preventDefault();
+  movePiece(id, d.id === "tray" ? null : d.dataset.set);
+  render();
+});
+
+async function save() {
+  $("save").textContent = "Saving...";
+  const r = await fetch("/save", { method: "POST", body: JSON.stringify(doc) });
+  if (!r.ok) { $("save").textContent = "Save failed"; $("save").title = await r.text(); return; }
+  doc = await r.json();
+  dirty = false;
+  render();
+}
+$("save").onclick = save;
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); } });
+addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+fetch("/gear.json").then((r) => r.json()).then((d) => { doc = d; render(); });
+</script></body></html>

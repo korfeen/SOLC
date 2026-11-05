@@ -1,0 +1,368 @@
+[
+ {
+  "layer": "headwear",
+  "id": "boss_rfc_jergosh_head",
+  "rarity": "rare",
+  "unlock": "boss:rfc:jergosh",
+  "set": "boss:rfc:jergosh",
+  "setName": "Jergosh the Invoker",
+  "desc": "Jergosh's Topknot: Jergosh the Invoker's look from World of Warcraft Classic (an orc warlock): a tall tuft of dark purple hair tied up in a topknot on top of the head with a gold band - his hairdo worn as the piece. It sits on the head above the brow; the face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfc_jergosh_body",
+  "rarity": "epic",
+  "unlock": "boss:rfc:jergosh",
+  "set": "boss:rfc:jergosh",
+  "setName": "Jergosh the Invoker",
+  "desc": "Jergosh's Robes: Jergosh the Invoker's look from World of Warcraft Classic: a long dark brown-maroon warlock robe with thin red trim lines down the front, HUGE rounded lavender-purple shoulder pads, wide red-orange banded bracers and a red-orange sash"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_rfc_taragaman_head",
+  "rarity": "rare",
+  "unlock": "boss:rfc:taragaman",
+  "set": "boss:rfc:taragaman",
+  "setName": "Taragaman the Hungerer",
+  "desc": "Taragaman's Spikes: Taragaman the Hungerer's look from World of Warcraft (a felguard demon): a crest of tall, sharp, dark-red horn spikes rising up and back from the top and back of the head like a felguard's, set in a red-and-gold armoured skullcap with a pointed gold brow piece. It sits on the head above the brow; the ogre's own face stays fully visible",
+  "name": "Taragaman's Spikes"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfc_taragaman_body",
+  "rarity": "epic",
+  "unlock": "boss:rfc:taragaman",
+  "set": "boss:rfc:taragaman",
+  "setName": "Taragaman the Hungerer",
+  "desc": "Taragaman's Fel Armour: Taragaman the Hungerer's look from World of Warcraft (a felguard demon): a BARE chest, with felguard armour in deep red with gold trim: one huge spiked red-and-gold pauldron on one shoulder, heavy spiked red gauntlets on the forearms, a gold-trimmed red plate belt with a pointed gold piece at the front, and red armoured plates on the hips. Deep blood red and gold, sharp spiky edges",
+  "name": "Taragaman's Fel Armour"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_wc_anacondra_head",
+  "rarity": "rare",
+  "unlock": "boss:wc:anacondra",
+  "set": "boss:wc:anacondra",
+  "setName": "Lady Anacondra",
+  "desc": "Anacondra's Circlet: Lady Anacondra's look from World of Warcraft (a night elf Druid of the Fang): long silvery-white hair swept back over the head (a headpiece) with a thin gold circlet and a small coiled gold serpent at the brow. It sits on the head above the brow; the face stays fully visible",
+  "name": "Anacondra's Circlet"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_wc_anacondra_body",
+  "rarity": "epic",
+  "unlock": "boss:wc:anacondra",
+  "set": "boss:wc:anacondra",
+  "setName": "Lady Anacondra",
+  "desc": "Anacondra's Vestments: Lady Anacondra's look from World of Warcraft: a sleeveless, fitted PURPLE leather druid outfit covered in flowing gold serpent-like swirl patterns, with gold arm bands; purple and gold only, NO green",
+  "name": "Anacondra's Vestments"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_wc_serpentis_head",
+  "rarity": "rare",
+  "unlock": "boss:wc:serpentis",
+  "set": "boss:wc:serpentis",
+  "setName": "Lord Serpentis",
+  "desc": "Serpentis's Mohawk: Lord Serpentis's look from World of Warcraft (a troll Druid of the Fang): a tall, spiky TEAL troll mohawk swept up and back, on a purple leather headband. It sits on the head above the brow; the face stays fully visible",
+  "name": "Serpentis's Mohawk"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_wc_serpentis_body",
+  "rarity": "epic",
+  "unlock": "boss:wc:serpentis",
+  "set": "boss:wc:serpentis",
+  "setName": "Lord Serpentis",
+  "desc": "Serpentis's Fang Leathers: Lord Serpentis's look from World of Warcraft: purple druid leathers with bright green and orange striped trims and sleeves, a gold serpent belt buckle and a gold-trimmed shoulder piece",
+  "name": "Serpentis's Fang Leathers"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_dm_rhahkzor_head",
+  "rarity": "rare",
+  "unlock": "boss:dm:rhahkzor",
+  "set": "boss:dm:rhahkzor",
+  "setName": "Rhahk'Zor",
+  "desc": "Rhahk'Zor's Horn: Rhahk'Zor's look from World of Warcraft (the ogre foreman of the Deadmines): a single thick, pale, cone-shaped horn spike sticking straight up from the top of the head, on a worn leather strap. It sits on the head above the brow; the face stays fully visible",
+  "name": "Rhahk'Zor's Horn"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_dm_rhahkzor_body",
+  "rarity": "epic",
+  "unlock": "boss:dm:rhahkzor",
+  "set": "boss:dm:rhahkzor",
+  "setName": "Rhahk'Zor",
+  "desc": "Rhahk'Zor's Loincloth: Rhahk'Zor's look from World of Warcraft (the ogre foreman of the Deadmines, as in WoW Classic): a bare chest and belly, a red loincloth with a dark belt, wide red-and-white striped cloth bands round the wrists and upper arms, and red tribal paint stripes on the shoulders",
+  "name": "Rhahk'Zor's Loincloth"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_dm_smite_head",
+  "rarity": "rare",
+  "unlock": "boss:dm:smite",
+  "set": "boss:dm:smite",
+  "setName": "Mr. Smite",
+  "desc": "Mr. Smite's Horns: Mr. Smite's look from World of Warcraft (the tauren first mate of the Defias): two big, wide tauren horns curving out to the sides and up, pale grey-white, rising from a thick shaggy mane of long BLACK hair swept back over the top of the head and hanging down the back. Like a headpiece: horns and mane sit on the head above the brow; the ogre's own face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_dm_smite_body",
+  "rarity": "epic",
+  "unlock": "boss:dm:smite",
+  "set": "boss:dm:smite",
+  "setName": "Mr. Smite",
+  "desc": "Mr. Smite's Harness: Mr. Smite's look from World of Warcraft (the tauren first mate of the Defias): a shaggy charcoal-black fur vest, a black leather harness of straps crossing the chest with a big square GOLD BUCKLE in the middle of the chest, wide purple bracers with gold bands on the forearms, a black belt, and dark charcoal-grey trousers with pale stitching. All dark greys and black with gold and purple accents; NO red, no coat"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_sfk_springvale_head",
+  "rarity": "rare",
+  "unlock": "boss:sfk:springvale",
+  "set": "boss:sfk:springvale",
+  "setName": "Commander Springvale",
+  "desc": "Springvale's Hair: Commander Springvale's look from World of Warcraft Classic (a human paladin): long ginger-red hair swept back off the face down to the shoulders - his hairdo worn as the piece. The face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_sfk_springvale_body",
+  "rarity": "epic",
+  "unlock": "boss:sfk:springvale",
+  "set": "boss:sfk:springvale",
+  "setName": "Commander Springvale",
+  "desc": "Springvale's Plate: Commander Springvale's look from World of Warcraft Classic: polished silver-white plate armour with blue trim lines, rounded silver shoulder pads edged in blue, and plated gauntlets with blue bands"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_sfk_silverlaine_head",
+  "rarity": "rare",
+  "unlock": "boss:sfk:silverlaine",
+  "set": "boss:sfk:silverlaine",
+  "setName": "Baron Silverlaine",
+  "desc": "Silverlaine's Grey Hair: Baron Silverlaine's look from World of Warcraft Classic (an old human nobleman): neat grey hair combed back at the sides and the back of the head, thin on top - his hairdo worn as the piece. The face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_sfk_silverlaine_body",
+  "rarity": "epic",
+  "unlock": "boss:sfk:silverlaine",
+  "set": "boss:sfk:silverlaine",
+  "setName": "Baron Silverlaine",
+  "desc": "Silverlaine's Finery: Baron Silverlaine's look from World of Warcraft Classic: a white shirt with full puffy sleeves and an ornate buttoned front, a short rust-red vest with silver and maroon trim, a purple-and-silver chained belt, green trousers with gold piping and purple trim at the knees. No ghostly blue, no cape"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_bfd_sarevess_head",
+  "rarity": "rare",
+  "unlock": "boss:bfd:sarevess",
+  "set": "boss:bfd:sarevess",
+  "setName": "Lady Sarevess",
+  "desc": "Sarevess's Fin Crest: Lady Sarevess's look from World of Warcraft (a naga sea witch): a huge fan-shaped crest of spiky VIOLET-PURPLE fins rising up and out behind the head. It sits on the head above the brow; the face stays fully visible",
+  "name": "Sarevess's Fin Crest"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_bfd_sarevess_body",
+  "rarity": "epic",
+  "unlock": "boss:bfd:sarevess",
+  "set": "boss:bfd:sarevess",
+  "setName": "Lady Sarevess",
+  "desc": "Sarevess's Scales: Lady Sarevess's look from World of Warcraft: a naga bodice of GOLDEN-orange scales banded like a snake's belly, with spiky violet-purple fin frills at the shoulders and hips",
+  "name": "Sarevess's Scales"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_bfd_kelris_head",
+  "rarity": "rare",
+  "unlock": "boss:bfd:kelris",
+  "set": "boss:bfd:kelris",
+  "setName": "Twilight Lord Kelris",
+  "desc": "Kelris's Beard: Twilight Lord Kelris's look from World of Warcraft Classic (an orc): a long dark purple braided beard hanging down onto the chest, tied with gold rings, covering the chin and mouth (and the tusks); the eyes stay uncovered",
+  "flags": [
+   "--covers-face"
+  ]
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_bfd_kelris_body",
+  "rarity": "epic",
+  "unlock": "boss:bfd:kelris",
+  "set": "boss:bfd:kelris",
+  "setName": "Twilight Lord Kelris",
+  "desc": "Kelris's Twilight Robes: Twilight Lord Kelris's look from World of Warcraft Classic: a long dark maroon-black robe with thin pink trim, HUGE ornate lavender-purple shoulder pads with swirling teal filigree, magenta-pink banded bracers, and a glowing blue collar at the neck"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_stocks_deepfury_head",
+  "rarity": "rare",
+  "unlock": "boss:stocks:deepfury",
+  "set": "boss:stocks:deepfury",
+  "setName": "Kam Deepfury",
+  "desc": "Deepfury's Beard: Kam Deepfury's look from World of Warcraft: a big braided coal-black dwarf beard with iron beard rings, worn with a dark iron skullcap; it hangs from the chin but the mouth stays visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_stocks_deepfury_body",
+  "rarity": "epic",
+  "unlock": "boss:stocks:deepfury",
+  "set": "boss:stocks:deepfury",
+  "setName": "Kam Deepfury",
+  "desc": "Deepfury's Armour: Kam Deepfury's look from World of Warcraft (a Dark Iron dwarf): dark blue-black iron armour with grey fur trims at the shoulders, a wide studded black belt, banded bracers with fur cuffs, and a round iron-rimmed shield strapped on the back",
+  "name": "Deepfury's Armour"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_stocks_hamhock_head",
+  "rarity": "rare",
+  "unlock": "boss:stocks:hamhock",
+  "set": "boss:stocks:hamhock",
+  "setName": "Hamhock",
+  "desc": "Hamhock's Other Head: Hamhock's look from World of Warcraft (a TWO-HEADED ogre): a funny stuffed second ogre head strapped on top of the head like a hat, with its own small spiked topknot, little tusks and a grumpy face, the same skin colour as the wearer. It sits on top, above the brow; the wearer's face stays fully visible",
+  "name": "Hamhock's Other Head"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_stocks_hamhock_body",
+  "rarity": "epic",
+  "unlock": "boss:stocks:hamhock",
+  "set": "boss:stocks:hamhock",
+  "setName": "Hamhock",
+  "desc": "Hamhock's Loincloth: Hamhock's look from World of Warcraft: a bare chest and belly with blue tribal tattoo bands on the shoulders and arms, a blue loincloth with white trim, and wide blue-and-gold banded wristbands",
+  "name": "Hamhock's Loincloth"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_gnomer_electrocutioner_head",
+  "rarity": "rare",
+  "unlock": "boss:gnomer:electrocutioner",
+  "set": "boss:gnomer:electrocutioner",
+  "setName": "Electrocutioner 6000",
+  "desc": "Electrocutioner Cockpit: Electrocutioner 6000's look from World of Warcraft (a gnomish spider mech): a dark purple-grey steel cockpit helm with a domed top, two bright headlamps at the front and little crackling electric prongs. It sits on the head above the brow; the face stays fully visible",
+  "name": "Electrocutioner Cockpit"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_gnomer_electrocutioner_body",
+  "rarity": "epic",
+  "unlock": "boss:gnomer:electrocutioner",
+  "set": "boss:gnomer:electrocutioner",
+  "setName": "Electrocutioner 6000",
+  "desc": "Electrocutioner Frame: Electrocutioner 6000's look from World of Warcraft: dark purple-grey steel mech armour with rivets and pipes, and long jointed spider-like metal legs bending out from behind the shoulders, little sparks of electricity crackling between them",
+  "name": "Electrocutioner Frame"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_gnomer_pummeler_head",
+  "rarity": "rare",
+  "unlock": "boss:gnomer:pummeler",
+  "set": "boss:gnomer:pummeler",
+  "setName": "Crowd Pummeler 9-60",
+  "desc": "Pummeler Dome: Crowd Pummeler 9-60's look from World of Warcraft (a gnomish arena robot): a round glass cockpit dome helmet with a chrome rim and a glowing yellow lamp on top, framed by shiny ORANGE-RED armour plates. It sits on the head above the brow; the face stays fully visible through or below it",
+  "name": "Pummeler Dome"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_gnomer_pummeler_body",
+  "rarity": "epic",
+  "unlock": "boss:gnomer:pummeler",
+  "set": "boss:gnomer:pummeler",
+  "setName": "Crowd Pummeler 9-60",
+  "desc": "Pummeler Plating: Crowd Pummeler 9-60's look from World of Warcraft: big, shiny ORANGE-RED robot armour plates with chrome-silver joints and rivets, huge rounded orange shoulder plates, a chrome grille on the chest and striped chrome pistons on the arms",
+  "name": "Pummeler Plating"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_rfk_aggem_head",
+  "rarity": "rare",
+  "unlock": "boss:rfk:aggem",
+  "set": "boss:rfk:aggem",
+  "setName": "Aggem Thorncurse",
+  "desc": "Aggem's Quill Mane: Aggem Thorncurse's look from World of Warcraft Classic (a quilboar shaman): a huge spiky crest of long grey-white and brown quills fanning up and out like a quilboar's mane, with two curved pale boar tusks at the sides. It sits on the head above the brow; the face stays fully visible",
+  "name": "Aggem's Quill Mane"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfk_aggem_body",
+  "rarity": "epic",
+  "unlock": "boss:rfk:aggem",
+  "set": "boss:rfk:aggem",
+  "setName": "Aggem Thorncurse",
+  "desc": "Aggem's Shaman Hides: Aggem Thorncurse's look from World of Warcraft Classic: a shaggy grey-white hide shawl over the shoulders, maroon-red spiked leather bracers, and a maroon-red cloth wrap round the hips tied with a thick yellow rope belt",
+  "name": "Aggem's Thorn Wraps"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_rfk_ramtusk_head",
+  "rarity": "rare",
+  "unlock": "boss:rfk:ramtusk",
+  "set": "boss:rfk:ramtusk",
+  "setName": "Overlord Ramtusk",
+  "desc": "Ramtusk's War Helm: Overlord Ramtusk's look from World of Warcraft Classic (a quilboar warlord): a red-brown iron war helm with a tall spike on top tied with an orange rope tuft and pink quills poking out round it, open-faced: the face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_rfk_ramtusk_body",
+  "rarity": "epic",
+  "unlock": "boss:rfk:ramtusk",
+  "set": "boss:rfk:ramtusk",
+  "setName": "Overlord Ramtusk",
+  "desc": "Ramtusk's Spiked Plate: Overlord Ramtusk's look from World of Warcraft Classic: heavy red-brown plate armour with huge boxy shoulder pads studded with big steel spikes, and red scale mail over the chest and arms"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_excav_saltspine_head",
+  "rarity": "rare",
+  "unlock": "boss:excav:saltspine",
+  "set": "boss:excav:saltspine",
+  "setName": "Saltspine",
+  "flags": [
+   "--like",
+   "crit_crocolisk_head",
+   "--loose-ref"
+  ],
+  "desc": "Saltspine's Hat: Saltspine's look from World of Warcraft (a giant crocolisk of the Excavation Site): the same homemade patchwork-quilt crocolisk hat, recoloured in sandy golden-tan and ochre fabric squares with darker brown ridges and little white salt-crust flecks along the top, a long jaw full of white teeth and two bulging eyes. It sits on the head above the brow; the face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_excav_saltspine_body",
+  "rarity": "rare",
+  "unlock": "boss:excav:saltspine",
+  "set": "boss:excav:saltspine",
+  "setName": "Saltspine",
+  "flags": [
+   "--like",
+   "crit_crocolisk_body",
+   "--loose-ref"
+  ],
+  "desc": "Saltspine's Onesie: Saltspine's look from World of Warcraft: the same homemade patchwork-quilt crocolisk onesie, recoloured in sandy golden-tan and ochre fabric squares with darker brown bumpy ridges, little white salt-crust flecks on the back and shoulders, a pale ridged belly panel and a long thick stuffed tail. A loose, roomy costume"
+ },
+ {
+  "layer": "headwear",
+  "id": "boss_excav_shadetooth_head",
+  "rarity": "rare",
+  "unlock": "boss:excav:shadetooth",
+  "set": "boss:excav:shadetooth",
+  "setName": "Shadetooth",
+  "flags": [
+   "--like",
+   "crit_raptor_head",
+   "--loose-ref"
+  ],
+  "desc": "Shadetooth's Hat: Shadetooth's look from World of Warcraft (a fierce raptor of the Excavation Site): the same homemade painted-cardboard raptor hat, repainted with poster paint in orange-pink with magenta-purple stripes and a few teal touches, and ONE new detail: a curved cardboard horn sticking up from the tip of the snout. A toothy jaw on top. It sits on the head above the brow; the face stays fully visible"
+ },
+ {
+  "layer": "outfit",
+  "id": "boss_excav_shadetooth_body",
+  "rarity": "rare",
+  "unlock": "boss:excav:shadetooth",
+  "set": "boss:excav:shadetooth",
+  "setName": "Shadetooth",
+  "flags": [
+   "--like",
+   "crit_raptor_body",
+   "--loose-ref"
+  ],
+  "desc": "Shadetooth's Onesie: Shadetooth's look from World of Warcraft: the same homemade painted-cardboard raptor onesie, repainted with poster paint in orange-pink with magenta-purple stripes, a cream belly, and a string of chunky teal-painted cardboard beads round the neck. A loose, roomy costume"
+ }
+]

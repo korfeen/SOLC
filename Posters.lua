@@ -67,7 +67,6 @@ local LEVELS = {
     dmw = { 57, 60 }, dmn = { 57, 60 }, scholo = { 58, 60 }, stratl = { 58, 60 }, stratu = { 58, 60 },
     ony = { 60, 60 }, barrow = { 60, 60 }, hyjal = { 60, 60 },
 }
-ns.DUNGEON_LEVELS = LEVELS  -- (a plinko chest's dungeon, at your level: Plinko.lua)
 -- The boss on each dungeon's wanted poster: the one whose kill clears it (Guild.lua's final bosses).
 local WANTED = {
     rfc = "Bazzalan", wc = "Mutanus the Devourer", dm = "Edwin VanCleef", sfk = "Archmage Arugal", bfd = "Aku'mai",
@@ -572,8 +571,8 @@ end
 -- (KillTrackerDB.guildBountyChests, opened on the board).
 local MILESTONES = {
     { claims = 5, points = 25, fuel = "bonk" },
-    { claims = 10, points = 50, fuel = "milk" },
-    { claims = 20, points = 100, fuel = "milk" },
+    { claims = 10, points = 50, fuel = "story" },
+    { claims = 20, points = 100, fuel = "story" },
     { claims = 35, points = 150, guildChest = true },
 }
 ns.POSTER_MILESTONES = MILESTONES

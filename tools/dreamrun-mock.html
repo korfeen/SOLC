@@ -1,0 +1,2381 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ogre Dream Run</title>
+<style>
+:root{--bg:#17130f;--panel:#24180f;--line:#4a3420;--text:#efe2c6;--muted:#b9a582;--gold:#f2c14e;--velvet:#6b1a21;
+  --uncommon:#3fbf4a;--rare:#3a8ee6;--epic:#b04ef0;--legendary:#ff8a1a}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--text);font:13px/1.35 Georgia,serif;display:flex;flex-direction:column;overflow:hidden}
+#bar{display:flex;gap:12px;align-items:center;padding:6px 12px;background:#1f150d;border-bottom:1px solid var(--line)}
+#bar h1{margin:0;font-size:17px;color:var(--gold);font-weight:400}
+#bar select,#bar button{font:13px Georgia,serif;color:var(--text);background:#120d09;border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+#bar .keys{color:var(--muted);margin-left:auto}
+#app{flex:1;display:flex;min-height:0}
+#side{width:300px;padding:10px;background:#1b130c;border-right:1px solid var(--line);overflow:auto}
+.frame{background:linear-gradient(#6b4a22,#3d2810);padding:9px;border-radius:6px;box-shadow:inset 0 0 0 2px #c9a14a,0 4px 14px #000a}
+#square{display:block;width:100%;aspect-ratio:1;background:#2a2016;border-radius:2px}
+.slot{display:flex;align-items:center;gap:6px;margin:5px 0}
+.slot .ln{width:62px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.slot .pn{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvbar{width:54px;height:6px;background:#3a2a1a;border-radius:3px;overflow:hidden}.lvbar i{display:block;height:100%;background:var(--gold)}.lvn{width:38px;text-align:right;font-size:11px;color:var(--muted)}.pips{display:flex;gap:2px}.pips i{width:7px;height:7px;border-radius:50%;background:#3a2a1a;display:block}.pips i.on{background:var(--gold)}
+.uncommon{color:var(--uncommon)}.rare{color:var(--rare)}.epic{color:var(--epic)}.legendary{color:var(--legendary)}
+h3{margin:12px 0 4px;color:var(--gold);font-weight:400;font-size:14px;border-bottom:1px solid var(--line)}
+.set{font-size:12px;color:var(--muted)}.set b{color:var(--text)}.set.on b{color:var(--uncommon)}
+.stats{font-size:12px;color:var(--muted)}
+#hpbar{height:10px;background:#3a1a14;border-radius:5px;overflow:hidden;margin-top:8px}#hpbar div{height:100%;background:#d24a3c;width:100%}
+#wrap{flex:1;position:relative;min-width:0}
+#stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;left:0;right:0;top:0;padding:6px 12px;display:flex;gap:18px;align-items:center;font-size:15px;text-shadow:0 1px 2px #000,0 0 4px #000;pointer-events:none}
+#xp{position:absolute;left:0;right:0;top:0;height:6px;background:#0008}#xp div{height:100%;background:#5fb4ff;width:0}
+.ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0009;flex-direction:column;gap:14px}
+.hidden{display:none}
+.ov h2{margin:0;color:var(--gold);font-weight:400;font-size:30px;letter-spacing:.08em;text-shadow:0 2px 0 #000}
+.cards{display:flex;gap:16px}
+.card{width:210px;background:#f4ead2;color:#2a1c10;border-radius:6px;padding:10px;cursor:pointer;box-shadow:0 6px 18px #000c;transform:rotate(var(--r));transition:transform .12s}
+.card:hover{transform:rotate(0) scale(1.05)}
+.card .tag{font-size:11px;letter-spacing:.08em;color:#7a5a30}.card .tag b{color:#b0301e}
+.card canvas{display:block;width:150px;height:150px;margin:6px auto}
+.card .nm{font-size:16px;text-align:center}.card .what{font-size:12px;margin-top:4px;color:#4a3a28}.card .st{font-size:12px;margin-top:4px;color:#2f6e2a}
+.card .nm.uncommon{color:#23852b}.card .nm.rare{color:#1d63b0}.card .nm.epic{color:#7e2fb3}.card .nm.legendary{color:#c0610a}
+.card .key{float:right;color:#9a8060}
+.btn{font:16px Georgia,serif;padding:6px 18px;background:var(--velvet);color:var(--gold);border:1px solid var(--gold);border-radius:5px;cursor:pointer}
+#toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:22px;color:var(--gold);text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;opacity:0;transition:opacity .3s}
+</style></head><body>
+<div id="bar"><h1>Ogre Dream Run</h1>
+  <label>Stage <select id="stageSel"></select></label>
+  <label>Angle <select id="angleSel"><option value="low">low</option><option value="mid" selected>mid</option><option value="high">high</option></select></label>
+  <label>Foes <select id="foeSel"><option value="painted">painted</option><option value="crayon">crayon</option><option value="mix" selected>mix</option></select></label>
+  <button id="restart">New run</button>
+  <span class="keys">WASD / arrows move · 1-5 pick · C crayon/painted you · P pause</span></div>
+<div id="app">
+  <div id="side">
+    <div class="frame"><canvas id="square" width="560" height="560"></canvas></div>
+    <div id="hpbar"><div></div></div>
+    <div id="slots"></div>
+    <h3>Sets</h3><div id="sets"></div>
+    <h3>Stats</h3><div class="stats" id="stats"></div>
+  </div>
+  <div id="wrap"><canvas id="stage"></canvas>
+    <div id="xp"><div></div></div>
+    <div id="hud"><span id="time">0:00</span><span id="lvl">LV 1</span><span id="kills">0 BONK</span><span id="you" style="margin-left:auto"></span></div>
+    <div id="toast"></div><pre id="errs" style="display:none;position:absolute;left:8px;bottom:8px;max-width:70%;white-space:pre-wrap;background:#300c;color:#fbb;font:11px monospace;padding:6px;border-radius:4px;z-index:5"></pre>
+    <div id="pick" class="ov hidden"><h2 id="pickTitle">PICK!</h2><div class="cards" id="cards"></div></div>
+    <div id="over" class="ov hidden"></div>
+    <div id="loading" class="ov"><h2>Drawing the dream...</h2></div>
+  </div>
+</div>
+<script>
+// ---------------------------------------------------------------------------------------------------------------------
+// Tunables
+const MOCK_TIME = location.search.includes("quick") ? 0.5 : 1;  // (?quick: the arcade's boss times at half, to try it quicker; user found the early game too hard with it on)                         // (the mockup runs the arcade's boss times at half, to try it quicker)
+const WORLD = { x: 3600, z: 2200 };  // (a room may have its own size: stage.rooms[].layout.size - the Library is two screens deep)
+const WORLD0 = { ...WORLD };            // the stage floor (x across, z away from you)
+const OGRE_H = 150, HAT_Y = 118;  // world heights
+const LAYERS = ["headwear", "outfit", "accessory", "eyes", "expression"];
+const LNAME = { headwear: "Hat", outfit: "Outfit", accessory: "Accessory", eyes: "Eyes", expression: "Mouth" };
+const UNDER_HAT = new Set(["gold_chain", "moonstone_pendant", "eye_mask_pushed_up", "sleep_mask", "monocle", "pirate_eyepatch", "cucumber_slices"]);
+const ENEMY_SKINS = ["moss", "mud_brown", "swamp_green", "slate_gray", "sunburnt_red", "pale_lavender"];
+// The stages: dungeons (tools/arcade-stages.json, filled in at the start): their painting, foes and three bosses.
+let ARCADE, STAGES = {};
+let MAX_LV = 20;  // (a slot's top level: gear.json rules.maxLevel)
+const RARITY_W = { uncommon: 50, rare: 30, epic: 15, legendary: 5 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+let PROPS = [];  // the rooms' painted props on disk (gravestones...; tools/gen-arcade-props.js)
+let G, POOL, P, GEN = new Set();  // gear.json, offerable pieces, pieces by id, every painted piece on disk (built or not)
+const $ = (id) => document.getElementById(id);
+const mk = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+const rnd = (a, b) => a + Math.random() * (b - a), pick = (a) => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Pictures: layers (1254 squares) composed into a paper cutout - cropped to what's drawn, a white paper edge round it.
+const imgs = {};
+// (kept shrunk: a 1254 picture is ~6 MB decoded, and a run loads hundreds - that ate the browser's memory)
+function loadImg(url, size = 512) {
+  const key = url + "@" + size;
+  if (!imgs[key]) imgs[key] = new Promise((ok) => {
+    const i = new Image();
+    i.onload = () => { const c = mk(size, size); c.getContext("2d").drawImage(i, 0, 0, size, size); i.src = ""; ok(c); };
+    i.onerror = () => ok(null);
+    i.src = url;
+  });
+  return imgs[key];
+}
+const artUrl = (ed, id, skin) => `/art/${ed}/${id}.png${skin ? "?skin=" + skin : ""}`;
+const comps = {};
+// look = { skin, headwear, outfit, accessory, eyes, expression, suit }; ed = painted | crayon (crayon falls back to painted per layer)
+function lookLayers(look, ed) {
+  const L = [];
+  const add = (id, perSkin) => { if (id) L.push({ id, perSkin }); };
+  add(look.skin);
+  add(look.outfit);
+  add(look.expression || "smug_smile", true);
+  add(look.eyes || "heavy_bags", true);
+  if (look.accessory && UNDER_HAT.has(look.accessory)) add(look.accessory);
+  add(ed === "crayon" ? look.headwear : (look.suit || look.headwear));
+  if (look.accessory && !UNDER_HAT.has(look.accessory)) add(look.accessory);
+  return L.map((l) => ({ ...l, ed: ed === "crayon" && (l.id === look.skin || (POOL.byId[l.id] && POOL.byId[l.id].crayon)) ? "crayon" : "painted" }));
+}
+function compose(look, ed, edge = 5) {
+  const key = JSON.stringify([look, ed, edge]);
+  if (!comps[key]) comps[key] = (async () => {
+    const layers = Array.isArray(look) ? look : lookLayers(look, ed);
+    const ims = await Promise.all(layers.map((l) => loadImg(artUrl(l.ed || ed, l.id, l.perSkin ? look.skin : null))));
+    const R = 380, c = mk(R, R), g = c.getContext("2d");
+    for (const im of ims) if (im) g.drawImage(im, 0, 0, R, R);
+    const d = g.getImageData(0, 0, R, R).data;
+    let x0 = R, y0 = R, x1 = -1, y1 = -1;
+    for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) if (d[(y * R + x) * 4 + 3] > 30) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return null;
+    const pad = edge + 3, w = x1 - x0 + 1 + pad * 2, h = y1 - y0 + 1 + pad * 2;
+    const cut = mk(w, h);
+    cut.getContext("2d").drawImage(c, x0 - pad, y0 - pad, w, h, 0, 0, w, h);
+    const ring = (r, color) => {
+      const s = mk(w, h), sg = s.getContext("2d");
+      for (let a = 0; a < 16; a++) sg.drawImage(cut, Math.cos(a / 16 * 6.283) * r, Math.sin(a / 16 * 6.283) * r);
+      sg.globalCompositeOperation = "source-in"; sg.fillStyle = color; sg.fillRect(0, 0, w, h);
+      return s;
+    };
+    const out = mk(w, h), og = out.getContext("2d");
+    if (edge) { og.drawImage(ring(edge + 1.5, "rgba(70,45,20,.6)"), 0, 0); og.drawImage(ring(edge, "#fbf6ea"), 0, 0); }
+    og.drawImage(cut, 0, 0);
+    return { canvas: out, aspect: w / h, full: c, box: [x0, y0, x1, y1] };
+  })();
+  return comps[key];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The run
+let S;  // state
+const keys = {};
+function newRun() {
+  const stageId = $("stageSel").value, skin = "moss";
+  S = {
+    stageId, stage: STAGES[stageId], t: 0, kills: 0, level: 1, xp: 0, need: 7, paused: false, over: false, picking: false,
+    you: { x: WORLD.x / 2, z: 260, hp: 100, maxHp: 100, face: 1, flip: 1, moving: false, aim: { x: 1, z: 0 }, hitT: 0 },
+    look: { skin }, lv: {}, cds: {}, echo: {}, pivot: {}, smug: {}, smugT: {}, starKills: 0, foes: [], shots: [], eshots: [], decals: [], gems: [], drops: [], floats: [], spawnT: 0, bossOut: false,
+    yourCut: null, squarePop: 0, crayon: S ? S.crayon : true, cam: { x: WORLD.x / 2, z: 260 - 900 },
+  };
+  prepStage();
+  pickMint();
+}
+// Your pictures are the save files: pick one (its skin is your class), then one of its pieces to start with.
+// (Sample pictures here, made of random pieces; in the game: your own mints.)
+function samplePiece(layer) {
+  const opts = POOL.list.filter((x) => P[x.id].layer === layer);
+  let tot = 0; const w = opts.map((o) => (tot += RARITY_W[P[o.id].rarity], RARITY_W[P[o.id].rarity]));
+  let x = Math.random() * tot, i = 0; while ((x -= w[i]) > 0) i++;
+  return opts[i].id;
+}
+function pickMint() {
+  const skins = Object.keys(P).filter((id) => P[id].role === "character");
+  const mints = Array.from({ length: 4 }, () => {
+    const m = { skin: pick(skins) };
+    do { for (const l of LAYERS) if (l === "headwear" || l === "outfit" || Math.random() < 0.8) m[l] = samplePiece(l); }
+    while (!LAYERS.some((l) => m[l] && P[m[l]].role === "attack"));
+    return m;
+  });
+  S.picking = true; S.mints = mints; S.cards = null;
+  $("pickTitle").textContent = "PICK A PICTURE";
+  const box = $("cards"); box.innerHTML = "";
+  mints.forEach((m, i) => {
+    const el = document.createElement("div");
+    el.className = "card"; el.style.setProperty("--r", (i - 1.5) * 2 + "deg");
+    el.innerHTML = `<div class="tag"><b>PICTURE</b> #${100 + Math.floor(Math.random() * 900)}<span class="key">${i + 1}</span></div><canvas width="300" height="300" style="width:180px;height:180px"></canvas>` +
+      `<div class="nm ${P[m.skin].rarity}">${P[m.skin].name}</div><div class="what">${P[m.skin].perk}</div>`;
+    el.onclick = () => chooseMint(m);
+    box.appendChild(el);
+    compose(m, "painted", 0).then((cut) => {
+      const g = el.querySelector("canvas").getContext("2d");
+      if (S.backdrop) g.drawImage(S.backdrop, 0, 0, 300, 300); else { g.fillStyle = "#2a2016"; g.fillRect(0, 0, 300, 300); }
+      if (cut) g.drawImage(cut.full, 0, 0, 300, 300);
+    });
+  });
+  $("pick").classList.remove("hidden");
+}
+function chooseMint(m) {
+  if (!S.mints) return;
+  S.mints = null; S.mint = m; S.look.skin = m.skin;
+  // (?wear=id,id: a test switch - those pieces on from the start)
+  for (const id of (new URLSearchParams(location.search).get("wear") || "").split(",")) if (P[id]) { S.look[P[id].layer] = id; S.lv[P[id].layer] = 1; }
+  // (?pfx=double,hothead...: a test switch - those pivot effects on the weapon from the start)
+  for (const k of (new URLSearchParams(location.search).get("pfx") || "").split(",")) if (k) { const pv = (S.pivot.accessory = S.pivot.accessory || { effects: {} }); pv.effects = pv.effects || {}; pv.effects[k] = 1; }
+  refreshYou();
+  // (only the picture's attacks: a run never starts on a passive)
+  showCards(LAYERS.filter((l) => m[l] && P[m[l]].role === "attack").map((l) => ({ kind: "new", layer: l, id: m[l] })), "START WITH ONE");
+}
+function stats() {
+  const st = {};
+  const add = (o, m = 1) => { for (const [k, v] of Object.entries(o || {})) st[k] = (st[k] || 0) + v * m; };
+  add((P[S.look.skin] || {}).stats);
+  for (const l of LAYERS) if (S.look[l]) add(P[S.look[l]].stats, (1 + (S.lv[l] - 1) * 0.25) * (1 + ((S.pivot && S.pivot[l] && S.pivot[l].stats) || 0)));
+  for (const s of activeSets()) for (const b of s.on) add(b.stats);
+  return st;
+}
+function activeSets() {
+  const by = {};
+  for (const l of LAYERS) {
+    const id = S.look[l]; if (!id) continue;
+    const p = P[id]; if (!p.set) continue;
+    if (!(["headwear", "outfit", "accessory"].includes(l) || p.item)) continue;
+    (by[p.set] = by[p.set] || new Set()).add(l);
+  }
+  return Object.entries(by).map(([sid, ls]) => {
+    const set = G.sets.find((x) => x.id === sid);
+    const n = ls.size;
+    return { set, n, on: (set.bonuses || []).filter((b) => b.at && b.at <= n && (b.stats || b.vs || b.regen || b.fluff)) };
+  }).filter((x) => x.set);
+}
+
+// The stage: floor and sky colours from the painting.
+async function painting(id) {
+  const im = await loadImg(artUrl("painted", id), 1024);
+  const c = mk(8, 8), g = c.getContext("2d");
+  if (im) g.drawImage(im, 0, 0, 8, 8);
+  const avg = (y0, y1) => { const d = g.getImageData(0, y0, 8, y1 - y0).data; let r = 0, gg = 0, b = 0, n = d.length / 4; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } return [r / n, gg / n, b / n]; };
+  return { im, floorRGB: avg(6, 8), skyRGB: avg(0, 2) };
+}
+function usePainting(p) { S.backdrop = p.im; S.floorRGB = p.floorRGB.slice(); S.skyRGB = p.skyRGB; S.floorImg = p.floor || null; }
+async function prepStage() {
+  // (a dungeon whose rooms are places of their own - Scarlet Monastery's wings - has a painting per room)
+  S.roomArt = S.stage.rooms ? await Promise.all(S.stage.rooms.map(async (r) => ({ ...(await painting(r.stage)), floor: await loadFloor(r.floor || (r.layout && r.layout.floor)) }))) : null;
+  usePainting(S.roomArt ? S.roomArt[0] : await painting(S.stage.stage));
+  S.propCuts = await loadProps();
+  // the foes' looks, ready before they walk in
+  const looks = [];
+  // the dungeon's real mobs (stage.mobs): each its costume (or a stand-in), the item it holds, its tint and size
+  for (const [mi, m] of (S.stage.mobs || []).entries()) for (const tier of ["grunt", "brute"]) for (const skin of ENEMY_SKINS.slice(0, 2)) {
+    const look = mobLook(m, tier, skin);
+    if (look) looks.push({ kind: m.costume, mob: m, mi, tier, look, cut: compose(look, "painted"), cutC: compose(look, "crayon") });
+  }
+  for (const kind of (S.stage.mobs ? [] : S.stage.foes).concat(S.stage.whelps || [])) for (const tier of ["grunt", "brute"]) for (const skin of ENEMY_SKINS.slice(0, 3)) {
+    const look = { skin, eyes: pick(["heavy_bags", "fully_asleep", "single_eye_open", "bloodshot"]), expression: pick(["smug_smile", "mouth_hanging_open", "drooling"]) };
+    // a creature costume (crit_), or a faction's outfit (fac_: Defias, Scarlet, Dark Iron...; no hooded suit)
+    const pre = P[`crit_${kind}_head`] ? "crit" : "fac";
+    look.headwear = `${pre}_${kind}_head`;
+    if (tier !== "grunt") { look.outfit = `${pre}_${kind}_body`; if (pre === "crit") look.suit = `crit_${kind}_suit`; }
+    looks.push({ kind, tier, look, cut: compose(look, "painted"), cutC: compose(look, "crayon") });
+  }
+  // the rooms' bosses on their room's back wall: one in the middle, or two side by side (the first smaller); one who
+  // comes in after another ("enter": "after" - Whitemane) waits out of sight
+  const ed = $("foeSel").value === "crayon" ? "crayon" : "painted";
+  const bosses = S.stage.bosses.map((b, i) => {
+    const look = bossLook(b, i);
+    return { ...b, i, room: b.room ?? i, look, cut: compose(look, ed), state: b.enter === "after" ? "hidden" : "wall", x: WORLD.x * 0.5, z: WORLD.z - 40, y: 0, wallX: 0, wallS: 1 };
+  });
+  for (const r of new Set(bosses.map((b) => b.room))) {
+    const on = bosses.filter((b) => b.room === r && b.state === "wall");
+    if (on.length === 2) { on[0].wallX = -0.2; on[0].wallS = 0.78; on[1].wallX = 0.17; }
+  }
+  for (const b of bosses) { b.cut = await b.cut; if (b.partner) b.partnerCut = await compose(b.partner.look, ed); }
+  S.bosses = bosses;  // (only once their pictures are drawn)
+  S.room = 0; S.bi = 0; S.wake = 0; S.wakeKills = 0; S.hole = null; S.holes = [];
+  layRoom();
+  for (const f of looks) { f.cut = await f.cut; f.cutC = (await f.cutC) || f.cut; if (f.mob && f.mob.tint) { f.cut = tinted(f.cut, f.mob.tint); f.cutC = tinted(f.cutC, f.mob.tint); } }
+  S.foeLooks = looks.filter((f) => f.cut);
+  $("loading").classList.add("hidden");
+}
+async function refreshYou() {
+  const look = { ...S.look };
+  S.yourCut = await compose(look, S.crayon ? "crayon" : "painted");
+  // (Polymorph: your own ogre in the Counting Sheep onesie and nightcap, no weapon - user: a sheep costume when he's sheeped)
+  S.sheepYou = await compose({ ...look, headwear: "plan_sheep_nightcap", outfit: "plan_sheep_onesie", accessory: undefined, suit: undefined }, S.crayon ? "crayon" : "painted");
+  const sq = await compose(look, "painted", 0);
+  drawSquare(sq);
+  // (each attack throws or swings the piece's own picture, in the edition you're drawn in)
+  const ed1 = (id) => S.crayon && POOL.byId[id] && POOL.byId[id].crayon ? "crayon" : "painted";
+  const one = (id, perSkin) => id ? compose(Object.assign([{ id, ed: ed1(id), perSkin, skinTag: look.skin }], { skin: look.skin }), "painted", 3) : null;
+  [S.hatCut, S.accCut, S.sheepCut] = await Promise.all([one(look.headwear), one(look.accessory), S.sheepCut || one("floating_sheep")]);  // (the flock's sheep)
+  renderSide();
+}
+function drawSquare(sq) {
+  S.lastSquare = sq;
+  const c = $("square"), g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  const bg = S.backdrop;
+  if (bg) { g.globalAlpha = 0.9; g.drawImage(bg, 0, 0, c.width, c.height); g.globalAlpha = 1; }
+  if (sq) g.drawImage(sq.full, 0, 0, c.width, c.height);
+  S.squarePop = 1;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Picks
+function offer(first) {
+  const cards = [], used = new Set();
+  const empties = LAYERS.filter((l) => !S.look[l]);
+  const newPiece = (layer) => {
+    const opts = POOL.list.filter((x) => P[x.id].layer === layer && x.id !== S.look[layer] && !used.has(x.id));
+    if (!opts.length) return null;
+    const luck = (stats().luck || 0) * 0.05 + 2 * cs("luck");  // (the Luck+ cornerstone: rarer cards)
+    let tot = 0; const w = opts.map((o) => { const r = P[o.id].rarity; const v = RARITY_W[r] * (r === "uncommon" ? 1 : 1 + luck * 3); tot += v; return v; });
+    let x = Math.random() * tot, i = 0; while ((x -= w[i]) > 0) i++;
+    used.add(opts[i].id);
+    return { kind: "new", layer, id: opts[i].id };
+  };
+  if (first) { for (const l of ["headwear", "outfit", "accessory"]) cards.push(newPiece(l)); }
+  else {
+    // Locked in (user: the charm is committing to a build): a worn layer keeps its piece all run, so the cards are new
+    // pieces for EMPTY layers and upgrades for the worn ones - never a swap. A mix: an empty layer or two, then upgrades.
+    const ups = LAYERS.filter((l) => S.look[l] && S.lv[l] < MAX_LV).map((l) => ({ kind: "up", layer: l, id: S.look[l] })).sort(() => Math.random() - 0.5);
+    const add = (c) => { if (c && cards.length < 3 && !cards.some((x) => x.layer === c.layer && x.kind === c.kind && x.id === c.id)) cards.push(c); };
+    const fresh = [...empties].sort(() => Math.random() - 0.5);
+    if (fresh.length) add(newPiece(fresh[0]));
+    for (const u of ups) { if (cards.length >= 2 && fresh.length > 1) break; add(u); }
+    for (const l of fresh.slice(1)) add(newPiece(l));
+    for (const u of ups) add(u);
+  }
+  const ok = cards.filter(Boolean);
+  if (!ok.length) { S.you.hp = S.you.maxHp; toast("FULL! HEALED"); return; }
+  showCards(ok, first ? "DRESS UP!" : "PICK!");
+}
+function attackText(id) {
+  const p = P[id];
+  if (p.cornerstone && G.cornerstones[p.cornerstone]) return `<b>${G.cornerstones[p.cornerstone].name}</b> (cornerstone): ${G.cornerstones[p.cornerstone].what}`;
+  if (p.role === "passive") return "Passive: no attack, more stats";
+  if (p.weapon) { const w = G.weapons[p.weapon]; return `${w.name}: ${w.what}`; }
+  const a = G.attacks[p.layer];
+  return `${a.name} (${p.attack}): ${a.variants[p.attack]}`;
+}
+function showCards(cards, title) {
+  S.picking = true;
+  $("pickTitle").textContent = title;
+  const box = $("cards");
+  box.innerHTML = "";
+  cards.forEach((c, i) => {
+    const p = P[c.id], el = document.createElement("div");
+    el.className = "card"; el.style.setProperty("--r", (i - 1) * 2 + "deg");
+    const set = p.set && G.sets.find((s) => s.id === p.set);
+    const tw = p.twist && G.twists[p.twist];
+    el.innerHTML = `<div class="tag">${c.kind === "up" ? `<b>UPGRADE</b> · ${LNAME[c.layer]} Lv ${S.lv[c.layer]} → ${S.lv[c.layer] + 1}` : `<b>NEW</b> · ${LNAME[c.layer]} (yours for the run)`}<span class="key">${i + 1}</span></div>` +
+      `<canvas width="300" height="300"></canvas><div class="nm ${p.rarity}">${p.name}</div><div class="what">${attackText(c.id)}${tw ? ` · <i>${tw.name}</i>` : ""}</div>` +
+      `<div class="st">${c.kind === "up" ? "Next: " + nextPerk(c.layer, S.lv[c.layer] + 1) : Object.entries(p.stats || {}).map(([k, v]) => `+${v} ${G.stats[k].name}`).join(", ")}${set ? ` · <span style="color:#7a5a30">${set.name}</span>` : ""}</div>`;
+    el.onclick = () => choose(c);
+    box.appendChild(el);
+    compose(Object.assign([{ id: c.id, ed: "painted", perSkin: ["eyes", "expression"].includes(p.layer) }]), "painted", 4).then((cut) => {
+      if (!cut) return;
+      const cv = el.querySelector("canvas"), g = cv.getContext("2d"), s = Math.min(280 / cut.canvas.width, 280 / cut.canvas.height);
+      g.drawImage(cut.canvas, 150 - cut.canvas.width * s / 2, 150 - cut.canvas.height * s / 2, cut.canvas.width * s, cut.canvas.height * s);
+    });
+  });
+  // Skip (Esc or 0): take nothing, heal a little instead - you never have to change what you've got on
+  let skip = $("skipBtn");
+  if (!skip) { skip = document.createElement("button"); skip.id = "skipBtn"; skip.className = "btn"; skip.textContent = "Skip (heal 20%)  [Esc]"; skip.onclick = () => skipPick(); $("pick").appendChild(skip); }
+  S.cards = cards;
+  $("pick").classList.remove("hidden");
+}
+function skipPick() {
+  if (!S.picking || S.mints) return;
+  S.you.hp = Math.min(S.you.maxHp, S.you.hp + S.you.maxHp * 0.2);
+  S.picking = false;
+  $("pick").classList.add("hidden");
+  toast("SKIPPED");
+}
+function choose(c) {
+  if (!S.picking) return;
+  if (c.kind === "pivot") { applyPivot(c); return; }
+  if (c.kind === "up") S.lv[c.layer]++;
+  else {
+    const had = S.look[c.layer];
+    S.look[c.layer] = c.id;
+    S.lv[c.layer] = S.lv[c.layer] || 1;
+    if (!had) S.cds[c.layer] = 0.3;
+  }
+  S.picking = false;
+  $("pick").classList.add("hidden");
+  toast(c.kind === "up" ? `${LNAME[c.layer].toUpperCase()} LV ${S.lv[c.layer]}!` : P[c.id].name);
+  refreshYou();
+  if (c.kind === "up" && [5, 10, 15].includes(S.lv[c.layer])) showPivots(c.layer);
+}
+// Pivots (user: "at 5-10-15 you can pivot your gear in different ways"): a slot's piece is locked in, but at Lv 5, 10
+// and 15 you bend how it works - one of three, from: one more, bigger, faster, a twist (its element), a new variant
+// (hats and outfits); for eyes, mouths and passives: a stronger effect or more of its stats.
+const NOUN = { headwear: "hat", outfit: "shove", accessory: "shot" };
+function pivotOptions(layer) {
+  const p = P[S.look[layer]], pv = S.pivot[layer] || {}, out = [];
+  if (p.role === "attack") {
+    if (layer !== "outfit") out.push({ key: "count", name: "One More", what: `+1 ${p.weapon === "guard" ? "shield" : p.weapon === "buddy" ? "pet" : NOUN[layer]}` });
+    if (pierceKind(layer)) out.push({ key: "pierce", name: "Pierce", what: `+2 ${pierceKind(layer) === "fore" ? "bounces" : "foes per throw"}` });
+    out.push({ key: "area", name: "Bigger", what: "+30% area and range" });
+    out.push({ key: "cd", name: "Faster", what: "-20% time between attacks" });
+    for (const k of Object.keys(G.pivotEffects || {}).sort(() => Math.random() - 0.5).slice(0, 2)) out.push({ key: "effect", value: k, name: G.pivotEffects[k].name, what: G.pivotEffects[k].what });
+    const tws = Object.keys(G.twists).filter((k) => k !== (pv.twist || p.twist));
+    const tw = pick(tws);
+    out.push({ key: "twist", value: tw, name: G.twists[tw].name, what: `${(pv.twist || p.twist) ? "now" : "adds"}: ${G.twists[tw].what}` });
+    const fam = G.attacks[layer];
+    if (fam) {
+      const vs = Object.keys(fam.variants).filter((k) => k !== (pv.variant || p.attack));
+      const v = pick(vs);
+      out.push({ key: "variant", value: v, name: `${fam.name}: ${v}`, what: fam.variants[v] });
+    }
+  } else {
+    if (p.cornerstone) out.push({ key: "boost", name: `Stronger ${G.cornerstones[p.cornerstone].name}`, what: "+30% of the cornerstone" });
+    out.push({ key: "stats", name: "More of It", what: "+50% of its stats" });
+    out.push({ key: "hp", name: "Thick Skull", what: "+15 max health, healed" });
+  }
+  return out.sort(() => Math.random() - 0.5).slice(0, 3).map((o) => ({ ...o, kind: "pivot", layer }));
+}
+// Which pierce a slot's attack has (a thrown one), and what its next level brings (shown on upgrade cards).
+function pierceKind(layer) {
+  const p = P[S.look[layer]];
+  if (!p || p.role !== "attack") return null;
+  return PIERCE[p.weapon] ? p.weapon : null;
+}
+function nextPerk(layer, L) {
+  const out = [P[S.look[layer]].role === "attack" ? "+25% damage" : "+25% stats"];
+  const k = pierceKind(layer);
+  const w = layer === "accessory" && P[S.look[layer]].weapon;
+  if ([5, 10, 15].includes(L)) out.push("★ a pivot");
+  return out.join(", ");
+}
+function showPivots(layer) {
+  const opts = pivotOptions(layer);
+  S.picking = true;
+  $("pickTitle").textContent = `PIVOT: ${LNAME[layer].toUpperCase()} LV ${S.lv[layer]}`;
+  const box = $("cards");
+  box.innerHTML = "";
+  opts.forEach((o, i) => {
+    const el = document.createElement("div");
+    el.className = "card"; el.style.setProperty("--r", (i - 1) * 2 + "deg");
+    el.innerHTML = `<div class="tag"><b>PIVOT</b> · ${P[S.look[layer]].name}<span class="key">${i + 1}</span></div>` +
+      `<div class="nm" style="margin:40px 0 12px;font-size:20px">${o.name}</div><div class="what" style="text-align:center">${o.what}</div>`;
+    el.onclick = () => choose(o);
+    box.appendChild(el);
+  });
+  S.cards = opts;
+  $("pick").classList.remove("hidden");
+}
+function applyPivot(o) {
+  const pv = (S.pivot[o.layer] = S.pivot[o.layer] || {});
+  if (o.key === "count") pv.count = (pv.count || 0) + 1;
+  if (o.key === "pierce") pv.pierce = (pv.pierce || 0) + 1;
+  if (o.key === "area") pv.area = (pv.area || 1) * 1.3;
+  if (o.key === "cd") pv.cd = (pv.cd || 1) * 0.8;
+  if (o.key === "twist") pv.twist = o.value;
+  if (o.key === "variant") pv.variant = o.value;
+  if (o.key === "boost") pv.boost = (pv.boost || 0) + 1;
+  if (o.key === "effect") { pv.effects = pv.effects || {}; pv.effects[o.value] = (pv.effects[o.value] || 0) + 1; }
+  if (o.key === "stats") pv.stats = (pv.stats || 0) + 0.5;
+  if (o.key === "hp") { S.bonusHp = (S.bonusHp || 0) + 15; S.you.hp += 15; }
+  S.picking = false;
+  $("pick").classList.add("hidden");
+  toast(`${LNAME[o.layer].toUpperCase()}: ${o.name.toUpperCase()}!`);
+  if (location.search.includes("debug")) console.log("PIVOT " + o.layer + " " + o.key + " " + (o.value || "") + " @lv" + S.lv[o.layer]);
+  renderSide();
+}
+
+function toast(text) { const t = $("toast"); t.textContent = text; t.style.opacity = 1; clearTimeout(t._h); t._h = setTimeout(() => (t.style.opacity = 0), 1100); }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Side panel
+function renderSide() {
+  $("slots").innerHTML = LAYERS.map((l) => {
+    const id = S.look[l], p = id && P[id];
+    return `<div class="slot"><span class="ln">${LNAME[l]}</span><span class="pn ${p ? p.rarity : ""}">${p ? p.name : "<span style='color:#6a5a44'>-</span>"}</span>` +
+      `<span class="lvbar"><i style="width:${id ? 100 * S.lv[l] / MAX_LV : 0}%"></i></span><span class="lvn">${id ? "Lv " + S.lv[l] : ""}</span></div>`;
+  }).join("");
+  const sets = activeSets();
+  $("sets").innerHTML = sets.length ? sets.map((s) => `<div class="set${s.on.length ? " on" : ""}"><b>${s.set.name}</b> ${s.n}/3 ${s.on.map((b) => b.stats ? Object.entries(b.stats).map(([k, v]) => `+${v} ${G.stats[k].name}`).join(" ") : b.regen ? `${b.name}: ${b.regen}%/s` : b.fluff ? `${b.name}: wool ${b.fluff}x faster` : `+${b.dmg}% vs ${b.vs}`).join(" · ")}</div>`).join("") : `<div class="set">none yet</div>`;
+  const st = stats();
+  $("stats").innerHTML = Object.entries(st).filter(([, v]) => v).map(([k, v]) => `${G.stats[k].name} ${Math.round(v * 10) / 10}`).join(" · ") || "-";
+  const sk = P[S.look.skin];
+  $("you").textContent = `${sk ? sk.name : ""}${sk && sk.perk ? " · " + sk.perk : ""}`;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Camera and drawing
+const cv = $("stage"), ctx = cv.getContext("2d");
+let CW = 0, CH = 0, F = 900, HOR = 80, CAM_H = 400;
+// LENS (user: circles on the floor got morphed - tall eggs near you, flat far off): a longer lens, the camera further back
+// and zoomed in by the same amount, so you stay the same size but the floor's perspective flattens out and a circle keeps
+// its shape across the screen. 1 = the old wide lens. (?lens=)
+const LENS = +(new URLSearchParams(location.search).get("lens") || 2.5);
+const CAM_BACK = 900 * LENS;
+// The angle: where the horizon sits (a fraction of the height; above the top = looking down more), you stay at 70%.
+// (and its zoom: higher pulls back too, for more overview)
+// (zoomed out from the first try, which felt cramped)
+const ANGLES = { low: [0.1, 0.72], mid: [-0.15, 0.62], high: [-0.45, 0.5] };
+function resize() {
+  const r = cv.getBoundingClientRect();
+  CW = cv.width = Math.round(r.width); CH = cv.height = Math.round(r.height);
+  setCamera(...ANGLES[$("angleSel").value]);
+}
+function setCamera(hor, zoom) { F = CH * zoom * LENS; HOR = CH * hor; CAM_H = (CH * 0.7 - HOR) * CAM_BACK / F; }
+// The camera in boss fights.
+// WAKE-UP SHOT: as the boss is cut loose the world stops and the camera pushes in on him up on the wall; he leaps and
+// the camera whips back to the field while he shrinks to fighting size (the whip hides the shrink); he lands with a shake.
+// (A fight camera that rose and leaned toward the boss was tried and removed: the user found the changing angle weird.)
+const PUSH = 0.6, WHIP = [0.12, 0.38];  // (push-in: share of the glow; whip: share of the jump)
+const easeIO = (k) => k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2, easeOut = (k) => 1 - (1 - k) ** 3;
+const inCine = () => S.bosses && S.bosses.some((b) => b.state === "glow" || (b.state === "jump" && b.jt < JUMP * WHIP[1]));
+function camera(dt) {
+  setCamera(...ANGLES[$("angleSel").value]);
+  // the wake-up shot: how far pushed in (u), on what
+  const wb = wallBoss();
+  let u = Math.max(0, (S.shotU || 0) - dt * 4);
+  if (wb && wb.state === "glow" && wb.cut) {
+    const r = wallRect(wb.cut, wb);
+    S.shot = { Z: clamp(CH * 0.9 / (r.h * 0.75), 1.25, 2.2), fx: r.cx, fy: r.y + r.h * 0.38 };
+    u = easeIO(Math.min(1, (1 - wb.glowT / GLOW) / PUSH));
+  } else if (wb && wb.state === "jump" && S.shot) {
+    const k = wb.jt / JUMP;
+    u = k < WHIP[0] ? 1 : 1 - easeOut(Math.min(1, (k - WHIP[0]) / (WHIP[1] - WHIP[0])));
+  }
+  S.shotU = u;
+  const sh = S.shot || { Z: 1, fx: CW / 2, fy: CH / 2 }, Z = 1 + (sh.Z - 1) * u;
+  const fx = CW / 2 + (sh.fx - CW / 2) * u, fy = CH / 2 + (sh.fy - CH / 2) * u;
+  S.shakeT = Math.max(0, (S.shakeT || 0) - dt);
+  const q = (S.shakeA || 22) * S.shakeT / (S.shakeD || 0.45);
+  ctx.setTransform(Z, 0, 0, Z, CW / 2 - fx * Z + rnd(-q, q), CH / 2 - fy * Z + rnd(-q, q));
+  return u;
+}
+addEventListener("resize", resize);
+function proj(x, y, z) {
+  const dz = z - S.cam.z;
+  if (dz < 40) return null;
+  const s = F / dz;
+  return { x: CW / 2 + (x - S.cam.x) * s, y: HOR + (CAM_H - y) * s, s };
+}
+const rgb = (c, m = 1, a = 1) => `rgba(${c[0] * m | 0},${c[1] * m | 0},${c[2] * m | 0},${a})`;
+function drawWorld() {
+  const sky = S.skyRGB || [40, 40, 60], fl = S.floorRGB || [80, 90, 60];
+  ctx.fillStyle = rgb(sky, 0.85); ctx.fillRect(0, 0, CW, CH);
+  // the painting behind the stage: it fills the band above the floor's far edge, its bottom on that edge, sliding a
+  // little as you go sideways (a wall in the world got huge when you walked up to it)
+  const far = proj(S.cam.x, 0, WORLD.z);
+  if (S.backdrop) {
+    const edge = far ? far.y : HOR, size = Math.max(CW * 1.25, edge * 1.1);
+    const slide = (S.cam.x / WORLD.x - 0.5) * (size - CW);
+    ctx.drawImage(S.backdrop, CW / 2 - size / 2 - slide, edge - size + size * 0.04, size, size);
+  }
+  // the room's boss looming over the back wall (and the hole he left), behind the floor's far edge
+  // the floor, far to near (the table beyond the stage's paper edge)
+  const T = 200, zNear = S.cam.z + 60;
+  for (let z = WORLD.z; z > zNear - T; z -= T) {
+    const z0 = Math.max(z - T, S.cam.z + 60), z1 = z;
+    if (z1 <= z0) continue;
+    for (let x = -1800; x < WORLD.x + 1800; x += T) {
+      const a = proj(x, 0, z1), b2 = proj(x + T, 0, z1), c = proj(x + T, 0, z0), d = proj(x, 0, z0);
+      if (!a || !c) continue;
+      const inside = x >= 0 && x < WORLD.x && z0 >= 0;
+      const k = ((x / T + Math.floor(z / T)) & 1) ? 1 : 0.92;
+      ctx.fillStyle = inside ? rgb(fl, 1.05 * k) : rgb(fl, 0.45);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.fill();
+    }
+  }
+  if (S.floorImg) {
+    const im = S.floorImg, DZ = 30;
+    for (let z = WORLD.z; z > Math.max(0, zNear); z -= DZ) {
+      const z0 = Math.max(z - DZ, 0, zNear), a = proj(0, 0, z), b = proj(WORLD.x, 0, z), c0 = proj(0, 0, z0);
+      if (!a || !b || !c0) continue;
+      const sy = (1 - z / WORLD.z) * im.height, sh = (z - z0) / WORLD.z * im.height;
+      ctx.drawImage(im, 0, sy, im.width, Math.max(1, sh), a.x, a.y, b.x - a.x, c0.y - a.y + 1);
+    }
+  }
+  // the stage's paper edge
+  ctx.strokeStyle = "#fbf6ea"; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (const [x, z] of [[0, Math.max(0, zNear)], [0, WORLD.z], [WORLD.x, WORLD.z], [WORLD.x, Math.max(0, zNear)]]) { const p = proj(x, 0, z); if (p) ctx.lineTo(p.x, p.y); }
+  ctx.stroke();
+  const e = proj(0, 0, 0), e2 = proj(WORLD.x, 0, 0);
+  if (e && e2) { ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e2.x, e2.y); ctx.stroke(); }
+  drawDais();
+  // the room's bosses on the wall (and the holes they left), fixed on screen over the far part of the room
+  for (const h of S.holes || []) drawHole(h);
+  for (const wb of S.bosses || []) if (wb.room === S.room && ["wall", "glow", "air"].includes(wb.state) && wb.cut) drawWallBoss(wb);
+}
+function floorEllipse(x, z, r, fill, stroke, lw = 3) {
+  if (z - S.cam.z < NEAR) return;
+  const y = heightAt(x, z), c = proj(x, y, z); if (!c) return;
+  const f = proj(x, y, z + r), n = proj(x, y, z - r);
+  const ry = Math.abs((n ? n.y : c.y + r * c.s * 0.4) - (f ? f.y : c.y - r * c.s * 0.4)) / 2;
+  ctx.beginPath(); ctx.ellipse(c.x, c.y, r * c.s, Math.max(1, ry), 0, 0, 6.283);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+}
+function floorPoly(pts, fill) {
+  ctx.beginPath(); let ok = false;
+  for (const [x, z] of pts) { const p = proj(x, heightAt(x, z), z); if (!p) continue; ok ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); ok = true; }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+}
+// (what comes too close to the camera fades out instead of being drawn thousands of pixels tall)
+const NEAR = 320;
+function billboard(cut, x, y, z, h, flip, tilt = 0, alpha = 1, flash = 0) {
+  const dz = z - S.cam.z;
+  if (dz < NEAR || !cut) return;
+  alpha *= Math.min(1, (dz - NEAR) / 120);
+  const p = proj(x, y + heightAt(x, z), z); if (!p) return;
+  const H = h * p.s, W = H * cut.aspect;
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(tilt); ctx.scale(flip, 1); ctx.globalAlpha = alpha;
+  ctx.drawImage(cut.canvas, -W / 2, -H, W, H);
+  if (Math.abs(flip) < 0.25) { ctx.fillStyle = "#e9dfc6"; ctx.fillRect(-2, -H, 4, H); }  // the card's edge mid-flip
+  if (flash > 0) { ctx.globalAlpha = flash * 0.6; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(cut.canvas, -W / 2, -H, W, H); }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Fighting
+const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+function nearest(from, maxD = 1e9, skip) {
+  let best = null, bd = maxD * maxD;
+  for (const f of S.foes) { if (f.dead || (skip && skip.has(f))) continue; const d = dist2(from, f); if (d < bd) { bd = d; best = f; } }
+  return best;
+}
+// Cornerstones (the eyes' and mouth's scaling passive, gear.json cornerstones): their value at the slot's level, +30%
+// for each "Stronger" pivot on that slot. Two slots, so a build commits to two.
+const CS = {
+  pierce: (L) => 1 + Math.floor((L - 1) / 4), crit: (L) => 0.05 + 0.01 * (L - 1), damage: (L) => 0.1 + 0.03 * (L - 1),
+  amount: (L) => 1 + (L >= 7) + (L >= 14) + (L >= 20), luck: (L) => 0.1 + 0.02 * (L - 1), drowsy: (L) => 0.1 + 0.01 * (L - 1),
+  armour: (L) => 1 + 0.25 * (L - 1), duration: (L) => 0.2 + 0.03 * (L - 1), cooldown: (L) => Math.min(0.45, 0.08 + 0.015 * (L - 1)),
+  area: (L) => 0.1 + 0.03 * (L - 1), regen: (L) => 1 + 0.25 * (L - 1), pickup: (L) => 0.5 + 0.05 * (L - 1),
+  xp: (L) => 0.1 + 0.02 * (L - 1), greed: (L) => 0.25 + 0.03 * (L - 1), revival: (L) => 1 + (L >= 10) + (L >= 20),
+  burn: (L) => 0.3 + 0.05 * (L - 1), critdmg: (L) => 0.5 + 0.05 * (L - 1), thorns: (L) => 15 + 3 * (L - 1), flock: () => 1,
+};
+function cs(key) {
+  let v = 0;
+  for (const l of ["eyes", "expression"]) {
+    const id = S.look[l];
+    if (id && P[id].cornerstone === key && CS[key]) v += CS[key](S.lv[l]) * (1 + 0.3 * ((S.pivot[l] && S.pivot[l].boost) || 0));
+  }
+  return v;
+}
+// Pivot effects (gear.json pivotEffects): bend ONE attack, so they go by the layer the hit came from; stack per pick.
+function pfx(layer, key) { return (layer && S.pivot[layer] && S.pivot[layer].effects && S.pivot[layer].effects[key]) || 0; }
+function hit(f, dmg, src) {
+  if (f.dead) return;
+  const st = S.st;
+  const lay = src && src.layer, dur = 1 + cs("duration");
+  let crit = Math.random() < (st.luck || 0) * 0.05 + (src && src.twist === "shiny" ? 0.15 : 0) + cs("crit") + 0.3 * cs("luck");
+  if (pfx(lay, "focus") && !f.focused) { f.focused = true; crit = true; }
+  if (crit) { dmg *= 2 + cs("critdmg"); f.crit = 0.3; if (pfx(lay, "burninggaze")) f.dot = { dps: dmg * 0.3 * pfx(lay, "burninggaze") * (1 + cs("burn")), t: 3 * dur, color: "#ff8a3a" }; }
+  if (f.doomT > 0) dmg *= 1.25;
+  if (f.boneT > 0) dmg *= 0.5;  // (a Bonewarder's bone armor)
+  if (f.shieldT > 0) { if (Math.random() < 0.1) S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 10, t: 0.5, text: "immune", color: "#9fd0ff" }); return; }
+  // (a mob's signature may dodge a hit or soften it: the Monk, the Defender)
+  if (f.sig && SIG[f.sig] && SIG[f.sig].onHit) { dmg = SIG[f.sig].onHit(f, dmg, src); if (dmg == null) return; }
+  // (consecrated floor: Scarlets standing in it take less)
+  if (f.mob && f.mob.costume === "scarlet" && S.decals.some((d) => d.type === "holy" && dist2(d, f) < d.r * d.r)) dmg *= 0.6;
+  if (f.tier !== "boss" && Math.random() < 0.06 * pfx(lay, "hypnotize")) f.charmT = 3;
+  if (Math.random() < 0.1 * pfx(lay, "contagious")) for (const o of S.foes) if (!o.dead && dist2(o, f) < 120 * 120) o.slowT = 2 * dur;
+  if (Math.random() < 1.5 * cs("drowsy")) f.slowT = Math.max(f.slowT || 0, 1.5 * dur);  // (the Drowsy cornerstone)
+  if (cs("burn") && Math.random() < 0.08 && !f.dot) f.dot = { dps: dmg * 0.25 * (1 + cs("burn")), t: 2 * dur, color: "#ff8a3a" };  // (Burn+: hits can set alight)
+  f.hp -= dmg; f.flash = 1;
+  S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 10, t: 0.7, text: Math.round(dmg), color: f.crit > 0 ? "#ffd84a" : "#fff" });
+  const tw = src && src.twist;
+  if (tw === "fire" || tw === "nature") f.dot = { dps: dmg * 0.25 * (tw === "fire" ? 1 + cs("burn") : 1), t: 2 * dur, color: tw === "fire" ? "#ff8a3a" : "#7bd35a" };
+  if (tw === "ice") f.slowT = 1.5 * dur;
+  if (tw === "fel") f.doomT = 3;
+  if (tw === "water" || (src && src.knock)) { const dx = f.x - S.you.x, dz = f.z - S.you.z, d = Math.hypot(dx, dz) || 1, k = (src && src.knock) || 90; f.kx += dx / d * k; f.kz += dz / d * k; }
+  if (tw === "undead") S.you.hp = Math.min(S.you.maxHp, S.you.hp + 0.6);
+  if (tw === "arcane" && !(src && src.chained)) { const n2 = nearest(f, 260, new Set([f])); if (n2) { S.decals.push({ type: "beam", a: { x: f.x, z: f.z, y: 70 }, b: n2, t: 0.15, color: "#9fd0ff" }); hit(n2, dmg * 0.6, { chained: true }); } }
+  if (f.hp <= 0) kill(f, src);
+}
+function kill(f, src) {
+  if (f.image) { f.dead = true; S.floats.push({ x: f.x, z: f.z, y: 60, t: 0.6, text: "poof", color: "#cfe6ff" }); return; }  // (a mirror image: just gone)
+  f.dead = true; S.kills++;
+  if (f.sig && SIG[f.sig] && SIG[f.sig].death) SIG[f.sig].death(f);
+  if (src && src.twist === "holy") S.you.hp = Math.min(S.you.maxHp, S.you.hp + 2);
+  S.gems.push({ x: f.x, z: f.z, v: (f.tier === "grunt" ? 1 : f.tier === "brute" ? 3 : 10), bob: Math.random() * 6 });
+  const drop = (ids) => ids.forEach((id, i) => { if (id && P[id]) S.drops.push({ x: f.x + i * 50, z: f.z, id, cut: compose([{ id, ed: "painted" }], "painted", 4), bob: 0 }); });
+  if (f.tier === "elite" && Math.random() < 0.35 * (1 + cs("greed"))) {  // (not every elite drops its piece)
+    const worn = [f.look.headwear, f.look.outfit].filter(Boolean);
+    const ids = [pick(worn)];
+    if (Math.random() < cs("greed")) ids.push(pick(worn.filter((x) => x !== ids[0]).concat(worn)));  // (Greed: maybe one more)
+    drop(ids);
+  }
+  if (f.boss) bossDown(f, drop);
+  if (f.partner) { S.partnerSlain = true; toast(`${f.partner.name.toUpperCase()} IS SLAIN... NOT SPARED`); }
+  // (the killing attack's pivot effects)
+  const lay = src && src.layer, dur = 1 + cs("duration");
+  if (pfx(lay, "smug")) { S.smug[lay] = Math.min(6, (S.smug[lay] || 0) + 1); S.smugT[lay] = 3; }
+  if (pfx(lay, "slobber")) S.decals.push({ type: "puddle", x: f.x, z: f.z, r: 60, t: 3 * dur, T: 3 * dur, dps: 0, slow: true, color: "rgba(170,225,255,.35)" });
+  if (pfx(lay, "hothead")) S.decals.push({ type: "ring", x: f.x, z: f.z, r: 0, R: 90 * pfx(lay, "hothead"), t: 0.25, T: 0.25, hitSet: new Set([f]), dmg: 6 * pfx(lay, "hothead"), src: { twist: "fire" }, color: "fire" });
+  if (pfx(lay, "shootingstar") && ++S.starKills >= 25) { S.starKills = 0; shootingStar(pfx(lay, "shootingstar")); }
+}
+// Shooting Star: falls on the biggest crowd (the best of a dozen foes looked at)
+function shootingStar(power) {
+  let best = null, most = -1;
+  for (let i = 0; i < 12 && S.foes.length; i++) {
+    const f = pick(S.foes); if (f.dead) continue;
+    const n = S.foes.filter((o) => !o.dead && dist2(o, f) < 150 * 150).length;
+    if (n > most) { most = n; best = f; }
+  }
+  if (best) S.shots.push({ type: "star", x: best.x, z: best.z, y: 600, vy: -1100, dmg: 40 * power, hitT: new Map() });
+}
+function fire(layer, dt) {
+  const id = S.look[layer]; if (!id) return;
+  const p = P[id]; if (p.role === "passive") return;
+  const L = S.lv[layer], st = S.st;
+  const mul = (p.power || 1) * (1 + 0.25 * (L - 1)) * (1 + 0.05 * (st.bonk || 0)) * (1 + cs("damage"));
+  const pv = S.pivot[layer] || {};  // (the slot's pivots, picked at Lv 5 / 10 / 15)
+  const area = (1 + 0.05 * (st.reach || 0)) * (pv.area || 1) * (1 + cs("area"));
+  const smug = Math.max(0.5, 1 - 0.05 * (S.smug[layer] || 0) * pfx(layer, "smug"));
+  const cdBase = (p.weapon ? G.weapons[p.weapon].cd : G.attacks[layer].cd) * Math.max(0.4, 1 - 0.03 * (st.fury || 0)) / (1 + 0.04 * (L - 1)) * smug * (pv.cd || 1) * (1 - cs("cooldown"));
+  S.cds[layer] = (S.cds[layer] || 0) - dt;
+  if (S.cds[layer] > 0) return;
+  S.cds[layer] = cdBase * (S.you.pinchT > 0 ? 1.6 : 1);  // (thumbscrews: slower)
+  // Double Take: now and then the attack goes again right after (never a third time)
+  if (S.echo[layer]) S.echo[layer] = false;
+  else if (Math.random() < 0.15 * pfx(layer, "double")) { S.echo[layer] = true; S.cds[layer] = 0.15; }
+  const you = S.you, tw = pv.twist || p.twist, v = pv.variant || p.attack, aim = S.you.aim;
+  const lots = (st.lots || 0) + (tw === "tech" ? 1 : 0) + (pv.count || 0) + cs("amount");
+  const near = nearest(you, 700);
+  const dirTo = (f) => { if (!f) return aim; const dx = f.x - you.x, dz = f.z - you.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, z: dz / d }; };
+  const src = { twist: tw, layer };
+  if (layer === "headwear") {
+    const n = 1 + lots;
+    for (let i = 0; i < n; i++) {
+      const d0 = dirTo(near), a = Math.atan2(d0.z, d0.x) + (i - (n - 1) / 2) * 0.5;
+      const heavy = v === "heavy";
+      S.shots.push({ type: "hat", x: you.x, z: you.z, y: HAT_Y, vx: Math.cos(a), vz: Math.sin(a), sp: heavy ? 520 : 700, out: 420 * area, gone: 0, back: false,
+        dmg: 9 * mul * (heavy ? 1.3 : 1), src, hitT: new Map(), spin: 0, cut: S.hatCut, size: 46 });  // (no pierce: it cuts through all, out and back - so a lower base damage)
+    }
+  } else if (layer === "outfit") {
+    // Belly Bump: he puffs up and bounces; the shove is a puff of dust round his feet
+    const R = 150 * area * (1 + 0.05 * (L - 1)) * (v === "plate" ? 0.75 : v === "robe" ? 1.3 : 1);
+    you.bump = 0.35;
+    S.decals.push({ type: "ring", x: you.x, z: you.z, r: 0, R, t: 0.35, T: 0.35, hitSet: new Set(), dmg: 14 * mul * (v === "plate" ? 1.4 : 1), src: { ...src, knock: v === "fluffy" ? 200 : 120 } });
+  } else if (layer === "accessory") weapon(p, mul, area, lots, near, dirTo, src);
+}
+function weapon(p, mul, area, lots, near, dirTo, src) {
+  const L = S.lv.accessory, pv = S.pivot.accessory;
+  const g = growOf(p.weapon, L);  // (heavy things grow as they level: a bigger axe, a wider hammer blast)
+  const you = S.you, w = p.weapon, d0 = dirTo(near), a = Math.atan2(d0.z, d0.x), base = G.weapons[w].dmg * mul;
+  const shot = (o) => S.shots.push({ x: you.x, z: you.z, y: 70, src, hitT: new Map(), ...o });
+  // the weapon itself swung round him in an arc
+  const swing = (R, half) => shot({ type: "swing", a0: a - half, a1: a + half, t: 0, T: 0.22, r: Math.min(R * 0.55, 110 * g), cut: S.accCut, size: 70 * g, y: 75 });
+  // the item held up beside him while it shoots
+  const held = (t) => { S.shots = S.shots.filter((s) => s.type !== "held"); shot({ type: "held", t, dir: d0, cut: S.accCut, size: 60, y: 80 }); };
+  if (w === "swipe") {
+    const R = 180 * area * g, half = 1.0;
+    swing(R, half);
+    for (const f of S.foes) { if (f.dead) continue; const dx = f.x - you.x, dz = f.z - you.z; if (Math.hypot(dx, dz) > R) continue; let da = Math.atan2(dz, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) < half) hit(f, base, src); }
+  } else if (w === "smash") {
+    // slammed down from above, the dust and the hurt where it lands
+    shot({ type: "slam", x: you.x + d0.x * 90, z: you.z + d0.z * 90, y: 220, t: 0, T: 0.2, cut: S.accCut, size: 80 * g, spin: -0.8, R: 170 * area * g, dmg: base });
+  } else if (w === "fore") {
+    swing(120, 0.8);
+    for (let i = 0; i <= lots; i++) shot({ type: "ball", vx: d0.x, vz: d0.z, sp: 650, bounces: pierceOf("fore", L, pv), dmg: base, life: 3 });
+  } else if (w === "zap" || w === "boom") {
+    if (!near) return;
+    held(0.35);
+    const tip = { x: you.x + d0.x * 55, z: you.z + d0.z * 55, y: 105 };
+    if (w === "zap") { S.decals.push({ type: "beam", a: tip, b: near, t: 0.15, color: "#b8e0ff" }); hit(near, base, src); }
+    else for (let i = 0; i <= lots; i++) shot({ type: "bolt", x: tip.x, z: tip.z, y: 90, vx: d0.x, vz: d0.z, sp: 1100, life: 0.8, dmg: base, pierce: pierceOf("boom", L, pv) });
+  } else if (w === "flick") {
+    // small copies of it, flicked
+    for (let i = 0; i < 2 + lots; i++) shot({ type: "flick", vx: Math.cos(a + rnd(-.15, .15)), vz: Math.sin(a + rnd(-.15, .15)), sp: 900, life: 0.6, dmg: base, pierce: pierceOf("flick", L, pv), cut: S.accCut, size: 30, spin: 0, spinRate: 18 });
+  } else if (w === "chuck") {
+    for (let i = 0; i <= lots; i++) shot({ type: "chuck", vx: Math.cos(a + i * 0.3), vz: Math.sin(a + i * 0.3), sp: 420, life: 1.1, vy: 520, y: 90, dmg: base, pierce: pierceOf("chuck", L, pv), spin: 0, cut: S.accCut, size: 50 * g, hr: 50 * g });
+  } else if (w === "guard") {
+    // always up, one more each other level (2 at Lv 1 ... 5 at Lv 7); re-made when the count or the reach changes
+    const want = Math.min(6, 2 + Math.floor((S.lv.accessory - 1) / 2)) + (S.st.lots || 0), orbs = S.shots.filter((s) => s.type === "orbit" && !s.flock);
+    if (orbs.length !== want || (orbs[0] && Math.abs(orbs[0].r - 130 * area) > 1)) {
+      const ang0 = orbs[0] ? orbs[0].ang : 0;
+      orbs.forEach((s) => (s.done = true));
+      for (let i = 0; i < want; i++) shot({ type: "orbit", ang: ang0 + i * 6.283 / want, r: 130 * area, life: 1e9, dmg: base, cut: S.accCut, size: 44 * g, hr: 45 * g, soft: !!p.soft });
+    } else orbs.forEach((s) => { s.dmg = base; s.size = 44 * g; s.hr = 45 * g; });
+    S.cds.accessory = 0.25;
+  } else if (w === "buddy") {
+    if (!S.shots.some((s) => s.type === "pet")) shot({ type: "pet", life: 1e9, dmg: base, cd: 0, cut: S.accCut, size: 55, sp: 380, y: 0 });
+  } else if (w === "spill") {
+    // the drink lobbed at them, a puddle where it lands
+    const at = near || { x: you.x + d0.x * 150, z: you.z + d0.z * 150 }, T = 0.55;
+    shot({ type: "lob", vx: (at.x - you.x) / T, vz: (at.z - you.z) / T, sp: 1, y: 90, vy: 0.5 * 1300 * T, cut: S.accCut, size: 42, spin: 0, spinRate: 9, r: 90 * area * g, dps: base * 1.5, life: 2 });
+  } else if (w === "stink") {
+    held(0.6);
+    S.decals.push({ type: "puddle", x: you.x, z: you.z, r: 130 * area * g, t: 0.5, T: 0.5, dps: base * 6, src, follow: true, color: "rgba(150,200,90,.22)" });
+  } else if (w === "plonk") {
+    // the Trapper's: plonked down behind him while he walks (a few out at once, the oldest goes)
+    if (!you.moving) { S.cds.accessory = 0.2; return; }
+    const traps = S.shots.filter((s) => s.type === "trap");
+    if (traps.length >= 3 + lots) traps[0].done = true;
+    shot({ type: "trap", x: you.x - you.aim.x * 40, z: you.z - you.aim.z * 40, y: 12, armT: 0.4, life: 10, cut: S.accCut, size: 34, spin: 0, dmg: base, R: 110 * area });
+  }
+}
+function spawn(dt) {
+  if (!S.foeLooks || !S.foeLooks.length) return;
+  if (S.stage.mobs && S.foeLooks.some((l) => l.mob)) return spawnMobs(dt);
+  S.spawnT -= dt;
+  const alive = S.foes.filter((f) => !f.dead).length;
+  if (S.spawnT > 0 || alive > 150 || (S.hole && S.hole.open)) return;  // (a cleared room: no more foes)
+  S.spawnT = Math.max(0.18, 2.2 - S.t / 88);
+  const n = 1 + Math.floor(S.t / 75);
+  for (let i = 0; i < n; i++) {
+    // (just past the screen's sides; the far side is always in view, so foes pop up out of the floor there)
+    const a = rnd(0, 6.283), R = rnd(1.05, 1.3) * Math.max(800, CW / 2 / (F / CAM_BACK));
+    const x = clamp(S.you.x + Math.cos(a) * R, 20, WORLD.x - 20), z = clamp(S.you.z + Math.sin(a) * R, 20, WORLD.z - 20);
+    const elite = Math.random() < 0.008 + S.t / 20000, brute = !elite && Math.random() < 0.03 + S.t / 900;
+    // (whelps only while Onyxia is up on the wall - and then mostly whelps)
+    const air = S.bosses && S.bosses.some((b) => b.state === "air"), whelp = (f) => (S.stage.whelps || []).includes(f.kind);
+    const looks = S.foeLooks.filter((f) => f.tier === (brute || elite ? "brute" : "grunt") && (air && Math.random() < 0.7 ? whelp(f) : !whelp(f)));
+    const lk = pick(looks.length ? looks : S.foeLooks.filter((f) => !whelp(f)));
+    const tier = elite ? "elite" : brute ? "brute" : "grunt";
+    const hp = { grunt: 10 + S.t / 10, brute: 35 + S.t / 4, elite: 140 + S.t }[tier];
+    S.foes.push({ born: S.t, x, z, hp, max: hp, tier, kind: lk.kind, look: lk.look, cut: foeEd() === "crayon" ? lk.cutC : lk.cut, size: tier === "elite" ? 1.35 : tier === "brute" ? 1.1 : 0.9,
+      sp: (tier === "grunt" ? 95 : 70) * rnd(0.85, 1.15), dps: tier === "grunt" ? 4 : tier === "brute" ? 9 : 16, flip: 1, kx: 0, kz: 0, flash: 0, wob: rnd(0, 6) });
+  }
+}
+// Foes painted, crayon, or a mix (each one a coin flip).
+function foeEd() { const m = $("foeSel").value; return m === "mix" ? (Math.random() < 0.5 ? "crayon" : "painted") : m; }
+// ---------------------------------------------------------------------------------------------------------------------
+// Mobs (tools/arcade-mobs.js writes stage.mobs): every real mob of the dungeon with its own costume, mark (held item,
+// tint, size) and SIGNATURE - its own way to fight, built on shared verbs (bolt, lob, trail, burst...) that our own
+// weapons can borrow later. First batch: Gnomeregan and Scholomance; the others still just walk at you for now.
+const UNDEAD = new Set(["skeleton", "zombie", "ghoul", "ghost"]);
+const TINTS = { frost: "rgba(120,190,255,.38)", water: "rgba(60,160,230,.38)", blood: "rgba(200,20,30,.35)", ghost: "rgba(205,235,255,.5)",
+  fire: "rgba(255,120,30,.35)", shadow: "rgba(60,20,90,.42)", arcane: "rgba(170,90,255,.4)", poison: "rgba(90,200,60,.4)",
+  radiation: "rgba(200,255,40,.55)", noxious: "rgba(150,60,200,.55)", saturated: "rgba(40,110,230,.55)", stone: "grey" };
+const SEE_THROUGH = { ooze: 0.62 };  // (user: the ooze see-through if possible; ghosts a little too, by their tint)
+function tinted(cut, tint) {
+  if (!cut || !TINTS[tint]) return cut;
+  const c = mk(cut.canvas.width, cut.canvas.height), g = c.getContext("2d");
+  if (tint === "stone") { g.filter = "grayscale(1) brightness(1.1)"; g.drawImage(cut.canvas, 0, 0); }
+  else { g.drawImage(cut.canvas, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = TINTS[tint]; g.fillRect(0, 0, c.width, c.height); }
+  return { ...cut, canvas: c };
+}
+// A costume's pieces: the mob's own when painted (mob_ outfits, crit_ animal onesies, fac_ faction outfits), else its stand-in.
+function costumeOf(k) {
+  for (const pre of ["mob", "crit", "fac"]) if (GEN.has(`${pre}_${k}_head`) || P[`${pre}_${k}_head`]) return { pre, k };
+  return null;
+}
+function mobLook(m, tier, skin) {
+  const c = costumeOf(m.costume) || costumeOf(m.borrows); if (!c) return null;
+  const look = { skin, eyes: pick(["heavy_bags", "fully_asleep", "single_eye_open", "bloodshot"]), expression: pick(["smug_smile", "mouth_hanging_open", "drooling"]) };
+  const has = (id) => GEN.has(id) || P[id];
+  look.headwear = `${c.pre}_${c.k}_head`;
+  // outfits (mob_) are always worn whole; animal onesies and faction clothes on the bigger ones
+  if ((tier !== "grunt" || c.pre === "mob") && has(`${c.pre}_${c.k}_body`)) { look.outfit = `${c.pre}_${c.k}_body`; if (c.pre === "crit" && has(`crit_${c.k}_suit`)) look.suit = `crit_${c.k}_suit`; }
+  if (m.acc && has(m.acc)) look.accessory = m.acc;
+  return look;
+}
+// How they turn up: some come in packs, bombs now and then.
+function graveNear(o, min, max) {  // a gravestone at a distance from o (the closest of those)
+  const gs = (S.props || []).filter((q) => { const d = Math.sqrt(dist2(q, o)); return d > min && d < max; });
+  return gs.sort((a, b) => dist2(a, o) - dist2(b, o))[0] || null;
+}
+const SPAWN = { drill: { w: 0.5, group: 5, line: true }, plaguewhelps: { w: 0.9, group: 6 }, alarm: { w: 0.45 }, spiderlings: { w: 0.8, group: 6 }, sprites: { w: 0.8, group: 5 }, scuttle: { w: 1, group: 4 }, riot: { w: 1, group: 5 }, eggs: { w: 1, group: 4 } };
+function spawnMobs(dt) {
+  S.spawnT -= dt;
+  const alive = S.foes.filter((f) => !f.dead).length;
+  if (S.spawnT > 0 || alive > 150 || (S.hole && S.hole.open)) return;
+  // (a long dungeon of rooms of their own - Scarlet Monastery: the crowd builds up again in each room, a step harder each time)
+  const T = S.stage.rooms ? S.t - (S.roomAt || 0) + 50 * S.room : S.t;
+  S.spawnT = Math.max(0.18, 2.2 - T / 88);  // (2.2 s apart at the start - was 1.6 - the old pace by 3:00)
+  const n = 1 + Math.floor(T / 75), mobs = S.stage.mobs;
+  const here = mobs.map((m, i) => i).filter((i) => mobs[i].room == null || mobs[i].room === S.room);  // (a room of its own: its own mobs)
+  const room = S.stage.rooms && S.stage.rooms[S.room];
+  for (let i = 0; i < n; i++) {
+    let r = Math.random() * here.reduce((s, k) => s + ((SPAWN[mobs[k].sig] || {}).w ?? 1), 0), j = 0;
+    for (; j < here.length - 1; j++) { r -= (SPAWN[mobs[here[j]].sig] || {}).w ?? 1; if (r <= 0) break; }
+    const mi = here[j], sp = SPAWN[mobs[mi].sig] || {};
+    const a = rnd(0, 6.283), R = rnd(1.05, 1.3) * Math.max(800, CW / 2 / (F / CAM_BACK));
+    let x = clamp(S.you.x + Math.cos(a) * R, 20, WORLD.x - 20), z = clamp(S.you.z + Math.sin(a) * R, 20, WORLD.z - 20);
+    ({ x, z } = spawnSpot(x, z));
+    // (the Graveyard: the dead climb out in front of a gravestone near you)
+    if (room && room.props === "graves" && Math.random() < 0.45) { const g = graveNear(S.you, 360, 900); if (g) { x = g.x + rnd(-30, 30); z = g.z - 45; } }
+    const group = sp.group || 1;
+    // (a drill squad: in a line across your way, side by side)
+    const dx = S.you.x - x, dz = S.you.z - z, dl = Math.hypot(dx, dz) || 1;
+    for (let g = 0; g < group; g++) {
+      if (sp.line) addMob(mi, x + (-dz / dl) * (g - (group - 1) / 2) * 75, z + (dx / dl) * (g - (group - 1) / 2) * 75);
+      else addMob(mi, x + rnd(-70, 70), z + rnd(-70, 70));
+    }
+  }
+}
+function addMob(mi, x, z, tierWant) {
+  if (!walkable(x, z)) { const p = { x, z }; nearestWalk(p); x = p.x; z = p.z; }
+  const elite = !tierWant && Math.random() < 0.008 + S.t / 20000, brute = tierWant === "brute" || (!elite && !tierWant && Math.random() < 0.03 + S.t / 900);
+  const tier = elite ? "elite" : brute ? "brute" : "grunt";
+  const looks = S.foeLooks.filter((l) => l.mi === mi && l.tier === (tier === "grunt" ? "grunt" : "brute"));
+  const lk = pick(looks.length ? looks : S.foeLooks.filter((l) => l.mi === mi)); if (!lk) return null;
+  const m = lk.mob, hp = { grunt: 10 + S.t / 10, brute: 35 + S.t / 4, elite: 140 + S.t }[tier];
+  const f = { born: S.t, x: clamp(x, 20, WORLD.x - 20), z: clamp(z, 20, WORLD.z - 20), hp, max: hp, tier, kind: lk.kind, mob: m, sig: m.sig, look: lk.look,
+    cut: foeEd() === "crayon" ? lk.cutC : lk.cut, size: (tier === "elite" ? 1.35 : tier === "brute" ? 1.1 : 0.9) * (m.size || 1),
+    sp: (tier === "grunt" ? 95 : 70) * rnd(0.85, 1.15), dps: tier === "grunt" ? 4 : tier === "brute" ? 9 : 16, flip: 1, kx: 0, kz: 0, flash: 0, wob: rnd(0, 6),
+    undead: UNDEAD.has(m.costume), alpha: SEE_THROUGH[m.costume] || (m.tint === "ghost" ? 0.75 : 1) };
+  if (SIG[f.sig] && SIG[f.sig].init) SIG[f.sig].init(f);
+  S.foes.push(f);
+  return f;
+}
+// Keep-away casters: back off when you're close, come closer when far, else side-step while they cast.
+function keepAway(f, d, keep, dt) {
+  if ((f.sideT = (f.sideT || 0) - dt) <= 0) { f.sideT = rnd(1.5, 3); f.sideDir = pick([-0.45, 0.45]); }
+  return d < keep - 60 ? { go: -0.8 } : d > keep + 140 ? { go: 1 } : { go: 0, side: f.sideDir };
+}
+// (what hurt you, for tuning: S.dmg by source - read by the test scripts)
+// WARM-UP (user: the early game too hard): foes hit for half at the start of a run, full by 3:00 (bosses always full)
+const warm = () => 0.4 + 0.6 * Math.min(1, S.t / 240);  // (40% at the start, full by 4:00)
+function dmgLog(k, v) { if (v > 0) { S.dmg = S.dmg || {}; S.dmg[k] = (S.dmg[k] || 0) + v; } }
+function hurtYou(dmg, text) { const you = S.you; dmg *= warm(); you.hp -= dmg; dmgLog("hit:" + (text && !/^-/.test(text) ? text : "bolt"), dmg); you.hitT = 0.25; if (text) S.floats.push({ x: you.x, z: you.z, y: OGRE_H + 20, t: 0.9, text, color: "#ff8a6a" }); }
+function boom(x, z, R, dmg, color) {  // a blast that hurts YOU (and only you): a quick flash on the floor
+  S.decals.push({ type: "eboom", x, z, R, t: 0.35, T: 0.35, color: color || "rgba(255,150,60," });
+  if (Math.sqrt(dist2({ x, z }, S.you)) < R + 20) hurtYou(dmg, "-" + Math.round(dmg));
+}
+function eshot(f, o) {  // an enemy shot at you (a bolt, a wrench, a coil...); o.turn: that far off to the side (radians)
+  const a = Math.atan2(S.you.z - f.z, S.you.x - f.x) + (o.turn || 0), dx = Math.cos(a), dz = Math.sin(a), d = 1;
+  S.eshots.push({ x: f.x, z: f.z, vx: dx / d * o.sp, vz: dz / d * o.sp, life: o.life || 4, r: o.r || 14, bounces: o.bounces || 0, spin: 0, healed: new Set(), ...o });
+}
+const castGlow = (f, dt) => (f.castT = Math.max(0, (f.castT || 0) - dt));
+const SIG = {
+  // GNOMEREGAN
+  alarm: {  // Alarm-a-bomb: beeps and rolls straight at you; reaching you = boom + the alarm calls a wave of gnomes; killed early = fizzle
+    init(f) { f.sp = 230; f.hp = f.max = f.max * 0.6; f.dps = 0; f.aimT = 0; },
+    move(f, dt, d, dx, dz) {
+      if ((f.aimT -= dt) <= 0) { f.aimT = 2.2; f.dir = { x: dx / d, z: dz / d }; }
+      f.flash = Math.sin(S.t * 16) > 0.2 ? 0.7 : 0;  // (the red siren light blinking)
+      if (d < 60) {
+        f.dead = true; boom(f.x, f.z, 150, 22, "rgba(255,90,40,");
+        toast("ALARM! GNOMES INCOMING!");
+        const gnomes = S.stage.mobs.map((m, i) => (m.costume === "lepergnome" ? i : -1)).filter((i) => i >= 0);
+        for (let i = 0; i < 6 && gnomes.length; i++) { const a = i / 6 * 6.283; addMob(pick(gnomes), S.you.x + Math.cos(a) * 520, S.you.z + Math.sin(a) * 520, "grunt"); }
+      }
+      return { dir: f.dir };
+    },
+    death(f) { S.floats.push({ x: f.x, z: f.z, y: 60, t: 0.8, text: "fizzle", color: "#cfd8ff" }); },
+  },
+  repairbots: {  // Leprous Machinesmith: hangs back and repairs the robots round it (green beams); kill it first
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? 3) - dt) <= 0) {
+        f.cd = 4;
+        const bots = S.foes.filter((o) => !o.dead && o !== f && (o.sig === "alarm" || o.sig === "icetrail") && dist2(o, f) < 450 * 450);
+        for (const o of bots) { const amt = Math.round(o.max * 0.3); o.hp = Math.min(o.max, o.hp + amt); S.decals.push({ type: "beam", a: { x: f.x, z: f.z, y: 80 }, b: o, t: 0.4, color: "#6dff8f" }); S.floats.push({ x: o.x, z: o.z, y: OGRE_H * o.size + 20, t: 0.8, text: "+" + amt, color: "#6dff8f" }); }
+        if (bots.length) f.castT = 0.5;
+      }
+      return keepAway(f, d, 330, dt);
+    },
+  },
+  icetrail: {  // Mechano-Frostwalker: slow and tough, leaves ice where it walks - you slide on it
+    init(f) { f.sp *= 0.75; f.hp = f.max = f.max * 1.6; },
+    move(f, dt) { if ((f.iceT = (f.iceT || 0) - dt) <= 0) { f.iceT = 0.5; S.decals.push({ type: "ice", x: f.x, z: f.z, r: 66, t: 5.5, T: 5.5 }); } },
+  },
+  split: {  // Irradiated Slime: splits into two small ones when killed
+    death(f) {
+      if (f.mini) return;
+      for (const s of [-1, 1]) {
+        const m = addMob(S.stage.mobs.indexOf(f.mob), f.x + s * 40, f.z, "grunt"); if (!m) continue;
+        m.mini = true; m.size = f.size * 0.6; m.hp = m.max = f.max * 0.4; m.sp *= 1.25; m.kx = s * 200; m.cut = f.cut;
+      }
+    },
+  },
+  mines: {  // Dark Iron Agent: lays mines behind it as it walks
+    move(f, dt) { if ((f.mineT = (f.mineT ?? rnd(1, 2.5)) - dt) <= 0) { f.mineT = 2.6; S.decals.push({ type: "mine", x: f.x, z: f.z, arm: 0.8, t: 16, T: 16 }); } },
+  },
+  wrenchbounce: {  // Leprous Technician: throws wrenches that bounce off pillars and walls
+    move(f, dt, d) {
+      if ((f.cd = (f.cd ?? rnd(1, 2)) - dt) <= 0 && d < 750) { f.cd = 2.4; eshot(f, { kind: "wrench", sp: 340, dmg: 8, bounces: 3, life: 5 }); }
+      return keepAway(f, d, 420, dt);
+    },
+  },
+  // SCARLET MONASTERY - the Graveyard
+  blink: {  // Haunting Phantasm: blinks to a spot right next to you
+    move(f, dt, d) {
+      if (f.dazeT > 0) { f.dazeT -= dt; return { go: 0 }; }
+      if ((f.cd = (f.cd ?? rnd(2, 4)) - dt) <= 0 && d > 220 && d < 900) {
+        f.cd = rnd(3.5, 5); const a = rnd(0, 6.283);
+        S.decals.push({ type: "eboom", x: f.x, z: f.z, R: 70, t: 0.35, T: 0.35, color: "rgba(205,235,255," });
+        f.x = clamp(S.you.x + Math.cos(a) * 230, 20, WORLD.x - 20); f.z = clamp(S.you.z + Math.sin(a) * 230, 20, WORLD.z - 20); f.flash = 1; f.dazeT = 0.7;  // (lands a step away, then a beat before it comes)
+        S.decals.push({ type: "eboom", x: f.x, z: f.z, R: 70, t: 0.35, T: 0.35, color: "rgba(205,235,255," });
+      }
+    },
+  },
+  gravegrab: {  // Anguished Dead: climbs out of the grave nearest you; its first touch grabs you
+    init(f) { const g = graveNear(S.you, 340, 800); if (g) { f.x = g.x + rnd(-20, 20); f.z = g.z - 45; } f.sp *= 0.8; },
+    touch(f) { if (!f.grabbed) { f.grabbed = true; S.you.rootT = 0.6; hurtYou(4, "GRABBED"); } },
+  },
+  chilltouch: {  // Unfettered Spirit: drifts in loops through the gravestones; its touch chills you
+    init(f) { f.ghostly = true; f.sp *= 1.15; f.loop = pick([-1, 1]); },
+    move(f) { return { go: 0.55, side: 0.8 * f.loop * Math.sin(S.t * 0.9 + f.wob) }; },
+    touch() { S.you.slowT = 1.6; },
+  },
+  thumbscrews: {  // Scarlet Torturer: a pinch - your attacks come slower for a while
+    touch() { if (!(S.you.pinchT > 0)) hurtYou(0, "PINCHED"); S.you.pinchT = 3; },
+  },
+  // the Library
+  dodge: {  // Scarlet Monk: sidesteps your shots
+    onHit(f, dmg) {
+      if ((f.dodgeAt ?? -9) > S.t - 1.1 || Math.random() > 0.4) return dmg;
+      f.dodgeAt = S.t; const dx = f.x - S.you.x, dz = f.z - S.you.z, d = Math.hypot(dx, dz) || 1, s = pick([-1, 1]);
+      f.kx += -dz / d * 420 * s; f.kz += dx / d * 420 * s;
+      S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 10, t: 0.6, text: "dodge", color: "#ffe9a8" });
+      return null;
+    },
+  },
+  bleedbite: {  // Scarlet Tracking Hound: fast; a bite that bleeds you a while
+    init(f) { f.sp *= 1.4; },
+    touch(f) { if ((f.biteAt ?? -9) < S.t - 1.5) { f.biteAt = S.t; (S.you.dots = S.you.dots || []).push({ dps: 4, t: 4 }); hurtYou(0, "BLEED"); } },
+  },
+  bookthrow: {  // Scarlet Diviner: flings books off the shelves, three in a fan
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? rnd(1, 2.5)) - dt) <= 0 && d < 800) {
+        f.cd = 3.2; f.castT = 0.3;
+        const cols = ["#8b1e1e", "#2d4f7c", "#3e6b35"];
+        for (const t of [-0.28, 0, 0.28]) eshot(f, { kind: "book", turn: t, sp: 300, dmg: 6, life: 4, color: pick(cols) });
+      }
+      return keepAway(f, d, 430, dt);
+    },
+  },
+  renew: {  // Scarlet Adept: Renew on hurt Scarlets near it - they heal over time; kill it first
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? 2) - dt) <= 0) {
+        f.cd = 4.5;
+        const hurt = S.foes.filter((o) => !o.dead && o.mob && o.mob.costume === "scarlet" && o.hp < o.max && dist2(o, f) < 400 * 400);
+        for (const o of hurt) { o.renewT = 4; S.decals.push({ type: "beam", a: { x: f.x, z: f.z, y: 80 }, b: o, t: 0.4, color: "#ffe27a" }); }
+        if (hurt.length) f.castT = 0.5;
+      }
+      return keepAway(f, d, 320, dt);
+    },
+  },
+  // the Armory
+  shieldbash: {  // Scarlet Soldier: a shield bash - stuns you a moment
+    touch(f) { if ((f.bashAt ?? -9) < S.t - 3 && !(S.you.bashCd > 0)) { f.bashAt = S.t; S.you.bashCd = 1.5; S.you.stunT = 0.6; hurtYou(6, "BASH"); const dx = S.you.x - f.x, dz = S.you.z - f.z, d = Math.hypot(dx, dz) || 1; S.you.x = clamp(S.you.x + dx / d * 70, 30, WORLD.x - 30); S.you.z = clamp(S.you.z + dz / d * 70, 30, WORLD.z - 30); } },
+  },
+  brace: {  // Scarlet Defender: hit, it braces behind its shield (half damage), then rushes a short way
+    init(f) { f.sp *= 0.8; f.hp = f.max = f.max * 1.4; },
+    onHit(f, dmg) {
+      if (!(f.braceT > 0) && (f.braceAt ?? -9) < S.t - 5) { f.braceT = 1.8; f.braceAt = S.t; S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 10, t: 0.7, text: "BRACE", color: "#cfd8ff" }); }
+      return f.braceT > 0 ? dmg * 0.5 : dmg;
+    },
+    move(f, dt) {
+      if (f.braceT > 0) { f.flash = 0.3; if ((f.braceT -= dt) <= 0) f.rushT = 0.6; return { go: 0 }; }
+      if (f.rushT > 0) { f.rushT -= dt; return { go: 3.2 }; }
+    },
+  },
+  enrage: {  // Scarlet Myrmidon: at half health a roar, grows and turns red, comes fast
+    move(f, dt) {
+      if (!f.enraged && f.hp < f.max / 2) {
+        f.enraged = true; f.castT = 0.7; f.size *= 1.25; f.sp *= 1.7; f.dps *= 1.5; f.cut = tinted(f.cut, "blood");
+        S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 20, t: 1, text: "ENRAGE!", color: "#ff5a4a" });
+      }
+      if (f.castT > 0) { f.castT -= dt; return { go: 0 }; }
+    },
+  },
+  drill: {  // Scarlet Trainee: a squad of five marching in step in a line, re-aiming all together
+    init(f) { f.sp = 120; f.hp = f.max = f.max * 0.6; f.dps = 4; },
+    move(f, dt, d, dx, dz) {
+      const beat = Math.floor(S.t / 2.5);
+      if (f.beat !== beat) { f.beat = beat; f.dir = { x: dx / d, z: dz / d }; }
+      return { dir: f.dir };
+    },
+  },
+  // the Cathedral
+  shieldally: {  // Scarlet Chaplain: puts a shield on a friend - can't be hurt for 3 s
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? 3) - dt) <= 0) {
+        f.cd = 6;
+        const o = S.foes.filter((o) => !o.dead && o !== f && !o.boss && dist2(o, f) < 420 * 420 && !(o.shieldT > 0)).sort((a, b) => a.hp / a.max - b.hp / b.max)[0];
+        if (o) { o.shieldT = 3; f.castT = 0.5; S.decals.push({ type: "beam", a: { x: f.x, z: f.z, y: 80 }, b: o, t: 0.5, color: "#fff2a8" }); }
+      }
+      return keepAway(f, d, 300, dt);
+    },
+  },
+  frostbolt: {  // Scarlet Sorcerer: a slow frostbolt - a hit slows you
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? rnd(1, 2.5)) - dt) <= 0 && d < 850) { f.cd = 2.8; f.castT = 0.3; eshot(f, { kind: "orb", color: "#9fd6ff", sp: 260, dmg: 7, slow: 1.8, life: 5 }); }
+      return keepAway(f, d, 460, dt);
+    },
+  },
+  crusaderstrike: {  // Scarlet Champion: a big overhead swing - a red cone in front, then a heavy hit
+    init(f) { f.sp *= 0.85; f.hp = f.max = f.max * 1.3; },
+    move(f, dt, d) {
+      if (f.castT > 0) { f.castT -= dt; return { go: 0 }; }
+      if ((f.cd = (f.cd ?? 1) - dt) <= 0 && d < 200) {
+        f.cd = 3; f.castT = 0.8;
+        tele({ shape: "cone", x: f.x, z: f.z, a: Math.atan2(S.you.z - f.z, S.you.x - f.x), len: 220, half: 0.6, T: 0.8, dmg: 20, label: "SMASH!", follow: f });
+        return { go: 0 };
+      }
+    },
+  },
+  consecrate: {  // Scarlet Abbot: consecrates the floor round it - hurts you; Scarlets standing in it take less
+    init(f) { f.sp *= 0.75; },
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? 2) - dt) <= 0 && d < 700) { f.cd = 7; f.castT = 0.6; S.decals.push({ type: "holy", x: f.x, z: f.z, r: 170, t: 5, T: 5, dps: 9 }); }
+      return keepAway(f, d, 240, dt);
+    },
+  },
+  // SCHOLOMANCE
+  deathburst: {  // Unstable Corpse: slow and harmless, but bursts into poison when it dies - don't kill it close
+    init(f) { f.sp *= 0.6; f.dps = 2; },
+    death(f) { S.decals.push({ type: "poison", x: f.x, z: f.z, r: 0, R: 120, t: 6, T: 6, dps: 14 }); },
+  },
+  silence: {  // Spectral Tutor: casts silence (your attacks stop) and splits into mirror images
+    move(f, dt, d) {
+      if (f.castT > 0) {
+        if ((f.castT -= dt) <= 0 && d < 560) {
+          S.you.silenceT = 1.6; hurtYou(0, "SILENCED");
+          for (const s of [-1, 1]) {
+            const m = addMob(S.stage.mobs.indexOf(f.mob), f.x + s * 130, f.z + rnd(-40, 40), "grunt"); if (!m) continue;
+            m.image = true; m.lifeT = 7; m.hp = m.max = 1; m.alpha = 0.55; m.cut = f.cut; m.size = f.size; m.dps = 3;
+          }
+        }
+        return { go: 0 };
+      }
+      // (one silence at a time: after one, you're safe from the next for 6 s, however many Tutors there are)
+      if (!f.image && (f.cd = (f.cd ?? 3) - dt) <= 0 && d < 520 && S.t > (S.silencedAt ?? -99) + 6) { f.cd = 7; f.castT = 1; S.silencedAt = S.t + 1; }
+      return f.image ? null : keepAway(f, d, 380, dt);
+    },
+  },
+  disease: {  // Diseased Ghoul: a hit leaves you sick - no healing for a while
+    init(f) { f.sp *= 1.2; },
+    touch() { const you = S.you; if (!(you.diseaseT > 0)) { you.sickHp = you.hp; hurtYou(0, "SICK"); } you.diseaseT = 5; },
+  },
+  bonearmor: {  // Risen Bonewarder: puts bone armor on the undead round it - they take half damage
+    move(f, dt, d) {
+      castGlow(f, dt);
+      if ((f.cd = (f.cd ?? 2) - dt) <= 0) {
+        f.cd = 5; f.castT = 0.5;
+        for (const o of S.foes) if (!o.dead && o.undead && dist2(o, f) < 380 * 380) o.boneT = 6;
+        S.decals.push({ type: "eboom", x: f.x, z: f.z, R: 380, t: 0.5, T: 0.5, color: "rgba(235,230,205," });
+      }
+      return keepAway(f, d, 260, dt);
+    },
+  },
+  plaguewhelps: {  // Plagued Hatchlings: a swarm of tiny weak ones
+    init(f) { f.size *= 0.55; f.hp = f.max = f.max * 0.35; f.sp *= 1.3; f.dps = 3; },
+  },
+  deathcoil: {  // Scholomance Necromancer: a death coil - hurts you, heals the undead it flies past
+    move(f, dt, d) {
+      if ((f.cd = (f.cd ?? rnd(1.5, 3)) - dt) <= 0 && d < 800) { f.cd = 3.2; eshot(f, { kind: "coil", sp: 250, dmg: 10, heals: true, life: 6, r: 16 }); }
+      return keepAway(f, d, 400, dt);
+    },
+  },
+};
+// The enemy shots: fly, bounce off pillars and walls if they can, heal the undead they pass (coils), hit you.
+function updateEShots(dt) {
+  const you = S.you;
+  for (const e of S.eshots) {
+    e.x += e.vx * dt; e.z += e.vz * dt; e.life -= dt; e.spin += dt * 12;
+    if (e.color && e.kind === "orb" && Math.random() < 0.6) fx({ kind: "dot", x: e.x, z: e.z, y: 60, t: 0.3, color: e.color, size: 6 });  // (a trail)
+    if (S.walk && !walkable(e.x, e.z)) { e.done = true; continue; }  // (a wall)
+    if (e.x < 10 || e.x > WORLD.x - 10) { if (e.bounces-- > 0) { e.vx *= -1; e.x = clamp(e.x, 10, WORLD.x - 10); } else e.done = true; }
+    if (e.z < 10 || e.z > WORLD.z - 10) { if (e.bounces-- > 0) { e.vz *= -1; e.z = clamp(e.z, 10, WORLD.z - 10); } else e.done = true; }
+    for (const q of S.pillars || []) {
+      const dx = e.x - q.x, dz = e.z - q.z, dd = Math.hypot(dx, dz) || 1;
+      if (dd < q.r + 10) {
+        if (e.bounces-- > 0) { const nx = dx / dd, nz = dz / dd, dot = e.vx * nx + e.vz * nz; e.vx -= 2 * dot * nx; e.vz -= 2 * dot * nz; e.x = q.x + nx * (q.r + 11); e.z = q.z + nz * (q.r + 11); }
+        else e.done = true;
+      }
+    }
+    if (e.heals) for (const f of S.foes) if (!f.dead && f.undead && !f.image && f.hp < f.max && !e.healed.has(f) && dist2(e, f) < 60 * 60) {
+      e.healed.add(f); const amt = Math.round(f.max * 0.25); f.hp = Math.min(f.max, f.hp + amt);
+      S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 20, t: 0.8, text: "+" + amt, color: "#7dff5a" });
+    }
+    if (!e.done && dist2(e, you) < (e.r + 26) ** 2) {
+      e.done = true; hurtYou(e.dmg, "-" + e.dmg);
+      if (e.color) { burst(you.x, you.z, { n: 10, color: e.color, sp: 200, up: 200, T: 0.4, y: 60 }); hitstop(0.03); vignette("rgba(200,10,0,", 0.25); }
+      if (e.slow) you.slowT = e.slow;
+      if (e.dot) (you.dots = you.dots || []).push({ ...e.dot });
+    }
+    if (e.life < 0) e.done = true;
+  }
+  S.eshots = S.eshots.filter((e) => !e.done);
+}
+function drawEShot(e) {
+  const p = proj(e.x, 60, e.z); if (!p) return;
+  floorEllipse(e.x, e.z, 12, "rgba(0,0,0,.25)");
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(e.spin);
+  if (e.kind === "book") {  // a flung book, spinning
+    ctx.fillStyle = e.color || "#8b1e1e"; ctx.strokeStyle = "#fbf6ea"; ctx.lineWidth = 2;
+    ctx.fillRect(-14 * p.s, -10 * p.s, 28 * p.s, 20 * p.s); ctx.strokeRect(-14 * p.s, -10 * p.s, 28 * p.s, 20 * p.s);
+    ctx.fillStyle = "#f2ead8"; ctx.fillRect(10 * p.s, -8 * p.s, 3 * p.s, 16 * p.s);
+  } else if (e.kind === "orb") {  // a magic bolt in its own colour (frost, shadow, holy)
+    ctx.fillStyle = e.color; ctx.shadowColor = e.color; ctx.shadowBlur = 16; ctx.beginPath(); ctx.arc(0, 0, 12 * p.s, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.beginPath(); ctx.arc(0, 0, 5 * p.s, 0, 6.283); ctx.fill();
+  } else if (e.kind === "wrench") { ctx.fillStyle = "#c9ccd6"; ctx.strokeStyle = "#3a3d48"; ctx.lineWidth = 2; ctx.fillRect(-16 * p.s, -4 * p.s, 32 * p.s, 8 * p.s); ctx.strokeRect(-16 * p.s, -4 * p.s, 32 * p.s, 8 * p.s); ctx.beginPath(); ctx.arc(16 * p.s, 0, 7 * p.s, 0, 6.283); ctx.fill(); ctx.stroke(); }
+  else { ctx.fillStyle = "#7dff5a"; ctx.shadowColor = "#7dff5a"; ctx.shadowBlur = 14; ctx.beginPath(); ctx.arc(0, 0, 13 * p.s, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = "#1c2a12"; ctx.beginPath(); ctx.arc(0, 0, 6 * p.s, 0, 6.283); ctx.fill(); }
+  ctx.restore();
+}
+// ---------------------------------------------------------------------------------------------------------------------
+// The bosses: three per dungeon, standing on the back wall; at their time each glows, then jumps down into the arena.
+// A boss's look: its set's hat, outfit and weapon (only built pieces; a set not painted yet borrows the end boss's look
+// in another skin). Onyxia (phases): her second turn she stays up on the wall breathing fire while whelps pour down.
+const GLOW = 1.3, JUMP = 1.1, BOSS_HP = [380, 650, 1000];
+const bossHp = (b) => b.hp ?? BOSS_HP[Math.min(2, b.i)], bossSize = (b) => b.size ?? 1.8 + 0.15 * Math.min(2, b.i);
+const wallBoss = () => S.bosses && S.bosses[S.bi];
+function bossLook(b, i) {
+  const look = { skin: "moss", eyes: "bloodshot", expression: "smug_smile" };
+  const fromSet = (sid) => {
+    const set = sid && G.sets.find((s) => s.id === sid);
+    const on = (layer) => set && set.pieces.find((id) => P[id].layer === layer && POOL.byId[id]);
+    return { headwear: on("headwear"), outfit: on("outfit"), accessory: on("accessory") };
+  };
+  let pieces = fromSet(b.set);
+  if (!b.look && !pieces.headwear && !pieces.outfit) { pieces = fromSet(S.stage.bosses[S.stage.bosses.length - 1].set); look.skin = ["slate_gray", "mud_brown"][i % 2]; }
+  for (const [k, v] of Object.entries(pieces)) if (v) look[k] = v;
+  // (a boss without a set of his own yet - Vishas, Loksey, Mograine: a stand-in look from pieces we have; only painted ones)
+  for (const [k, v] of Object.entries(b.look || {})) if (k === "skin" || GEN.has(v) || POOL.byId[v]) look[k] = v;
+  return look;
+}
+// ---------------------------------------------------------------------------------------------------------------------
+// Rooms: a dungeon is three rooms, each with its boss on the back wall. The scissors cut round him (the timer: a whole
+// cut in rooms.wakeTime s, faster with kills); when the cut closes he glows, pops out and jumps down, leaving a hole
+// in his shape; beat him and the hole is the doorway to the next room (a breather on the way: healed, a free pick).
+function layRoom() {
+  const room = S.stage.rooms && S.stage.rooms[S.room];
+  const size = room && room.layout && room.layout.size;
+  WORLD.x = size ? size[0] : WORLD0.x; WORLD.z = size ? size[1] : WORLD0.z;
+  compileWalk(room && room.layout);
+  S.dais = null;
+  S.pillarCut = pillarCut(S.floorRGB);
+  if (room && room.props) return layProps(room);
+  const layouts = [[[0.25, 0.42], [0.75, 0.42], [0.4, 0.72], [0.6, 0.72]], [[0.2, 0.6], [0.5, 0.45], [0.8, 0.6], [0.5, 0.78]], [[0.3, 0.35], [0.7, 0.35], [0.3, 0.7], [0.7, 0.7]]];
+  S.pillars = layouts[S.room % 3].map(([x, z]) => ({ x: WORLD.x * x, z: WORLD.z * z, r: 48 }));
+  S.props = S.pillars.map((q) => ({ x: q.x, z: q.z, r: q.r, cut: S.pillarCut, h: 260 }));
+}
+// Where the boss stands on the back wall, on screen: huge, looming over the room from behind it, the floor's far edge
+// covering his lower part (user: big, so it feels intimidating). The hole he leaves is the same shape and place.
+// PINNED (user: he shouldn't move when you move): always the middle of the screen at one size, placed for where the
+// far edge is at the start of a room; walking forward the floor's edge rises and hides more of him.
+// (two bosses on one wall - a room of their own with two: b.wallX moves him aside, b.wallS sizes him)
+// (user: the bosses on the wall stay still, one size - they no longer follow the floor's far edge as you walk; drawn
+// over the floor's far part, so the timer's cut always shows)
+function wallRect(cut, b) {
+  const H = CH * 0.42 * (S.stage.phases ? 1.1 : 1) * ((b && b.wallS) || 1), W = H * cut.aspect;
+  const top = 6, cx = CW / 2 + ((b && b.wallX) || 0) * CW;
+  return { x: cx - W / 2, y: top, w: W, h: H, cx, cy: top + H / 2 };
+}
+function drawWallBoss(b) {
+  const r = wallRect(b.cut, b), lit = b.state === "glow" || b.state === "air", wake = b.i === S.bi ? S.wake : 0;  // (only the one being cut out)
+  const shake = b.state === "wall" && wake > 0.85 ? Math.sin(S.t * 40) * 14 * (wake - 0.85) / 0.15 : 0;  // (nearly cut loose: he shakes)
+  ctx.save();
+  if (lit) { ctx.shadowColor = b.state === "air" ? "rgba(255,120,40,.9)" : "rgba(255,230,120,.9)"; ctx.shadowBlur = 30 + 10 * Math.sin(S.t * 8); }
+  ctx.drawImage(b.cut.canvas, r.x + shake, r.y, r.w, r.h);
+  if (lit) { ctx.globalAlpha = 0.3 + 0.3 * Math.sin(S.t * 10); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(b.cut.canvas, r.x + shake, r.y, r.w, r.h); }
+  ctx.restore();
+  if (b.state === "wall") drawCut(r, wake, b.cut);
+}
+// The cut round the boss on the wall, along HIS OWN white outline (user): where it will go (faint, dashed), how far it
+// has got (a bright cut with light coming through), going round from the top of his head.
+const outlines = new Map();
+function outlineOf(cut) {  // his silhouette's outer edge, traced once: points 0..1 across the picture, from the top, clockwise
+  if (outlines.has(cut)) return outlines.get(cut);
+  const W = 160, H = Math.max(8, Math.round(W / cut.aspect)), c = mk(W, H), g = c.getContext("2d");
+  g.drawImage(cut.canvas, 0, 0, W, H);
+  const a = g.getImageData(0, 0, W, H).data, on = (x, y) => x >= 0 && y >= 0 && x < W && y < H && a[(y * W + x) * 4 + 3] > 60;
+  let sx = -1, sy = -1;
+  for (let y = 0; y < H && sx < 0; y++) for (let x = 0; x < W; x++) if (on(x, y)) { sx = x; sy = y; break; }
+  const pts = [];
+  if (sx >= 0) {  // Moore-neighbour tracing round the outside
+    const D = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+    let x = sx, y = sy, dir = 7;
+    for (let n = 0; n < W * H * 2; n++) {
+      pts.push([x, y]);
+      let k = (dir + 6) % 8, found = false;
+      for (let i = 0; i < 8; i++, k = (k + 1) % 8) { const nx = x + D[k][0], ny = y + D[k][1]; if (on(nx, ny)) { x = nx; y = ny; dir = k; found = true; break; } }
+      if (!found || (x === sx && y === sy && pts.length > 2)) break;
+    }
+  }
+  // (smoothed, so the cut runs as a clean line rather than pixel steps)
+  const sm = pts.map((_, i) => { let px = 0, py = 0; for (let j = -3; j <= 3; j++) { const q = pts[(i + j + pts.length) % pts.length]; px += q[0]; py += q[1]; } return [(px / 7 + 0.5) / W, (py / 7 + 0.5) / H]; });
+  outlines.set(cut, sm);
+  return sm;
+}
+function drawCut(r, wake, cut) {
+  const ol = outlineOf(cut); if (ol.length < 3) return;
+  const P = ol.map(([u, v]) => [r.x + u * r.w, r.y + v * r.h]);
+  ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,.5)";
+  ctx.beginPath(); P.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.stroke();
+  ctx.setLineDash([]);
+  const n = Math.max(1, Math.round(P.length * wake));
+  ctx.shadowColor = "rgba(255,230,150,.95)"; ctx.shadowBlur = 14;
+  ctx.lineWidth = 5; ctx.strokeStyle = "#fff6d8";
+  ctx.beginPath(); for (let i = 0; i <= n && i < P.length; i++) (i ? ctx.lineTo(P[i][0], P[i][1]) : ctx.moveTo(P[i][0], P[i][1]));
+  if (wake >= 1) ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+// The hole a boss leaves in the wall: his shape, dark; once he's beaten, light comes through it - the way on.
+const holeCuts = new Map();
+function drawHole(h) {
+  if (!holeCuts.has(h.cut)) {
+    const mkTint = (col) => { const c = mk(h.cut.canvas.width, h.cut.canvas.height), g = c.getContext("2d"); g.drawImage(h.cut.canvas, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); return { canvas: c, aspect: h.cut.aspect }; };
+    holeCuts.set(h.cut, { dark: mkTint("#140c07"), lit: mkTint("#ffe9a8") });
+  }
+  const t = holeCuts.get(h.cut), r = wallRect(h.cut, h.b);
+  ctx.save();
+  if (h.open) { ctx.shadowColor = "rgba(255,225,140,.9)"; ctx.shadowBlur = 40 + 10 * Math.sin(S.t * 4); ctx.globalAlpha = 0.85 + 0.15 * Math.sin(S.t * 4); }
+  ctx.drawImage((h.open ? t.lit : t.dark).canvas, r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+function nextRoom() {
+  if (location.search.includes("debug")) console.log("ROOM " + (S.room + 2) + " @" + Math.round(S.t));
+  S.fade = 1;  // (a fade through the doorway)
+  S.room++; S.wake = 0; S.hole = null; S.holes = []; S.roomAt = S.t;
+  S.bi = S.bosses.findIndex((b) => b.room === S.room);
+  S.foes = []; S.decals = []; S.drops = []; S.eshots = [];
+  S.shots = S.shots.filter((s) => s.type === "orbit" || s.type === "pet");
+  for (const g of S.gems) S.xp += g.v;  // (the gems left behind come along)
+  S.gems = [];
+  if (S.roomArt) { usePainting(S.roomArt[S.room]); drawSquare(S.lastSquare); }  // (a room of its own: its own painting)
+  else S.floorRGB = S.floorRGB.map((v) => v * 0.85);  // (each room a bit deeper and darker)
+  layRoom();
+  const you = S.you;
+  you.x = WORLD.x / 2; you.z = 260; if (!walkable(you.x, you.z)) nearestWalk(you); S.cam.x = you.x; S.cam.z = you.z - CAM_BACK;
+  you.hp = you.maxHp;
+  const room = S.stage.rooms && S.stage.rooms[S.room];
+  toast(room ? `THE ${room.name.toUpperCase()}` : `ROOM ${S.room + 1}: ${(wallBoss().name || "???").toUpperCase()}`);
+  offer(false);
+}
+function updateBosses(dt) {
+  const you = S.you, b = wallBoss();
+  // the cut: time, and kills (a boss may have his own time: b.wake, seconds)
+  // (user: in a long room the cut only starts once you reach the boss's own area - b.wakeZone - so the room is a march)
+  if (b && b.state === "wall" && b.wakeZone != null && !b.reached) {
+    if (zoneOf(you) >= b.wakeZone) { b.reached = true; callout((b.areaName || "HIS ROOM").toUpperCase(), "#e0b0ff"); }
+    else { S.wakeKills = S.kills; }
+  }
+  if (b && b.state === "wall" && (b.wakeZone == null || b.reached)) {
+    const R = ARCADE.rooms, k = (b.wake || R.wakeTime) / R.wakeTime;
+    S.wake += dt / (R.wakeTime * k * MOCK_TIME) + (S.kills - S.wakeKills) / (R.wakeKills * k * MOCK_TIME);
+    if (S.wake >= 1) { S.wake = 1; b.state = "glow"; b.glowT = GLOW; toast(`${(b.name || "???").toUpperCase()} IS CUT LOOSE!`); if (location.search.includes("debug")) console.log("BOSS " + b.name + " glows @" + Math.round(S.t)); }
+  }
+  S.wakeKills = S.kills;
+  // the doorway: walk into the hole
+  // (the hole is pinned in the middle of the screen, which is always in front of you: walk into the back wall anywhere)
+  if (S.hole && S.hole.open && you.z > WORLD.z - 160) nextRoom();
+  for (const b of S.bosses) {
+    if (b.state === "glow" && (b.glowT -= dt) <= 0) {
+      S.hole = { x: b.x, z: b.z, cut: b.cut, b, open: false }; S.holes.push(S.hole);
+      if (S.stage.phases && b.i === 1) { b.state = "air"; b.airT = 30 * MOCK_TIME * 2; b.breathT = 0; toast("SHE TAKES TO THE AIR!"); continue; }
+      b.state = "jump"; b.jt = 0; b.z = b.z0 = WORLD.z - 40;
+      { const pf = proj(S.cam.x, 0, b.z); b.x = b.x0 = S.cam.x + (pf ? b.wallX * CW / pf.s : 0); b.h0 = pf ? wallRect(b.cut, b).h / pf.s * 0.7 : OGRE_H * 3; }  // (he leaps from where he's drawn, at his size up there)
+      b.x1 = clamp(you.x + rnd(-200, 200), 100, WORLD.x - 100); b.z1 = clamp(you.z + 280, 100, WORLD.z - 100);
+      if (S.dais) { b.x1 = (S.dais.x0 + S.dais.x1) / 2; b.z1 = (S.dais.z0 + S.dais.z1) / 2 - 60; }  // (Herod lands up on his dais)
+      if (b.land) { b.x1 = WORLD.x * b.land[0]; b.z1 = WORLD.z * b.land[1]; }  // (Doan in his round Athenaeum)
+      if (!walkable(b.x1, b.z1)) { const p = { x: b.x1, z: b.z1 }; nearestWalk(p); b.x1 = p.x; b.z1 = p.z; }
+    }
+    if (b.state === "jump") {
+      b.jt += dt; const k = Math.min(1, b.jt / JUMP);
+      b.x = b.x0 + (b.x1 - b.x0) * k; b.z = b.z0 + (b.z1 - b.z0) * k; b.y = Math.sin(Math.PI * k) * 420;
+      if (k >= 1) {
+        b.state = "fight"; shake(24, 0.45); hitstop(0.08);
+        burst(b.x, b.z, { n: 26, kind: "dot", color: "rgba(205,185,150,1)", sp: 420, up: 160, g: 400, T: 0.8, size: 14, y: 10 });
+        burst(b.x, b.z, { n: 12, kind: "chunk", color: ["#fbf6ea", "#e9dfc6"], sp: 300, up: 500, T: 1.1, size: 10 });
+        callout((b.name || "???").toUpperCase(), "#fff");
+        S.decals.push({ type: "ring", x: b.x, z: b.z, r: 0, R: 220, t: 0.35, T: 0.35, hitSet: new Set(), dmg: 0, src: { knock: 260 } });
+        const hp = location.search.includes("debug") ? 60 : bossHp(b);  // (?debug: quick bosses, to test the rooms)
+        const bf = { x: b.x, z: b.z, hp, max: hp, tier: "boss", boss: b, kind: "boss", look: b.look, cut: b.cut, size: bossSize(b), sp: 75, dps: 22 + 6 * Math.min(2, b.i), flip: 1, kx: 0, kz: 0, flash: 0, wob: 0 };
+        S.foes.push(bf);
+        for (const m of b.moves || []) if (m.onLand && MOVES[m.move]) MOVES[m.move](bf, m);  // (Loksey's hounds as he lands)
+        // his partner (Moira): comes down with him at the back by the hole; she follows you, stopping to heal him
+        if (b.partner) {
+          const pp = b.partner, php = location.search.includes("debug") ? 40 : pp.hp;
+          S.foes.push({ born: S.t, x: clamp(b.x0 + 220, 100, WORLD.x - 100), z: WORLD.z - 200, hp: php, max: php, tier: "partner", partner: pp, ofBoss: b, kind: "partner", look: pp.look, cut: b.partnerCut, size: 1.2, sp: pp.sp, dps: pp.dps, flip: -1, kx: 0, kz: 0, flash: 0, wob: 0, healT: pp.heal.every });
+          toast(`${pp.name.toUpperCase()} HEALS HIM!`);
+        }
+      }
+    }
+    if (b.state === "air") {  // Onyxia up on the wall: Deep Breath lanes across the arena, whelps pouring down
+      b.airT -= dt; b.breathT = (b.breathT || 0) - dt;
+      if (b.breathT <= 0) { b.breathT = (b.moves && b.moves[0] && b.moves[0].every) || 2.5; MOVES.deepbreath({ x: b.x, z: b.z, boss: b }); S.spawnT = Math.min(S.spawnT, 0.2); }
+      b.hideT = (b.hideT ?? 5) - dt;  // (and now and then the big one: hide behind a pillar)
+      if (b.hideT <= 0) { b.hideT = 9; b.breathT = 3.2; MOVES.hide({ x: b.x, z: b.z }); }
+      if (b.airT <= 0) { b.state = "dead"; roomCleared(b); toast("SHE FLIES OFF... AFTER HER!"); }
+    }
+  }
+}
+function bossDown(f, drop) {
+  if (location.search.includes("debug")) console.log("BOSS " + f.boss.name + " down @" + Math.round(S.t));
+  const b = f.boss; b.state = "dead";
+  hitstop(0.18); S.slowmo = 1.1; flash("rgba(255,255,255,", 0.35); shake(22, 0.5);
+  fx({ kind: "cut", cut: f.cut, h: OGRE_H * f.size, x: f.x, z: f.z, y: OGRE_H * f.size * 0.5, vx: rnd(-200, 200), vy: 900, vz: 250, g: 1400, vr: pick([-9, 9]), t: 1.4 });
+  burst(f.x, f.z, { n: 40, kind: "chunk", color: ["#fbf6ea", "#e9dfc6", "#ffe27a", "#ff8a6a"], sp: 380, up: 700, g: 900, T: 1.6, size: 9, y: 60 });
+  // his partner still standing: spared (she leaves the fight)
+  const mo = S.foes.find((o) => o.ofBoss === b && !o.dead);
+  if (mo) { mo.dead = true; S.partnerSpared = true; setTimeout(() => toast(`${mo.partner.name.toUpperCase()} IS SPARED!`), 800); S.decals.push({ type: "ring", x: mo.x, z: mo.z, r: 0, R: 120, t: 0.5, T: 0.5, hitSet: new Set(), dmg: 0, src: {}, color: "star" }); }
+  // loot that counts for minting (the arcade's rule): a piece of the boss's own set by chance, for sure after the pity
+  const L = ARCADE.loot; S.pity = S.pity || {};
+  const key = S.stageId + ":" + b.i;
+  const set = b.set && G.sets.find((s) => s.id === b.set);
+  const pieces = set ? set.pieces.filter((id) => ["headwear", "outfit"].includes(P[id].layer) || /^chase_/.test(id)) : [];
+  if (pieces.length && (Math.random() < L.chance * (1 + cs("greed")) || (S.pity[key] || 0) + 1 >= L.pity)) { S.pity[key] = 0; drop([pick(pieces)]); toast(`${b.name.toUpperCase()} DROPPED LOOT!`); }
+  else { S.pity[key] = (S.pity[key] || 0) + 1; toast(`${(b.name || "BOSS").toUpperCase()} IS BONKED!`); }
+  for (const m of b.moves || []) if (m.onDeath && MOVES[m.move]) MOVES[m.move](f, m);  // (Herod's trainees)
+  // the next boss of this room (Thalnos after Vishas; Whitemane bursting in when Mograine falls), or the room is cleared
+  // once all its bosses are down (a revived one too)
+  const next = S.bosses.find((o) => o.room === b.room && o.i > S.bi && (o.state === "wall" || o.state === "hidden"));
+  if (b.i === S.bi && next) nextBoss(b, next);
+  else if (b.room === S.room && S.bosses.every((o) => o.room !== S.room || o.state === "dead")) roomCleared(b);
+}
+function nextBoss(b, next) {
+  S.bi = next.i; S.wake = 0;
+  if (next.state === "hidden") {  // she comes in through the hole he left: there, lit up, then down she jumps
+    next.wallX = b.wallX; next.wallS = b.wallS; next.state = "glow"; next.glowT = GLOW + 1.2;
+    setTimeout(() => toast(`${(next.name || "???").toUpperCase()}: "YOU SHALL PAY FOR THIS!"`), 300);
+  } else setTimeout(() => toast(next.wakeZone != null ? `ON TO ${(next.areaName || "HIS ROOM").toUpperCase()}!` : `NEXT: ${(next.name || "???").toUpperCase()}`), 1200);
+}
+// The room's boss beaten: the last room clears the dungeon; otherwise its hole becomes the doorway and the foes stop.
+function roomCleared(b) {
+  if (S.room >= Math.max(...S.bosses.map((o) => o.room))) { setTimeout(() => S.over || end(true), 1500); return; }
+  if (S.hole) S.hole.open = true;
+  setTimeout(() => toast("THE WAY ON IS OPEN!"), 1200);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// JUICE (user: "give some juice to the boss attacks ... that can be implemented in wow"). Everything here is what a WoW
+// frame can do: textures that move, scale, fade and tint (particles, flashes, the vignette, the callout), a frame offset
+// (shake), and the OnUpdate loop paused (hit-stop) or slowed (slow-mo).
+const SCHOOL = { fire: "#ff8a3a", shadow: "#b07bff", holy: "#ffe27a", arcane: "#e08bff", frost: "#9fd6ff", phys: "#ffb08a", nature: "#7dff5a" };
+// a telegraph's school, from what it does or says
+function schoolOf(d) {
+  if (d.school) return d.school;
+  const l = (d.label || "").toUpperCase();
+  if (d.burn || /FLAME|FIRE|LAVA|BREATH|BRAND|BLASTED/.test(l)) return "fire";
+  if (d.sheep || /POLYMORPH|DETONATION/.test(l)) return "arcane";
+  if (d.sleep) return "shadow";
+  if (/HAMMER|CRUSADER|HOLY/.test(l)) return "holy";
+  return "phys";
+}
+function shake(amt, dur = 0.3) { if (amt >= (S.shakeA || 0) * (S.shakeT || 0) / (S.shakeD || 1)) { S.shakeA = amt; S.shakeT = dur; S.shakeD = dur; } }
+function hitstop(t) { S.hitstop = Math.max(S.hitstop || 0, t); }
+function flash(color, T = 0.25) { (S.flashes = S.flashes || []).push({ color, t: T, T }); }
+function vignette(color, T = 0.4) { S.vig = { color, t: T, T }; }
+function callout(text, color = "#fff") { S.callout = { text, color, age: 0 }; }
+// particles: dot, spark (a streak along its way), chunk (a paper bit), glyph (text: Z, ★, ✚), cut (a picture flying off)
+function fx(o) { (S.fx = S.fx || []).push({ y: 40, vx: 0, vy: 0, vz: 0, g: 0, rot: 0, vr: 0, size: 8, wait: 0, ...o, T: o.t }); }
+function burst(x, z, o = {}) {
+  const n = o.n || 16, col = o.color || "#fff";
+  for (let i = 0; i < n; i++) {
+    const a = (o.a ?? 0) + (o.spread ?? Math.PI) * (2 * Math.random() - 1), sp = (o.sp || 300) * rnd(0.5, 1.2);
+    fx({ kind: o.kind || "spark", x: x + (o.r ? Math.cos(a) * o.r : 0), z: z + (o.r ? Math.sin(a) * o.r : 0), y: o.y ?? 30, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: (o.up ?? 200) * rnd(0.4, 1.2),
+      g: o.g ?? 700, t: (o.T || 0.6) * rnd(0.7, 1.2), color: Array.isArray(col) ? pick(col) : col, size: (o.size || 8) * rnd(0.7, 1.3), vr: rnd(-12, 12), rot: rnd(0, 6), wait: o.wait || 0 });
+  }
+}
+// a telegraph going off: shake for its size, sparks shaped like it, a scorch mark left on the floor
+function impact(d) {
+  const sc = schoolOf(d), col = [SCHOOL[sc], "#fff", SCHOOL[sc]];
+  if (d.shape === "circle") {
+    shake(clamp(d.r / 10, 6, 28), 0.3);
+    burst(d.x, d.z, { n: Math.round(d.r / 6), color: col, r: d.r * 0.9, sp: 220, up: 260, T: 0.55 });
+    burst(d.x, d.z, { n: 8, kind: "chunk", color: ["#fbf6ea", "#e9dfc6", SCHOOL[sc]], sp: 260, up: 420, size: 10, T: 0.9 });
+    S.decals.push({ type: "scorch", x: d.x, z: d.z, r: d.r * 0.8, t: 5, T: 5, color: sc });
+  } else if (d.shape === "cone") {
+    shake(12, 0.25);
+    for (let i = 1; i <= 4; i++) { const k = i / 4; burst(d.x + Math.cos(d.a) * d.len * k, d.z + Math.sin(d.a) * d.len * k, { n: 6, color: col, a: d.a, spread: d.half, sp: 260, up: 180, T: 0.45, wait: 0.03 * i }); }
+  } else if (d.shape === "lane") {  // a wave running down the lane
+    shake(10, 0.35);
+    for (let i = 0; i <= 8; i++) { const k = i / 8, x = d.x + Math.cos(d.a) * d.len * k, z = d.z + Math.sin(d.a) * d.len * k;
+      burst(x, z, { n: 6, color: col, sp: 160, up: 380, T: 0.5, wait: 0.035 * i, size: 10 });
+      if (i % 2 === 0) S.decals.push({ type: "scorch", x, z, r: d.w * 0.6, t: 4, T: 4, color: sc }); }
+  } else if (d.shape === "hide") { shake(26, 0.6); flash("rgba(255,170,90,", 0.4); }
+}
+// the boss's wind-up glow and his release
+function windUp(f) { f.windT = 1; if (Math.random() < 0.5) burst(f.x, f.z, { n: 1, kind: "dot", color: SCHOOL[f.school || "phys"], r: 60 * f.size, sp: 10, up: 220, g: -100, T: 0.6, size: 7 }); }
+function updateFx(dt) {
+  for (const p of S.fx || []) {
+    if (p.wait > 0) { p.wait -= dt; continue; }
+    p.t -= dt; p.x += p.vx * dt; p.z += p.vz * dt; p.y += p.vy * dt; p.vy -= p.g * dt; p.rot += p.vr * dt;
+    if (p.y < 2 && p.g > 0) { p.y = 2; p.vy *= -0.3; p.vx *= 0.6; p.vz *= 0.6; }
+    if (p.drag) { p.vx *= Math.pow(p.drag, dt); p.vz *= Math.pow(p.drag, dt); }
+  }
+  S.fx = (S.fx || []).filter((p) => p.t > 0);
+  if (S.callout) S.callout.age += dt;
+}
+function drawFx(p) {
+  if (p.wait > 0 || p.z - S.cam.z < NEAR) return;
+  const q = proj(p.x, p.y + heightAt(p.x, p.z), p.z); if (!q) return;
+  const a = Math.min(1, p.t / (p.T * 0.4)), sz = p.size * q.s;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(q.x, q.y);
+  if (p.kind === "spark") { ctx.strokeStyle = p.color; ctx.lineWidth = Math.max(1.5, sz * 0.5); ctx.lineCap = "round"; const v = proj(p.x - p.vx * 0.04, p.y - p.vy * 0.04 + heightAt(p.x, p.z), p.z - p.vz * 0.04); ctx.beginPath(); ctx.moveTo(0, 0); if (v) ctx.lineTo(v.x - q.x, v.y - q.y); ctx.stroke(); }
+  else if (p.kind === "chunk") { ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2); ctx.strokeStyle = "rgba(70,45,20,.5)"; ctx.lineWidth = 1; ctx.strokeRect(-sz, -sz * 0.6, sz * 2, sz * 1.2); }
+  else if (p.kind === "glyph") { ctx.rotate(p.rot * 0.1); ctx.font = `bold ${Math.round(sz * 3)}px Georgia`; ctx.textAlign = "center"; ctx.fillStyle = p.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeText(p.text, 0, 0); ctx.fillText(p.text, 0, 0); }
+  else if (p.kind === "cut" && p.cut) { const H = p.h * q.s * Math.max(0.2, p.t / p.T), W = H * p.cut.aspect; ctx.rotate(p.rot); ctx.drawImage(p.cut.canvas, -W / 2, -H / 2, W, H); }
+  else { ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(0, 0, Math.max(1, sz * 0.6), 0, 6.283); ctx.fill(); }
+  ctx.restore();
+}
+// the screen on top: flashes, the vignette (hit, asleep, low health), the callout
+function drawOverlay(dt) {
+  for (const fl of S.flashes || []) { ctx.fillStyle = fl.color + (0.55 * fl.t / fl.T) + ")"; ctx.fillRect(0, 0, CW, CH); fl.t -= dt; }
+  S.flashes = (S.flashes || []).filter((x) => x.t > 0);
+  const you = S.you, edge = (col, a) => { const g = ctx.createRadialGradient(CW / 2, CH / 2, Math.min(CW, CH) * 0.35, CW / 2, CH / 2, Math.max(CW, CH) * 0.7); g.addColorStop(0, col + "0)"); g.addColorStop(1, col + a + ")"); ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH); };
+  if (S.vig && S.vig.t > 0) { edge(S.vig.color, 0.6 * S.vig.t / S.vig.T); S.vig.t -= dt; }
+  if (you.sleepT > 0) edge("rgba(40,60,160,", 0.55);
+  if (you.hp < you.maxHp * 0.3) edge("rgba(180,0,0,", 0.25 + 0.2 * Math.max(0, Math.sin(S.t * 7)));  // (a heartbeat)
+  const c = S.callout;
+  if (c && c.age < 1.5) {
+    const pop = 1 + 0.8 * Math.exp(-c.age * 14) * Math.cos(c.age * 30), a = Math.min(1, (1.5 - c.age) / 0.3);
+    ctx.save(); ctx.translate(CW / 2, CH * 0.11); ctx.scale(pop, pop);  // (above the toast line) ctx.globalAlpha = a;
+    ctx.font = `bold ${Math.round(Math.min(64, CW / 16))}px Georgia`; ctx.textAlign = "center"; ctx.lineJoin = "round";
+    ctx.lineWidth = 9; ctx.strokeStyle = "#1a0d06"; ctx.strokeText(c.text, 0, 0);
+    ctx.shadowColor = c.color; ctx.shadowBlur = 18; ctx.fillStyle = c.color; ctx.fillText(c.text, 0, 0);
+    ctx.restore();
+  }
+}
+const HAMMER = (() => { const c = mk(70, 90), g = c.getContext("2d"); g.fillStyle = "#7a4a22"; g.fillRect(31, 30, 8, 58); g.fillStyle = "#e8c45a"; g.fillRect(8, 6, 54, 28); g.fillStyle = "#fff6c8"; g.fillRect(12, 9, 46, 6); g.strokeStyle = "#5a3a10"; g.lineWidth = 2; g.strokeRect(8, 6, 54, 28); return { canvas: c, aspect: 70 / 90 }; })();
+// the moves' names, called out in their school's colour as the boss starts them (the ones that don't shout already)
+const CALL = { slam: ["SLAM", "phys"], stomp: ["STOMP", "phys"], charge: ["CHARGE!", "phys"], breath: ["FLAME BREATH", "fire"], tail: ["TAIL SWEEP", "phys"],
+  sleep: ["DEEP SLEEP", "shadow"], swpain: ["SHADOW WORD: PAIN", "shadow"], poker: ["THE HOT POKER", "fire"], flamespike: ["FLAME SPIKE", "fire"],
+  firenova: ["FIRE NOVA", "fire"], polymorph: ["POLYMORPH", "arcane"], hammer: ["HAMMER OF JUSTICE", "holy"], crusader: ["CRUSADER STRIKE", "holy"], smite: ["HOLY SMITE", "holy"],
+  nova: ["NOVA", "phys"], deepbreath: ["DEEP BREATH", "fire"] };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Boss moves (tools/arcade-stages.json "moves", from the real fights), made of telegraphs: a red shape on the floor
+// fills up, then it goes off. Shapes: circle, cone, lane, nova (a circle round the boss).
+const TELE_COLOR = "rgba(230,40,30,";
+function tele(o) {
+  S.decals.push({ type: "tele", t: o.T, ...o, school: schoolOf(o) });
+  if (o.follow && o.follow.boss) o.follow.school = schoolOf(o);
+  // (Hammer of Justice: the hammer falls out of the sky onto the circle, landing as it goes off)
+  if (/HAMMER/.test(o.label || "")) fx({ kind: "cut", cut: HAMMER, h: 110, x: o.x, z: o.z, y: 900, vy: -900 / o.T + 0.5 * 2200 * o.T, g: 2200, t: o.T + 0.05, vr: 0 });
+  if (location.search.includes("debug")) console.log("TELE " + o.shape + " " + (o.label || "") + " @" + Math.round(S.t));  // (?debug: a test switch)
+}
+function inShape(d, p) {
+  const dx = p.x - d.x, dz = p.z - d.z, dist = Math.hypot(dx, dz);
+  if (d.shape === "circle") return dist < d.r;
+  if (d.shape === "cone") { let da = Math.atan2(dz, dx) - d.a; da = Math.atan2(Math.sin(da), Math.cos(da)); return dist < d.len && Math.abs(da) < d.half; }
+  if (d.shape === "lane") { const ax = Math.cos(d.a), az = Math.sin(d.a), along = dx * ax + dz * az, side = Math.abs(-dx * az + dz * ax); return along > 0 && along < d.len && side < d.w / 2; }
+  if (d.shape === "hide") return !shadowed(d, p);  // (everywhere but behind a pillar)
+  return false;
+}
+// A telegraph on the floor: the shape outlined in red, filling up as it comes; "hide": the pillars' safe shadows in blue.
+function drawTele(d) {
+  const fill = 1 - Math.max(0, d.t) / d.T, a = 0.12 + 0.38 * fill;
+  // (juice: the edge pulses faster as it fills, in the move's school colour; a white flash just before it goes off)
+  if (d.t < 0.12 && d.shape === "circle") floorEllipse(d.x, d.z, d.r, "rgba(255,255,255,.55)");
+  if (d.shape === "circle") floorEllipse(d.x, d.z, d.r * (1 + 0.03 * Math.sin(S.t * (8 + 40 * fill))), null, SCHOOL[d.school || "phys"], 2 + 3 * fill * (0.5 + 0.5 * Math.sin(S.t * (8 + 40 * fill))));
+  if (Math.random() < 0.35 && d.shape === "circle") fx({ kind: "dot", x: d.x + rnd(-d.r, d.r) * 0.7, z: d.z + rnd(-d.r, d.r) * 0.7, y: 4, vy: 120 + 200 * fill, g: 0, t: 0.4, color: SCHOOL[d.school || "phys"], size: 5 });
+  if (d.shape === "circle") { floorEllipse(d.x, d.z, d.r, null, TELE_COLOR + "0.9)", 3); floorEllipse(d.x, d.z, Math.max(1, d.r * fill), TELE_COLOR + a + ")"); }
+  else if (d.shape === "cone") {
+    const pts = [[d.x, d.z]];
+    for (let i = 0; i <= 12; i++) { const an = d.a - d.half + 2 * d.half * i / 12; pts.push([d.x + Math.cos(an) * d.len * Math.max(0.15, fill), d.z + Math.sin(an) * d.len * Math.max(0.15, fill)]); }
+    const out = [[d.x, d.z]];
+    for (let i = 0; i <= 12; i++) { const an = d.a - d.half + 2 * d.half * i / 12; out.push([d.x + Math.cos(an) * d.len, d.z + Math.sin(an) * d.len]); }
+    floorPoly(out, TELE_COLOR + "0.12)"); floorPoly(pts, TELE_COLOR + a + ")");
+  } else if (d.shape === "lane") {
+    const ax = Math.cos(d.a), az = Math.sin(d.a), px = -az * d.w / 2, pz = ax * d.w / 2;
+    const lane = (len) => [[d.x + px, d.z + pz], [d.x + ax * len + px, d.z + az * len + pz], [d.x + ax * len - px, d.z + az * len - pz], [d.x - px, d.z - pz]];
+    floorPoly(lane(d.len), TELE_COLOR + "0.12)"); floorPoly(lane(d.len * fill), TELE_COLOR + a + ")");
+  } else if (d.shape === "hide") {
+    for (const q of S.pillars || []) {
+      const dx = q.x - d.x, dz = q.z - d.z, n = Math.hypot(dx, dz) || 1, ux = dx / n, uz = dz / n, px = -uz, pz = ux;
+      floorPoly([[q.x + px * q.r, q.z + pz * q.r], [q.x + ux * 1400 + px * q.r * 2.2, q.z + uz * 1400 + pz * q.r * 2.2], [q.x + ux * 1400 - px * q.r * 2.2, q.z + uz * 1400 - pz * q.r * 2.2], [q.x - px * q.r, q.z - pz * q.r]],
+        `rgba(70,130,255,${0.2 + 0.25 * fill})`);
+    }
+  }
+}
+// what a telegraph does to you when it goes off
+function teleHits(d) {
+  const you = S.you;
+  if (!inShape(d, you)) return;
+  you.hp -= d.dmg || 0; you.hitT = 0.3; dmgLog("tele:" + (d.label || d.shape), d.dmg || 0);
+  hitstop(0.06 + Math.min(0.1, (d.dmg || 0) / 300)); vignette("rgba(200,10,0,", 0.45); you.squash = 1;
+  if (d.sheep) { burst(you.x, you.z, { n: 22, kind: "dot", color: ["#ffb3e6", "#fff", "#e08bff"], sp: 200, up: 300, g: 300, T: 0.8, size: 12, y: 60 }); S.floats.push({ x: you.x, z: you.z, y: OGRE_H + 40, t: 1.2, text: "BAA!", color: "#ffb3e6" }); }
+  if (d.stun) for (let i = 0; i < 3; i++) fx({ kind: "glyph", text: "★", x: you.x + Math.cos(i * 2.1) * 30, z: you.z + Math.sin(i * 2.1) * 20, y: OGRE_H * 1.1, vx: -Math.sin(i * 2.1) * 60, vz: Math.cos(i * 2.1) * 40, t: d.stun, color: "#ffe25a", size: 8 });
+  if (d.stun) you.stunT = d.stun;
+  if (d.sleep) { you.sleepT = d.sleep; toast("ZZZ... MASH TO WAKE UP!"); }
+  if (d.burn) (you.dots = you.dots || []).push({ dps: d.burn, t: 4 });
+  if (d.sheep) { you.sheepT = d.sheep; toast("BAA!"); }
+  if (d.knock) { const dx = you.x - d.x, dz = you.z - d.z, n = Math.hypot(dx, dz) || 1; you.x = clamp(you.x + dx / n * d.knock, 30, WORLD.x - 30); you.z = clamp(you.z + dz / n * d.knock, 30, WORLD.z - 30); }
+  S.floats.push({ x: you.x, z: you.z, y: OGRE_H + 20, t: 0.8, text: d.label || Math.round(d.dmg || 0), color: "#ff6a5a" });
+}
+const MOVES = {
+  slam(f) { tele({ shape: "circle", x: S.you.x, z: S.you.z, r: 110, T: 1.1, dmg: 25, stun: 1.2, label: "SLAM!" }); f.castT = 1.1; },
+  stomp(f) { tele({ shape: "circle", x: f.x, z: f.z, r: 170, T: 0.9, dmg: 18, stun: 1, label: "STOMP!", follow: f }); f.castT = 0.9; },
+  nova(f) { tele({ shape: "circle", x: f.x, z: f.z, r: 150, T: 1.0, dmg: 16, follow: f }); f.castT = 1.0; },
+  charge(f) {
+    const a = Math.atan2(S.you.z - f.z, S.you.x - f.x), len = 650;
+    tele({ shape: "lane", x: f.x, z: f.z, a, len, w: 90, T: 1.0, dmg: 22, knock: 160, label: "CHARGE!" });
+    f.castT = 1.0; f.chargeAt = { x: f.x + Math.cos(a) * len, z: f.z + Math.sin(a) * len };
+  },
+  breath(f) { const a = Math.atan2(S.you.z - f.z, S.you.x - f.x); tele({ shape: "cone", x: f.x, z: f.z, a, len: 380, half: 0.5, T: 1.2, dmg: 30, label: "FLAME BREATH!" }); f.castT = 1.2; },
+  tail(f) { const a = Math.atan2(S.you.z - f.z, S.you.x - f.x) + Math.PI; tele({ shape: "cone", x: f.x, z: f.z, a, len: 300, half: 0.7, T: 0.9, dmg: 15, knock: 260, label: "TAIL!" }); f.castT = 0.9; },
+  eruption() { for (let i = 0; i < 3; i++) tele({ shape: "circle", x: S.you.x + rnd(-170, 170), z: S.you.z + rnd(-130, 170), r: 80, T: 1.0, dmg: 20, label: "LAVA!" }); },
+  roar(f) { toast("BELLOWING ROAR!"); f.castT = 1; setTimeout(() => { if (!S.over && !f.dead) { const a = rnd(0, 6.283); S.you.fearT = 2; S.you.fearDir = { x: Math.cos(a), z: Math.sin(a) }; } }, 1000); },
+  deepbreath() {  // a lane of fire from the back wall to the front, across where you are
+    const x = clamp(S.you.x + rnd(-150, 150), 100, WORLD.x - 100);
+    tele({ shape: "lane", x, z: WORLD.z, a: -Math.PI / 2, len: WORLD.z, w: 170, T: 1.6, dmg: 35, label: "DEEP BREATH!" });
+  },
+  sleep(f) { tele({ shape: "circle", x: S.you.x, z: S.you.z, r: 90, T: 1.2, sleep: 2.5, dmg: 5, label: "DEEP SLEEP" }); f.castT = 1.2; },
+  hide(f) {  // a blast at the whole arena: only the shadows behind the pillars are safe
+    toast("HIDE BEHIND A PILLAR!");
+    tele({ shape: "hide", x: f.x, z: f.z, T: 2.6, dmg: 45, label: "BLASTED!" });
+    if (f.castT !== undefined) f.castT = 2.6;
+  },
+  bubble(f) {  // Arcane Bubble, then Detonation
+    f.shieldT = 2.2; f.castT = 2.2; toast("ARCANE BUBBLE... RUN!");
+    tele({ shape: "circle", x: f.x, z: f.z, r: 330, T: 2.2, dmg: 40, label: "DETONATION!", follow: f });
+  },
+  whirlwind(f) { toast("BLADES OF LIGHT!"); f.castT = 0.8; f.wwT = 4.8; },
+  swap(f) {  // to his chest at the back, kneels (can't be hurt), weapons swapped, faster
+    toast("MR. SMITE GOES FOR HIS CHEST!"); f.goTo = { x: WORLD.x / 2, z: WORLD.z - 120 }; f.swapping = true;
+  },
+  adds(f, m) {
+    toast("DEFIAS, TO ME!");
+    const look = { skin: "mud_brown", headwear: "fac_defias_head", outfit: "fac_defias_body" };
+    compose(look, "painted").then((cut) => { for (let i = 0; i < (m.count || 4); i++) addFoe(cut, look, WORLD.x * (0.3 + 0.13 * i), WORLD.z - 60, "brute"); });
+  },
+  flood(f, m) {
+    toast("THE TRAINEES!");
+    const lk = S.foeLooks.filter((x) => x.kind === (m.kind || "human") && x.tier === "grunt");
+    for (let i = 0; i < (m.count || 10); i++) { const l = pick(lk.length ? lk : S.foeLooks); addFoe(l.cut, l.look, WORLD.x * rnd(0.2, 0.8), WORLD.z - 60, "grunt"); }
+  },
+  // Scarlet Monastery
+  swpain(f) { f.castT = 0.4; eshot(f, { kind: "orb", color: "#9a5cff", sp: 300, dmg: 5, dot: { dps: 5, t: 5 }, life: 5 }); },
+  poker(f) { tele({ shape: "circle", x: S.you.x, z: S.you.z, r: 90, T: 1.0, dmg: 12, burn: 6, label: "BRANDED!" }); f.castT = 0.6; },
+  tellme(f) {
+    toast("TELL ME... TELL ME EVERYTHING!");
+    const ti = S.stage.mobs.findIndex((m) => m.sig === "thumbscrews");
+    for (let i = 0; i < 3 && ti >= 0; i++) addMob(ti, f.x + rnd(-200, 200), f.z + rnd(-120, 120), "brute");
+  },
+  flamespike(f) {
+    const a = Math.atan2(S.you.z - f.z, S.you.x - f.x);
+    for (const t of [-0.35, 0, 0.35]) tele({ shape: "lane", x: f.x, z: f.z, a: a + t, len: 720, w: 70, T: 1.0, dmg: 18, burn: 4, label: "FLAME SPIKE!" });
+    f.castT = 1.0;
+  },
+  firenova(f) { tele({ shape: "circle", x: f.x, z: f.z, r: 270, T: 1.4, dmg: 24, burn: 5, label: "FIRE NOVA!", follow: f }); f.castT = 1.4; },
+  hounds(f, m) {
+    toast("RELEASE THE HOUNDS!");
+    const hi = S.stage.mobs.findIndex((x) => x.sig === "bleedbite");
+    for (let i = 0; i < (m.count || 3) && hi >= 0; i++) { const a = rnd(0, 6.283); addMob(hi, clamp(S.you.x + Math.cos(a) * 650, 40, WORLD.x - 40), clamp(S.you.z + Math.sin(a) * 650, 40, WORLD.z - 40), "grunt"); }
+  },
+  bloodlust(f) { toast("BLOODLUST!"); flash("rgba(220,30,20,", 0.3); burst(f.x, f.z, { n: 20, kind: "dot", color: "#ff3a2a", sp: 260, up: 300, T: 0.7, size: 10, y: 80 }); f.sp *= 1.5; f.dps *= 1.3; f.cut = tinted(f.cut, "blood"); f.castT = 0.8; },
+  polymorph(f) { tele({ shape: "circle", x: S.you.x, z: S.you.z, r: 85, T: 1.1, sheep: 3, label: "POLYMORPH!" }); f.castT = 0.8; },
+  enrage(f) { toast("HEROD IS FRENZIED!"); flash("rgba(220,30,20,", 0.3); burst(f.x, f.z, { n: 20, kind: "dot", color: "#ff3a2a", sp: 260, up: 300, T: 0.7, size: 10, y: 80 }); f.sp *= 1.35; f.dps *= 1.25; f.cut = tinted(f.cut, "blood"); },
+  hammer(f) { tele({ shape: "circle", x: S.you.x, z: S.you.z, r: 80, T: 0.8, dmg: 10, stun: 1.4, label: "HAMMER OF JUSTICE!" }); f.castT = 0.5; },
+  crusader(f) {
+    if (Math.sqrt(dist2(f, S.you)) > 300) { f.moveT.crusader = 1; return; }  // (only up close)
+    tele({ shape: "cone", x: f.x, z: f.z, a: Math.atan2(S.you.z - f.z, S.you.x - f.x), len: 240, half: 0.55, T: 0.6, dmg: 22, label: "CRUSADER STRIKE!", follow: f }); f.castT = 0.6;
+  },
+  divineshield(f) { toast("DIVINE SHIELD!"); flash("rgba(255,226,122,", 0.3); f.shieldT = 6; },
+  layonhands(f) { toast("LAY ON HANDS!"); for (let i = 0; i < 40; i++) fx({ kind: i % 3 ? "dot" : "glyph", text: "✚", x: f.x + rnd(-50, 50), z: f.z + rnd(-20, 20), y: rnd(0, 80), vy: rnd(150, 320), g: 0, t: rnd(0.8, 1.4), color: "#7dff8a", size: i % 3 ? 7 : 6, wait: rnd(0, 0.6) }); f.castT = 1.2; const amt = Math.round(f.max * 0.5 - f.hp); if (amt > 0) { f.hp += amt; S.floats.push({ x: f.x, z: f.z, y: OGRE_H * f.size + 30, t: 1.2, text: "+" + amt, color: "#6dff8f" }); } },
+  smite(f) { f.castT = 0.3; eshot(f, { kind: "orb", color: "#ffe27a", sp: 380, dmg: 8, life: 4 }); },
+  resurrect(f, m) {
+    const b = S.bosses.find((x) => x.name === m.who && x.state === "dead");
+    if (!b) return;
+    toast("ARISE, MY CHAMPION!"); b.revived = true; f.castT = 1.5; flash("rgba(255,240,180,", 0.4);
+    for (let i = 0; i < 30; i++) fx({ kind: "dot", x: f.x + 120 + rnd(-40, 40), z: f.z + rnd(-20, 20), y: rnd(0, 40), vy: rnd(200, 420), g: 0, t: rnd(0.8, 1.3), color: "#fff2b0", size: 8, wait: rnd(0, 0.5) });
+    const hp = bossHp(b) / 2;
+    S.foes.push({ born: S.t, x: f.x + 120, z: f.z, hp: hp * 0.6, max: hp, tier: "boss", boss: b, kind: "boss", look: b.look, cut: b.cut, size: bossSize(b), sp: 75, dps: 22, flip: 1, kx: 0, kz: 0, flash: 1, wob: 0, moveT: { "layonhands0.15": 1, "divineshield0.5": 1 } });
+    b.state = "fight";
+  },
+};
+// The pillar: a stone column drawn in code, in the stage floor's colour, with a white paper edge.
+function pillarCut(rgb) {
+  const w = 110, h = 400, c = mk(w + 12, h + 12), g = c.getContext("2d"), col = (m) => rgb ? `rgb(${rgb.map((v) => Math.min(255, v * m) | 0)})` : `rgb(${150 * m | 0},${140 * m | 0},${125 * m | 0})`;
+  const shape = (pad) => { g.beginPath(); g.rect(6 - pad, 6 - pad, w + 2 * pad, 34 + 2 * pad); g.rect(16 - pad, 40 - pad, w - 20 + 2 * pad, h - 80 + 2 * pad); g.rect(6 - pad, h - 40 - pad, w + 2 * pad, 40 + 2 * pad); };
+  g.fillStyle = "#fbf6ea"; shape(4); g.fill();          // the paper edge
+  g.fillStyle = col(1.25); shape(0); g.fill();           // the stone
+  g.fillStyle = col(1.0); for (let i = 0; i < 5; i++) g.fillRect(26 + i * 17, 46, 6, h - 92);  // fluting
+  g.fillStyle = col(0.8); g.fillRect(6, 34, w, 6); g.fillRect(6, h - 40, w, 6);
+  g.strokeStyle = "rgba(60,40,20,.6)"; g.lineWidth = 2; shape(0); g.stroke();
+  return { canvas: c, aspect: c.width / c.height };
+}
+// ---------------------------------------------------------------------------------------------------------------------
+// A room's props (stage.rooms[].props): billboards standing on the floor like the ogres - painted ones where we have
+// them (tools/gen-arcade-props.js: the Graveyard's gravestones), else drawn in code with a white paper edge. Each stands
+// on a chain of blocking circles (S.pillars: they block you, foes and shots, and cast the "hide" shadows).
+function paperEdge(src, edge = 4) {
+  const w = src.width + edge * 2 + 4, h = src.height + edge * 2 + 4, out = mk(w, h), og = out.getContext("2d");
+  const ring = (r, color) => { const c = mk(w, h), g = c.getContext("2d"); for (let a = 0; a < 16; a++) g.drawImage(src, edge + 2 + Math.cos(a / 16 * 6.283) * r, edge + 2 + Math.sin(a / 16 * 6.283) * r); g.globalCompositeOperation = "source-in"; g.fillStyle = color; g.fillRect(0, 0, w, h); return c; };
+  og.drawImage(ring(edge + 1.5, "rgba(70,45,20,.6)"), 0, 0); og.drawImage(ring(edge, "#fbf6ea"), 0, 0); og.drawImage(src, edge + 2, edge + 2);
+  return { canvas: out, aspect: w / h };
+}
+function loadPropImg(name, crayon) {  // a prop picture, kept at most 360 tall (its own shape, not a square)
+  return new Promise((ok) => { const i = new Image(); i.onload = () => { const k = Math.min(1, 360 / i.height), c = mk(Math.round(i.width * k), Math.round(i.height * k)); c.getContext("2d").drawImage(i, 0, 0, c.width, c.height); ok(paperEdge(c)); }; i.onerror = () => ok(null); i.src = `/prop/${crayon ? "crayon/" : ""}${name}.png`; });
+}
+// a painted prop and its crayon twin (user: the props drawn like the crayon ogres; painted when you're painted - C)
+async function propPair(name) { const [p, c] = await Promise.all([loadPropImg(name), loadPropImg(name, true)]); return p ? { cut: p, cutC: c || p } : null; }
+async function loadProps() {
+  if (!S.stage.rooms) return {};
+  const named = {};
+  await Promise.all(PROPS.filter((n) => /^sm/.test(n)).map(async (n) => { named[n] = await propPair(n); }));
+  const graves = PROPS.filter((n) => /^smgy_graves_/.test(n)).sort().map((n) => named[n]).filter(Boolean);
+  const dp = (k) => { const c = drawnProp(k); return { cut: c, cutC: c }; };
+  return { named, graves: graves.length ? graves : [dp("grave")], shelf: dp("shelf"), rack: dp("rack"), pew: dp("pew"), altar: dp("altar"), dummy: dp("dummy") };
+}
+// the room's floor picture (tools/make-arcade-floors.js), laid on the floor in strips
+function loadFloor(name) { return name ? new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = `/floor/${name}.png`; }) : Promise.resolve(null); }
+// The stand-ins drawn in code, until they're painted.
+function drawnProp(kind) {
+  const W = { grave: 120, shelf: 460, rack: 300, pew: 520, altar: 300, dummy: 110 }[kind], H = { grave: 160, shelf: 210, rack: 190, pew: 80, altar: 170, dummy: 190 }[kind];
+  const c = mk(W, H), g = c.getContext("2d"), wood = "#6b4426", dark = "#3e2614";
+  if (kind === "grave") { g.fillStyle = "#8d8f96"; g.beginPath(); g.moveTo(10, H); g.lineTo(10, 50); g.arc(W / 2, 50, W / 2 - 10, Math.PI, 0); g.lineTo(W - 10, H); g.fill(); g.fillStyle = "#6f7178"; g.fillRect(W / 2 - 6, 40, 12, 60); g.fillRect(W / 2 - 22, 56, 44, 12); }
+  if (kind === "shelf") {  // a bookcase full of coloured spines
+    g.fillStyle = dark; g.fillRect(0, 0, W, H); g.fillStyle = wood; g.fillRect(8, 8, W - 16, H - 16);
+    const cols = ["#8b1e1e", "#2d4f7c", "#b8862b", "#3e6b35", "#5b2d6e", "#a0522d", "#d8c9a3"];
+    for (let r = 0; r < 4; r++) { const y0 = 12 + r * 48; g.fillStyle = dark; g.fillRect(8, y0 + 42, W - 16, 6); for (let x = 12; x < W - 18;) { const bw = 8 + Math.random() * 10, bh = 26 + Math.random() * 14; g.fillStyle = pick(cols); g.fillRect(x, y0 + 42 - bh, bw, bh); x += bw + 1 + (Math.random() < 0.08 ? 14 : 0); } }
+  }
+  if (kind === "rack") {  // a weapon rack: swords, axes and spears standing in it
+    g.fillStyle = wood; g.fillRect(0, H - 30, W, 22); g.fillRect(0, 40, W, 14); g.fillRect(6, 30, 14, H - 30); g.fillRect(W - 20, 30, 14, H - 30);
+    for (let x = 34; x < W - 30; x += 38) { g.fillStyle = "#c9ccd6"; g.fillRect(x, 8, 7, H - 44); g.fillStyle = "#8b1e1e"; g.fillRect(x - 6, 52, 19, 6); if ((x / 38 | 0) % 3 === 1) { g.fillStyle = "#aeb2bc"; g.beginPath(); g.moveTo(x + 7, 12); g.quadraticCurveTo(x + 34, 22, x + 7, 52); g.fill(); } }
+  }
+  if (kind === "pew") { g.fillStyle = dark; g.fillRect(0, 0, W, H - 26); g.fillStyle = wood; g.fillRect(4, 4, W - 8, H - 34); g.fillRect(0, H - 34, W, 12); g.fillStyle = dark; g.fillRect(10, H - 22, 16, 22); g.fillRect(W - 26, H - 22, 16, 22); g.fillRect(W / 2 - 8, H - 22, 16, 22); }
+  if (kind === "altar") { g.fillStyle = "#d8cfbf"; g.fillRect(20, 60, W - 40, H - 60); g.fillStyle = "#8b1e1e"; g.fillRect(40, 60, W - 80, H - 90); g.fillStyle = "#e8c45a"; g.fillRect(W / 2 - 5, 0, 10, 60); g.fillRect(W / 2 - 22, 14, 44, 9); for (const x of [36, W - 44]) { g.fillStyle = "#f2ead8"; g.fillRect(x, 24, 10, 36); g.fillStyle = "#ffcf5a"; g.beginPath(); g.ellipse(x + 5, 18, 5, 9, 0, 0, 6.283); g.fill(); } }
+  if (kind === "dummy") { g.fillStyle = wood; g.fillRect(W / 2 - 6, 60, 12, H - 60); g.fillRect(10, 80, W - 20, 10); g.fillStyle = "#c8a86b"; g.beginPath(); g.ellipse(W / 2, 100, 30, 44, 0, 0, 6.283); g.fill(); g.beginPath(); g.arc(W / 2, 36, 26, 0, 6.283); g.fill(); g.fillStyle = "#8b1e1e"; g.beginPath(); g.arc(W / 2, 100, 14, 0, 6.283); g.fill(); }
+  return paperEdge(c);
+}
+// Lays out the room: S.props (drawn) and S.pillars (the blocking circles).
+function layProps(room) {
+  const P2 = S.propCuts, props = [], pillars = [], W = WORLD.x, Z = WORLD.z;
+  // a wide prop (a shelf, a pew) blocks along its width: a row of circles
+  const put = (x, z, pair, h, r, wide, extra) => {
+    if (!pair) return;
+    const cut = pair.cut || pair, w = wide ? h * cut.aspect : 0;
+    const q = { x, z, cut, cutC: pair.cutC || cut, h, r, chain: [], ...extra }; props.push(q);
+    if (wide) for (let px = x - w / 2 + r; px <= x + w / 2 - r + 1; px += r * 1.4) { pillars.push({ x: px, z, r }); q.chain.push(px); }
+    else pillars.push({ x, z, r });
+  };
+  const clear = (x, z, d) => !pillars.some((q) => Math.hypot(q.x - x, q.z - z) < d) && !(Math.abs(x - W / 2) < 340 && z < 700);  // (the start stays open)
+  const L = room.layout, N = P2.named || {}, at = ([x, z]) => [W * x, Z * z];
+  if (L && room.props === "graves") {  // the Forlorn Cloister, as the real one (layout: arcade-stages.json)
+    for (const [x, z, g] of L.graves) { const pr = P2.graves[g % P2.graves.length]; put(W * x, Z * z, pr, (pr.cut.aspect < 0.6 ? 175 : 150) + (g % 3) * 10, 30); }
+    L.trees.forEach(([x, z], i) => { const big = i === L.trees.length - 1; put(W * x, Z * z, N[big ? "smgy_trees_4" : `smgy_trees_${1 + (i % 3)}`], big ? 560 : 400 + (i % 3) * 30, big ? 70 : 34); });
+    for (const p of L.fences) put(...at(p), N.smgy_yard_1, 120, 26, true);
+    for (const p of L.pyres) put(...at(p), N.smgy_yard_2, 120, 36, true, { pyre: true });
+    put(...at(L.stocks), N.smgy_yard_3, 160, 30, true);
+    put(...at(L.rack), N.smgy_yard_4, 130, 32, true);
+    put(...at(L.tomb), N.smgy_tomb_1, 620, 60, true);
+  } else if (L && room.props === "shelves") {  // the Library wing, as the real one: the Huntsman's Cloister, the Gallery, the Athenaeum
+    put(...at(L.tree), N.smgy_trees_4, 330, 46);
+    for (const p of L.kennels) put(...at(p), N.smlib_shelves_4, 120, 34, true);
+    for (const p of L.arcade) put(...at(p), { cut: S.pillarCut, cutC: S.pillarCut }, 240, 36);  // (the cloister's arcade columns)
+    for (const p of L.candelabras) put(...at(p), N.smlib_hall_1, 230, 18, false, { candle: true });
+    for (const p of L.lecterns) put(...at(p), N.smlib_hall_2, 140, 28);
+    for (const p of L.easels) put(...at(p), N.smlib_hall_3, 190, 30);
+    for (const p of L.armour) put(...at(p), N.smlib_hall_4, 200, 30);
+    L.shelves.forEach((p, i) => put(...at(p), i < 6 ? N.smlib_shelves_1 : N.smlib_shelves_2, i < 6 ? 250 : 170, 34, true));
+    for (const p of L.books) put(...at(p), N.smlib_shelves_3, 110, 26);
+  } else if (room.props === "graves") {  // gravestones scattered across the churchyard, in loose rows
+    for (let row = 0; row < 6; row++) for (let k = 0; k < 6; k++) {
+      const x = W * (0.08 + 0.84 * (k + rnd(0.15, 0.85)) / 6), z = Z * (0.2 + 0.12 * row) + rnd(-50, 50);
+      if (Math.random() < 0.35 || !clear(x, z, 240)) continue;
+      const cut = pick(P2.graves);
+      put(x, z, cut, rnd(140, 185) * (cut.aspect < 0.6 ? 1.15 : 1), 34);
+    }
+  }
+  if (!L && room.props === "shelves") {  // rows of bookshelves with gaps between them: corridors
+    for (const [i, zf] of [0.32, 0.5, 0.68].entries()) for (let k = 0; k < 4; k++) {
+      const x = W * ((k + 0.5 + (i % 2 ? 0.5 : 0)) / 4.5);
+      if (x > W - 300 || (i === 0 && Math.abs(x - W / 2) < 500)) continue;
+      put(x, Z * zf, P2.shelf, 230, 34, true);
+    }
+  }
+  if (!L && room.props === "racks") {  // weapon racks down both sides, training dummies, Herod's dais at the back
+    for (let z = Z * 0.18; z < Z * 0.62; z += 380) { put(W * 0.07, z, P2.rack, 190, 36, true); put(W * 0.93, z, P2.rack, 190, 36, true); }
+    for (const [x, z] of [[0.3, 0.38], [0.7, 0.38], [0.5, 0.5]]) put(W * x, Z * z, P2.dummy, 170, 30);
+  }
+  if (!L && room.props === "pews") {  // pews either side of the aisle, the altar at the back
+    for (let r = 0; r < 4; r++) { const z = Z * (0.3 + 0.13 * r); put(W * 0.28, z, P2.pew, 105, 30, true); put(W * 0.72, z, P2.pew, 105, 30, true); }
+    put(W / 2, Z - 150, P2.altar, 200, 60, true);
+  }
+  S.props = props; S.pillars = pillars;
+  if (room.dais) {  // a raised dais at the back, up a flight of stairs in the middle (the only way up or down)
+    const x0 = W * 0.3, x1 = W * 0.7, z0 = Z - 640;
+    S.dais = { x0, x1, z0, z1: Z, h: 80, sx0: W * 0.44, sx1: W * 0.56, sz0: z0 - 180 };
+  }
+}
+// A room's OUTLINE (layout.walk): the places you can stand - rects [x0, z0, x1, z1] and circles [cx, cz, r (of the
+// width)] in fractions of the room - grouped into ZONES in order (layout.zones: shape indices) with a DOOR between
+// each pair (layout.doors). Outside them is wall: nobody walks there, enemy shots break on it. Foes in another zone than
+// you head for the door first. (WoW: the same few shapes in Lua.)
+function compileWalk(L) {
+  if (!L || !L.walk) { S.walk = null; return; }
+  const W = WORLD.x, Z = WORLD.z;
+  S.walk = L.walk.map((sh) => sh.length === 4 ? { r: [W * sh[0], Z * sh[1], W * sh[2], Z * sh[3]] } : { c: [W * sh[0], Z * sh[1], W * sh[2]] });
+  S.zones = L.zones || [L.walk.map((_, i) => i)];
+  S.doors = (L.doors || []).map(([x, z]) => ({ x: W * x, z: Z * z }));
+}
+const inShapeW = (sh, x, z) => sh.r ? x >= sh.r[0] && x <= sh.r[2] && z >= sh.r[1] && z <= sh.r[3] : Math.hypot(x - sh.c[0], z - sh.c[1]) <= sh.c[2];
+function walkable(x, z) { return !S.walk || S.walk.some((sh) => inShapeW(sh, x, z)); }
+function zoneOf(o) { if (!S.walk) return 0; for (let i = 0; i < S.zones.length; i++) if (S.zones[i].some((k) => inShapeW(S.walk[k], o.x, o.z))) return i; return -1; }
+function nearestWalk(o) {  // the closest point inside the outline (something knocked or blinked out of it)
+  let best = null, bd = 1e18;
+  for (const sh of S.walk || []) {
+    let x, z;
+    if (sh.r) { x = clamp(o.x, sh.r[0] + 25, sh.r[2] - 25); z = clamp(o.z, sh.r[1] + 25, sh.r[3] - 25); }
+    else { const dx = o.x - sh.c[0], dz = o.z - sh.c[1], d = Math.hypot(dx, dz) || 1, k = Math.min(1, (sh.c[2] - 25) / d); x = sh.c[0] + dx * k; z = sh.c[1] + dz * k; }
+    const dd = (x - o.x) ** 2 + (z - o.z) ** 2; if (dd < bd) { bd = dd; best = { x, z }; }
+  }
+  if (best) { o.x = best.x; o.z = best.z; }
+}
+// a spot to spawn: at a distance from you, inside the outline (tries a few directions, else anywhere in your zone)
+function spawnSpot(x, z) {
+  if (walkable(x, z)) return { x, z };
+  const you = S.you;
+  for (let i = 0; i < 14; i++) { const a = rnd(0, 6.283), R = rnd(600, 1100), p = { x: you.x + Math.cos(a) * R, z: you.z + Math.sin(a) * R }; if (walkable(p.x, p.z)) return p; }
+  const zi = Math.max(0, zoneOf(you)), sh = S.walk[pick(S.zones[zi])];
+  return sh.r ? { x: rnd(sh.r[0] + 40, sh.r[2] - 40), z: rnd(sh.r[1] + 40, sh.r[3] - 40) } : { x: sh.c[0] + rnd(-0.6, 0.6) * sh.c[2], z: sh.c[1] + rnd(-0.6, 0.6) * sh.c[2] };
+}
+// a foe in another zone heads for the door between, a little way through it
+function walkSteer(f) {
+  if (!S.walk || S.zones.length < 2) return null;
+  const zf = zoneOf(f), zy = zoneOf(S.you); if (zf < 0 || zy < 0 || zf === zy) return null;
+  const d = zf < zy ? S.doors[zf] : S.doors[zf - 1]; if (!d) return null;
+  const tz = d.z + (zf < zy ? 140 : -140);
+  return { x: d.x - f.x, z: tz - f.z };
+}
+// The dais: how high the floor is here; stairs ramp up; its edges are walls (a step of more than a stair's height).
+function heightAt(x, z) {
+  const d = S.dais; if (!d) return 0;
+  if (x >= d.x0 && x <= d.x1 && z >= d.z0) return d.h;
+  if (x >= d.sx0 && x <= d.sx1 && z >= d.sz0 && z < d.z0) return d.h * (z - d.sz0) / (d.z0 - d.sz0);
+  return 0;
+}
+const onStairs = (o) => S.dais && o.x >= S.dais.sx0 && o.x <= S.dais.sx1 && o.z >= S.dais.sz0 - 40 && o.z < S.dais.z0 + 40;
+const upTop = (o) => heightAt(o.x, o.z) > (S.dais ? S.dais.h * 0.5 : 1e9);
+function daisBlock(o, ox, oz) {  // moved from (ox, oz): no climbing a ledge (slide along it if you can); no walking through walls
+  if (S.walk && !walkable(o.x, o.z)) {
+    if (!walkable(ox, oz)) nearestWalk(o);
+    else if (walkable(o.x, oz)) o.z = oz; else if (walkable(ox, o.z)) o.x = ox; else { o.x = ox; o.z = oz; }
+  }
+  if (!S.dais) return;
+  const h0 = heightAt(ox, oz), ok = (x, z) => Math.abs(heightAt(x, z) - h0) < 30;
+  if (ok(o.x, o.z)) return;
+  if (ok(o.x, oz)) o.z = oz; else if (ok(ox, o.z)) o.x = ox; else { o.x = ox; o.z = oz; }
+}
+// a foe on the other level than you heads for the stairs first
+function daisSteer(f) {
+  const d = S.dais; if (!d || onStairs(f) || upTop(f) === upTop(S.you)) return null;
+  const sx = (d.sx0 + d.sx1) / 2;
+  return upTop(f) ? { x: sx - f.x, z: d.z0 + 20 - f.z } : { x: sx - f.x, z: d.sz0 - 30 - f.z };
+}
+function drawDais() {
+  const d = S.dais; if (!d) return;
+  const fl = S.floorRGB, quad = (pts, fill, stroke) => { const p = pts.map(([x, y, z]) => proj(x, y, z)); if (p.some((q) => !q)) return; ctx.beginPath(); p.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); } };
+  const top = rgb(fl, 1.3), face = rgb(fl, 0.8), side = rgb(fl, 0.65), edge = "#fbf6ea", carpet = "rgb(140,28,30)";
+  if (S.cam.x < d.x0) quad([[d.x0, 0, d.z0], [d.x0, d.h, d.z0], [d.x0, d.h, d.z1], [d.x0, 0, d.z1]], side);
+  if (S.cam.x > d.x1) quad([[d.x1, 0, d.z0], [d.x1, d.h, d.z0], [d.x1, d.h, d.z1], [d.x1, 0, d.z1]], side);
+  quad([[d.x0, d.h, d.z0], [d.x1, d.h, d.z0], [d.x1, d.h, d.z1], [d.x0, d.h, d.z1]], top, edge);
+  quad([[(d.sx0 + d.sx1) / 2 - 90, d.h, d.z0], [(d.sx0 + d.sx1) / 2 + 90, d.h, d.z0], [(d.sx0 + d.sx1) / 2 + 90, d.h, d.z1 - 120], [(d.sx0 + d.sx1) / 2 - 90, d.h, d.z1 - 120]], carpet);  // (the red carpet up to the back)
+  quad([[d.x0, 0, d.z0], [d.sx0, 0, d.z0], [d.sx0, d.h, d.z0], [d.x0, d.h, d.z0]], face, edge);
+  quad([[d.sx1, 0, d.z0], [d.x1, 0, d.z0], [d.x1, d.h, d.z0], [d.sx1, d.h, d.z0]], face, edge);
+  const N = 6, dz = (d.z0 - d.sz0) / N;
+  for (const x of [d.sx0, d.sx1]) quad([[x, 0, d.sz0], [x, 0, d.z0], [x, d.h, d.z0]], side);  // (the stair's sides)
+  for (let i = N - 1; i >= 0; i--) {  // far step first
+    const z = d.sz0 + i * dz, y0 = d.h * i / N, y1 = d.h * (i + 1) / N;
+    quad([[d.sx0, y1, z], [d.sx1, y1, z], [d.sx1, y1, z + dz], [d.sx0, y1, z + dz]], top, edge);
+    quad([[d.sx0, y0, z], [d.sx1, y0, z], [d.sx1, y1, z], [d.sx0, y1, z]], face, edge);
+    quad([[(d.sx0 + d.sx1) / 2 - 90, y1 + 0.5, z], [(d.sx0 + d.sx1) / 2 + 90, y1 + 0.5, z], [(d.sx0 + d.sx1) / 2 + 90, y1 + 0.5, z + dz], [(d.sx0 + d.sx1) / 2 - 90, y1 + 0.5, z + dz]], carpet);
+  }
+}
+// whether a pillar stands between a blast's source and a point (the point in its shadow)
+function shadowed(src, p) {
+  const sx = p.x - src.x, sz = p.z - src.z, L = Math.hypot(sx, sz) || 1;
+  return (S.pillars || []).some((q) => {
+    const t = ((q.x - src.x) * sx + (q.z - src.z) * sz) / (L * L);
+    if (t <= 0 || t >= 1) return false;
+    return Math.hypot(src.x + sx * t - q.x, src.z + sz * t - q.z) < q.r;
+  });
+}
+function pushOutOfPillars(o, extra) {
+  for (const q of S.pillars || []) { const dx = o.x - q.x, dz = o.z - q.z, d = Math.hypot(dx, dz), R = q.r + extra; if (d < R && d > 0) { o.x = q.x + dx / d * R; o.z = q.z + dz / d * R; } }
+}
+function addFoe(cut, look, x, z, tier) {
+  const hp = tier === "brute" ? 60 + S.t / 3 : 14 + S.t / 10;
+  S.foes.push({ born: S.t, x, z, hp, max: hp, tier, kind: "add", look, cut, size: tier === "brute" ? 1.1 : 0.9, sp: 90, dps: tier === "brute" ? 10 : 5, flip: 1, kx: 0, kz: 0, flash: 0, wob: rnd(0, 6) });
+}
+// Runs a boss's moves; returns how fast it may move now (0 while casting, more in a whirlwind or a charge).
+function bossAI(f, dt) {
+  const b = f.boss;
+  f.castT = Math.max(0, (f.castT || 0) - dt); f.shieldT = Math.max(0, (f.shieldT || 0) - dt);
+  f.moveT = f.moveT || {};
+  // health thresholds (Smite's chest, VanCleef's Blackguards, Whitemane's resurrection)
+  for (const m of b.moves || []) for (const at of m.at || []) {
+    const k = m.move + at;
+    if (!f.moveT[k] && f.hp / f.max <= at && MOVES[m.move]) { f.moveT[k] = 1; MOVES[m.move](f, m); flash("rgba(255,255,255,", 0.18); shake(12, 0.3); }  // (a phase turn)
+  }
+  // going somewhere: Smite to his chest (then kneels, can't be hurt, comes back faster); a charge to its end
+  if (f.goTo) {
+    if (Math.hypot(f.goTo.x - f.x, f.goTo.z - f.z) < 40) {
+      if (f.swapping) { f.swapping = false; f.shieldT = 2; f.castT = 2; f.sp *= 1.3; f.dps += 5; toast("NEW WEAPONS!"); }
+      f.goTo = null; f.charging = false;
+    } else return f.charging ? 7 : 2.2;
+  }
+  if (f.chargeAt && f.castT <= 0) { f.goTo = f.chargeAt; f.chargeAt = null; f.charging = true; shake(8, 0.2); return 7; }
+  if (f.charging || f.wwT > 0) {  // (afterimages and dust behind him)
+    f.trailT = (f.trailT || 0) - dt;
+    if (f.trailT <= 0) { f.trailT = 0.05; (f.trail = f.trail || []).unshift({ x: f.x, z: f.z }); f.trail.length = Math.min(f.trail.length, 4); burst(f.x, f.z, { n: 2, kind: "dot", color: "rgba(200,180,140,1)", sp: 60, up: 80, g: 100, T: 0.5, size: 10, y: 10 }); }
+  } else f.trail = null;
+  if (f.wwT > 0 && f.castT <= 0) {  // Whirlwind: spinning after you, a damage ring round him
+    f.wwT -= dt;
+    if (Math.hypot(S.you.x - f.x, S.you.z - f.z) < 130 * f.size / 1.8) { S.you.hp -= 30 * dt; S.you.hitT = 0.2; }
+    return 1.55;
+  }
+  if (f.castT > 0) { windUp(f); return 0; }
+  // the moves on their timers (Onyxia's phase-3 ones only in her third turn); a boss without moves: a nova now and then
+  const moves = (b.moves && b.moves.length ? b.moves : [{ move: "nova", every: 9 }]).filter((m) => m.every && (!m.phase || m.phase === b.i + 1));
+  for (const m of moves) {
+    f.moveT[m.move] = (f.moveT[m.move] ?? m.every * 0.6) - dt;
+    if (f.moveT[m.move] <= 0 && MOVES[m.move]) {
+      f.moveT[m.move] = m.every; MOVES[m.move](f, m);
+      if (CALL[m.move] && f.moveT[m.move] === m.every) { f.school = CALL[m.move][1]; callout(CALL[m.move][0], SCHOOL[CALL[m.move][1]]); }
+      return 0;
+    }
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The loop
+let last = performance.now();
+function step(now) {
+  requestAnimationFrame(step);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  try {
+    if (S && !S.paused && !S.picking && !S.over && S.foeLooks) {
+      if (inCine() && !FF) { S.t += dt; updateBosses(dt); }  // (the wake-up shot: the world holds still)
+      else if (S.hitstop > 0 && !FF) S.hitstop -= dt;  // (hit-stop: a heavy blow freezes the world a moment)
+      else { update(dt * (S.slowmo > 0 && !FF ? 0.3 : 1)); S.slowmo = (S.slowmo || 0) - dt; }  // (slow-mo: a boss going down)
+      // (?ff=<seconds>: a test switch - races the run forward to that time, the bot picking)
+      while (FF && S.t < FF && !S.picking && !S.over) update(1 / 30);
+    }
+    if (S) draw(dt);
+  } catch (err) { oops(err); }
+}
+// (an error is shown in the corner, once each, instead of freezing the game)
+const seenErr = new Set();
+function oops(err) {
+  const msg = (err && err.stack || String(err)).split(/\n/).slice(0, 2).join(" ");
+  if (seenErr.has(msg)) return;
+  seenErr.add(msg); console.error(err);
+  const box = $("errs"); box.style.display = "block"; box.textContent += msg + " | ";
+}
+addEventListener("error", (e) => oops(e.error || e.message));
+addEventListener("unhandledrejection", (e) => oops(e.reason));
+function update(dt) {
+  S.t += dt;
+  const st = S.st = stats(), you = S.you;
+  you.maxHp = 100 + 10 * (st.belly || 0) + (S.bonusHp || 0);
+  you.hp = Math.min(you.maxHp, you.hp + 0.2 * (st.snooze || 0) * dt);
+  // moving
+  let mx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0), mz = (keys.ArrowUp || keys.w ? 1 : 0) - (keys.ArrowDown || keys.s ? 1 : 0);
+  // what the bosses do to you: stunned or asleep you can't move (asleep: mash keys to wake up), feared you run wild
+  for (const k of ["stunT", "sleepT", "fearT", "curseT", "silenceT", "diseaseT", "rootT", "slowT", "pinchT", "sheepT", "bashCd"]) you[k] = Math.max(0, (you[k] || 0) - dt);
+  // burning, bleeding, Shadow Word: Pain - damage over time on you
+  you.dots = (you.dots || []).filter((d) => (d.t -= dt) > 0);
+  for (const d of you.dots) { you.hp -= d.dps * dt; dmgLog("dot", d.dps * dt); you.hitT = Math.max(you.hitT, 0.05); }
+  { const wb = wallBoss();  // (the test bot walks on toward a boss whose cut waits for you in his area)
+    if (AUTO && wb && wb.state === "wall" && wb.wakeZone != null && !wb.reached) { const d = S.doors[Math.max(0, zoneOf(you))]; if (d) { mx = Math.sign(Math.round((d.x - you.x) / 40)); mz = 1; } } }
+  if (AUTO && S.hole && S.hole.open) {  // (the test bot heads for the doorway; with ?debug it's put there)
+    mx = Math.sign(Math.round((S.hole.x - you.x) / 40)); mz = 1;
+    if (location.search.includes("debug")) { you.x = S.hole.x; you.z = WORLD.z - 120; }
+  }
+  if (you.stunT > 0 || you.sleepT > 0 || you.rootT > 0) mx = mz = 0;  // (grabbed: stuck, but still fighting)
+  if (you.fearT > 0) { mx = you.fearDir.x; mz = you.fearDir.z; }
+  const m = Math.hypot(mx, mz);
+  you.moving = m > 0;
+  if (m) { mx /= m; mz /= m; you.aim = { x: mx, z: mz }; if (mx) you.face = mx > 0 ? 1 : -1; }
+  const sp = 240 * (1 + 0.04 * (st.stomp || 0)) * (you.curseT > 0 ? 0.5 : 1) * (you.slowT > 0 ? 0.6 : 1) * (you.sheepT > 0 ? 0.75 : 1);
+  // (on ice - a Frostwalker's trail - you slide: your speed only slowly follows the keys)
+  if (you.onIce) { const k = Math.min(1, dt * 1.6); you.vx = (you.vx || 0) + (mx * sp - (you.vx || 0)) * k; you.vz = (you.vz || 0) + (mz * sp - (you.vz || 0)) * k; }
+  else { you.vx = mx * sp; you.vz = mz * sp; }
+  const ox = you.x, oz = you.z;
+  you.x = clamp(you.x + you.vx * dt, 30, WORLD.x - 30); you.z = clamp(you.z + you.vz * dt, 30, WORLD.z - 30);
+  pushOutOfPillars(you, 22); daisBlock(you, ox, oz);
+  you.flip += (you.face - you.flip) * Math.min(1, dt * 14);
+  // the camera follows you, always at the same angle (user: the boss-fight camera changing angle felt weird - you seemed
+  // to run faster up and down)
+  S.cam.x += (you.x - S.cam.x) * Math.min(1, dt * 5); S.cam.z += (you.z - CAM_BACK - S.cam.z) * Math.min(1, dt * 5);
+  // attacks
+  if (!(you.sleepT > 0) && !(you.silenceT > 0) && !(you.sheepT > 0)) for (const l of LAYERS) fire(l, dt);  // (asleep, silenced or a sheep, he doesn't attack)
+  // the effects that tick
+  for (const l of Object.keys(S.smugT)) { S.smugT[l] -= dt; if (S.smugT[l] <= 0) S.smug[l] = 0; }
+  // regen set bonuses (Troll Regeneration): a share of max health a second, double below half
+  S.fluff = 1;
+  for (const s of activeSets()) for (const b of s.on) {
+    if (b.regen) you.hp = Math.min(you.maxHp, you.hp + you.maxHp * b.regen / 100 * (you.hp < you.maxHp / 2 ? 2 : 1) * dt);
+    if (b.fluff) S.fluff = b.fluff;  // (Shepherd: wool grows back faster)
+  }
+  // Counting Sheep: a sheep joins the flock every 10 kills (up to 5), a ring of its own, soft like the Floating Sheep
+  const flockWant = cs("flock") ? Math.min(5, Math.floor(S.kills / 10)) : 0, flock = S.shots.filter((s) => s.flock);
+  if (flock.length !== flockWant && S.sheepCut) {
+    flock.forEach((s) => (s.done = true));
+    for (let i = 0; i < flockWant; i++) S.shots.push({ type: "orbit", flock: true, soft: true, ang: i * 6.283 / flockWant, r: 85, life: 1e9, dmg: 0, cut: S.sheepCut, size: 36, x: you.x, z: you.z, y: 60, hitT: new Map() });
+    if (flockWant > flock.length) toast("A SHEEP JOINS THE FLOCK!");
+  }
+  if (cs("regen")) you.hp = Math.min(you.maxHp, you.hp + cs("regen") * dt);  // (the Regen cornerstone)
+  // foes
+  spawn(dt);
+  updateBosses(dt);
+  const hide = (st.hide || 0) + cs("armour"), still = 1;
+  for (const f of S.foes) {
+    if (f.dead) continue;
+    const slow = f.slowT > 0 ? 0.55 : 1;
+    let dx = you.x - f.x, dz = you.z - f.z; const d = Math.hypot(dx, dz) || 1;
+    if (f.confT > 0) { dx = -dx; dz = -dz; f.confT -= dt; }
+    // charmed (Hypnotize): goes for the nearest other foe instead, and leaves you alone
+    if (f.charmT > 0) {
+      f.charmT -= dt;
+      const o = nearest(f, 500, new Set([f]));
+      if (o) {
+        const ox = o.x - f.x, oz = o.z - f.z, od = Math.hypot(ox, oz) || 1;
+        f.x += ox / od * f.sp * 1.3 * dt; f.z += oz / od * f.sp * 1.3 * dt;
+        if (od < 50) { o.hp -= 25 * dt; o.flash = 0.5; if (o.hp <= 0) kill(o); }
+      }
+      f.flash = Math.max(0, f.flash - dt * 5);
+      continue;
+    }
+    // a boss's partner (Moira): chases you too (slower than you), but every few seconds stands still to heal him
+    // (glowing while she casts, then a green beam); outrun her to keep her alive
+    let go = 1;
+    if (f.partner) {
+      const him = S.foes.find((o) => o.boss === f.ofBoss && !o.dead), H = f.partner.heal;
+      if (f.castT > 0) {
+        go = 0;
+        if ((f.castT -= dt) <= 0 && him) {
+          const amt = Math.round(him.max * H.pct);
+          him.hp = Math.min(him.max, him.hp + amt);
+          S.decals.push({ type: "beam", a: { x: f.x, z: f.z, y: 90 }, b: him, t: 0.4, color: "#6dff8f" });
+          S.floats.push({ x: him.x, z: him.z, y: OGRE_H * him.size + 30, t: 0.9, text: "+" + amt, color: "#6dff8f" });
+        }
+      } else if (him && (f.healT -= dt) <= 0) { f.healT = H.every; f.castT = H.cast; go = 0; }
+    }
+    // a mob's signature (its own way to move and fight); mirror images fade; bone armor wears off
+    let side = 0;
+    f.boneT = (f.boneT || 0) - dt;
+    if (f.renewT > 0) { f.renewT -= dt; f.hp = Math.min(f.max, f.hp + f.max * 0.07 * dt); }  // (an Adept's Renew)
+    if (f.image && (f.lifeT -= dt) <= 0) { f.dead = true; continue; }
+    const sg = f.sig && SIG[f.sig];
+    if (sg && sg.move && !f.boss && !f.partner) {
+      const r = sg.move(f, dt, d, dx, dz);
+      if (f.dead) continue;
+      if (r) { if (r.go != null) go = r.go; if (r.side) side = r.side; if (r.dir) { dx = r.dir.x; dz = r.dir.z; } }
+    }
+    // a boss: its moves; it stands still while casting, goes where its move sends it (a charge, to its chest)
+    if (f.boss) { go = bossAI(f, dt); if (f.goTo) { dx = f.goTo.x - f.x; dz = f.goTo.z - f.z; } }
+    { const st2 = daisSteer(f) || (f.ghostly ? null : walkSteer(f)); if (st2 && !f.goTo) { dx = st2.x; dz = st2.z; } }
+    const fox = f.x, foz = f.z;
+    const dd = Math.hypot(dx, dz) || 1;
+    f.x += (dx / dd * f.sp * slow * go - dz / dd * f.sp * slow * side + f.kx) * dt; f.z += (dz / dd * f.sp * slow * go + dx / dd * f.sp * slow * side + f.kz) * dt;
+    f.kx *= Math.pow(0.02, dt); f.kz *= Math.pow(0.02, dt);
+    f.x = clamp(f.x, 10, WORLD.x - 10); f.z = clamp(f.z, 10, WORLD.z - 10);
+    if (!f.ghostly) pushOutOfPillars(f, 20 * f.size);
+    daisBlock(f, fox, foz);
+    if (Math.abs(dx) > 4) { const fc = dx > 0 ? 1 : -1; f.flip += (fc - f.flip) * Math.min(1, dt * 10); }
+    f.flash = Math.max(0, f.flash - dt * 5); f.crit = (f.crit || 0) - dt; f.slowT = (f.slowT || 0) - dt; f.doomT = (f.doomT || 0) - dt;
+    if (f.dot && f.dot.t > 0) { f.dot.t -= dt; f.hp -= f.dot.dps * dt; if (f.hp <= 0) kill(f); }
+    if (d < 55 * f.size) {
+      // a woolly sheep takes the hit: shorn ("poof"), the foe bounced off, the wool grows back in 4 s
+      const sheep = !f.padded && S.shots.find((s) => s.type === "orbit" && s.soft && !(s.shornT > 0));
+      if (sheep) {
+        sheep.shornT = 4 / (S.fluff || 1); f.padded = 0.6;
+        f.kx -= dx / d * 320; f.kz -= dz / d * 320;
+        S.floats.push({ x: sheep.x, z: sheep.z, y: 90, t: 0.7, text: "poof", color: "#fff" });
+        continue;
+      }
+      if (f.padded > 0) { f.padded -= dt; continue; }
+      const tdmg = Math.max(1, f.dps - hide) * still * dt * (f.boss ? 1 : warm());
+      you.hp -= tdmg; you.hitT = 0.2; dmgLog("touch:" + (f.boss ? "boss" : f.sig || f.kind), tdmg);
+      if (sg && sg.touch) sg.touch(f);
+      // Thorns: touching you hurts them back
+      if (cs("thorns")) { f.hp -= cs("thorns") * dt; f.flash = Math.max(f.flash, 0.4); if (f.hp <= 0) kill(f); }
+    }
+  }
+  updateEShots(dt);
+  // keep foes apart (a grid)
+  const grid = new Map(), C = 70;
+  for (const f of S.foes) { if (f.dead) continue; const k = (f.x / C | 0) + "," + (f.z / C | 0); (grid.get(k) || grid.set(k, []).get(k)).push(f); }
+  for (const f of S.foes) {
+    if (f.dead) continue;
+    const gx = f.x / C | 0, gz = f.z / C | 0;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const o of grid.get(gx + i + "," + (gz + j)) || []) {
+      if (o === f) continue; const dx = f.x - o.x, dz = f.z - o.z, d = Math.hypot(dx, dz), R = 40 * (f.size + o.size) / 2;
+      if (d > 0 && d < R) { const push = (R - d) * 0.5; f.x += dx / d * push; f.z += dz / d * push; }
+    }
+  }
+  // shots
+  for (const s of S.shots) {
+    if (s.type === "hat") {
+      s.spin += dt * 14;
+      if (!s.back) { s.x += s.vx * s.sp * dt; s.z += s.vz * s.sp * dt; s.gone += s.sp * dt; if (s.gone > s.out) s.back = true; }
+      else { const dx = you.x - s.x, dz = you.z - s.z, d = Math.hypot(dx, dz) || 1; s.x += dx / d * s.sp * 1.15 * dt; s.z += dz / d * s.sp * 1.15 * dt; if (d < 40) s.done = true; }
+      hitAlong(s, 45, 0.35);
+    } else if (s.type === "ball") {
+      s.x += s.vx * s.sp * dt; s.z += s.vz * s.sp * dt; s.life -= dt;
+      for (const f of S.foes) if (!f.dead && dist2(s, f) < 45 * 45 && !(s.last === f)) {
+        hit(f, s.dmg, s.src); s.last = f; s.bounces--;
+        const n2 = nearest(f, 400, new Set([f]));
+        if (n2 && s.bounces >= 0) { const dx = n2.x - s.x, dz = n2.z - s.z, d = Math.hypot(dx, dz) || 1; s.vx = dx / d; s.vz = dz / d; } else s.done = true;
+        break;
+      }
+      if (s.x < 0 || s.x > WORLD.x) s.vx *= -1; if (s.z < 0 || s.z > WORLD.z) s.vz *= -1;
+      if (s.life < 0) s.done = true;
+    } else if (s.type === "chuck") {
+      s.x += s.vx * s.sp * dt; s.z += s.vz * s.sp * dt; s.vy -= 1300 * dt; s.y += s.vy * dt; s.spin += dt * 10; s.life -= dt;
+      if (s.y < 60) hitAlong(s, s.hr || 50, 9); if (s.y < 0 || s.life < 0) s.done = true;
+    } else if (s.type === "orbit") {
+      s.ang += dt * 3.2 * (1 + 0.03 * (st.fury || 0)) * (s.flock ? -0.7 : 1); s.x = you.x + Math.cos(s.ang) * s.r; s.z = you.z + Math.sin(s.ang) * s.r; s.life -= dt;
+      if (s.soft) { s.shornT = (s.shornT || 0) - dt; for (const f of S.foes) if (!f.dead && dist2(s, f) < 45 * 45) { const dx = f.x - you.x, dz = f.z - you.z, d = Math.hypot(dx, dz) || 1; f.kx += dx / d * 40; f.kz += dz / d * 40; } }
+      else hitAlong(s, s.hr || 45, 0.5);
+      if (s.flock) continue;
+      s.cut = S.accCut;
+      if (s.life < 0 || !S.look.accessory || P[S.look.accessory].weapon !== "guard") s.done = true;
+    } else if (s.type === "pet") {
+      const f = nearest(s, 600) || you; const dx = f.x - s.x, dz = f.z - s.z, d = Math.hypot(dx, dz) || 1;
+      if (d > 30) { s.x += dx / d * s.sp * dt; s.z += dz / d * s.sp * dt; s.face = dx > 0 ? 1 : -1; }
+      s.cd -= dt; if (f !== you && d < 50 && s.cd <= 0) { hit(f, s.dmg, s.src); s.cd = 0.45; }
+      if (!S.look.accessory || P[S.look.accessory].weapon !== "buddy") s.done = true;
+      s.cut = S.accCut;
+    } else if (s.type === "swing") {
+      s.t += dt; const k = Math.min(1, s.t / s.T), ang = s.a0 + (s.a1 - s.a0) * k;
+      s.x = you.x + Math.cos(ang) * s.r; s.z = you.z + Math.sin(ang) * s.r; s.spin = ang + 1.2;
+      if (s.t > s.T + 0.06) s.done = true;
+    } else if (s.type === "slam") {
+      s.t += dt; const k = Math.max(0, 1 - s.t / s.T); s.y = 20 + 200 * k; s.spin = -0.8 * k;
+      if (s.t >= s.T && !s.landed) { s.landed = true; S.decals.push({ type: "ring", x: s.x, z: s.z, r: 0, R: s.R, t: 0.25, T: 0.25, hitSet: new Set(), dmg: s.dmg, src: { ...s.src, knock: 220 } }); }
+      if (s.t > s.T + 0.18) s.done = true;
+    } else if (s.type === "held") {
+      s.t -= dt; s.x = you.x + s.dir.x * 55; s.z = you.z + s.dir.z * 55 - 1; if (s.t <= 0) s.done = true;
+    } else if (s.type === "lob") {
+      s.x += s.vx * dt; s.z += s.vz * dt; s.vy -= 1300 * dt; s.y += s.vy * dt; s.spin += dt * s.spinRate; s.life -= dt;
+      if (s.y <= 0 || s.life < 0) { s.done = true; S.decals.push({ type: "puddle", x: s.x, z: s.z, r: s.r, t: 3 * (1 + cs("duration")), T: 3 * (1 + cs("duration")), dps: s.dps, src: s.src, color: "rgba(230,190,90,.4)" }); }
+    } else if (s.type === "trap") {  // Plonk: armed after a moment, goes off under the first foe: holds and hurts all round
+      s.armT -= dt; s.life -= dt; if (s.life < 0) s.done = true;
+      if (s.armT <= 0 && S.foes.some((f) => !f.dead && dist2(s, f) < 45 * 45)) {
+        s.done = true;
+        for (const f of S.foes) if (!f.dead && dist2(s, f) < s.R * s.R) f.slowT = 1.5;
+        S.decals.push({ type: "ring", x: s.x, z: s.z, r: 0, R: s.R, t: 0.25, T: 0.25, hitSet: new Set(), dmg: s.dmg, src: s.src });
+      }
+    } else if (s.type === "star") {  // Shooting Star: falls, then hits all round where it lands
+      s.y += s.vy * dt;
+      if (s.y <= 0) { s.done = true; S.decals.push({ type: "ring", x: s.x, z: s.z, r: 0, R: 170, t: 0.3, T: 0.3, hitSet: new Set(), dmg: s.dmg, src: { knock: 160 }, color: "star" }); }
+    } else {  // bolt, flick: straight
+      s.x += s.vx * s.sp * dt; s.z += s.vz * s.sp * dt; s.life -= dt;
+      if (s.spinRate) s.spin += dt * s.spinRate;
+      for (const f of S.foes) if (!f.dead && dist2(s, f) < 42 * 42 && !s.hitT.has(f)) { s.hitT.set(f, 1); hit(f, s.dmg, s.src); if (s.slow) f.slowT = 2; if (--s.pierce <= 0) { s.done = true; break; } }
+      if (s.life < 0) s.done = true;
+    }
+  }
+  S.shots = S.shots.filter((s) => !s.done);
+  // decals that hurt
+  you.onIce = false;
+  for (const d of S.decals) {
+    d.t -= dt;
+    // the mobs' floor: ice (you slide), mines (armed after a moment, go off under you), poison (grows, burns you)
+    if (d.type === "ice" && dist2(d, you) < d.r * d.r) you.onIce = true;
+    if (d.type === "mine") { d.arm -= dt; if (d.arm <= 0 && dist2(d, you) < 55 * 55) { d.t = 0; boom(d.x, d.z, 110, 18); } }
+    if (d.type === "poison") { d.r = Math.min(d.R, d.r + d.R * dt / 0.35); if (dist2(d, you) < d.r * d.r) { you.hp -= d.dps * dt; you.hitT = 0.2; } }
+    if (d.type === "holy" && dist2(d, you) < d.r * d.r) { you.hp -= d.dps * dt; you.hitT = 0.2; }  // (an Abbot's consecrated floor)
+    if (d.type === "ring") { d.r = d.R * (1 - d.t / d.T); for (const f of S.foes) if (!f.dead && !d.hitSet.has(f) && Math.sqrt(dist2(d, f)) < d.r) { d.hitSet.add(f); hit(f, d.dmg, d.src); } }
+    if (d.type === "puddle") { if (d.follow) { d.x = you.x; d.z = you.z; } for (const f of S.foes) if (!f.dead && dist2(d, f) < d.r * d.r) { if (d.slow) f.slowT = 0.3; f.hp -= d.dps * dt; if (f.hp <= 0) kill(f, d.src); } }
+    // a boss's fire on the floor: a warning ring first, then it burns YOU
+    if (d.type === "hazard" && d.T - d.t > d.warn && dist2(d, you) < d.r * d.r) { you.hp -= d.dps * dt; you.hitT = 0.2; }
+    // a boss's telegraph: follows its boss while it fills (a nova, the bubble), goes off when full
+    if (d.type === "tele") {
+      if (d.follow && !d.follow.dead) { d.x = d.follow.x; d.z = d.follow.z; }
+      if (d.t <= 0 && !d.fired) { d.fired = true; if (!(d.follow && d.follow.dead)) { impact(d); teleHits(d); } }
+    }
+  }
+  S.decals = S.decals.filter((d) => d.t > 0);
+  S.foes = S.foes.filter((f) => !f.dead);
+  // pickups
+  const reach = 70 * (1 + 0.1 * (st.sniff || 0)) * (1 + cs("pickup"));
+  for (const g of S.gems) {
+    const d = Math.sqrt(dist2(g, you));
+    if (d < reach * 2.2) { g.x += (you.x - g.x) / (d || 1) * 520 * dt; g.z += (you.z - g.z) / (d || 1) * 520 * dt; }
+    if (d < 35) { g.taken = true; S.xp += g.v * (1 + 0.05 * (st.smarts || 0) + cs("xp")); }
+  }
+  S.gems = S.gems.filter((g) => !g.taken);
+  // drops never open by themselves: stand by one and press E to look at it; they fade after 25 s
+  S.nearDrop = null;
+  for (const dr of S.drops) {
+    dr.life = (dr.life ?? 25) - dt; if (dr.life <= 0) dr.taken = true;
+    if (!dr.taken && Math.sqrt(dist2(dr, you)) < 80) S.nearDrop = dr;
+  }
+  S.drops = S.drops.filter((d) => !d.taken);
+  // (steeper than at first, which levelled almost nonstop late in a run: about 9 to level 2, 40 at 5, 115 at 10, 385 at 20)
+  if (S.xp >= S.need) { S.xp -= S.need; S.level++; S.need = Math.round(4 + 2.5 * S.level + 0.7 * S.level * S.level); offer(false); }  // (a little quicker early: 7 to level 2, 34 at 5, 99 at 10)
+  S.floats.forEach((f) => (f.t -= dt)); S.floats = S.floats.filter((f) => f.t > 0);
+  updateFx(dt);
+  for (const q of S.props || []) if (q.pyre && Math.random() < dt * 30) fx({ kind: "dot", x: q.x + rnd(-50, 50), z: q.z - 10, y: q.h * 0.75, vx: rnd(-15, 15), vy: rnd(80, 160), g: -60, t: rnd(0.5, 0.9), color: pick(["#ff8a3a", "#ffcf3a", "#ff5a2a"]), size: rnd(6, 11) });  // (the Scarlet's corpse pyres burning)
+  if (you.sleepT > 0 && Math.random() < dt * 3) fx({ kind: "glyph", text: "Z", x: you.x + rnd(-20, 20), z: you.z, y: OGRE_H, vx: rnd(-20, 20), vy: 60, t: 1.4, color: "#cfe0ff", size: 9 });
+  you.hitT -= dt; you.bump = Math.max(0, (you.bump || 0) - dt);
+  if (you.hp <= 0 && (S.dreamsUsed || 0) < cs("revival")) {  // Second Dream: he wakes up instead (1-3 times a run)
+    S.dreamsUsed = (S.dreamsUsed || 0) + 1; you.hp = you.maxHp * 0.5; toast("SECOND DREAM!");
+    for (const f of S.foes) { const dx = f.x - you.x, dz = f.z - you.z, d = Math.hypot(dx, dz) || 1; if (d < 400) { f.kx += dx / d * 500; f.kz += dz / d * 500; } }
+  }
+  // sick (a Diseased Ghoul's hit): no healing at all for a while - health can only go down
+  if (you.diseaseT > 0) { you.hp = Math.min(you.hp, you.sickHp ?? you.hp); you.sickHp = you.hp; } else you.sickHp = null;
+  if (location.search.includes("god")) you.hp = Math.max(you.hp, 1);  // (?god: a test switch, can't die)
+  if (you.hp <= 0) end(false);  // (the win: the end boss bonked, bossDown)
+}
+function hitAlong(s, r, again) {
+  for (const f of S.foes) if (!f.dead && dist2(s, f) < r * r) {
+    if (s.pierce != null && (s.hits || 0) >= s.pierce) return;  // (pierce: through this many foes, then done)
+    const t = s.hitT.get(f);
+    if (t && S.t - t < again) continue;
+    s.hitT.set(f, S.t); hit(f, s.dmg, s.src);
+    s.hits = (s.hits || 0) + 1;
+  }
+}
+// Pierce by level (the classic: throws go through more foes as they level), plus the Pierce pivot's +2 each.
+const PIERCE = { flick: [1, 3], chuck: [2, 2], boom: [3, 1], fore: [3, 3] };  // [to start, +1 every N levels]
+// Size growth by level (user: axes grow, hammers get a bigger blast): share per level.
+const GROW = { chuck: 0.06, smash: 0.06, swipe: 0.03, guard: 0.03, spill: 0.04, stink: 0.03 };
+function growOf() { return 1; }  // (size comes from the Bigger cornerstone now, not from levels)
+function pierceOf(kind, L, pv) { return PIERCE[kind][0] + cs("pierce") + 2 * ((pv && pv.pierce) || 0); }  // (the Pierce+ cornerstone, not levels)
+// A drop picked up (E): wear it if its layer is still empty; a worn layer is locked, so it turns into XP instead.
+// (A boss's loot is yours for minting either way.)
+function offerDrop(id) {
+  const p = P[id], layer = p.layer;
+  if (!S.look[layer]) return showCards([{ kind: "new", layer, id }], "IT DROPPED THIS!");
+  S.xp += Math.round(S.need * 0.4);
+  toast(`${p.name.toUpperCase()}: +XP`);
+}
+async function end(won) {
+  S.over = true;
+  const sq = await compose({ ...S.look }, "painted", 0);
+  const o = $("over");
+  o.innerHTML = `<h2>${won ? (S.stage.name + " CLEARED!").toUpperCase() : "U DED. WAKE UP."}</h2><canvas width="420" height="420" style="width:300px;height:300px;border:8px solid #6b4a22;box-shadow:0 0 0 2px #c9a14a"></canvas>` +
+    `<div>${Math.floor(S.t / 60)}:${String(Math.floor(S.t % 60)).padStart(2, "0")} · level ${S.level} · ${S.kills} bonks</div><button class="btn" id="again">Again</button>`;
+  const g = o.querySelector("canvas").getContext("2d");
+  if (S.backdrop) g.drawImage(S.backdrop, 0, 0, 420, 420);
+  if (sq) g.drawImage(sq.full, 0, 0, 420, 420);
+  o.classList.remove("hidden");
+  $("again").onclick = () => { o.classList.add("hidden"); newRun(); };
+}
+function draw(dt) {
+  if (!CW) resize();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CW, CH);
+  const shotU = camera(dt);
+  drawWorld();
+  // floor decals
+  for (const d of S.decals) {
+    const k = d.T ? d.t / d.T : 1;
+    if (d.type === "ring") { for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + d.r * 0.004; floorEllipse(d.x + Math.cos(a) * d.r, d.z + Math.sin(a) * d.r, 10 + 14 * (1 - k), d.color === "fire" ? `rgba(255,140,50,${0.6 * k})` : d.color === "star" ? `rgba(255,225,90,${0.7 * k})` : `rgba(185,160,120,${0.55 * k})`); } }  // a puff of dust (or flame, or stardust)
+    else if (d.type === "puddle") floorEllipse(d.x, d.z, d.r, d.color);
+    else if (d.type === "hazard") { if (d.T - d.t < d.warn) floorEllipse(d.x, d.z, d.r, null, "rgba(255,60,30,.9)", 3); else floorEllipse(d.x, d.z, d.r * (0.8 + 0.2 * Math.sin(S.t * 20)), d.color); }
+    else if (d.type === "tele") drawTele(d);
+    else if (d.type === "scorch") floorEllipse(d.x, d.z, d.r, d.color === "fire" ? `rgba(30,15,8,${0.45 * Math.min(1, d.t / 2)})` : d.color === "holy" ? `rgba(255,226,122,${0.25 * Math.min(1, d.t / 2)})` : d.color === "arcane" ? `rgba(160,80,220,${0.25 * Math.min(1, d.t / 2)})` : `rgba(40,30,20,${0.3 * Math.min(1, d.t / 2)})`);
+    else if (d.type === "ice") floorEllipse(d.x, d.z, d.r, `rgba(205,236,255,${0.42 * Math.min(1, d.t / 1.5)})`);
+    else if (d.type === "holy") floorEllipse(d.x, d.z, d.r, `rgba(255,220,110,${(0.28 + 0.08 * Math.sin(S.t * 6)) * Math.min(1, d.t)})`, `rgba(255,240,170,${0.9 * Math.min(1, d.t)})`, 3);
+    else if (d.type === "mine") { floorEllipse(d.x, d.z, 18, "#2b2b30", "#111", 2); floorEllipse(d.x, d.z, 7, d.arm <= 0 && Math.sin(S.t * 12) > 0 ? "#ff3a2a" : "#6a2420"); }
+    else if (d.type === "poison") floorEllipse(d.x, d.z, Math.max(1, d.r), `rgba(110,215,60,${0.42 * Math.min(1, d.t / 1)})`, `rgba(70,170,40,${0.85 * Math.min(1, d.t / 1)})`, 3);
+    else if (d.type === "eboom") floorEllipse(d.x, d.z, d.R * (1 - 0.5 * k), d.color + (0.55 * k) + ")", d.color + (0.9 * k) + ")", 3);
+    else if (d.type === "cone" || d.type === "slash") {
+      const pts = [[d.x, d.z]];
+      const len = d.len || d.R, inner = d.type === "slash" ? len * 0.55 : 0;
+      for (let i = 0; i <= 10; i++) { const a = d.a - d.half + (2 * d.half) * i / 10; pts.push([d.x + Math.cos(a) * len, d.z + Math.sin(a) * len]); }
+      if (inner) { for (let i = 10; i >= 0; i--) { const a = d.a - d.half + (2 * d.half) * i / 10; pts.push([d.x + Math.cos(a) * inner, d.z + Math.sin(a) * inner]); } pts.shift(); }
+      floorPoly(pts, d.type === "slash" ? `rgba(255,255,255,${0.75 * k})` : `rgba(255,240,200,${0.35 * k})`);
+    }
+  }
+  // shadows, then everything standing, far to near
+  const all = [];
+  for (const f of S.foes) all.push({ z: f.z, f: () => { floorEllipse(f.x, f.z, 32 * f.size, "rgba(0,0,0,.28)"); if (f.boneT > 0) floorEllipse(f.x, f.z, 46 * f.size, null, "rgba(235,230,205,.9)", 3); const wob = Math.sin(S.t * 9 + f.wob) * 0.05; const up = f.born == null ? 1 : Math.min(1, (S.t - f.born) / 0.35); const spin = f.wwT > 0 && !(f.castT > 0);  // (Herod's Whirlwind: spinning, a red ring round him)
+    if (spin) floorEllipse(f.x, f.z, 130 * f.size / 1.8, TELE_COLOR + "0.25)", TELE_COLOR + "0.9)", 3);
+    for (const [i, t] of (f.trail || []).entries()) billboard(f.cut, t.x, 0, t.z, OGRE_H * f.size, spin ? Math.sin(S.t * 30 + i) : f.flip, 0, 0.28 - i * 0.06);  // (afterimages)
+    // (a boss winding up squashes down and shakes, a glow under him; as he lets go he stretches up)
+    const wind = f.boss && f.castT > 0, rel = f.boss ? (f.relT = wind ? 0.18 : Math.max(0, (f.relT || 0) - 0.016)) : 0;
+    const sqY = wind ? 0.9 + 0.025 * Math.sin(S.t * 40) : 1 + 0.6 * rel, sqX = wind ? 1.08 : 1 - 0.4 * rel;
+    if (wind) floorEllipse(f.x, f.z, 70 * f.size * (1 + 0.1 * Math.sin(S.t * 20)), (SCHOOL[f.school || "phys"] || "#fff") + "55");
+    if (f.boss && f.shieldT > 0) { const c = proj(f.x, OGRE_H * f.size * 0.5 + heightAt(f.x, f.z), f.z); if (c) { ctx.save(); ctx.globalAlpha = 0.35 + 0.15 * Math.sin(S.t * 8); ctx.fillStyle = f.boss.name && /Doan/.test(f.boss.name) ? "#c9a0ff" : "#ffe9a0"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(c.x, c.y, OGRE_H * f.size * 0.6 * c.s, OGRE_H * f.size * 0.62 * c.s, 0, 0, 6.283); ctx.fill(); ctx.globalAlpha = 0.9; ctx.stroke(); ctx.restore(); } }
+    billboard(f.cut, f.x + (wind ? Math.sin(S.t * 50) * 3 : 0), Math.abs(Math.sin(S.t * 9 + f.wob)) * 6 * up, f.z, OGRE_H * f.size * (up * (2 - up)) * sqY, (spin ? Math.sin(S.t * 30) : f.flip) * sqX, wob, f.alpha ?? 1, Math.max(f.flash, f.castT > 0 || f.shieldT > 0 ? 0.4 + 0.3 * Math.sin(S.t * 14) : 0)); if (f.tier !== "grunt") hpBar(f);
+    if (f.charmT > 0) { const h = proj(f.x, OGRE_H * f.size + 22, f.z); if (h) { ctx.font = `bold ${Math.round(26 * h.s)}px Georgia`; ctx.textAlign = "center"; ctx.fillStyle = "#ff6fa8"; ctx.strokeStyle = "#5a1030"; ctx.lineWidth = 3; ctx.strokeText("♥", h.x, h.y); ctx.fillText("♥", h.x, h.y); ctx.textAlign = "start"; } } } });
+  // the bosses on the back wall (glowing when their time comes) and mid-jump; Onyxia's phases show one at a time
+  // the room's boss on the back wall (being cut out of it), mid-jump, or Onyxia up there; the hole he left
+  // (a boss on the wall is drawn with the wall, drawWorld; here only mid-jump, from his size up there to fighting size)
+  const showB = (S.bosses || []).filter((b) => b.state === "jump");
+  for (const q of S.props || []) all.push({ z: q.z, f: () => { if (q.chain && q.chain.length) for (const px of q.chain) floorEllipse(px, q.z, q.r * 1.1, "rgba(0,0,0,.16)"); else floorEllipse(q.x, q.z, q.r * 1.2, "rgba(0,0,0,.3)");
+    if (q.pyre) floorEllipse(q.x, q.z, 110 + 10 * Math.sin(S.t * 13), "rgba(255,140,40,.18)");
+    if (q.candle) floorEllipse(q.x, q.z, 90 + 6 * Math.sin(S.t * 9 + q.x), "rgba(255,200,90,.14)");  // (candlelight on the floor)
+    billboard(S.crayon ? q.cutC || q.cut : q.cut, q.x, 0, q.z, q.h, 1); } });
+  for (const b of showB) all.push({ z: b.z, f: () => {
+    const BH = b.h0 || OGRE_H * 3;
+    const lit = b.state === "glow" || b.state === "air";
+    if (lit) { floorEllipse(b.x, b.z, 110 + 20 * Math.sin(S.t * 8), b.state === "air" ? "rgba(255,120,40,.35)" : "rgba(255,230,120,.35)"); }
+    if (b.state === "jump") floorEllipse(b.x, b.z, 60, "rgba(0,0,0,.3)");
+    const shake = b.state === "wall" && S.wake > 0.85 ? Math.sin(S.t * 40) * 12 * (S.wake - 0.85) / 0.15 : 0;  // (nearly cut loose: he shakes)
+    // (mid-jump he shrinks from his size on the wall to his fighting size, while the camera whips back)
+    const h = b.state === "jump" ? BH + (OGRE_H * bossSize(b) - BH) * easeIO(Math.min(1, b.jt / (JUMP * WHIP[1]))) : BH;
+    billboard(b.cut, b.x + shake, b.y, b.z, h, b.state === "jump" ? -1 : 1, 0, 1, lit ? 0.45 + 0.45 * Math.sin(S.t * 10) : 0);
+  } });
+  const you = S.you;
+  if (S.yourCut) all.push({ z: you.z, f: () => { floorEllipse(you.x, you.z, 34, "rgba(0,0,0,.32)"); const danger = S.decals.some((d) => d.type === "tele" && d.t < d.T * 0.5 && d.t > 0 && inShape(d, you));
+    floorEllipse(you.x, you.z, 70 * (1 + 0.1 * ((S.st || {}).sniff || 0)), null, danger ? (Math.sin(S.t * 30) > 0 ? "rgba(255,40,30,.95)" : "rgba(255,255,255,.9)") : "rgba(120,190,255,.25)", danger ? 4 : 2); const w = you.moving ? Math.sin(S.t * 12) * 0.06 : 0; const bump = you.bump > 0 ? Math.sin(Math.PI * (1 - you.bump / 0.35)) : 0; you.squash = Math.max(0, (you.squash || 0) - 0.06); const sq = Math.sin(Math.PI * (1 - you.squash)) * you.squash;
+    billboard(you.sheepT > 0 && S.sheepYou ? S.sheepYou : S.yourCut, you.x, (you.moving ? Math.abs(Math.sin(S.t * 12)) * 8 : 0) + bump * 22, you.z, OGRE_H * 1.05 * (1 + 0.22 * bump) * (1 - 0.25 * sq), you.flip * (1 + 0.25 * sq), w + (you.sleepT > 0 ? 0.25 : 0), 1, you.hitT > 0 ? 0.8 : 0);
+    // what's on you: asleep, stunned, feared, cursed
+    const tag = you.sleepT > 0 ? "Zzz" : you.sheepT > 0 ? "baa?" : you.stunT > 0 ? "★ ★" : you.rootT > 0 ? "GRABBED" : you.fearT > 0 ? "!!" : you.silenceT > 0 ? "SILENCED" : you.diseaseT > 0 ? "SICK" : you.pinchT > 0 ? "OUCH" : you.curseT > 0 ? "~" : you.slowT > 0 ? "brr" : (you.dots || []).length ? "~ ~" : you.onIce ? "wheee" : "";
+    if (tag) { const h = proj(you.x, OGRE_H * 1.15, you.z); if (h) { ctx.font = `bold ${Math.round(28 * h.s)}px Georgia`; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeText(tag, h.x, h.y); ctx.fillText(tag, h.x, h.y); ctx.textAlign = "start"; } } } });
+  for (const e of S.eshots || []) all.push({ z: e.z, f: () => drawEShot(e) });
+  for (const p of S.fx || []) all.push({ z: p.z, f: () => drawFx(p) });
+  for (const g of S.gems) all.push({ z: g.z, f: () => { const p = proj(g.x, 18 + Math.sin(S.t * 4 + g.bob) * 5, g.z); if (!p) return; const r = (g.v >= 10 ? 13 : g.v >= 3 ? 10 : 7) * p.s; ctx.fillStyle = g.v >= 10 ? "#ff9a3a" : g.v >= 3 ? "#7ad35a" : "#5fb4ff"; ctx.strokeStyle = "#fbf6ea"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y - r); ctx.lineTo(p.x + r * 0.7, p.y); ctx.lineTo(p.x, p.y + r); ctx.lineTo(p.x - r * 0.7, p.y); ctx.closePath(); ctx.fill(); ctx.stroke(); } });
+  for (const d of S.drops) all.push({ z: d.z, f: async () => {
+    d.c = d.c || (await d.cut);
+    billboard(d.c, d.x, 20 + Math.sin(S.t * 3) * 8, d.z, 70, Math.cos(S.t * 2.5), 0, Math.min(1, (d.life ?? 25) / 4));  // (fading out at the end)
+    if (S.nearDrop === d) { const h = proj(d.x, 110, d.z); if (h) { ctx.font = `bold ${Math.round(20 * Math.max(0.7, h.s))}px Georgia`; ctx.textAlign = "center"; ctx.fillStyle = "#ffe9a8"; ctx.strokeStyle = "#000"; ctx.lineWidth = 3; const t = `E: ${P[d.id].name}`; ctx.strokeText(t, h.x, h.y); ctx.fillText(t, h.x, h.y); ctx.textAlign = "start"; } }
+  } });
+  for (const s of S.shots) all.push({ z: s.z, f: () => {
+    if (s.z - S.cam.z < NEAR) return;
+    if (s.cut && s.type !== "pet") {  // the piece's own picture, thrown, swung, held or flying
+      const p = proj(s.x, s.y || 70, s.z); if (!p) return;
+      let H = s.size * p.s;
+      if (s.type === "chomp") H *= 1 + 0.6 * (1 - s.life / s.T);
+      const W = H * s.cut.aspect;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(s.spin || 0);
+      if (s.shornT > 0) { ctx.globalAlpha = 0.35; ctx.scale(0.8, 0.8); }  // (a shorn sheep, growing its wool back)
+      if (s.type === "held") ctx.scale(s.dir.x < 0 ? -1 : 1, 1);
+      if (s.type === "chomp") ctx.scale(1, 1 - 0.3 * Math.abs(Math.sin(S.t * 28)));
+      ctx.drawImage(s.cut.canvas, -W / 2, -H / 2, W, H); ctx.restore(); return;
+    }
+    if (s.type === "pet" && s.cut) { floorEllipse(s.x, s.z, 20, "rgba(0,0,0,.25)"); billboard(s.cut, s.x, Math.abs(Math.sin(S.t * 14)) * 10, s.z, s.size, s.face || 1); return; }
+    const p = proj(s.x, s.y || 70, s.z); if (!p) return;
+    if (s.type === "star") { ctx.fillStyle = "#ffe25a"; ctx.strokeStyle = "#7a5a10"; ctx.lineWidth = 3; ctx.font = `bold ${Math.round(70 * p.s)}px Georgia`; ctx.textAlign = "center"; ctx.strokeText("★", p.x, p.y); ctx.fillText("★", p.x, p.y); ctx.textAlign = "start"; return; }
+    ctx.fillStyle = s.type === "ball" ? "#fff" : s.type === "bolt" ? "#ffe680" : "#dfe6ee"; ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, (s.type === "ball" ? 9 : 6) * p.s, 0, 6.283); ctx.fill(); ctx.stroke();
+  } });
+  all.sort((a, b) => b.z - a.z).forEach((o) => o.f());
+  // beams over everything
+  for (const d of S.decals) if (d.type === "beam") {
+    const a = proj(d.a.x, d.a.y, d.a.z), b = proj(d.b.x, 70, d.b.z); if (!a || !b) continue;
+    ctx.strokeStyle = d.color; ctx.lineWidth = 6 * (d.t / 0.18 + 0.2); ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  for (const f of S.floats) { const p = proj(f.x, f.y + (0.7 - f.t) * 60, f.z); if (!p) continue; ctx.font = `bold ${Math.round(22 * Math.max(0.6, p.s))}px Georgia`; ctx.fillStyle = f.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, f.t * 3); ctx.strokeText(f.text, p.x, p.y); ctx.fillText(f.text, p.x, p.y); ctx.globalAlpha = 1; }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (shotU > 0) { ctx.fillStyle = "#000"; const bar = CH * 0.09 * shotU; ctx.fillRect(0, 0, CW, bar); ctx.fillRect(0, CH - bar, CW, bar); }  // (letterbox in the wake-up shot)
+  drawOverlay(dt);
+  if (S.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, S.fade)})`; ctx.fillRect(0, 0, CW, CH); S.fade -= dt * 1.5; }  // (through the doorway)
+  // HUD + side
+  $("time").textContent = `${Math.floor(S.t / 60)}:${String(Math.floor(S.t % 60)).padStart(2, "0")}`;
+  $("lvl").textContent = "LV " + S.level; $("kills").textContent = S.kills + " BONK";
+  $("xp").firstElementChild.style.width = (100 * S.xp / S.need) + "%";
+  $("hpbar").firstElementChild.style.width = Math.max(0, 100 * S.you.hp / S.you.maxHp) + "%";
+  if (S.squarePop > 0) { S.squarePop = Math.max(0, S.squarePop - dt * 3); $("square").style.transform = `scale(${1 + 0.06 * Math.sin(S.squarePop * 3.14)})`; }
+}
+function hpBar(f) {
+  const p = proj(f.x, OGRE_H * f.size + 14, f.z); if (!p) return;
+  const w = 60 * p.s * f.size;
+  ctx.fillStyle = "#0009"; ctx.fillRect(p.x - w / 2, p.y, w, 5); ctx.fillStyle = f.tier === "boss" ? "#ff8a1a" : "#d24a3c"; ctx.fillRect(p.x - w / 2, p.y, w * Math.max(0, f.hp / f.max), 5);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+const AUTO = location.search.includes("auto"), FF = +(new URLSearchParams(location.search).get("ff") || 0);
+// (the bot keeps ?wear pieces on: upgrades first, then empty layers)
+const botCard = (cards) => location.search.includes("wear=") ? (cards.find((c) => c.kind === "up") || cards.find((c) => !S.look[c.layer]) || cards[0]) : pick(cards);
+if (AUTO) setInterval(() => { if (FF && S && S.picking) { if (S.mints) chooseMint(S.mints[0]); else if (S.cards) choose(botCard(S.cards)); } if (!S) return; if (S.picking && S.mints) chooseMint(S.mints[0]); else if (S.picking && S.cards) choose(S.cards[0]); const a = S.t * 0.8; keys.d = Math.cos(a) > 0.3; keys.a = Math.cos(a) < -0.3; keys.w = Math.sin(a) > 0.3; keys.s = Math.sin(a) < -0.3; }, 200);
+addEventListener("keydown", (e) => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys[k] = true;
+  if (S && S.picking && S.mints && S.mints[+k - 1]) chooseMint(S.mints[+k - 1]);
+  else if (S && S.picking && S.cards && /^[1-5]$/.test(k) && S.cards[+k - 1]) choose(S.cards[+k - 1]);
+  if (k === "e" && S && S.nearDrop && !S.picking) { S.nearDrop.taken = true; offerDrop(S.nearDrop.id); S.nearDrop = null; }
+  if ((k === "Escape" || k === "0") && S && S.picking) skipPick();
+  if (k === "c" && S) { S.crayon = !S.crayon; refreshYou(); toast(S.crayon ? "CRAYON YOU" : "PAINTED YOU"); }
+  if (k === "p" && S) S.paused = !S.paused;
+  if (S && S.you.sleepT > 0 && !e.repeat) S.you.sleepT = Math.max(0, S.you.sleepT - 0.25);  // (asleep: every key press wakes him a bit)
+  if (k.startsWith("Arrow")) e.preventDefault();
+});
+addEventListener("keyup", (e) => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+$("restart").onclick = () => { $("over").classList.add("hidden"); $("loading").classList.remove("hidden"); newRun(); };
+$("stageSel").onchange = $("foeSel").onchange = () => $("restart").onclick();
+$("angleSel").onchange = () => { resize(); $("angleSel").blur(); };
+
+fetch("/data.json").then((r) => r.json()).then((d) => {
+  G = d.gear; P = G.pieces; MAX_LV = (G.rules && G.rules.maxLevel) || 20;
+  POOL = { list: d.pool.filter((x) => P[x.id] && (P[x.id].role === "attack" || P[x.id].role === "passive")), byId: Object.fromEntries(d.pool.map((x) => [x.id, x])) };
+  ARCADE = d.arcade; GEN = new Set(d.gen || []); PROPS = d.props || [];
+  for (const st of ARCADE.stages) if (P[st.stage] && !st.pending) STAGES[st.key] = st;
+  $("stageSel").innerHTML = Object.values(STAGES).map((st) => `<option value="${st.key}">${st.name}</option>`).join("");
+  const q = new URLSearchParams(location.search);
+  if (q.get("foes")) $("foeSel").value = q.get("foes");
+  if (q.get("stage") && STAGES[q.get("stage")]) $("stageSel").value = q.get("stage");
+  if (q.get("angle")) $("angleSel").value = q.get("angle");
+  resize();
+  newRun();
+  requestAnimationFrame(step);
+});
+</script></body></html>

@@ -1,4 +1,6 @@
 -- The Pro Shop's room: its own page in the sidebar (Guild: Pro Shop; SHOP in ogre mode), the whole page area.
+-- (2026-11-01: the painting repainted - wallpaper rolls and borders, no painted steward, the sewing corner cleared for the
+-- easel: tools/gen-proshop-room.js; the steward is one of our ogres now, STEWARD.)
 -- The ROOM: a stand-in until the shop floor is repainted - the concept painting (Media/ProShop/Room: the steward
 -- behind his counter, the shelves; tools/make-mannequin.js) with the Dream Bed's easel standing on the floor, the display
 -- set painted on its canvas: the walnut mannequin (Media/ProShop/Mannequin, the moss ogre in walnut) wearing it, with
@@ -8,7 +10,7 @@
 -- sides and a valance drops in on top. The left curtain: a brass plaque per layer in stock, in the mockup's words and
 -- groups (WEAR: Clothes, Headwear, Accessory; you walk in on Clothes); the right: the piece's name, rarity, price (or "In
 -- your wardrobe") and your cart (a piece a layer, the total, your points, Checkout). Under the picture: knobs either side of Add to cart and a count. The mannequin wears the display
--- set, the cart over it, the piece looked at over that (headwear zoomed further in). Keys: W/S or Up/Down tabs, A/D or
+-- set, the cart over it, the piece looked at over that (headwear zoomed further in). Keys: Up/Down tabs,
 -- Left/Right pieces, Enter adds, Back or Escape -> the room. CHECKOUT (the curtains' button, the floor cart, or the
 -- painting's steward): the till, ProShopTill.lua, the view panned in on him. The wares and buying: ProShop.lua.
 
@@ -27,6 +29,12 @@ local SCENE_W, SCENE_H = 827, 584
 local BLEED = 14  -- (the painting, and the zoomed view, run this far under the wooden frame on every side)
 local EASEL = { x = 680, bottom = 548, height = 370 }  -- (its middle, where its feet stand: by the sewing table)
 local PICTURE = { x = 413, y = 260, size = 340 }  -- zoomed in: its middle and size
+-- The steward: one of our ogres (his whole look comes with the Pro Shop spending deeds, Achievements.lua), standing
+-- behind the counter where the painting has none: his picture (no background) this big, its middle x and its top, in
+-- painting pixels. The counter and till are drawn over him (Media/ProShop/RoomFront, tools/make-mannequin.js).
+local STEWARD = { x = 409, top = 48, size = 290,
+    traits = { skin = "club_sage", eyes = "snooty_eyes", expression = "snooty_sneer", outfit = "shop_steward_vest",
+        headwear = "shop_steward_boater" } }
 local CURTAIN_W, VALANCE_H = 200, 58
 local POST_REACH = 18  -- (how far the window's posts reach over the page's sides)
 local OPEN_TIME = 0.55
@@ -66,6 +74,7 @@ end
 local function NewPicture(parent)
     local picture = CreateFrame("Frame", nil, parent)
     local backdrop = picture:CreateTexture(nil, "BACKGROUND")
+    picture.backdrop = backdrop
     backdrop:SetAllPoints()
     Gradient(backdrop, "VERTICAL", { 0.16, 0.05, 0.04 }, { 0.42, 0.17, 0.12 })
     picture.canvas = CreateFrame("Frame", nil, picture)
@@ -118,9 +127,21 @@ end
 -- The dressing (zoomed in): the layers the shop stocks as tabs, the piece looked at on each, the cart (one piece a
 -- layer; kept while you're logged in).
 -- (the mockup's words and groups, but Clothes for the outfit layer; you walk in on Clothes, so not zoomed in)
-local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background" }
-local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Mouth", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory", background = "Background" }
-local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR", background = "PICTURE" }
+local TAB_ORDER = { "skin", "eyes", "expression", "outfit", "headwear", "accessory", "background", "wallpaper", "frame" }
+local TAB_LABELS = { skin = "Skin", eyes = "Eyes", expression = "Mouth", outfit = "Clothes", headwear = "Headwear", accessory = "Accessory",
+    background = "Background", wallpaper = "Wallpaper", frame = "Frame" }
+local TAB_GROUPS = { skin = "OGRE", eyes = "OGRE", expression = "OGRE", outfit = "WEAR", headwear = "WEAR", accessory = "WEAR",
+    background = "PICTURE", wallpaper = "PORTRAIT", frame = "PORTRAIT" }
+-- (the PORTRAIT tabs: your own ogre shown, framed, your wallpaper behind it - not the mannequin)
+local PORTRAIT_TABS = { wallpaper = true, frame = true }
+local PORTRAIT_W = 410  -- (the framed portrait's width, page pixels: between the panels, by the curtains)
+-- Shortcuts in the painting (its pixels): click them to open the try-on on that tab (no label: the user disliked them).
+local SHORTCUTS = {
+    { tab = "wallpaper", label = "Wallpapers", x0 = 8, y0 = 205, x1 = 200, y1 = 480 },    -- (the roll shelves, left)
+    { tab = "wallpaper", label = "Wallpapers", x0 = 485, y0 = 30, x1 = 712, y1 = 272 },   -- (the rolls and borders, right wall)
+    { tab = "frame", label = "Frames", x0 = 25, y0 = 12, x1 = 250, y1 = 190 },            -- (the empty gold frames)
+}
+local PORTRAIT_DY = 14  -- (and how far lower than the mannequin's picture it sits)
 local FIRST_TAB = "outfit"
 local CLOSE_LAYERS = { headwear = true, eyes = true, expression = true }
 local CART_LINES = 5  -- (the cart's lines shown; one piece a layer, so 3 for now)
@@ -141,7 +162,9 @@ local L = {
 local function Tabs()
     if view.tabs then return view.tabs end
     local byLayer = {}
-    for _, item in ipairs(ns.ShopStock()) do
+    local stock = ns.ShopStock()
+    for _, item in ipairs(ns.ShopExtraStock and ns.ShopExtraStock() or {}) do stock[#stock + 1] = item end
+    for _, item in ipairs(stock) do
         byLayer[item.layer.key] = byLayer[item.layer.key] or {}
         table.insert(byLayer[item.layer.key], item)
     end
@@ -238,12 +261,53 @@ local function PlaceZoom()
     zoom.vignette:SetAlpha(t)
     room.blur:SetAlpha(t)
     room.easel:SetAlpha(1 - t)  -- (its picture comes forward; the easel goes with the sharp room)
+    room.stewardArt:SetAlpha(1 - t)  -- (he and the counter in front of him go with it too)
+    room.front:SetAlpha(1 - t)
     local size = math.floor(PICTURE.size * math.min(sx, sy))
-    AtPage(zoom.frame, PICTURE.x, PICTURE.y, sx, sy)
     zoom.frame:SetSize(size, size)
     local late = math.max(0, (zoom.t or 0) * 2 - 1)  -- (the picture and the buttons come in once the curtains are half way)
     zoom.frame:SetAlpha(late)
-    local _, tab = Looked()
+    -- The PORTRAIT tabs: the same mannequin picture in the frame looked at (or carted, or yours), the wallpaper likewise
+    -- filling the view behind the curtains round the frame (the velvet stays behind the ogre), the gilt box gone - eased in and out (zoom.mix, 0 .. 1: zoom.mixer),
+    -- the picture scaled down so it fits between the panels with its frame round it; a new one pops in.
+    local looked, tab = Looked()
+    local portrait = tab and PORTRAIT_TABS[tab.key] and true or false
+    zoom.mixGoal = portrait and 1 or 0
+    local e = zoom.mix or 0
+    e = e * e * (3 - 2 * e)
+    local function Pick(key, own)
+        if tab and tab.key == key and looked then return looked.option.id end
+        return view.cart[key] and view.cart[key].option.id or own
+    end
+    local paper, frameId = Pick("wallpaper", ns.GetWallpaper()), Pick("frame", (KillTrackerDB.card or {}).frame or "wood")
+    local frame = ns.FrameById and ns.FrameById(frameId)
+    if e > 0 and paper .. frameId ~= zoom.showing then
+        if zoom.showing then zoom.pop = 0 end
+        zoom.showing = paper .. frameId
+    end
+    for _, t in ipairs(zoom.box) do t:SetAlpha(1 - e) end
+    zoom.paper:SetAlpha(e)
+    zoom.frameArt:SetAlpha(e)
+    if e > 0 then
+        UI.SetWallpaper(zoom.paper, paper, zoom:GetWidth(), zoom:GetHeight(), math.floor(size * 0.55))
+        if frame then  -- (its art the picture's size over its opening)
+            local o = frame.inner
+            local fw, fh = size / o.w, size / o.h
+            zoom.frameArt.tex:SetTexture(frame.texture)
+            zoom.frameArt:ClearAllPoints()
+            zoom.frameArt:SetPoint("TOPLEFT", zoom.frame, "TOPLEFT", -o.x * fw, o.y * fh)
+            zoom.frameArt:SetSize(fw, fh)
+        end
+        zoom.frameArt:SetShown(frame ~= nil)
+    end
+    -- (the scale: the framed picture PORTRAIT_W wide on the PORTRAIT tabs; a pop eases in from a touch smaller)
+    local fit = frame and (PORTRAIT_W * math.min(sx, sy)) / (size / frame.inner.w) or 1
+    local pop = zoom.pop or 1
+    pop = pop * pop * (3 - 2 * pop)
+    local k = (1 + (fit - 1) * e) * (1 - 0.06 * e * (1 - pop))
+    zoom.frame:SetScale(k)
+    zoom.frame:ClearAllPoints()  -- (a scaled frame's offsets are in its own scale)
+    zoom.frame:SetPoint("CENTER", room, "TOPLEFT", (PICTURE.x * sx - BLEED) / k, (BLEED - (PICTURE.y + PORTRAIT_DY * e) * sy) / k)
     zoom.picture:Dress(ShownTraits(), size)
     zoom.picture:SetZoom(tab and CLOSE_LAYERS[tab.key] and CLOSE_ZOOM or 1, (zoom.t or 0) < 1)  -- (opening: no zoom on top)
     zoom.controls:SetAlpha(late)
@@ -383,6 +447,10 @@ end
 -- The till's camera (ProShopTill.lua): p 0 = the whole room .. 1 = on the steward behind his counter (the mock's 1.75x,
 -- on x 395, y 215 of the painting, put at 413, 300), the easel moving with the painting, the corner's bits fading away.
 local STEWARD_VIEW = { scale = 1.75, x = 395, y = 215, at = { 413, 300 } }  -- (his face under the bubble)
+-- The painted till's display window (where the drums go), painting pixels.
+local TILL_WINDOW = { x0 = 502, y0 = 237, x1 = 539, y1 = 249 }
+-- Where the receipt prints out: on the till itself, out of its wooden base between its two little wooden feet.
+local RECEIPT_SPOT = { x0 = 486, x1 = 551, y = 310 }
 -- Puts the easel where it stands in the painting while x0..x1, y0..y1 of the painting fill the page (the whole of it,
 -- or the till camera's close-up): scaled with the painting, not drawn again.
 local function PlaceEasel(x0, y0, x1, y1)
@@ -396,16 +464,34 @@ local function PlaceEasel(x0, y0, x1, y1)
     room.easel:SetPoint("BOTTOM", room, "TOPLEFT", fx / k, -fy / k)  -- (a scaled frame's offsets are in its own scale)
 end
 
+-- Puts the steward where he stands in the painting while x0..x1, y0..y1 of it fill the page (as PlaceEasel): drawn once
+-- at the whole room's scale (Layout), scaled with the painting.
+local function PlaceSteward(x0, y0, x1, y1)
+    local w, h = room:GetSize()
+    if w == 0 or h == 0 or not room.stewardArt.base then return end
+    local k = SCENE_W / (x1 - x0)
+    local fx = (STEWARD.x - STEWARD.size / 2 - x0) / (x1 - x0) * (w + 2 * BLEED) - BLEED
+    local fy = (STEWARD.top - y0) / (y1 - y0) * (h + 2 * BLEED) - BLEED
+    room.stewardArt:SetScale(k)
+    room.stewardArt:ClearAllPoints()
+    room.stewardArt:SetPoint("TOPLEFT", room, "TOPLEFT", fx / k, -fy / k)
+end
+
 local function Camera(p)
     local v = STEWARD_VIEW
     local w, h = SCENE_W / v.scale, SCENE_H / v.scale
     local left, top = v.x - v.at[1] / v.scale, v.y - v.at[2] / v.scale
     local x0, y0 = left * p, top * p
     local x1, y1 = SCENE_W + (left + w - SCENE_W) * p, SCENE_H + (top + h - SCENE_H) * p
+    room.cam = { x0, y0, x1, y1 }  -- (kept: a layout while the camera is in - the page refreshed after buying - keeps it)
     room.scene:SetTexCoord(x0 / 1024, x1 / 1024, y0 / 1024, y1 / 1024)
-    PlaceEasel(x0, y0, x1, y1)  -- (moving with the painting: off to the right as it zooms in)
+    room.front:SetTexCoord(x0 / 1024, x1 / 1024, y0 / 1024, y1 / 1024)
+    PlaceEasel(x0, y0, x1, y1)  -- (moving with the painting, fading out: not part of checking out)
+    room.easel:SetAlpha(1 - p)
+    PlaceSteward(x0, y0, x1, y1)
     room.corner:SetAlpha(1 - p)
     room.steward:SetShown(p == 0)
+    for _, spot in ipairs(room.shortcuts) do spot:SetShown(p == 0) end
 end
 
 -- Checkout: to the steward at the till (from the curtains, the floor cart or the steward himself).
@@ -524,7 +610,21 @@ local function Build(holder)
     room.inPainting = CreateFrame("Frame", nil, room)
     room.inPainting:SetAllPoints(room.scene)
     room.inPainting:SetClipsChildren(true)
+    -- The steward (STEWARD), then the counter and till over him, then the easel.
+    room.stewardArt = CreateFrame("Frame", nil, room.inPainting)
+    room.stewardArt:SetFrameLevel(room.inPainting:GetFrameLevel() + 1)
+    room.stewardArt.canvas = CreateFrame("Frame", nil, room.stewardArt)
+    room.stewardArt.canvas:SetPoint("TOPLEFT")
+    room.front = CreateFrame("Frame", nil, room.inPainting)
+    room.front:SetFrameLevel(room.inPainting:GetFrameLevel() + 2)
+    room.front:SetAllPoints(room.scene)
+    room.front.art = room.front:CreateTexture(nil, "ARTWORK")
+    room.front.art:SetAllPoints()
+    room.front.art:SetTexture(MEDIA .. "RoomFront")
+    room.front.art:SetTexCoord(0, SCENE_W / 1024, 0, SCENE_H / 1024)
+    function room.front:SetTexCoord(...) self.art:SetTexCoord(...) end
     local easel = CreateFrame("Button", nil, room.inPainting)
+    easel:SetFrameLevel(room.inPainting:GetFrameLevel() + 3)
     easel.box, easel.cv = box, art.easelCanvas or { x = 0.0815, y = 0.1232, w = 0.8226, h = 0.4489 }
     easel.board = easel:CreateTexture(nil, "ARTWORK")
     easel.board:SetAllPoints()
@@ -535,19 +635,9 @@ local function Build(holder)
     easel.blank:SetClipsChildren(true)
     easel.picture = NewPicture(easel.blank)
     easel.picture:SetPoint("CENTER")
-    easel.hint = S.Plaque(easel, 112, 22, 12)  -- (the mock's hint: a little brass label)
-    easel.hint:SetPoint("BOTTOM", easel, "TOP", 0, 4)
-    easel.hint.text:SetText("Try things on")
-    easel.hint:EnableMouse(false)
-    easel.hint:Hide()
-    easel:SetScript("OnEnter", function(self)
-        self.hint:Show()
-        self.board:SetVertexColor(1, 1, 1)
-    end)
-    easel:SetScript("OnLeave", function(self)
-        self.hint:Hide()
-        self.board:SetVertexColor(0.88, 0.86, 0.82)
-    end)
+    -- (no brass label: the easel just lights up while pointed at)
+    easel:SetScript("OnEnter", function(self) self.board:SetVertexColor(1, 1, 1) end)
+    easel:SetScript("OnLeave", function(self) self.board:SetVertexColor(0.88, 0.86, 0.82) end)
     -- Today's special: a brass plaque hung under the canvas; clicking the easel opens the curtains on it.
     easel.special = S.Plaque(easel, 176, 24, 12)
     easel.special:SetPoint("TOP", easel.blank, "BOTTOM", 0, -3)
@@ -588,9 +678,22 @@ local function Build(holder)
     room.steward.hint.text:SetText("Checkout")
     room.steward.hint:EnableMouse(false)
     room.steward.hint:Hide()
-    room.steward:SetScript("OnEnter", function(self) self.hint:Show() end)
+    room.steward:SetScript("OnEnter", function(self) self.hint:SetShown(#(CartItems()) > 0) end)  -- (only with something to pay for)
     room.steward:SetScript("OnLeave", function(self) self.hint:Hide() end)
     room.steward:SetScript("OnClick", Checkout)
+    -- The shortcuts (SHORTCUTS): the try-on opened on their tab.
+    room.shortcuts = {}
+    for i, spec in ipairs(SHORTCUTS) do
+        local spot = CreateFrame("Button", nil, room)
+        spot.spec = spec
+        spot:SetScript("OnClick", function(self)
+            UI.ClickSound()
+            for t, tab in ipairs(Tabs()) do if tab.key == self.spec.tab then view.tab = t end end
+            view.message = nil
+            Zoom(true, true)
+        end)
+        room.shortcuts[i] = spot
+    end
     room.points = room.corner:CreateFontString(nil, "OVERLAY")
     room.points:SetPoint("BOTTOMRIGHT", -(POST_REACH + 4), 14)
     room.points:SetFont(NAME_FONT, 14, "")
@@ -615,6 +718,7 @@ local function Build(holder)
     zoom.vignette:SetTexture(MEDIA .. "UI\\Vignette")
     zoom.frame = CreateFrame("Frame", nil, zoom)  -- the border: a shadow, gilt, burgundy, then the picture
     local shadow = zoom.frame:CreateTexture(nil, "BACKGROUND", nil, -2)
+    zoom.box = { shadow }  -- (the box round the mannequin: gone on the PORTRAIT tabs)
     shadow:SetPoint("TOPLEFT", -2, -6) shadow:SetPoint("BOTTOMRIGHT", 6, -10)
     shadow:SetColorTexture(0, 0, 0, 0.55)
     local gilt = zoom.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
@@ -623,9 +727,33 @@ local function Build(holder)
     local burgundy = zoom.frame:CreateTexture(nil, "BACKGROUND")
     burgundy:SetPoint("TOPLEFT", -2, 2) burgundy:SetPoint("BOTTOMRIGHT", 2, -2)
     burgundy:SetColorTexture(unpack(BURGUNDY))
+    zoom.box[2], zoom.box[3] = gilt, burgundy
     zoom.picture = NewPicture(zoom.frame)
     zoom.picture:SetAllPoints()
     zoom.picture:SetClipsChildren(true)
+    -- (the PORTRAIT tabs: the wallpaper filling the view, under the curtains; the frame's art over the picture)
+    zoom.paper = zoom:CreateTexture(nil, "BACKGROUND", nil, 2)
+    zoom.paper:SetAllPoints()
+    zoom.paper:SetAlpha(0)
+    zoom.frameArt = CreateFrame("Frame", nil, zoom.frame)
+    zoom.frameArt:SetFrameLevel(zoom.picture:GetFrameLevel() + 10)
+    zoom.frameArt.tex = zoom.frameArt:CreateTexture(nil, "OVERLAY")
+    zoom.frameArt.tex:SetAllPoints()
+    zoom.frameArt:SetAlpha(0)
+    -- (the easing: the mix towards its goal over ZOOM_TIME, a new one's pop over two thirds of that)
+    zoom.mixer = CreateFrame("Frame", nil, zoom)
+    zoom.mixer:SetScript("OnUpdate", function(_, elapsed)
+        local goal, moved = zoom.mixGoal or 0, false
+        local mix = zoom.mix or 0
+        if mix ~= goal then
+            local step = elapsed / ZOOM_TIME
+            zoom.mix = goal > mix and math.min(goal, mix + step) or math.max(goal, mix - step)
+            moved = true
+        end
+        local pop = zoom.pop
+        if pop and pop < 1 then zoom.pop = math.min(1, pop + elapsed / (ZOOM_TIME * 0.66)) moved = true end
+        if moved then PlaceZoom() end
+    end)
     zoom.left, zoom.right = S.Curtain(zoom, "left"), S.Curtain(zoom, "right")
     zoom.valance = S.Valance(zoom)
     zoom.valance:SetFrameLevel(zoom.left:GetFrameLevel() + 3)
@@ -653,9 +781,9 @@ local function Build(holder)
     zoom.next = S.Knob(zoom.controls, 1)
     zoom.next:SetScript("OnClick", function() Step(0, 1) end)
     zoom.count = S.Text(zoom.controls, S.DISPLAY_FONT, 13, "#f1dfb5")
-    -- Keys (caught only out of combat, as on the bounty board): Up/Down or W/S tabs, Left/Right or A/D pieces, Enter
-    -- adds (or takes out), Escape goes back.
-    local KEYS = { UP = { -1, 0 }, W = { -1, 0 }, DOWN = { 1, 0 }, S = { 1, 0 }, LEFT = { 0, -1 }, A = { 0, -1 }, RIGHT = { 0, 1 }, D = { 0, 1 } }
+    -- Keys (let go of in combat: UI.CombatSafeKeys): Up/Down tabs, Left/Right pieces, Enter adds (or takes out),
+    -- Escape goes back. (Not W/A/S/D: those stay yours to walk with.)
+    local KEYS = { UP = { -1, 0 }, DOWN = { 1, 0 }, LEFT = { 0, -1 }, RIGHT = { 0, 1 } }
     zoom:SetScript("OnKeyDown", function(self, key)
         local move = KEYS[key]
         local handled = move ~= nil or key == "ESCAPE" or key == "ENTER"
@@ -664,6 +792,7 @@ local function Build(holder)
         elseif key == "ENTER" then ToggleCart()
         elseif move then Step(move[1], move[2]) end
     end)
+    ns.UI.CombatSafeKeys(zoom)
     -- Opening and closing: the curtains and the valance slide, the dark and the picture fade.
     zoom:SetScript("OnUpdate", function(self, elapsed)
         if self.goal == nil then return end
@@ -679,6 +808,21 @@ local function Build(holder)
     -- The till: pays for the cart (it empties, what you own changes), back in the room after.
     room.till = S.Till(room, {
         camera = Camera,
+        receipt = function()  -- (where the receipt prints out on the page, where the camera is now: x, y, width)
+            local w, h = room:GetSize()
+            local x0, y0, x1, y1 = unpack(room.cam or { 0, 0, SCENE_W, SCENE_H })
+            local fx = function(x) return (x - x0) / (x1 - x0) * (w + 2 * BLEED) - BLEED end
+            local t = RECEIPT_SPOT
+            return fx(t.x0), (t.y - y0) / (y1 - y0) * (h + 2 * BLEED) - BLEED, fx(t.x1) - fx(t.x0)
+        end,
+        display = function()  -- (the till's window on the page, where the camera is now)
+            local w, h = room:GetSize()
+            local x0, y0, x1, y1 = unpack(room.cam or { 0, 0, SCENE_W, SCENE_H })
+            local fx = function(x) return (x - x0) / (x1 - x0) * (w + 2 * BLEED) - BLEED end
+            local fy = function(y) return (y - y0) / (y1 - y0) * (h + 2 * BLEED) - BLEED end
+            local t = TILL_WINDOW
+            return fx(t.x0), fy(t.y0), fx(t.x1) - fx(t.x0), fy(t.y1) - fy(t.y0)
+        end,
         buy = function(keys)
             local ok, result = ns.ShopBuy(keys)
             if ok then
@@ -701,7 +845,7 @@ local function Layout()
     local eh = EASEL.height * sy
     local ew = eh * easel.box.w / easel.box.h
     easel:SetSize(ew, eh)
-    PlaceEasel(0, 0, SCENE_W, SCENE_H)
+    PlaceEasel(unpack(room.cam or { 0, 0, SCENE_W, SCENE_H }))
     local cv = easel.cv
     easel.blank:ClearAllPoints()
     easel.blank:SetPoint("TOPLEFT", cv.x * ew, -cv.y * eh)
@@ -709,9 +853,24 @@ local function Layout()
     local side = math.floor(math.max(cv.w * ew, cv.h * eh))
     easel.picture:SetSize(side, side)
     easel.picture:Dress(DisplayTraits(), side)
-    room.steward:ClearAllPoints()  -- (the painting's steward: x 300-490, y 92-318)
+    -- The steward: drawn at the whole room's scale (a new size only when the page's changes), placed by the camera.
+    local base = math.floor(STEWARD.size * sx + 0.5)
+    if room.stewardArt.base ~= base then
+        room.stewardArt.base = base
+        room.stewardArt:SetSize(base, base)
+        room.stewardArt.canvas:SetSize(base, base)
+        ns.RenderMint(room.stewardArt.canvas, STEWARD.traits)
+    end
+    PlaceSteward(unpack(room.cam or { 0, 0, SCENE_W, SCENE_H }))
+    room.steward:ClearAllPoints()  -- (the steward's hotspot: x 300-490, y 92-318)
     room.steward:SetPoint("TOPLEFT", room, "TOPLEFT", 300 * sx - BLEED, BLEED - 92 * sy)
     room.steward:SetSize(190 * sx, 226 * sy)
+    for _, spot in ipairs(room.shortcuts) do
+        local c = spot.spec
+        spot:ClearAllPoints()
+        spot:SetPoint("TOPLEFT", room, "TOPLEFT", c.x0 * sx - BLEED, BLEED - c.y0 * sy)
+        spot:SetSize((c.x1 - c.x0) * sx, (c.y1 - c.y0) * sy)
+    end
     if room.zoom:IsShown() then PlaceZoom() end
 end
 
@@ -759,6 +918,8 @@ ns.RegisterPage({
             room.zoom.goal, room.zoom.t = nil, 0
             room.blur:SetAlpha(0)
             room.easel:SetAlpha(1)
+            room.stewardArt:SetAlpha(1)
+            room.front:SetAlpha(1)
             room.till:Reset()
             if not InCombatLockdown() then room.zoom:EnableKeyboard(false) end
         end)

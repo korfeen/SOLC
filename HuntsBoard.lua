@@ -37,13 +37,6 @@ local BUTTON, BUTTON_LIT = { 0.3, 0.22, 0.12 }, { 0.65, 0.53, 0.28 }
 local LAYOUT = { plank = { y = 8, w = 400, h = 88, panel = { 36 / 128, 88 / 128 } }, reset = { w = 84, h = 62, tilt = 3, nail = 115 / 1024 }, counter = { y = 106, h = 112, posts = { 126 / 1024, 900 / 1024 }, bar = 40 },
     note = { w = 44, h = 58 }, posters = { top = 236, bottom = 46, gap = 30, side = 50, aspect = 1.34, max = 132 }, footer = 14 }
 
-local TEST_CLAIMED = {}  -- (TEMPORARY: posters drawn as claimed by their place in the row, /solc claimtest; remove)
-local TEST_FILL = nil  -- (TEMPORARY: a fraction fills the counter bar that far, to see how it looks; remove)
--- (TEMPORARY: made-up guild members who claimed some of this week's posters, to see how it looks; remove)
-local TEST_CLAIMS = { "Grubnak", "Mossy", "Thalwyn", "Brokka", "Pipsqueak", "Ulgar", "Seraphine", "Durn", "Kazzik",
-    "Wobbles", "Tharnok", "Elowen", "Gorrim", "Fizzlebang", "Moraga", "Snorgle", "Valindra", "Hukka", "Bramblewick",
-    "Ozzgar", "Lirael", "Thudd" }
-
 -- Lamp-lit text on the board: a soft warm shadow, not an outline (so it sits in the painting).
 local function Shade(text)
     text:SetShadowColor(0.1, 0.05, 0.02, 0.8)
@@ -63,52 +56,6 @@ local function Text(parent, size, color, justify)
     t:SetJustifyH(justify or "LEFT")
     t:SetWordWrap(false)
     return t
-end
-
--- Woodburned lettering (a try: /solc burn swaps the counter's header between it and the plank's lettering): on a
--- planed, lighter patch of the board, a dark core with a softer scorch round it, sunk a little into the wood (its
--- lower edge catching the lamp light). burn:SetText(text); burn:SetShown(shown).
-local BURN = { core = { 0.14, 0.065, 0.02 }, scorch = { 0.36, 0.17, 0.05 }, lit = { 1, 0.8, 0.5, 0.5 }, sunk = { 0.04, 0.02, 0, 0.6 },
-    patch = { 1, 0.86, 0.62, 0.1 } }
-local function BurnText(parent, size)
-    local burn = { parts = {} }
-    local function Part(layer, color, x, y, alpha)
-        local t = parent:CreateFontString(nil, layer)
-        t:SetFont(NAME_FONT, size, "")
-        t:SetTextColor(color[1], color[2], color[3], alpha or color[4] or 1)
-        t:SetShadowOffset(0, 0)
-        t:SetWordWrap(false)
-        t.x, t.y = x, y
-        burn.parts[#burn.parts + 1] = t
-        return t
-    end
-    -- (the patch: a soft oval, lighter in its middle, fading out on every side; Media\Bounty\glow)
-    burn.patch = parent:CreateTexture(nil, "BACKGROUND")
-    burn.patch:SetTexture(BOARD .. "glow")
-    burn.patch:SetVertexColor(unpack(BURN.patch))
-    for _, o in ipairs({ { -2, 0 }, { 2, 0 }, { 0, -2 }, { 0, 2 }, { -1, -1 }, { 1, 1 }, { -1, 1 }, { 1, -1 } }) do
-        Part("BORDER", BURN.scorch, o[1], o[2], 0.22)
-    end
-    Part("ARTWORK", BURN.lit, 0.5, -1)
-    Part("ARTWORK", BURN.sunk, -0.5, 1)
-    burn.core = Part("OVERLAY", BURN.core, 0, 0)
-    function burn:SetPoint(point, relative, relativePoint, x, y)
-        for _, t in ipairs(self.parts) do
-            t:ClearAllPoints()
-            t:SetPoint(point, relative, relativePoint, x + t.x, y + t.y)
-        end
-    end
-    function burn:SetText(text)
-        for _, t in ipairs(self.parts) do t:SetText(text) end
-        self.patch:ClearAllPoints()
-        self.patch:SetPoint("CENTER", self.core, "CENTER", 0, 0)
-        self.patch:SetSize(self.core:GetStringWidth() + 90, size + 22)
-    end
-    function burn:SetShown(shown)
-        for _, t in ipairs(self.parts) do t:SetShown(shown) end
-        self.patch:SetShown(shown)
-    end
-    return burn
 end
 
 -- A wooden button: button.text, button.action, button.lines (its tooltip).
@@ -678,6 +625,7 @@ local function BuildReader(screen)
         if not InCombatLockdown() then self:SetPropagateKeyboardInput(not escape) end
         if escape then self:Close() end
     end)
+    ns.UI.CombatSafeKeys(reader)
     return reader
 end
 
@@ -1117,6 +1065,7 @@ local function AttachExtras(screen)
         if not InCombatLockdown() then self:SetPropagateKeyboardInput(not escape) end
         if escape then self:Hide() end
     end)
+    ns.UI.CombatSafeKeys(placer)
     function screen:Place(extra)
         local area = self.area
         if not area or not self.extraSize then return end
@@ -1185,12 +1134,10 @@ local function BuildCounter(parent, width)
     counter:SetPoint("TOPLEFT", parent:GetWidth() * LAYOUT.counter.posts[1], -LAYOUT.counter.y)
     counter:EnableMouse(true)
     -- Over the beam, burned into the board: the guild's claims and yours.
-    -- (over the beam, lettered like the plank's title, or woodburned: up to the reset note, or in the middle)
+    -- (over the beam, lettered like the plank's title: up to the reset note, or in the middle)
     counter.total = Text(counter, 26, CREAM, "RIGHT")
     counter.total:SetPoint("BOTTOM", counter, "TOP", 0, -19)
     UI.OutlineText(counter.total, { 0.12, 0.07, 0.03 })
-    counter.burn = BurnText(counter, 28)
-    counter.burn:SetPoint("BOTTOM", counter, "TOP", 0, -19)
     counter.bar = PaintedBar(counter, width, LAYOUT.counter.bar)
     counter.bar:SetPoint("TOPLEFT", 0, -20)
     -- Under it, a note nailed at each milestone: its reward and its claims, sepia like a poster until it's reached.
@@ -1389,11 +1336,6 @@ local function Build()
         if officer then self.maker:Hide() end
         if officer then self.reader:Close(true) return DrawOfficer(self) end
         local b = ns.GetPosterProgress()
-        if b and TEST_CLAIMED then  -- (TEMPORARY: /solc claimtest, drawn as claimed, nothing given)
-            for i, p in ipairs(b.posters) do
-                if TEST_CLAIMED[i] then p.claimed, p.have = p.claimed or time(), p.goal end
-            end
-        end
         if not b then
             self.title:SetText("Bounties are for guilds")
             self.reset:Hide()
@@ -1406,34 +1348,20 @@ local function Build()
         self.reset:SetShown(self.resetFits)
         -- The counter.
         local guild = ns.GetGuildClaims()
-        if TEST_CLAIMS then
-            for i, name in ipairs(TEST_CLAIMS) do
-                local ids = {}
-                for j, p in ipairs(b.posters) do if j == 1 or (i <= 8 and (i + j) % 3 ~= 0) then ids[#ids + 1] = p.id end end
-                guild.members[#guild.members + 1] = { name = name, count = #ids, ids = ids }
-                guild.total = guild.total + #ids
-            end
-            for i, m in ipairs(ns.POSTER_MILESTONES) do if guild.total >= ns.MilestoneClaims(m) then guild.reached = i end end
-        end
         local c = self.counter
         local last = ns.MilestoneClaims(ns.POSTER_MILESTONES[#ns.POSTER_MILESTONES])
         local header = ("BOUNTIES CLAIMED  %d / %d"):format(math.min(guild.total, last), last)
-        local burned = KillTrackerDB and KillTrackerDB.bountyBurn
-        c.total:SetText(burned and "" or header)
-        c.burn:SetText(header)
-        c.burn:SetShown(burned and true or false)
+        c.total:SetText(header)
         -- (bigger than fits by the reset note in the middle: its right end just before the note)
         local noteLeft, left = self.resetFits and self.reset:GetLeft(), c:GetLeft()
         c.total:ClearAllPoints()
         if noteLeft and left then
             c.total:SetPoint("BOTTOMRIGHT", c, "TOPLEFT", noteLeft - left - 12, -21)
-            c.burn:SetPoint("BOTTOMRIGHT", c, "TOPLEFT", noteLeft - left - 12, -21)
         else
             c.total:SetPoint("BOTTOM", c, "TOP", 0, -21)
-            c.burn:SetPoint("BOTTOM", c, "TOP", 0, -21)
         end
         -- (from where you last saw it this week, up to now: KillTrackerDB.bountyBarSeen = { week, fraction })
-        local fraction, week = TEST_FILL or guild.total / last, ns.CurrentWeek()
+        local fraction, week = guild.total / last, ns.CurrentWeek()
         if self.rise then
             local seen = KillTrackerDB and KillTrackerDB.bountyBarSeen
             c.bar:Set(seen and seen.week == week and seen.fraction or 0, true)
@@ -1555,19 +1483,3 @@ ns.RegisterPage({
 -- Opens the board's page.
 function ns.ShowHuntsBoard() ns.OpenPage("bounties") end
 function ns.RefreshHuntsBoard() if screen and screen:IsVisible() then screen:Refresh() end end
--- (TEMPORARY: /solc claimtest [n] draws this week's nth poster as claimed, or not again; no points, no chest, no feed)
-function ns.ToggleClaimTest(n)
-    n = tonumber(n) or 1
-    local b = ns.GetPosterProgress()
-    local p = b and b.posters[n]
-    if not p then return ns.Print(("No poster %d this week."):format(n)) end
-    TEST_CLAIMED[n] = not TEST_CLAIMED[n] or nil
-    ns.Print(("%s: drawn as %s (just a look, nothing given)."):format(p.bounty.name, TEST_CLAIMED[n] and "claimed" or "not claimed"))
-    ns.RefreshHuntsBoard()
-end
--- (a try: the counter's header woodburned or lettered like the plank; /solc burn)
-function ns.ToggleBountyBurn()
-    KillTrackerDB.bountyBurn = not KillTrackerDB.bountyBurn or nil
-    ns.Print(("The bounty board's header is %s."):format(KillTrackerDB.bountyBurn and "woodburned" or "lettered"))
-    ns.RefreshHuntsBoard()
-end

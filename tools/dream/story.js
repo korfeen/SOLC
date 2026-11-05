@@ -33,7 +33,8 @@ const SETTING = {
 const SKIN = { "Moss": ["mossy green", "soft, mossy"], "Mud Brown": ["mud-brown", "freshly-rolled-in-mud"], "Swamp Green": ["swamp-green", "pond-scum green"],
   "Pale Lavender": ["pale lavender", "pastel purple"], "Slate Gray": ["stony grey", "slate-grey"], "Sunburnt Red": ["badly sunburnt", "lobster-red"],
   "Celestial Blue": ["star-speckled blue", "night-sky blue"], "Enchanted Jade": ["glowing jade", "enchanted green"], "Gold": ["solid gold", "gleaming golden"],
-  "Grand Sleepy Pink": ["grand, sleepy pink", "bubblegum-pink"], "Obsidian Ember": ["smouldering black", "volcanic"], "Sea Cursed Teal": ["barnacled teal", "sea-cursed"] };
+  "Grand Sleepy Pink": ["grand, sleepy pink", "bubblegum-pink"], "Obsidian Ember": ["smouldering black", "volcanic"], "Sea Cursed Teal": ["barnacled teal", "sea-cursed"],
+  "Club Sage": ["sage-green", "posh, sage-green"] };
 const OUTFIT = { "Fluffy Bathrobe": ["in a fluffy bathrobe", "wrapped in a giant fluffy robe"], "Golf Polo": ["in a golf polo tucked in way too high", "in a crisp golf polo"],
   "Loincloth and Member Sash": ["in nothing but a loincloth and a member's sash", "in a loincloth with a proud club sash"],
   "Spa Towel": ["in a spa towel that barely fits", "wearing a tiny spa towel"], "Striped Pajamas": ["in striped pyjamas", "in pyjamas buttoned up all wrong"],
@@ -51,12 +52,14 @@ const EYES = { "Fully Asleep": ["with his eyes shut", "without even opening his 
   "Bloodshot": ["with bloodshot eyes", "with eyes red from no sleep at all"], "Cucumber Slices": ["through two cucumber slices", "with cucumber slices over his eyes"], "Pirate Eyepatch": ["with one eye under a pirate patch", "squinting at me past his eyepatch"],
   "Single Eye Open": ["with one droopy eye open", "with one suspicious eye"], "Dreamy Swirl": ["with swirly, dreamy eyes", "with spirals for eyes"],
   "Dragon Gaze": ["with the burning eyes of a dragon", "with a dragon's glare"], "Golden Oracle": ["with golden eyes that know my future", "with eyes glowing like an oracle's"],
-  "Starlit Dreamer": ["with starlight in his eyes", "with tiny stars for eyes"] };
+  "Starlit Dreamer": ["with starlight in his eyes", "with tiny stars for eyes"],
+  "Snooty Eyes": ["right down his nose", "like I'd tracked mud on his carpet"] };
 const FACE = { "Drooling": ["drooling a little", "dribbling down his chin"], "Mouth Hanging Open": ["mouth hanging wide open", "gawping like a fish"],
   "Smug Smile": ["grinning like he knows something", "with a smirk you could slap"], "Snoring Zzz Bubble": ["snoring, even though he's standing up", "blowing big snore bubbles"],
   "Tiny Snore Bubble": ["one tiny snore bubble at his nose", "a little bubble popping at his nose"], "Mid Yawn": ["yawning the biggest yawn", "caught mid-yawn"],
   "Sea Dog Grin": ["flashing a salty sea-dog grin", "grinning like an old pirate"], "Crystal Drool": ["drooling sparkling crystals", "diamonds dripping off his lip"],
-  "Ember Yawn": ["yawning out embers", "breathing little sparks"], "Stardust Snore": ["snoring stardust", "puffing out glitter"] };
+  "Ember Yawn": ["yawning out embers", "breathing little sparks"], "Stardust Snore": ["snoring stardust", "puffing out glitter"],
+  "Snooty Sneer": ["sneering like I owed him money", "his lip curled in a snooty sneer"] };
 const THING = {
   "Eye Mask Pushed Up": { does: ["pulls his sleep mask down over MY eyes", "offers me his sleep mask"], end: ["And when I took it off, everyone was gone.", "And I just fell asleep inside the dream."] },
   "Membership Card": { does: ["shows me his membership card", "slaps his membership card on my forehead"], end: ["And it had MY face on it.", "And it said I'd been a member since 1066.", "And {boss} let him in instead of me."] },

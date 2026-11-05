@@ -18,7 +18,7 @@
 -- in a better chest) a chase item and one of the dungeon's set you don't have yet - that one for sure after PITY
 -- chests of it without (KillTrackerDB.chestPity = { [dungeon] = chests since its last piece }). No tokens any more.
 -- KillTrackerDB.chests = { { dungeon, time, tier } }: kept, as many as you
--- find, until you open them (Chests.lua, the PIX page's tiles); KillTrackerDB.points.chests = the coins from them.
+-- find, until you open them (Chests.lua, the Inventory's tiles); KillTrackerDB.points.chests = the coins from them.
 -- An unlock goes in your feed (event U, a = its option key). The first check ever (data from before unlocks,
 -- Achievements.lua after counting your kills) gives a chest of each dungeon you've already cleared.
 
@@ -28,10 +28,10 @@ local CHASE_CHANCE = 0.1  -- a chase item's chance in a chest, unless its option
 local PITY = 5  -- chests of a dungeon in a row without a set piece (while it has any left for you): the next has one
 -- A chest's quality: its chance as it's found, its coins' multiplier, its chase item's luck, its chance of a set piece.
 ns.CHEST_TIERS = {
-    { key = "common", name = "Common", chance = 0.60, coins = 1, chase = 1, piece = 0.25, story = 1, milk = 0, bonk = 0 },
-    { key = "rare", name = "Rare", chance = 0.25, coins = 2, chase = 1.5, piece = 0.4, story = 1, milk = 1, bonk = 0 },
-    { key = "epic", name = "Epic", chance = 0.12, coins = 4, chase = 2, piece = 0.6, story = 2, milk = 1, bonk = 1 },
-    { key = "legendary", name = "Legendary", chance = 0.03, coins = 10, chase = 3, piece = 1, story = 3, milk = 2, bonk = 1 },
+    { key = "common", name = "Common", chance = 0.60, coins = 1, chase = 1, piece = 0.25, story = 1, bonk = 0 },
+    { key = "rare", name = "Rare", chance = 0.25, coins = 2, chase = 1.5, piece = 0.4, story = 1, bonk = 0 },
+    { key = "epic", name = "Epic", chance = 0.12, coins = 4, chase = 2, piece = 0.6, story = 2, bonk = 1 },
+    { key = "legendary", name = "Legendary", chance = 0.03, coins = 10, chase = 3, piece = 1, story = 3, bonk = 1 },
 }
 local TIERS = ns.CHEST_TIERS
 local FIRST_TIER = 2  -- the first chest of a dungeon: at least rare
@@ -130,8 +130,8 @@ function ns.OnDungeonClear(d, guildmates)
     local chance = ns.ClearUnlockChance(guildmates)
     if math.random() < chance then
         ns.AddChest(d.key)
-        ns.ShowToast("achievement", "You found a chest!", d.name .. " chest", "Open it on your PIX page, whenever you like")
-        ns.Print(("You found the |cffffd100%s chest|r - open it on your PIX page."):format(d.name))
+        ns.ShowToast("achievement", "You found a chest!", d.name .. " chest", "Open it in your Inventory, whenever you like")
+        ns.Print(("You found the |cffffd100%s chest|r - open it in your Inventory."):format(d.name))
         if ns.OnKillsChanged then ns.OnKillsChanged() end
     else
         ns.Print(("No chest from %s this time (%d%% with %d guildmate%s; more guildmates, better odds)."):format(
@@ -182,9 +182,8 @@ end
 
 -- Ogre Godz tribute (the dev menu, Dev.lua; sent by Tribute.lua): a chest made by hand, kept with the others as
 -- { dungeon = ns.TRIBUTE, time, tier, tribute = spec }, opened like them (Chests.lua, with its own entrance). spec:
--- { tier, note, points, plinko, items = { { kind = "unlock", key = option key } or { kind = "ingredient", key, n } } }.
--- Its points count as earned (they go with the chests' coins: they raise your Ogre Rank); plinko: free drops kept
--- until used (Plinko.lua).
+-- { tier, note, points, items = { { kind = "unlock", key = option key } or { kind = "ingredient", key, n } } }.
+-- Its points count as earned (they go with the chests' coins: they raise your Ogre Rank).
 ns.TRIBUTE = "tribute"
 ns.TRIBUTE_MAX_ITEMS = 5  -- (the cards the chest show has room for)
 function ns.AddTribute(spec)
@@ -194,7 +193,7 @@ function ns.AddTribute(spec)
     db.chests[#db.chests + 1] = { dungeon = ns.TRIBUTE, time = time(), tier = tier, tribute = spec }
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
--- The cards a tribute shows (the chest show's items): its pieces and ingredients, and its plinko drops.
+-- The cards a tribute shows (the chest show's items): its pieces and ingredients.
 function ns.TributeCards(spec)
     local items = {}
     for _, item in ipairs(spec.items or {}) do
@@ -204,10 +203,6 @@ function ns.TributeCards(spec)
         elseif item.kind == "ingredient" and ns.INGREDIENTS[item.key] then
             items[#items + 1] = { kind = "tokens", dungeon = item.key, count = item.n or 1 }
         end
-    end
-    if (spec.plinko or 0) > 0 then
-        items[#items + 1] = { kind = "custom", icon = "Interface\\Icons\\INV_Misc_Orb_01",
-            label = ("+%d plinko drop%s"):format(spec.plinko, spec.plinko == 1 and "" or "s"), sub = "free, whenever you like" }
     end
     return items
 end
@@ -222,7 +217,6 @@ local function OpenTribute(chest)
         db.points.chests = (db.points.chests or 0) + coins
         ns.Touch(db.points)
     end
-    if (spec.plinko or 0) > 0 and ns.GiftPlinkoDrops then ns.GiftPlinkoDrops(spec.plinko) end
     if ns.OnKillsChanged then ns.OnKillsChanged() end
     if ns.CheckRank then ns.CheckRank() end
     return chest.tier or #TIERS, coins, ns.TributeCards(spec)
@@ -273,8 +267,8 @@ function ns.OpenChest(dungeonKey)
             db.chestPity[dungeonKey] = dry + 1
         end
     end
-    -- (and the Dream Bed's stories, milk and bonks, by the tier: cards of their own)
-    for _, key in ipairs({ "story", "milk", "bonk" }) do
+    -- (and the Dream Bed's stories and bonks, by the tier: cards of their own)
+    for _, key in ipairs({ "story", "bonk" }) do
         if (spec[key] or 0) > 0 then
             ns.AddIngredient(key, spec[key], true)
             items[#items + 1] = { kind = "tokens", dungeon = key, count = spec[key] }
@@ -318,20 +312,18 @@ function ns.CheckUnlocks(clears)
         end
     end
     if found > 0 then
-        ns.Print(("You have |cffffd100%d chest%s|r from the dungeons you've cleared - open them on your PIX page."):format(found, found == 1 and "" or "s"))
+        ns.Print(("You have |cffffd100%d chest%s|r from the dungeons you've cleared - open them in your Inventory."):format(found, found == 1 and "" or "s"))
     end
 end
 
--- The Dream Bed's three (DreamBed.lua): Warm Milk (luck, up to 3 a dream), Bedtime Stories (ask about one piece: 1 to
--- 5 by its rarity) and Bonks (ogres go to sleep by bonking their heads: one a dream; one comes back each day). Kept in
--- KillTrackerDB.tokens as "milk", "story" and "bonk". From rares, dungeon chests, bounties, plinko and Ogre Rank.
+-- The Dream Bed's two (DreamBed.lua): Bedtime Stories (ask about one piece: 1 to 5 by its rarity) and Bonks (ogres go
+-- to sleep by bonking their heads: one a dream; one comes back each day). Kept in KillTrackerDB.tokens as "story" and
+-- "bonk" (anything else there, like the old Warm Milk, is cleared). From rares, dungeon chests, bounties and Ogre Rank.
 ns.DREAM_ITEMS = {
-    milk = { name = "Warm Milk", icon = "Interface\\Icons\\INV_Drink_Milk_01",
-        source = "From rare creatures, dungeon chests and plinko. A mug before bed: wilder dreams (rarer pieces, and the crayons)." },
     story = { name = "Bedtime Story", icon = "Interface\\Icons\\INV_Misc_Book_09",
-        source = "From dungeon chests, bounties and plinko. Ask the ogre to dream about one piece you pick." },
+        source = "From rare creatures, dungeon chests and bounties. Ask the ogre to dream about one piece you pick." },
     bonk = { name = "Bonk", icon = "Interface\\Icons\\INV_Hammer_05",
-        source = "Ogres go to sleep by bonking their heads: one bonk with the mallet and he's out. One comes back each day (up to 3); more from epic dungeon chests, bounties, plinko and Ogre Rank." },
+        source = "Ogres go to sleep by bonking their heads: one bonk with the mallet and he's out. One comes back each day (up to 3); more from epic dungeon chests, bounties and Ogre Rank." },
 }
 ns.INGREDIENTS = {}
 for key, item in pairs(ns.DREAM_ITEMS) do ns.INGREDIENTS[key] = item.name end
@@ -363,9 +355,9 @@ function ns.DropOldIngredients()
         if not ns.DREAM_ITEMS[key] then tokens[key] = nil end
     end
 end
--- Rares give Warm Milk (a rare elite two).
+-- Rares give a Bedtime Story (a rare elite two).
 table.insert(ns.KillHandlers, function(_, _, c)
-    if c.rank == "Rare" or c.rank == "Rare Elite" then ns.AddIngredient("milk", c.rank == "Rare Elite" and 2 or 1) end
+    if c.rank == "Rare" or c.rank == "Rare Elite" then ns.AddIngredient("story", c.rank == "Rare Elite" and 2 or 1) end
 end)
 
 -- Wearing a famous drop unlocks its piece on this character (KillTrackerDB is per character): equip the real Ironfoe

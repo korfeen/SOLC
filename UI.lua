@@ -190,11 +190,12 @@ local function BuildRows()
         local p = ns.GetPoints(Source())
         for _, part in ipairs({ { "Kills", p.kills }, { "New mob types", p.newMobs }, { "Leaders", p.leaders },
             { "Achievements", p.achievements }, { "PvP", p.pvp }, { "Guild groups", p.guildGroup },
-            { "Guild dungeons", p.dungeons }, { "Bounties", p.bounty }, { "Dungeon chests", p.chests }, { "Spent", -p.spent } }) do
+            { "Guild dungeons", p.dungeons }, { "Bounties", p.bounty }, { "Dungeon chests", p.chests }, { "Puzzle duels", p.duels },
+            { "Spent", -p.spent } }) do
             rows[#rows + 1] = { label = part[1], count = part[2], pointsPart = true }
         end
         if not state.viewing then
-            rows[#rows + 1] = { label = "Mint a picture", count = ns.MintCost(), mintAction = true }
+            rows[#rows + 1] = { label = "Mint a picture", count = 0, mintAction = true }
         end
         if not state.viewing then ns.UpdateDuplicates() end
         local mints = {}
@@ -447,7 +448,9 @@ tinsert(UISpecialFrames, "SOLCFrame")  -- close with Escape
 -- little darker than painted, like the rest of the wood.
 local SKELETON_ART = "Interface\\AddOns\\SOLC\\Media\\Skeleton\\"
 local SKELETON_SHADE = 0.8
-ns.UI.FRAME_LEVEL = { crossBeam = 27, middleBeam = 28, wood = 30, header = 40 }  -- above the window's own level
+-- (the wood high above everything a page or a screen stacks up - the Dream Bed's parts reach 40 levels over its own - so
+-- whatever runs past the page goes under the posts and beams)
+ns.UI.FRAME_LEVEL = { crossBeam = 27, middleBeam = 28, wood = 300, header = 310 }  -- above the window's own level
 -- The posts and the bottom beam over the pages (and the pages' beams); the top beam and the logo over those.
 local woodFrame = CreateFrame("Frame", nil, frame)
 woodFrame:SetAllPoints()
@@ -584,8 +587,22 @@ headerGrip:SetScript("OnDragStop", function() frame:GetScript("OnDragStop")(fram
 -- (KillTrackerDB.clickSounds = false). Game sound files by id (the original ogre and item sounds).
 local CLICK_SOUND = 567566        -- sound/interface/pickup/putdownwoodsmall.ogg
 local OGRE_SOUNDS = { 557657, 557662, 557656, 557661, 557651 }  -- mogrefidget1-2, mogreaggro1-3
+-- Frames that catch keys while shown (EnableKeyboard): in combat a frame can't change whether keys pass through it,
+-- so the last key it kept would leave it swallowing every key until it closed. They let go of the keyboard as combat
+-- starts (PLAYER_REGEN_DISABLED comes just before the lockdown) and take it back after.
+do
+    local keyFrames = {}
+    function ns.UI.CombatSafeKeys(frame) keyFrames[#keyFrames + 1] = frame end
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("PLAYER_REGEN_DISABLED")
+    watcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+    watcher:SetScript("OnEvent", function(_, event)
+        for _, frame in ipairs(keyFrames) do frame:EnableKeyboard(event == "PLAYER_REGEN_ENABLED") end
+    end)
+end
+
 function ns.UI.ClickSound()
-    if KillTrackerDB and KillTrackerDB.clickSounds == false then return end
+    if ns.SoundOff() or (KillTrackerDB and KillTrackerDB.clickSounds == false) then return end
     local ogre = KillTrackerDB and KillTrackerDB.ogreMode
     local voices = ns.RankPerk and ns.RankPerk("voices") or 1  -- your rank makes them more frequent (Ranks.lua)
     if math.random(math.floor((ogre and 10 or 30) / voices)) == 1 then
@@ -652,12 +669,13 @@ if buttons then
     local close = At(buttons.close, POST_MIDDLE)
     local settings = At(buttons.settings, POST_MIDDLE - HEADER_GAP)
     settingsButton = HeaderButton(settings, "Settings", function() ns.OpenPage("settings") end)
-    local closeButton = HeaderButton(close, "Close", function() frame:Hide() end)
-    -- Hidden on the Overview, whose portrait hangs over the top beam there (OverviewCard.lua); Escape still closes.
-    function ns.UI.SetHeaderButtonsShown(shown)
-        settingsButton:SetShown(shown)
-        closeButton:SetShown(shown)
-    end
+    HeaderButton(close, "Close", function() frame:Hide() end)
+    -- Your look (the Overview's EDIT, OverviewCard.lua's ns.UI.EditLook): the brush left of Settings, on your own
+    -- Overview only (Refresh); lit while it's open. Its art: tools/make-edit-brush.js.
+    local edit = HeaderButton(At({ icon = "EditBrush", iconSize = 30 }, POST_MIDDLE - 2 * HEADER_GAP), "Change your look",
+        function() if ns.UI.EditLook then ns.UI.EditLook() end end)
+    edit:Hide()
+    ns.UI.headerEdit = edit
 end
 
 -- The menu column: no box of its own, the wooden planks hang straight on the window.
@@ -686,6 +704,22 @@ function ns.RegisterPage(page)
     pageOrder[#pageOrder + 1] = page
 end
 
+-- A page still waiting on an Ogre Rank (Onboarding.lua's ns.RankLocked): its own lock or that of the page it's a tab
+-- of or sits under. A locked page has no sidebar button and doesn't open.
+local function Locked(page)
+    while page do
+        if ns.RankLocked and ns.RankLocked(page.key) then return true end
+        page = pages[page.tabOf or page.under or ""]
+    end
+end
+function ns.UI.PageLocked(key)
+    local page = pages[key]
+    if not page then
+        for _, p in ipairs(pageOrder) do if p.covers and p.covers[key] then page = p end end
+    end
+    return page and Locked(page) or false
+end
+
 local navButtons, sidebarBuilt = {}, false
 local navList = {}  -- the sidebar's buttons in their normal order
 -- The sidebar's page buttons (wooden, see ns.UI.SkinButton) keep the art's shape: their height follows the width.
@@ -700,10 +734,10 @@ local NAV_OUTLINE = { 0.18, 0.09, 0.03 }  -- dark brown, like the wood's shadows
 -- Ogre mode (/solc ogre, KillTrackerDB.ogreMode): the sidebar and the tabs in ogre words, 5 letters at most,
 -- in an order that reads ME SMASH BRAG, CAVE HUNTS SHOP, THUNK (pages not listed come after).
 local OGRE_LABELS = {
-    overview = "ME", kills = "SMASH", deeds = "BRAG", collection = "PIX", home = "CAVE", members = "FRENZ", bounties = "HUNTS", proshop = "SHOP", puzzle = "THUNK",
+    pixcollection = "DEX", overview = "ME", kills = "SMASH", deeds = "BRAG", collection = "PIX", home = "CAVE", members = "FRENZ", bounties = "HUNTS", proshop = "SHOP", games = "GAMES", puzzle = "THUNK",
 }
 local OGRE_ORDER = {}
-for i, key in ipairs({ "overview", "kills", "deeds", "collection", "home", "members", "bounties", "proshop", "puzzle" }) do OGRE_ORDER[key] = i end
+for i, key in ipairs({ "overview", "kills", "deeds", "pixcollection", "collection", "home", "members", "bounties", "proshop", "games", "puzzle" }) do OGRE_ORDER[key] = i end
 local function OgreMode() return KillTrackerDB and KillTrackerDB.ogreMode end
 local function OgreLabel(page) return OgreMode() and OGRE_LABELS[page.key] end
 local function NavLabel(page) return OgreLabel(page) or NAV_LABELS[page.key] or page.label end
@@ -821,6 +855,7 @@ local function PlaceRing(i, button, side, scale, point, dy)
     end
     ring.width, ring.height = RING_WIDTH * scale, RING_HEIGHT * scale
     ring:SetSize(ring.width, ring.height)
+    ring:Show()
     ring:ClearAllPoints()
     ring:SetPoint("CENTER", button, point .. (side == 1 and "LEFT" or "RIGHT"), side == 1 and RING_INSET or -RING_INSET, dy)
     table.insert(button.rings, ring)
@@ -841,6 +876,15 @@ local function LayoutSidebar()
             return normal[a] < normal[b]
         end)
     end
+    -- (a page still locked behind a rank: no button, the ones below move up)
+    local open = {}
+    for _, button in ipairs(order) do
+        local locked = Locked(button.page)
+        button:SetShown(not locked)
+        if not locked then open[#open + 1] = button end
+    end
+    order = open
+    for _, ring in ipairs(rings) do ring:Hide() end  -- (PlaceRing shows the ones still used)
     -- The top button hangs TOP_GAP below the logo's sign (the sidebar's top is 44 below the window's), from
     -- rings centred between the two, drawn behind the logo.
     local signBottom = -SKELETON.logoSignBottom
@@ -891,6 +935,13 @@ local function LayoutSidebarSoon()
     C_Timer.After(0.1, LayoutSidebar)
 end
 
+-- After a rank opens a page (Onboarding.lua): its button joins the sidebar.
+function ns.UI.RelayoutSidebar()
+    if sidebarBuilt then LayoutSidebarSoon() end
+end
+
+function ns.UI.NavButton(key) return navButtons[key] end
+
 function ns.UI.SetOgreMode(on)
     KillTrackerDB.ogreMode = on or nil
     if not sidebarBuilt then return end
@@ -935,7 +986,7 @@ local function ShowTabs(current)
     local groupKey = current.tabOf or current.key
     local group = {}
     for _, page in ipairs(pageOrder) do
-        if page.key == groupKey or page.tabOf == groupKey then group[#group + 1] = page end
+        if (page.key == groupKey or page.tabOf == groupKey) and not Locked(page) then group[#group + 1] = page end
     end
     table.sort(group, function(a, b)  -- the page itself first, then its tabs by order
         if (a.key == groupKey) ~= (b.key == groupKey) then return a.key == groupKey end
@@ -980,6 +1031,10 @@ end
 
 function ns.OpenPage(key)
     if not PageFor(key) then return end
+    if Locked(PageFor(key)) then  -- (not your rank yet: the steward says so, Onboarding.lua)
+        if ns.SayLocked then ns.SayLocked(PageFor(key).key) end
+        return
+    end
     if ns.UI.CloseScreen then ns.UI.CloseScreen() end  -- (another page: the Dream Bed, a chest over this one closes)
     state.page = key
     if not frame:IsShown() then ns.ToggleUI() else Refresh() end
@@ -1302,7 +1357,7 @@ local function RowTooltip(self)
     elseif self.data.mintAction then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Mint a picture")
-        GameTooltip:AddLine("Rolls a random background, skin, clothes, expression, eyes, accessory and headwear. Rarer traits make a rarer picture.", 1, 1, 1, true)
+        GameTooltip:AddLine("Off to the Dream Bed: one Bonk and the ogre dreams up a picture for you to paint. A Bedtime Story picks a piece.", 1, 1, 1, true)
         GameTooltip:Show()
     elseif self.data.pointsPart then
         return
@@ -1367,7 +1422,7 @@ local function FillRow(row, d, total, max)
     row.bar:SetVertexColor(0.8, 0.2, 0.2, 0.45)
     if d.mintAction then
         row.label:SetText("|cffffd100+ Mint a picture|r")
-        row.count:SetText(("%d points"):format(d.count))
+        row.count:SetText("Dream Bed")
         barFraction = 0
     elseif d.mint then
         local rarity = ns.MintRarity(d.mint.traits, d.mint.asked)
@@ -1573,6 +1628,7 @@ function Refresh()
     BuildSidebar()
     -- state.page stays the key asked for when the page covers it, so the page can open the matching tab.
     local current = PageFor(state.page) or pages.overview
+    if Locked(current) then current = pages.overview end  -- (the last page shown, locked again: a test rank)
     if current.key ~= state.page and not (current.covers and current.covers[state.page]) then state.page = current.key end
     local navKey = current.tabOf or current.under or current.key  -- a tab lights its page's button
     body:SetShown(not current.bare)
@@ -1587,6 +1643,7 @@ function Refresh()
     ShowTabs(current)
     UpdateTitle(current)
     if settingsButton then settingsButton:SetSelected(current.key == "settings") end
+    if ns.UI.headerEdit then ns.UI.headerEdit:SetShown(current.key == "overview" and not state.viewing) end
     if not current.frame then
         current.frame = current.create(pageArea)
         current.frame:SetParent(pageArea)

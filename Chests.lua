@@ -13,7 +13,7 @@
 --    rays behind it for an epic or legendary one; a legendary one comes face down (a "?") and flips; a chase item gets
 --    a banner. Then the next chest of that dungeon, if you have more, or close.
 -- Everything is drawn with the crayon textures from tools/make-role-icons.js (Chest, ChestOpen, Fx_*), tinted.
--- ns.ShowChest(dungeon key[, preview]): one of your chests of that dungeon (the PIX page's tiles, one per dungeon);
+-- ns.ShowChest(dungeon key[, preview]): one of your chests of that dungeon (the Inventory's tiles, one per dungeon);
 -- preview (dev mode, Dev.lua): everything that dungeon's chest can hold, nothing unlocked.
 -- An Ogre Godz tribute (ns.TRIBUTE, Unlocks.lua: a chest made by hand in the dev menu) comes in first: a beam of gold
 -- from the sky, the chest falling down it and slamming down, THE OGRE GODZ HAVE GRACED YOU WITH TRIBUTE across the
@@ -42,7 +42,7 @@ local TAP_HINTS = { "Again!", "Harder!", "It's shaking...", "Something big...", 
 
 local function Sound(name)
     local id = SOUNDKIT and SOUNDKIT[name]
-    if id then pcall(PlaySound, id) end
+    ns.PlaySound(id)
 end
 local function Tint(level) return level and level > 0 and { ns.RarityRGB(LEVELS[level]) } or WARM end
 local function Rarity(text) return (text:gsub("^%l", string.upper)) end
@@ -419,7 +419,7 @@ local function Pull(i)
     card.canvas:SetShown(unlock)
     card.coin:SetShown(not unlock)
     card.cover:SetShown(flips)
-    if item.kind == "custom" then card.coin:SetTexture(item.icon) end  -- (a tribute's plinko drops: Unlocks.lua)
+    if item.kind == "custom" then card.coin:SetTexture(item.icon) end  -- (a card with its own icon)
     card.cover:SetFrameLevel(card:GetFrameLevel() + 4)  -- (over the picture)
     card.back:SetWidth(CARD + 6)
     if unlock then
@@ -429,7 +429,7 @@ local function Pull(i)
     elseif item.kind == "custom" then
         card.name:SetText(("|cffd8dce0%s|r"):format(item.label))
         card.what:SetText(item.sub or "")
-    else  -- the Dream Bed's milk, stories and bonks
+    else  -- the Dream Bed's stories and bonks
         card.coin:SetTexture(ns.IngredientIcon(item.dungeon))
         card.name:SetText(("|cffd8dce0+%d %s|r"):format(item.count, ns.IngredientName(item.dungeon)))
         card.what:SetText("for the Dream Bed")

@@ -1,4 +1,4 @@
--- Couronne (the Games Room's board game; a dev test for now: /solc couronne, practice on your own, simple textures).
+-- Couronne (the Games Room's board game; a dev test for now: /solc couronne, practice on your own, painted walnut/brass table).
 -- A square board seen from above, a pocket in each corner; 12 white pucks, 12 black and the red queen start packed in
 -- the middle. You shoot the striker from your baseline: click the baseline to move it along, drag back from it to aim
 -- (the further, the harder), let go to shoot. Practice: sink every white in as few shots as you can - a black sunk costs
@@ -13,13 +13,14 @@ local UI = ns.UI
 if not UI then return end
 
 local ROUND = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"  -- (a white disc)
+local MEDIA = "Interface\\AddOns\\SOLC\\Media\\Couronne\\"
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 
 -- The board (pixels, y down from its top-left), the physics and the rules, in one table (Lua 5.1: at most 60 upvalues).
 local K = {
     S = 500, RIM = 22,  -- (the playing area, square, and the wooden rim round it)
-    PR = 23, POCKET_IN = 17,  -- (a pocket's radius, and how far its middle sits in from the corner)
+    PR = 23, POCKET_IN = 48,  -- (a pocket's radius, and how far its middle sits in from the corner)
     R = 12, SR = 17, QR = 12,  -- (puck, striker, queen radii)
     BASE_Y = 440, BASE_X1 = 120, BASE_X2 = 380,  -- (your baseline: where the striker may sit)
     DECEL = 280, DRAG = 0.4, STOP = 5, BOUNCE = 0.9, RAIL = 0.72, STEP = 1 / 240,
@@ -85,6 +86,11 @@ local function Round(parent, layer, sub)
     t:SetTexture(ROUND)
     return t
 end
+local function RingMaterial(texture,kind,shade)
+    local index=({white=0,black=1,queen=2,striker=3})[kind]
+    texture:SetTexture(MEDIA.."Pucks.blp") texture:SetTexCoord(index/4,(index+1)/4,0,1)
+    texture:SetVertexColor(shade or 1,shade or 1,shade or 1,1)
+end
 local function DiscVis(d, k)
     local v = VIS[k]
     if not v then
@@ -114,6 +120,10 @@ local function DiscVis(d, k)
     a.top:SetVertexColor(c[1], c[2], c[3])
     a.shine:SetVertexColor(1, 1, 1, d.kind == "black" and 0.18 or 0.4)
     a.wall:SetVertexColor(c[1] * 0.35, c[2] * 0.35, c[3] * 0.35)
+    RingMaterial(v.top.body,d.kind)
+    RingMaterial(a.top,d.kind)
+    RingMaterial(a.side1,d.kind,.48)
+    RingMaterial(a.side2,d.kind,.68)
     d.vis = v
 end
 -- A flat circle lying on the board at height h, as the angled camera sees it (an ellipse).
@@ -141,6 +151,7 @@ local function PlaceDisc(d)
         t.lip:SetPoint("CENTER", board, "TOPLEFT", x, y) t.lip:SetSize(0.92 * r, 0.92 * r)
         t.hole:SetPoint("CENTER", board, "TOPLEFT", x + r * 0.06, y - r * 0.06) t.hole:SetSize(0.82 * r, 0.82 * r)
         for _, tex in pairs(t) do tex:SetAlpha(a) end
+        t.lip:Hide() t.hole:Hide() t.shine:Hide()
     else
         -- (a thick ring: its side as two ellipses, the top face, a shine, the hole's far wall and the board in it)
         local g, T, x, y = v.angled, d.kind == "striker" and A.ST or A.T, d.x, d.y
@@ -152,6 +163,7 @@ local function PlaceDisc(d)
         Ellipse(g.wall, x, y, T, r * 0.42)
         Ellipse(g.floor, x, y + r * 0.08, T * 0.35, r * 0.34)
         for _, tex in pairs(g) do tex:SetAlpha(a) end
+        g.wall:Hide() g.floor:Hide() g.shine:Hide()
         local _, _, _, depth = PA(x, y, 0)
         v.frame.d = depth
     end
@@ -289,7 +301,7 @@ local function Physics(dt)
                     d.sunk, d.fade, d.vx, d.vy = true, 1, 0, 0
                     d.x, d.y = d.x + (p.x - d.x) * 0.5, d.y + (p.y - d.y) * 0.5
                     G.sunkThisShot[#G.sunkThisShot + 1] = d
-                    pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or 856)
+                    ns.PlaySound(SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or 856)
                     break
                 end
             end
@@ -349,7 +361,7 @@ local function Resolve()
         if combo >= 2 then words[#words + 1] = ("COMBO x%d!"):format(combo) end
         G.comboShow = table.concat(words, "   ")
         G.comboT = 1.8
-        pcall(PlaySound, SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST or 120)
+        ns.PlaySound(SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST or 120)
     end
     if blacks > 0 then
         G.penalty = G.penalty + blacks
@@ -394,7 +406,7 @@ local function Resolve()
         local best = not db.best or score < db.best
         if best then db.best = score end
         G.state = "done"
-        pcall(PlaySound, SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST or 120)
+        ns.PlaySound(SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST or 120)
         Say(("All whites in! Score %d%s"):format(score, best and " - a new best!" or (" (best %d)"):format(db.best)))
     else
         G.state = "aim"
@@ -420,7 +432,7 @@ local function Shoot()
     for _, d in ipairs(discs) do d.chain, d.since, d.dirty = nil, 0, nil end
     striker.chain, striker.since, striker.touched, striker.banked, striker.hit = 0, 1e9, false, false, {}  -- (the start of the combo chain: what it hits is link 1)
     G.state, G.shots = "moving", G.shots + 1
-    pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB or 841)
+    ns.PlaySound(SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB or 841)
     Say("...")
 end
 
@@ -488,7 +500,7 @@ local function Refresh()
     else
         panel.combo:Hide()
     end
-    panel.stat:SetText(("Lua %.1f ms"):format(G.cost))
+    panel.stat:SetText("")
 end
 
 local function OnUpdate(_, elapsed)
@@ -520,29 +532,41 @@ local function Text(parent, size, color)
     return t
 end
 local function Btn(parent, w, h, text, onClick)
-    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    b:SetSize(w, h)
+    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    b:SetSize(w, math.max(32,h))
+    b:SetBackdrop({bgFile=WHITE,edgeFile=WHITE,edgeSize=2})
+    b:SetBackdropColor(.045,.075,.05,1) b:SetBackdropBorderColor(.60,.44,.23,1)
+    local label=Text(b,14,{.98,.9,.73}) label:SetPoint("CENTER") b:SetFontString(label)
+    b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square","ADD")
+    b:SetPushedTextOffset(0,-1)
     b:SetText(text)
     b:SetScript("OnClick", onClick)
     return b
 end
-local function Ring(x, y, r, width, color)  -- a circle drawn on the board: a dark disc with a wood one inside
-    local outer = board:CreateTexture(nil, "BORDER", nil, 1)
-    outer:SetTexture(ROUND)
-    outer:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
-    outer:SetSize(2 * r, 2 * r)
-    outer:SetPoint("CENTER", board, "TOPLEFT", x, -y)
-    local inner = board:CreateTexture(nil, "BORDER", nil, 2)
-    inner:SetTexture(ROUND)
-    inner:SetVertexColor(WOOD[1], WOOD[2], WOOD[3])
-    inner:SetSize(2 * (r - width), 2 * (r - width))
-    inner:SetPoint("CENTER", board, "TOPLEFT", x, -y)
+local function Ring(x,y,r,width,color)
+    for i=0,47 do
+        local a,b=i/48*2*math.pi,(i+1)/48*2*math.pi
+        local line=board:CreateLine(nil,"BORDER",nil,1)
+        line:SetThickness(width) line:SetColorTexture(color[1],color[2],color[3],color[4] or 1)
+        line:SetStartPoint("TOPLEFT",board,x+math.cos(a)*r,-y-math.sin(a)*r)
+        line:SetEndPoint("TOPLEFT",board,x+math.cos(b)*r,-y-math.sin(b)*r)
+    end
 end
 
 local function Build()
     panel = CreateFrame("Frame", "SOLCCouronne", UIParent, "BackdropTemplate")
     panel:SetBackdrop({ bgFile = WHITE })
-    panel:SetBackdropColor(0.1, 0.18, 0.12, 1)  -- (club green baize round the board)
+    -- BackdropTemplate's fill must stay clear: it otherwise covers the floor
+    -- artwork in lower BACKGROUND sublayers with a solid green rectangle.
+    panel:SetBackdropColor(0,0,0,0)
+    local room=panel:CreateTexture(nil,"BACKGROUND",nil,-8)
+    room:SetAllPoints() room:SetTexture(MEDIA.."Room.blp")
+    local sidebar=panel:CreateTexture(nil,"BACKGROUND",nil,-7)
+    sidebar:SetPoint("TOPLEFT",594,0) sidebar:SetPoint("BOTTOMRIGHT")
+    sidebar:SetColorTexture(.02,.05,.035,.96)
+    local shadow=panel:CreateTexture(nil,"BACKGROUND",nil,-6)
+    shadow:SetTexture(MEDIA.."Shadow.blp")
+    shadow:SetPoint("TOPLEFT",-50,-80) shadow:SetSize(700,560)
     panel:EnableMouse(true)
     panel:Hide()
     panel:HookScript("OnHide", function()
@@ -552,7 +576,7 @@ local function Build()
 
     -- the rim, then the board: light wood, its lines and circles, the pockets
     local rim = panel:CreateTexture(nil, "BACKGROUND", nil, 1)
-    rim:SetColorTexture(0.33, 0.18, 0.09, 1)
+    rim:SetTexture(MEDIA.."Rim.blp")
     rim:SetSize(K.S + 2 * K.RIM, K.S + 2 * K.RIM)
     rim:SetPoint("TOPLEFT", 20, -20)
     local rimEdge = panel:CreateTexture(nil, "BACKGROUND", nil, 2)
@@ -564,7 +588,7 @@ local function Build()
     board:SetPoint("TOPLEFT", rim, "TOPLEFT", K.RIM, -K.RIM)
     local wood = board:CreateTexture(nil, "BACKGROUND")
     wood:SetAllPoints()
-    wood:SetColorTexture(WOOD[1], WOOD[2], WOOD[3], 1)
+    wood:SetTexture(MEDIA.."Wood.blp")
     local function Ln(x1, y1, x2, y2, w, a)
         local l = board:CreateLine(nil, "BORDER", nil, 0)
         l:SetThickness(w or 2)
@@ -588,8 +612,8 @@ local function Build()
             Ring(px, py, K.SR + 2, 2, { 0.25, 0.12, 0.06, 0.8 })
         end
     end
-    Ring(K.S / 2, K.S / 2, 80, 2, { 0.25, 0.12, 0.06, 0.8 })
-    Ring(K.S / 2, K.S / 2, 20, 2, { 0.6, 0.12, 0.08, 0.9 })
+    Ring(K.S / 2, K.S / 2, 60, 1, { .6,.12,.08,.9 })
+    Ring(K.S / 2, K.S / 2, 66, 1, { .6,.12,.08,.9 })
     for _, p in ipairs(POCKETS) do  -- (pockets: a dark hole with a net's shadow)
         local hole = board:CreateTexture(nil, "BORDER", nil, 4)
         hole:SetTexture(ROUND)
@@ -598,8 +622,8 @@ local function Build()
         hole:SetPoint("CENTER", board, "TOPLEFT", p.x, -p.y)
         local lip = board:CreateTexture(nil, "BORDER", nil, 3)
         lip:SetTexture(ROUND)
-        lip:SetVertexColor(0.3, 0.16, 0.07, 1)
-        lip:SetSize(2 * K.PR + 6, 2 * K.PR + 6)
+        lip:SetTexture(MEDIA.."Pocket.blp") lip:SetVertexColor(1,1,1,1) hole:Hide()
+        lip:SetSize(2 * K.PR + 12, 2 * K.PR + 12)
         lip:SetPoint("CENTER", board, "TOPLEFT", p.x, -p.y)
     end
     panel.flat = { rim, rimEdge }  -- (the top view's own rim, hidden in the angled view)
@@ -622,8 +646,11 @@ local function Build()
     end
     local function Face(parent, r, g, b, sub, ...)
         local t = parent:CreateTexture(nil, "BACKGROUND", nil, sub)
-        t:SetTexture(WHITE)
-        t:SetVertexColor(r, g, b, 1)
+        local points={...}
+        if sub==-6 then t:SetTexture(MEDIA.."Wood.blp")
+        elseif parent==persp.near and points[1][3]~=points[3][3] then t:SetTexture(MEDIA.."Apron.blp")
+        else t:SetTexture(MEDIA.."Rim.blp") t:SetTexCoord(0,1,0,32/512) end
+        t:SetVertexColor(1,1,1,1)
         Quad(t, ...)
         return t
     end
@@ -638,16 +665,16 @@ local function Build()
     local function LnA(x1, y1, x2, y2, r, g, b)
         local l = persp:CreateLine(nil, "BORDER", nil, 0)
         l:SetThickness(2)
-        l:SetColorTexture(r or 0.72, g or 0.14, b or 0.1, 0.9)
+        l:SetColorTexture(r or .26, g or .12, b or .06, .85)
         local ax, ay = PA(x1, y1, 0)
         local bx, by = PA(x2, y2, 0)
         l:SetStartPoint("TOPLEFT", persp, ax, -ay)
         l:SetEndPoint("TOPLEFT", persp, bx, -by)
     end
-    local function CircleA(x, y, r, n)
+    local function CircleA(x, y, r, n, red)
         for k = 0, n - 1 do
             local a1, a2 = k / n * 2 * math.pi, (k + 1) / n * 2 * math.pi
-            LnA(x + math.cos(a1) * r, y + math.sin(a1) * r, x + math.cos(a2) * r, y + math.sin(a2) * r)
+            LnA(x + math.cos(a1) * r, y + math.sin(a1) * r, x + math.cos(a2) * r, y + math.sin(a2) * r,red and .6 or nil,red and .12 or nil,red and .08 or nil)
         end
     end
     -- (red lines, as on Couronne Deluxe's board: the baselines with their corner circles, the centre circle)
@@ -659,20 +686,28 @@ local function Build()
     for _, x in ipairs({ K.BASE_X1, K.BASE_X2 }) do
         for _, y in ipairs({ K.BASE_Y, K.S - K.BASE_Y }) do CircleA(x, y, K.SR + 2, 14) CircleA(y, x, K.SR + 2, 14) end
     end
-    CircleA(K.S / 2, K.S / 2, 80, 40)
-    CircleA(K.S / 2, K.S / 2, 20, 18)
+    CircleA(K.S / 2, K.S / 2, 60, 48,true)
+    CircleA(K.S / 2, K.S / 2, 66, 48,true)
     for _, p in ipairs(POCKETS) do  -- (blue pocket holes with a darker inside)
         local lip = Round(persp, "BORDER", 3)
-        lip:SetVertexColor(0.18, 0.28, 0.5, 1)
-        Ellipse(lip, p.x, p.y, 0, K.PR + 2)
+        lip:SetTexture(MEDIA.."Pocket.blp") lip:SetVertexColor(1,1,1,1)
+        Ellipse(lip, p.x, p.y, 0, K.PR + 6)
         local hole = Round(persp, "BORDER", 4)
         hole:SetVertexColor(0.06, 0.1, 0.22, 1)
-        Ellipse(hole, p.x, p.y + 3, 0, K.PR - 3)
+        Ellipse(hole, p.x, p.y + 3, 0, K.PR - 3) hole:Hide()
     end
     persp.near = CreateFrame("Frame", nil, persp)  -- (the near rim: in front of the rings by it)
     persp.near:SetAllPoints()
     Face(persp.near, 0.4, 0.22, 0.1, 0, { -RW, S, RH }, { S + RW, S, RH }, { S + RW, S + RW, RH }, { -RW, S + RW, RH })
-    Face(persp.near, 0.28, 0.15, 0.07, 0, { -RW, S + RW, RH }, { S + RW, S + RW, RH }, { S + RW, S + RW, -14 }, { -RW, S + RW, -14 })
+    Face(persp.near, 0.28, 0.15, 0.07, 0, { -RW, S + RW, RH }, { S + RW, S + RW, RH }, { S + RW, S + RW, -170 }, { -RW, S + RW, -170 })
+    -- Gilded corner mounts, fitted to the same camera and rail coordinates.
+    for _,x in ipairs({-11,K.S+11})do for _,y in ipairs({-11,K.S+11})do
+        local cap=board:CreateTexture(nil,"BORDER",nil,6)
+        cap:SetTexture(MEDIA.."Corner.blp") cap:SetSize(26,26)
+        cap:SetPoint("CENTER",board,"TOPLEFT",x,-y)
+        local dome=(y>K.S and persp.near or persp):CreateTexture(nil,"BORDER",nil,6)
+        dome:SetTexture(MEDIA.."Corner.blp") Ellipse(dome,x,y,A.RIMH+5,13)
+    end end
     persp.over = CreateFrame("Frame", nil, persp)  -- (the cue and the aim, over everything)
     persp.over:SetAllPoints()
 
@@ -750,11 +785,13 @@ local function Build()
     panel.msg:SetPoint("TOPLEFT", x0, -218)
     panel.msg:SetWidth(200)
     panel.msg:SetJustifyH("LEFT")
-    local rules = Text(panel, 12, { 0.73, 0.65, 0.51 })
+    local rules = Text(panel, 13, { 0.86, 0.8, 0.65 })
     rules:SetPoint("TOPLEFT", x0, -300)
     rules:SetWidth(200)
     rules:SetJustifyH("LEFT")
-    rules:SetText(("Click your baseline (bottom) to move the striker. Drag back from it and let go to shoot; right-click cancels.\n\nA black or the striker in: +1 shot (the black goes back). The queen in: cover her with a white on the same or next shot for -%d, or she goes back."):format(K.QUEEN_BONUS))
+    rules:SetText(("Click the baseline to position.\nPull back and release to shoot.\nRight-click cancels.\n\nBlack / striker: +1 and reset.\nCover red with a white this\nshot or next for -%d; otherwise\nred returns."):format(K.QUEEN_BONUS))
+    local roomBack=Btn(panel,64,28,"Room",function() panel:Hide() end)
+    roomBack:SetPoint("BOTTOMLEFT",752,40)
     local new = Btn(panel, 140, 28, "New game", function() NewGame() end)
     new:SetPoint("BOTTOMLEFT", x0, 40)
     panel.viewBtn = Btn(panel, 140, 24, "", function()
@@ -779,7 +816,7 @@ local function Build()
     panel:ApplyView()
 end
 
--- Opens it in the window's page area, like Plinko (dev characters only for now: Core.lua).
+-- Opens it in the window's page area (the Games Room's Couronne table).
 function ns.ShowCouronne()
     if not panel then Build() end
     local pageArea = ns.UI and ns.UI.pageArea

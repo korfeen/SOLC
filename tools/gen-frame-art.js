@@ -27,6 +27,10 @@ const FRAMES = {
   bone: "A gruesome-but-cute ogre-made frame built from big bones and tusks lashed together with leather cord at the corners, a little skull at the top middle.",
   dungeon: "A heavy dark iron frame with rivets and bands, a short rusty chain hanging from each top corner, like it came from a dungeon's wall.",
   driftwood: "A rustic frame of grey-brown driftwood sticks, a few seashells and a starfish stuck on its corners.",
+  // (the Pro Shop's: sold for points, convert-frames.js "shop:<id>")
+  club_tartan: "A country-club picture frame wrapped in deep green and navy tartan cloth (a neat plaid with thin red and gold lines), with polished brass caps on its four corners.",
+  fairway_walnut: "A polished dark walnut picture frame for a golf club's trophy room: two little crossed golf clubs carved and gilded at the top middle, and a small white golf ball set into each corner.",
+  velvet_gilt: "A slim, elegant gilt picture frame with a wide burgundy velvet mat inside it (the velvet between the gold and the opening), a little gold bead running round the opening.",
 };
 
 function StyleRefs(work) {

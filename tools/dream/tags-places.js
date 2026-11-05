@@ -79,4 +79,8 @@ Object.assign(PIECE_TAGS, {
   "crystal_drool": ["shiny"],
   "ember_yawn": ["fire", "sleepy"],
   "stardust_snore": ["sleepy", "shiny"],
+  // the Pro Shop steward's skin, eyes and mouth
+  "club_sage": ["golf"],
+  "snooty_eyes": ["golf"],
+  "snooty_sneer": ["golf"],
 });

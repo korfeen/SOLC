@@ -1,18 +1,19 @@
--- Duels: two guildmates sit down at a duel table like a trade window, each puts up one of their pictures (and
--- can react to the other's offer), both press Ready, then they race on the same scramble of one of the two.
--- The winner takes the loser's picture. Messages are whispers on our own prefix:
+-- Duels: two guildmates sit down at a duel table like a trade window, each bets points (and can react to the
+-- other's bet), both press Ready, then they race on the same scramble of a random picture (the challenger rolls
+-- it). The winner gets the loser's bet; no pictures change hands. Each side settles its own points when the
+-- result is known (SOLC.SettleDuel). Messages are whispers on our own prefix:
 --   C|id|mode|size|seconds                  challenge (seconds: the paint time, for paint duels)
 --   A|id                                     accept: both go to the table
 --   D|id|reason                              decline, or leave the table ("busy" if already in a duel)
---   O|id|number|minted|traits  or  O|id|-   my offer (or none); any change clears both Ready marks
+--   O|id|bet                                 my bet in points; any change clears both Ready marks
 --   R|id|1 or 0                              ready, or not
---   E|id|reaction                            a reaction to the other's offer (see ns.REACTIONS)
---   S|id|seed|challenger's number|opponent's number   start (challenger, once both are ready)
---   GO|id                                    the opponent agrees the offers match: both count down 3 seconds
+--   E|id|reaction                            a reaction to the other's bet (see ns.REACTIONS)
+--   S|id|seed|traits|challenger's bet|opponent's bet|owner|number   start (challenger, once both are ready):
+--                                            the picture, a random one minted in the guild (its owner and number)
+--   GO|id                                    the opponent agrees the bets match: both count down 3 seconds
 --   F|id|seconds|moves                       solved in that time (each player's own clock, from their start)
 --   P|id|score                               paint duels: my painting's score (0-100) when my time ran out
 --   L|id                                     ran out of time, or gave up: lost
---   G|id|minted|traits                       the loser gave their picture away; the winner adds it
 --   M|id|part|parts|chunk                    puzzle duels, after the race: my moves (ns.EncodeMoves), for replays
 --   V|id|moves                               puzzle duels, during the race: my moves of the last second, so the
 --                                            other side can watch my board live (one message a second at most)
@@ -27,6 +28,7 @@ local COUNTDOWN = 3        -- seconds
 local INVITE_TIMEOUT = 90  -- seconds to answer a challenge
 local START_TIMEOUT = 15   -- seconds for the opponent to confirm a start
 local MAX_TIME = 600       -- a race ends after 10 minutes; anyone not done by then loses
+local MAX_BET = 100000     -- points; a bigger bet in a message is taken as this
 
 ns.REACTIONS = {
     { key = "deal", text = "Deal!" },
@@ -69,8 +71,8 @@ local duel  -- the current duel, or nil (see Duel.Get)
 local DECLINE_COOLDOWN = 60  -- seconds; for anyone more persistent, turn duels off
 local declinedAt = {}  -- [name] = when we last declined them
 
--- Sending: queued, so a message the game throttles is retried instead of silently lost (a lost prize message
--- would leave the winner without the picture the loser already gave away). Throttled sends wait SEND_RETRY.
+-- Sending: queued, so a message the game throttles is retried instead of silently lost (a lost result would leave
+-- the other side waiting). Throttled sends wait SEND_RETRY.
 local SEND_RETRY = 0.5
 local outbox, sending = {}, false
 local function Pump()
@@ -126,10 +128,11 @@ end
 local function NewID() return tostring(math.random(100000, 999999)) end
 
 -- The current duel: { id, role = "challenger" | "opponent", opponent, mode, size, phase, mine, theirs,
--- myReady, theirReady, reactions = { mine, theirs } }. mine/theirs = offers { number, minted, traits } or nil;
--- reactions = { key, at }. phase: "inviting" (we challenged), "invited" (we were challenged), "table",
--- "starting" (challenger sent the start), "countdown", "racing", "waiting" (we solved, their result pending),
--- "done". Done duels carry result = { won, reason, myTime, theirTime, prize } until Duel.Clear.
+-- myReady, theirReady, reactions = { mine, theirs }, puzzle }. mine/theirs = bets { bet } (points, from the table
+-- on); puzzle = the picture's traits, puzzleOwner and puzzleNumber (from the start on); reactions = { key, at }. phase: "inviting" (we challenged),
+-- "invited" (we were challenged), "table", "starting" (challenger sent the start), "countdown", "racing", "waiting"
+-- (we solved, their result pending), "done". Done duels carry result = { won, reason, myTime, theirTime, points }
+-- until Duel.Clear.
 function Duel.Get() return duel end
 function Duel.Clear()
     if duel and duel.phase ~= "done" then return end
@@ -142,12 +145,9 @@ function Duel.Elapsed()
     return duel and duel.startedAt and GetTime() - duel.startedAt or nil
 end
 
-local function ChallengerOffer() return duel.role == "challenger" and duel.mine or duel.theirs end
-local function OpponentOffer() return duel.role == "challenger" and duel.theirs or duel.mine end
-
--- Which picture the puzzle is made of: one of the two offers, picked by the seed so both sides agree.
-local function PuzzleTraits()
-    return (duel.seed % 2 == 0 and ChallengerOffer() or OpponentOffer()).traits
+-- Both bets on the table at 0 when the duel moves to the table.
+local function SitDown()
+    duel.mine, duel.theirs = { bet = 0 }, { bet = 0 }
 end
 
 local function Finish(won, reason)
@@ -155,15 +155,14 @@ local function Finish(won, reason)
     duel.phase = "done"
     duel.result = { won = won, reason = reason, myTime = duel.myTime, theirTime = duel.theirTime,
         myScore = duel.myScore, theirScore = duel.theirScore }
-    if not won and duel.bot then  -- (the practice bot: nothing changes hands)
-        SOLC.Print("Practice duel: you keep your picture.")
-    elseif not won then
-        -- Hand our picture over: give it away first, then tell the winner, so it can't end up with both.
-        local traits = SOLC.GivePicture(duel.mine.number)
-        if traits then
-            Send(duel.address or duel.opponent, "G", duel.id, duel.mine.minted or 0, SOLC.TraitsToText(traits))
-            duel.result.prize = duel.mine
-        end
+    -- The bets: the winner gets the loser's (as both agreed at the start), the loser pays theirs.
+    local bet = won and duel.theirs.bet or duel.mine.bet
+    if duel.bot then  -- (the practice bot: nothing changes hands)
+        duel.result.points = 0
+        SOLC.Print("Practice duel: no points change hands.")
+    else
+        duel.result.points = bet
+        SOLC.SettleDuel(won, bet)
     end
     Changed()
 end
@@ -190,7 +189,6 @@ end
 local function Begin(seed)
     duel.seed, duel.phase = seed, "countdown"
     duel.countdownEnds = GetTime() + COUNTDOWN
-    duel.puzzle = PuzzleTraits()
     Changed()
     local id = duel.id
     C_Timer.After(COUNTDOWN, function()
@@ -201,17 +199,23 @@ local function Begin(seed)
     end)
 end
 
-local function OfferFields(offer)
-    if not offer then return "-" end
-    return table.concat({ offer.number, offer.minted or 0, SOLC.TraitsToText(offer.traits) }, "|")
+-- A random picture minted in the guild (as the challenger knows them: Page.lua's ns.AllPictures): traits, owner,
+-- number. With none at all, one nobody owns.
+function Duel.PickPicture()
+    local list = ns.AllPictures and ns.AllPictures() or {}
+    local pick = #list > 0 and list[math.random(#list)]
+    if not pick then return SOLC.RandomPicture() end
+    return pick.traits, pick.owner, pick.number
 end
 
--- The challenger starts once both are ready with an offer on the table.
+-- The challenger starts once both are ready, with a random picture for the puzzle.
 local function MaybeStart()
     if duel.role ~= "challenger" or duel.phase ~= "table" then return end
-    if not (duel.myReady and duel.theirReady and duel.mine and duel.theirs) then return end
+    if not (duel.myReady and duel.theirReady) then return end
     duel.phase, duel.seed = "starting", math.random(1, 2 ^ 30)
-    Send(duel.address or duel.opponent, "S", duel.id, duel.seed, duel.mine.number, duel.theirs.number)
+    duel.puzzle, duel.puzzleOwner, duel.puzzleNumber = Duel.PickPicture()
+    Send(duel.address or duel.opponent, "S", duel.id, duel.seed, SOLC.TraitsToText(duel.puzzle), duel.mine.bet, duel.theirs.bet,
+        duel.puzzleOwner or "", duel.puzzleNumber or 0)
     Changed()
     local id = duel.id
     C_Timer.After(START_TIMEOUT, function()
@@ -248,6 +252,7 @@ end
 function Duel.Accept()
     if not duel or duel.phase ~= "invited" then return end
     duel.phase = "table"
+    SitDown()
     Send(duel.address or duel.opponent, "A", duel.id)
     Changed()
 end
@@ -264,8 +269,8 @@ function Duel.Cancel()
     end
 end
 
--- Puts one of your pictures (from SOLC.GetPictures) on the table, or nil to take it off. Clears both Ready marks.
--- Clicking through pictures sends only the last one: the offer goes out OFFER_DELAY after the last change
+-- Sets how many points you bet (0 or more, at most what you have to spend). Clears both Ready marks.
+-- Clicking through bets sends only the last one: it goes out OFFER_DELAY after the last change
 -- (or straight away when you press Ready, see FlushOffer).
 local OFFER_DELAY = 0.4
 local offerPending, offerChangedAt = false, 0
@@ -273,12 +278,12 @@ local offerPending, offerChangedAt = false, 0
 local function FlushOffer()
     if not offerPending or not duel then return end
     offerPending = false
-    Send(duel.address or duel.opponent, "O", duel.id, OfferFields(duel.mine))
+    Send(duel.address or duel.opponent, "O", duel.id, duel.mine.bet)
 end
 
-function Duel.Offer(picture)
+function Duel.Bet(points)
     if not duel or duel.phase ~= "table" then return end
-    duel.mine = picture and { number = picture.number, minted = picture.time, traits = picture.traits } or nil
+    duel.mine.bet = math.max(0, math.min(math.floor(points or 0), SOLC.GetBalance()))
     duel.myReady, duel.theirReady = false, false
     offerChangedAt = GetTime()
     if not offerPending then
@@ -294,9 +299,10 @@ function Duel.Offer(picture)
     Changed()
 end
 
--- Ready (or not) to race with the offers as they are.
+-- Ready (or not) to race with the bets as they are.
 function Duel.SetReady(ready)
-    if not duel or duel.phase ~= "table" or (ready and not duel.mine) then return end
+    if not duel or duel.phase ~= "table" then return end
+    if ready and duel.mine.bet > SOLC.GetBalance() then return SOLC.Print("You don't have that many points to bet.") end
     FlushOffer()  -- the other side must have our current offer before our Ready
     duel.myReady = ready
     Send(duel.address or duel.opponent, "R", duel.id, ready and 1 or 0)
@@ -304,7 +310,7 @@ function Duel.SetReady(ready)
     MaybeStart()
 end
 
--- Reacts to the other's offer: shown above your card on their screen for a moment.
+-- Reacts to the other's bet: shown above your card on their screen for a moment.
 function Duel.React(key)
     if not duel or not REACTION_TEXT[key] or duel.phase == "done" then return end
     duel.reactions.mine = { key = key, at = GetTime() }
@@ -395,10 +401,12 @@ function Duel.SetAcceptDuels(accept)
     SOLCPuzzleDB.acceptDuels = accept and true or false
     Changed()
 end
+SOLC.PuzzleDuels = { Accepts = Duel.AcceptsDuels, Set = Duel.SetAcceptDuels }  -- (SOLC's Settings page)
 
 function handlers.C(sender, id, mode, size, seconds)
     local address = lastSender or sender
-    if not Duel.AcceptsDuels() then
+    if not (Duel.bot and Duel.bot.IsBot(sender)) and not SOLC.IsGuildmate(sender) then return end  -- (guildmates only)
+    if not Duel.AcceptsDuels() or SOLC.DoNotDisturb() then  -- (off, or do not disturb: SOLC's Settings)
         Send(address, "D", id, "off")
         return
     end
@@ -432,6 +440,7 @@ end
 function handlers.A(sender, id)
     if not Mine(sender, id) or duel.phase ~= "inviting" then return end
     duel.phase = "table"
+    SitDown()
     Changed()
 end
 
@@ -447,12 +456,11 @@ function handlers.D(sender, id, reason)
     Changed()
 end
 
-function handlers.O(sender, id, number, minted, traits)
+function handlers.O(sender, id, bet)
     if not Mine(sender, id) or (duel.phase ~= "table" and duel.phase ~= "starting") then return end
-    duel.theirs = number ~= "-" and { number = tonumber(number), minted = tonumber(minted),
-        traits = SOLC.TextToTraits(traits or "") } or nil
+    duel.theirs = { bet = math.max(0, math.min(MAX_BET, math.floor(tonumber(bet) or 0))) }
     duel.myReady, duel.theirReady = false, false
-    if duel.phase == "starting" then duel.phase = "table" end  -- the offer changed under the start
+    if duel.phase == "starting" then duel.phase = "table" end  -- the bet changed under the start
     Changed()
 end
 
@@ -472,17 +480,20 @@ function handlers.E(sender, id, key)
     Changed()
 end
 
-function handlers.S(sender, id, seed, challengerNumber, opponentNumber)
+function handlers.S(sender, id, seed, traits, challengerBet, opponentBet, owner, number)
     if not Mine(sender, id) or duel.phase ~= "table" then return end
-    -- Only if the offers are the ones we both see, and we're ready; otherwise we're not.
-    local ok = duel.myReady and duel.mine and duel.theirs and tonumber(challengerNumber) == duel.theirs.number
-        and tonumber(opponentNumber) == duel.mine.number
+    -- Only if the bets are the ones we both see, and we're ready; otherwise we're not.
+    local puzzle = SOLC.TextToTraits(traits or "")
+    local ok = duel.myReady and next(puzzle) ~= nil and tonumber(challengerBet) == duel.theirs.bet
+        and tonumber(opponentBet) == duel.mine.bet
     if not ok then
         duel.myReady = false
         Send(duel.address or sender, "R", id, 0)
         Changed()
         return
     end
+    duel.puzzle = puzzle
+    duel.puzzleOwner, duel.puzzleNumber = owner ~= "" and owner or nil, tonumber(number) ~= 0 and tonumber(number) or nil
     Send(duel.address or sender, "GO", id)
     Begin(tonumber(seed) or 1)
 end
@@ -529,19 +540,6 @@ function handlers.M(sender, id, part, parts, chunk)
     end
     duel.theirMoves = table.concat(duel.movesIn, "", 1, parts)
     duel.movesIn = nil
-    Changed()
-end
-
-function handlers.G(sender, id, minted, traits)
-    -- The prize: only from the opponent of the duel we just won, once.
-    if not Mine(sender, id) or not duel.result or not duel.result.won or duel.result.received then return end
-    duel.result.received = true
-    if duel.bot then  -- (the practice bot's picture: shown as the prize, not yours to keep)
-        duel.result.prize = { traits = SOLC.TextToTraits(traits or "") }
-        return Changed()
-    end
-    local mint = SOLC.ReceivePicture(SOLC.TextToTraits(traits or ""), sender, tonumber(minted))
-    duel.result.prize = mint and { number = mint.number, traits = mint.traits }
     Changed()
 end
 

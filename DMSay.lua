@@ -120,6 +120,7 @@ end
 
 -- Shows (or queues) one: { name, traits = { [layer] = id }, text }.
 function ns.ShowOgreSays(say)
+    if ns.DoNotDisturb() then return end  -- (do not disturb: Settings.lua)
     if not pop then BuildPop() end
     if showing then queue[#queue + 1] = say return end
     showing = true
@@ -135,14 +136,14 @@ function ns.ShowOgreSays(say)
     pop.restX = math.max(30, (pop.plate:GetWidth() - OGRE) / 2 + 12)  -- (the name plate on screen too)
     pop.phase, pop.t = "in", 0
     pop:Show()
-    pcall(PlaySound, SOUNDKIT and SOUNDKIT.TELL_MESSAGE or 3081)
+    ns.PlaySound(SOUNDKIT and SOUNDKIT.TELL_MESSAGE or 3081)
 end
 
 -- The Ogre Godz (an Ogre Godz tribute arrived: Tribute.lua) ----------------------------------------------------------
 -- Their own pop-in, at the top of the screen: it floats down from above, the Ogre Godz (a crowned ogre) sitting on a
 -- bank of crayon clouds that drift and bob, a rainbow and slowly turning golden rays behind, sparkles twinkling, the
 -- words round the rainbow above and a speech bubble below; it stays a while and floats back up (click: now). It only
--- tells: the chest waits on the PIX page.
+-- tells: the chest waits in the Inventory.
 
 local FX = "Interface\\AddOns\\SOLC\\Media\\Icons\\Fx_"
 local GODZ_W, GODZ_H, GODZ_OGRE = 600, 400, 190
@@ -266,6 +267,7 @@ end
 
 -- Shows (or queues) the Ogre Godz telling you a tribute came: spec = the tribute (its note).
 function ns.ShowOgreGodz(spec)
+    if ns.DoNotDisturb() then return end  -- (do not disturb: the chest still waits in your Inventory)
     if not godz then BuildGodz() end
     if godz:IsShown() then godzQueue[#godzQueue + 1] = spec return end
     local ogreMode = KillTrackerDB and KillTrackerDB.ogreMode
@@ -280,15 +282,15 @@ function ns.ShowOgreGodz(spec)
     ns.RenderMint(godz.canvas, traits)
     godz.title:SetText(ogreMode and "OGRE GODZ!" or "THE OGRE GODZ")
     local note = spec and spec.note and spec.note ~= "" and ('\n|cff8a5a1a"%s"|r'):format(spec.note) or ""
-    godz.text:SetText((ogreMode and "YOU. GET. LOOT. LOOK IN PIX!" or
-        "Mortal! We have granted you a |cffb8860bTRIBUTE CHEST|r.\nIt waits for you on your PIX page.") .. note)
+    godz.text:SetText((ogreMode and "YOU. GET. LOOT. LOOK IN STUFF!" or
+        "Mortal! We have granted you a |cffb8860bTRIBUTE CHEST|r.\nIt waits for you in your Inventory.") .. note)
     godz.bubble:SetSize(math.min(424, math.max(220, godz.text:GetUnboundedStringWidth() + 24)), godz.text:GetStringHeight() + 26)
     godz.hold = GODZ_HOLD + (note ~= "" and 3 or 0)
     godz.phase, godz.t, godz.time = "in", 0, 0
     godz:ClearAllPoints()
     godz:SetPoint("TOP", UIParent, "TOP", 0, GODZ_H)
     godz:Show()
-    if SOUNDKIT and SOUNDKIT.UI_LEGENDARY_LOOT_TOAST then pcall(PlaySound, SOUNDKIT.UI_LEGENDARY_LOOT_TOAST) end
+    if SOUNDKIT and SOUNDKIT.UI_LEGENDARY_LOOT_TOAST then ns.PlaySound(SOUNDKIT.UI_LEGENDARY_LOOT_TOAST) end
 end
 
 -- Sending and hearing --------------------------------------------------------------------------------------------

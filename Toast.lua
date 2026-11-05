@@ -5,6 +5,18 @@ local _, ns = ...
 local HOLD, FADE = 4, 1
 local LEVEL_UP_SOUND = 888
 
+-- Your Settings (Settings.lua): every SOLC sound off (KillTrackerDB.soundOff) and do not disturb (KillTrackerDB.dnd:
+-- no toasts, no ogre pop-ins, puzzle challenges declined; chat lines still come). Every SOLC sound goes through
+-- ns.PlaySound / ns.PlaySoundFile (they return what pcall does: ok, willPlay, handle).
+function ns.SoundOff() return KillTrackerDB ~= nil and KillTrackerDB.soundOff == true end
+function ns.DoNotDisturb() return KillTrackerDB ~= nil and KillTrackerDB.dnd == true end
+function ns.PlaySound(id, channel)
+    if id and not ns.SoundOff() then return pcall(PlaySound, id, channel) end
+end
+function ns.PlaySoundFile(file, channel)
+    if file and not ns.SoundOff() then return pcall(PlaySoundFile, file, channel) end
+end
+
 -- big = gold title, gold border and a sound; otherwise a quieter grey popup.
 local STYLES = {
     record      = { big = true,  title = { 1, 0.82, 0 }, border = { 1, 0.82, 0 } },
@@ -46,7 +58,7 @@ local function Present(item)
     toast.elapsed = 0
     toast:SetAlpha(1)
     toast:Show()
-    if style.big then pcall(PlaySound, LEVEL_UP_SOUND) end
+    if style.big then ns.PlaySound(LEVEL_UP_SOUND) end
 end
 
 toast:SetScript("OnUpdate", function(self, elapsed)
@@ -64,6 +76,7 @@ end)
 
 -- style: "record", "achievement" or "info". line2 is optional.
 function ns.ShowToast(style, title, line1, line2)
+    if ns.DoNotDisturb() then return end
     local item = { style = style, title = title, line1 = line1, line2 = line2 }
     if toast:IsShown() then
         queue[#queue + 1] = item

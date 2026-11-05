@@ -1,6 +1,6 @@
 -- The Dream Bed: the new minting. Your ogre, tucked into bed (your built ogre's head on a pillow, a quilt over the rest:
 -- the minting art), a thought bubble over his head (click it: pick the piece he'll dream about, for Bedtime Stories);
--- on the nightstand a mug of Warm Milk (luck) and the candle (just the room's light: it goes out as he drops off). Ogres go to sleep by bonking their heads: the
+-- on the nightstand a mug (just for show) and the candle (just the room's light: it goes out as he drops off). Ogres go to sleep by bonking their heads: the
 -- mallet by the nightstand (a Bonk; one comes back each day) knocks him out. He sleeps, and the window's sky shows the luck (a shooting star, an
 -- aurora, a meteor shower); in the morning he wakes, tells you his dream (DreamTeller.lua), and you paint it on your
 -- easel, a layer a beat, in the edition you reach for (brush, coloured pencils, crayons); then the painting comes
@@ -11,14 +11,17 @@
 local _, ns = ...
 
 local UI = ns.UI
-local W, S = {}, {}  -- widgets; state (phase, milk, story, mint, told, ...)
+local W, S = {}, {}  -- widgets; state (phase, story, mint, told, ...)
 local NAME_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
 local CRAYON_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\FingerPaint-Regular.ttf"
 local GLOW = "Interface\\AddOns\\SOLC\\Media\\DreamBed\\glow"  -- (tools/make-dreambed-fx.js: soft, fading to nothing)
 local DISC = "Interface\\AddOns\\SOLC\\Media\\DreamBed\\disc"  -- (the moon and the sun)
+local BLEED = 14  -- (the room runs this far under the wooden frame on every side, as the Pro Shop's and the Games Room's)
 local PARCH, INK = { 0.96, 0.93, 0.86 }, { 0.16, 0.11, 0.06 }
+-- The rarities' colours as ink on the parchment: deeper than the game's (its light green and orange wash out on paper).
+local PAPER = { uncommon = "ff17801a", rare = "ff1257b0", epic = "ff7a22c4", legendary = "ffb35c00" }
+local function PaperColor(rarity) return PAPER[rarity] or ns.RARITY_COLORS[rarity] end
 local RIM = { uncommon = { 0.6, 0.6, 0.6 }, rare = { 0.23, 0.54, 0.88 }, epic = { 0.6, 0.29, 0.88 }, legendary = { 0.88, 0.63, 0.13 } }
-local MILK_WORDS, MILK_OGRE = { "empty", "a sip", "a mug", "brimming" }, { "NONE", "SIP", "MUG", "LOTS" }
 local CHAPTERS = { { "headwear", "Hats", "HATS" }, { "outfit", "Clothes", "CLOTH" }, { "accessory", "Things he holds", "STUFF" },
     { "background", "Places", "PLACE" }, { "skin", "Ogres", "OGRE" }, { "eyes", "Eyes", "EYES" }, { "expression", "Mouths", "MOUTH" } }
 local CARDS_PER_PAGE = 8
@@ -103,9 +106,9 @@ local function Piece(parent, name, spec, box, layer, sub)
 end
 
 -- Helpers to place things by fractions of the room (the page area's size).
-local function Text(parent, size, font)
+local function Text(parent, size, font, flags)
     local fs = parent:CreateFontString(nil, "OVERLAY")
-    fs:SetFont(font or NAME_FONT, size, "")
+    fs:SetFont(font or NAME_FONT, size, flags or "")
     return fs
 end
 local function Place(frame, x, y, w, h)
@@ -150,12 +153,79 @@ local function Say(text)
 end
 local function Hint(text) W.hint:SetText(text or "") end
 
+-- The camera: while he tells the dream it moves in close on him and the easel, and his words and the roll come over
+-- by the easel, so it all happens in one place. S.cam = { k, x, y }: the room's scale and the point of it (room units
+-- from its top left) in the view's middle; kept inside the room's edges.
+local CAM_MAX = 1.45
+local REEL_H, REEL_PAD = 68, 16  -- (the roll: MintReel's tile and its border; its room from the window and the frame)
+local function Aim(k, x, y)
+    local screen = W.screen
+    local X = math.min(0, math.max(S.w - S.w * k, S.w / 2 - x * k))
+    local Y = math.min(0, math.max(S.h - S.h * k, S.h / 2 - y * k))
+    screen:SetScale(k)
+    screen:ClearAllPoints()
+    screen:SetPoint("TOPLEFT", W.view, "TOPLEFT", X / k, -Y / k)
+    -- (the room's parts out of the view take no clicks: the sidebar's under them)
+    local l, r, t, b = -X / k, (X + S.w * k - S.w) / k, -Y / k, (Y + S.h * k - S.h) / k
+    screen:SetHitRectInsets(l, r, t, b)
+    W.tap:SetHitRectInsets(l, r, t, b)
+    S.cam = { k, x, y }
+end
+local function Camera(k, x, y, seconds)
+    local from = S.cam or { 1, S.w / 2, S.h / 2 }
+    if not seconds or seconds <= 0 then return Aim(k, x, y) end
+    Tween(seconds, function(p)
+        local e = p < 0.5 and 2 * p * p or 1 - (-2 * p + 2) ^ 2 / 2  -- (eased both ways)
+        Aim(from[1] + (k - from[1]) * e, from[2] + (x - from[2]) * e, from[3] + (y - from[3]) * e)
+    end)
+end
+
+-- The close-up: his head, his bubble between his face and the easel (growing up the wall), the painting and the roll
+-- on the wall over the easel. Room units.
+local function CloseUp()
+    local L = ns.DreamBedArt.layout
+    local cv = ns.DreamBedArt.easelCanvas or { x = 0.08, y = 0.12, w = 0.82, h = 0.45 }
+    local hx, hy, hs = L.head.x * S.w, L.head.top * S.h, L.head.size * S.h
+    local ex, ey, ew, eh = W.easel.x, W.easel.y, W.easel:GetWidth(), W.easel:GetHeight()
+    local c = { left = ex + cv.x * ew, top = ey + cv.y * eh, right = ex + (cv.x + cv.w) * ew, bottom = ey + (cv.y + cv.h) * eh }
+    local left, right = hx + hs * 0.1, math.min(S.w, c.right + 30)
+    local top, bottom = math.max(0, ey - REEL_H - 28), math.max(hy + hs * 0.75, c.bottom + 40)
+    local k = math.min(CAM_MAX, S.w / (right - left), S.h / (bottom - top))
+    return k, (left + right) / 2, (top + bottom) / 2, c, hx + hs * 0.75, hy + hs * 0.2
+end
+
+-- The roll's span in the close-up: from the room's window to the wooden frame on the right (as far as the camera shows,
+-- less the BLEED under the post), padded. Room units.
+local function ReelSpan()
+    local k, x = CloseUp()
+    local X = math.min(0, math.max(S.w - S.w * k, S.w / 2 - x * k))
+    return W.window.right + REEL_PAD, (S.w - X - BLEED) / k - REEL_PAD
+end
+
+-- His words and the roll: up top and at the bottom (the night), or by the easel (the telling).
+local function PlaceWords(close)
+    W.speech:ClearAllPoints()
+    W.reel.frame:ClearAllPoints()
+    if close then
+        local _, _, _, c, mouth, chin = CloseUp()
+        local width = math.max(200, c.left - 12 - mouth)
+        W.speech:SetPoint("BOTTOMLEFT", W.screen, "TOPLEFT", mouth, -chin)
+        W.speech:SetWidth(width)
+        W.speech.text:SetWidth(width - 24)
+        W.reel.frame:SetPoint("BOTTOMLEFT", W.screen, "TOPLEFT", W.reel.left, -(W.easel.y - 4))  -- (above the easel, from the window on)
+    else
+        W.speech:SetPoint("TOPLEFT", W.screen, "TOPLEFT", S.w * 0.2, -S.h * 0.04 - BLEED)
+        W.speech:SetWidth(S.w * 0.44)
+        W.speech.text:SetWidth(S.w * 0.44 - 24)
+        W.reel.frame:SetPoint("BOTTOM", W.screen, "BOTTOMLEFT", S.w * 0.36, 40)
+    end
+end
+
 local function SetPhase(phase)
     S.phase = phase
     W.tap:SetShown(phase ~= "bed" and phase ~= "done")  -- (the dream plays by itself; a click skips to its next step)
     W.mallet:SetEnabled(phase == "bed" and ns.Tokens("bonk") > 0)  -- (a Bonk: good night)
     W.back:SetShown(phase == "bed")  -- (only before the bonk: once he's dreaming, you see it through)
-    W.mug:SetEnabled(phase == "bed")
     W.bubble:SetShown(phase == "bed")  -- (what he's thinking about: only while he lies there awake)
 end
 
@@ -307,20 +377,16 @@ end
 -- The nightstand, the counts, the tags.
 local function Refresh()
     ns.TopUpBonks()  -- (today's Bonk, if it's come back)
-    local milkHave, storiesHave = ns.Tokens("milk"), ns.Tokens("story")
-    if S.milk > milkHave then S.milk = 0 end
+    local storiesHave = ns.Tokens("story")
     local storyOption = S.story and S.story.option
     if storyOption and (ns.STORY_COST[storyOption.rarity] or 1) > storiesHave then S.story = nil storyOption = nil end
-    for i, steam in ipairs(W.steam) do steam:SetShown(i <= S.milk) end  -- (warmer the more milk you pour)
-    W.mugTag:SetText(O("Milk: ", "MILK: ") .. (Ogre() and MILK_OGRE or MILK_WORDS)[S.milk + 1] .. (S.milk > 0 and O(" (+luck)", " (LUCK)") or ""))
     W.ShowThought(S.story)
     local bonks = ns.Tokens("bonk")
-    W.counts:SetText(("%d %s   %d %s   %d %s"):format(milkHave, O("milk", "MILK"),
-        storiesHave, O(storiesHave == 1 and "story" or "stories", "STORY"), bonks, O(bonks == 1 and "bonk" or "bonks", "BONK")))
+    W.counts:SetText(("%d %s   %d %s"):format(storiesHave, O(storiesHave == 1 and "story" or "stories", "STORY"), bonks, O(bonks == 1 and "bonk" or "bonks", "BONK")))
     W.malletTag:SetText(O("Bonks: ", "BONK: ") .. bonks .. (bonks < ns.BONK_CAP and O(" (one comes back each day)", " (+1 A DAY)") or ""))
     if S.phase ~= "bed" then return end
     if bonks > 0 then
-        Hint(O("Pour him some milk, pick a story from the book, then bonk him to sleep with the mallet", "MILK. STORY. BONK!"))
+        Hint(O("Pick a story from the book, then bonk him to sleep with the mallet", "STORY. BONK!"))
     else  -- (out of Bonks: the next one at the daily reset)
         local left = ns.UntilReset()
         local wait = left >= 3600 and ("%dh %dm"):format(math.floor(left / 3600), math.floor(left % 3600 / 60)) or ("%dm"):format(math.ceil(left / 60))
@@ -453,7 +519,7 @@ end
 local function GoodNight()
     if S.phase ~= "bed" then return end
     local story = S.story and { layer = S.story.layer, id = S.story.option.id }
-    local mint, reason = ns.DreamMint(S.milk, story)
+    local mint, reason = ns.DreamMint(story)
     if not mint then ns.Print(reason) Hint(reason) return end
     Click()
     KillTrackerDB.dreamPending = mint.number  -- (until its painting comes forward: a /reload mid-dream replays it)
@@ -489,6 +555,9 @@ local function Morning()
     After(3.2, function()
         DrawHead("talk")
         SetPhase("tell")
+        PlaceWords(true)  -- (in close: him, the easel, his words and the roll together)
+        local k, x, y = CloseUp()
+        Camera(k, x, y, 1.2)
         Say("|cff3a1a10" .. O("Ow. My head. ...Good dream though. You won't BELIEVE what I dreamt...", "OW. HEAD. GOOD DREAM!") .. "|r")
         Hint("")
         After(2.2, function() S.started = true TellNext() end)  -- (and the story starts: the rolls keep the tempo)
@@ -507,7 +576,7 @@ local function Mumble(best)
     best = math.max(1, math.min(4, best or 1))
     local lines = (Ogre() and MUMBLES_OGRE or MUMBLES)[best]
     local rarity = ({ "uncommon", "rare", "epic", "legendary" })[best]
-    Say(("|c%s%s|r"):format(ns.RARITY_COLORS[rarity] or "ffffffff", lines[math.random(#lines)]))
+    Say(("|c%s%s|r"):format(PaperColor(rarity) or "ffffffff", lines[math.random(#lines)]))
 end
 
 -- A dream left unfinished by a /reload (KillTrackerDB.dreamPending: it's saved already): its show from the night on.
@@ -557,7 +626,7 @@ end
 -- A beat: he drifts off remembering ("...and then there was..."), the reel rolls through everything that layer could
 -- have been and lands on his, he tells it, you paint it; then on to the next by itself (the rolls keep the tempo; a tap
 -- hurries a roll). The piece the story asked about isn't rolled: he knew it all along.
-local ROLL_TIME, LEAD_TIME, BEAT_PAUSE = 1.9, 0.6, 0.45
+local ROLL_TIME, LEAD_TIME, BEAT_PAUSE, SAY_TIME = 1.9, 0.6, 0.45, 1.1
 local SOUND_LAND, SOUND_BIG = SOUNDKIT and SOUNDKIT.IG_QUEST_LOG_OPEN or 875, 888
 function TellNext()
     if S.busy then return end
@@ -581,7 +650,7 @@ function TellNext()
     -- (he tells it, it's painted, and after a breath the next)
     local function Tell()
         DrawHead("talk")
-        local color = ns.RARITY_COLORS[option and option.rarity or "uncommon"] or "ff5a5468"
+        local color = PaperColor(option and option.rarity or "uncommon") or "ff5a5468"
         local line = Ogre() and ns.DreamOgreBeat(beat.k, S.mint.traits[beat.k])
             or (beat.pre .. "|c" .. color .. beat.say .. "|r" .. (asked and " |cff6b4a12[STORY]|r" or "") .. beat.post)
         -- (the bubble keeps the last three lines)
@@ -593,10 +662,11 @@ function TellNext()
         S.shown[beat.k] = S.mint.traits[beat.k]
         S.told = S.told + 1
         Hint(option and option.rarity == "legendary" and not asked and O("LEGENDARY!", "GOLD!") or O("Listening...", "..."))
-        Sweep(true, function()
-            Tween(0.3, function(p) W.reel.frame:SetAlpha(1 - p) end, function() W.reel.frame:Hide() end)
+        -- (the roll lands, he says it, and then it's painted: one after the other)
+        Tween(0.3, function(p) W.reel.frame:SetAlpha(1 - p) end, function() W.reel.frame:Hide() end)
+        After(SAY_TIME, function() Sweep(true, function()
             After(BEAT_PAUSE, function() S.busy = false TellNext() end)
-        end)
+        end) end)
     end
     -- (he drifts: the start of the line, trailing off)
     DrawHead("yawn")
@@ -613,7 +683,7 @@ function TellNext()
         W.reel.frame:SetAlpha(1)
         W.reel.frame:Show()
         W.reel:Spin(layer, option, S.mint.traits, function()
-            pcall(PlaySound, (option.rarity == "rare" or option.rarity == "epic" or option.rarity == "legendary") and SOUND_BIG or SOUND_LAND)
+            ns.PlaySound((option.rarity == "rare" or option.rarity == "epic" or option.rarity == "legendary") and SOUND_BIG or SOUND_LAND)
             After(0.35, Tell)
         end, { all = true, time = ROLL_TIME })
     end)
@@ -627,6 +697,7 @@ function Finish()
     DrawHead(nil)
     -- (the painting comes off the easel to the middle, big, in its frame: you pick the frame)
     local mint = S.mint
+    Camera(1, S.w / 2, S.h / 2, 0.8)  -- (back out: the painting comes forward in the whole room)
     W.show:Show()
     W.show:SetAlpha(0)
     ns.DrawMint(W.showCanvas, mint)
@@ -642,7 +713,7 @@ function Finish()
     local rarity = ns.MintRarity(mint.traits, mint.asked)
     local edition = ({ crayon = O(" - in crayon, the rarest kind", " CRAYN!"), sketch = O(" - sketched in coloured pencil", " PENCIL") })[mint.style] or ""
     W.verdict.text:SetText(("%s #%d %s %s\n|c%s%s|r%s\n\n|cff6b5a48\"%s\"|r"):format(O("Painting", "PIC"), mint.number, O("painted by", "BY"),
-        mint.paintedBy or "", ns.RARITY_COLORS[rarity] or "ffffffff", O(rarity:sub(1, 1):upper() .. rarity:sub(2) .. " dream", rarity:upper()),
+        mint.paintedBy or "", PaperColor(rarity) or "ffffffff", O(rarity:sub(1, 1):upper() .. rarity:sub(2) .. " dream", rarity:upper()),
         edition, O("Yeah. Yeah, that's it. That's EXACTLY it.", "YES. THAT IT.")))
     W.verdict:SetHeight(W.verdict.text:GetStringHeight() + 24)
     W.verdict:Show()
@@ -676,6 +747,8 @@ local function Reset()
     W.reel:Stop()
     W.reel.frame:Hide()
     W.speech.lines = nil
+    Aim(1, S.w / 2, S.h / 2)
+    PlaceWords(false)
     DrawCanvas()
     Say(nil)
     DrawHead(nil)
@@ -912,10 +985,16 @@ end
 
 local function Build()
     local area = UI.pageArea
-    S.w = area and area:GetWidth() > 0 and area:GetWidth() or (UI.PAGE_WIDTH or 827)
-    S.h = area and area:GetHeight() > 0 and area:GetHeight() or (UI.PAGE_HEIGHT or 584)
-    local screen = CreateFrame("Frame", "SOLCDreamBed", UIParent)
+    S.w = (area and area:GetWidth() > 0 and area:GetWidth() or (UI.PAGE_WIDTH or 827)) + 2 * BLEED
+    S.h = (area and area:GetHeight() > 0 and area:GetHeight() or (UI.PAGE_HEIGHT or 584)) + 2 * BLEED
+    -- The view: the page area's window onto the room (it cuts it off); the room (screen) inside it, scaled and slid by
+    -- the camera (Camera) while he tells the dream.
+    W.view = CreateFrame("Frame", "SOLCDreamBed", UIParent)
+    W.view:SetSize(S.w, S.h)
+    W.view:SetClipsChildren(true)
+    local screen = CreateFrame("Frame", nil, W.view)
     screen:SetSize(S.w, S.h)
+    screen:SetPoint("TOPLEFT")
     screen:EnableMouse(true)
     screen:SetClipsChildren(true)  -- (the bed and quilt run off the page's edges: cut there)
     screen:Hide()
@@ -963,6 +1042,7 @@ local function Build()
     W.window = CreateFrame("Frame", nil, screen)
     W.window:SetPoint("TOPLEFT", (win.x - left) / fx * S.w, -win.y * S.h)
     W.window:SetSize(win.w / fx * S.w, win.h * S.h)
+    W.window.right = (win.x - left + win.w) / fx * S.w  -- (its right edge, room units: the roll starts past it)
     W.window:SetFrameLevel(screen:GetFrameLevel() + 1)
     W.window:SetClipsChildren(true)
     W.sky = W.window:CreateTexture(nil, "BACKGROUND")
@@ -1033,7 +1113,7 @@ local function Build()
     W.dream:SetAlpha(0)
     BuildThought()
 
-    -- On the nightstand: candle (just its light), mug (milk). Each a button over its piece.
+    -- On the nightstand: candle (just its light), mug (just for show). Each a button over its piece.
     local function PropOver(rect, onClick, title) return Prop(rect.x / S.w, rect.y / S.h, rect.w / S.w, rect.h / S.h, onClick, title) end
     local function At(name) local x, y, w, h = PieceRect(L[name], art.pieces[name].box) return { x = x, y = y, w = w, h = h } end
     local candleAt = At("candle")
@@ -1071,26 +1151,16 @@ local function Build()
     W.smoke:SetVertexColor(0.45, 0.45, 0.5)
     W.smoke:Hide()
     local mugAt = At("mug")
-    W.mug = PropOver(mugAt, function() S.milk = (S.milk + 1) % 4 if S.milk > ns.Tokens("milk") then S.milk = 0 end Refresh() end,
-        function() return O("Warm Milk: click to pour", "MILK") end)
+    W.mug = PropOver(mugAt, function() end)
+    W.mug:EnableMouse(false)  -- (no clicking: it's just a mug)
     Piece(W.mug, "mug", L.mug)
-    W.steam = {}
-    for i = 1, 3 do  -- (a wisp of steam for each splash of milk)
-        local steam = W.mug:CreateTexture(nil, "OVERLAY", nil, 1)
-        steam:SetSize(mugAt.w * 0.35, mugAt.h * 0.7)
-        steam:SetPoint("BOTTOM", W.screen, "TOPLEFT", mugAt.x + mugAt.w * (0.25 + i * 0.12), -(mugAt.y + mugAt.h * 0.15))
-        steam:SetTexture(GLOW)
-        steam:SetBlendMode("ADD")
-        steam:SetVertexColor(0.5, 0.5, 0.5)
-        W.steam[i] = steam
-    end
     -- The mallet by the nightstand: a Bonk, good night (ogres go to sleep by bonking their heads).
     local malletAt = At("mallet")
     W.mallet = PropOver(malletAt, GoodNight, function() return O("The mallet: good night", "BONK HIM") end)
     W.malletTex = Piece(W.mallet, "mallet", L.mallet)
     if L.peg and art.pieces.peg then Piece(W.mallet, "peg", L.peg, nil, "OVERLAY") end  -- (it hangs on it: the peg stays put)
-    -- (what's on each, in its tooltip: the milk poured, the bonks)
-    W.mugTag, W.malletTag = W.mug.tag, W.mallet.tag
+    -- (what's on it, in its tooltip: the bonks)
+    W.malletTag = W.mallet.tag
 
     -- Your easel (its painted picture; the canvas the dream is painted on, where its blank canvas is), the brush's
     -- stroke, the burst when you reach for the crayons. (Not turned: the painting on it stays square.)
@@ -1187,7 +1257,7 @@ local function Build()
     words:SetAllPoints()
     words:SetFrameLevel(screen:GetFrameLevel() + 20)
     W.speech = CreateFrame("Frame", nil, words, "BackdropTemplate")
-    W.speech:SetPoint("TOPLEFT", screen, "TOPLEFT", S.w * 0.2, -S.h * 0.04)
+    W.speech:SetPoint("TOPLEFT", screen, "TOPLEFT", S.w * 0.2, -S.h * 0.04 - BLEED)
     W.speech:SetWidth(S.w * 0.44)
     Parchment(W.speech)
     W.speech.text = Text(W.speech, 14)
@@ -1210,7 +1280,10 @@ local function Build()
     W.bonkText.SetText = function(self, text) self.text:SetText(text) end
     W.bonkText:Hide()
     -- (the roll: the reel of everything a layer could be, at the bottom while he remembers; its layer's name over it)
-    W.reel = ns.NewMintReel(words, S.w * 0.5)
+    local reelLeft, reelRight = ReelSpan()
+    W.reel = ns.NewMintReel(words, math.max(200, reelRight - reelLeft))
+    W.reel.left = reelLeft
+    W.reel.frame:SetFrameLevel(words:GetFrameLevel() + 6)  -- (nothing over the roll: his bubble stays under it)
     W.reel.frame:SetPoint("BOTTOM", screen, "BOTTOMLEFT", S.w * 0.36, 40)
     W.reel.frame:Hide()
     W.reelLabel = Text(W.reel.frame, 14)
@@ -1227,16 +1300,16 @@ local function Build()
         W.dizzy[i] = star
     end
     W.hint = Text(words, 18)
-    W.hint:SetPoint("BOTTOM", screen, "BOTTOM", 0, 10)
+    W.hint:SetPoint("BOTTOM", screen, "BOTTOM", 0, 10 + BLEED)
     W.hint:SetTextColor(0.96, 0.9, 0.69)
     W.hint:SetShadowOffset(1, -1)
     -- (the way out: back to the page; a dream already dreamt is saved at the bonk, so leaving only skips its show)
     W.back = ParchButton(words, 84, 24, function() screen:Hide() end)
     W.back.label:SetText(O("< Back", "< GO"))
-    W.back:SetPoint("TOPLEFT", screen, "TOPLEFT", 10, -8)
+    W.back:SetPoint("TOPLEFT", screen, "TOPLEFT", 10 + BLEED, -8 - BLEED)
     W.back:SetFrameLevel(screen:GetFrameLevel() + 45)
     W.counts = Text(words, 13)
-    W.counts:SetPoint("TOPRIGHT", screen, "TOPRIGHT", -44, -8)  -- (clear of the close button)
+    W.counts:SetPoint("TOPRIGHT", screen, "TOPRIGHT", -44 - BLEED, -8 - BLEED)  -- (clear of the close button)
     W.counts:SetTextColor(0.96, 0.9, 0.69)
     W.counts:SetShadowOffset(1, -1)
 
@@ -1249,7 +1322,7 @@ local function Build()
 
     -- The finished painting's note and tags.
     W.verdict = CreateFrame("Frame", nil, words, "BackdropTemplate")
-    W.verdict:SetPoint("TOPLEFT", screen, "TOPLEFT", 12, -12)
+    W.verdict:SetPoint("TOPLEFT", screen, "TOPLEFT", 12 + BLEED, -12 - BLEED)
     W.verdict:SetWidth(S.w * 0.28)
     W.verdict:SetFrameLevel(screen:GetFrameLevel() + 35)
     Parchment(W.verdict)
@@ -1261,7 +1334,7 @@ local function Build()
     W.verdict:Hide()
     -- (the frame's kept as you click it: this one just takes you back to the room)
     W.again = ParchButton(words, 180, 28, function() Reset() end)
-    W.again:SetPoint("BOTTOM", screen, "BOTTOM", 0, 12)
+    W.again:SetPoint("BOTTOM", screen, "BOTTOM", 0, 12 + BLEED)
     W.again:SetFrameLevel(screen:GetFrameLevel() + 35)
     W.again:Hide()
 
@@ -1294,8 +1367,8 @@ local function Build()
     -- (a dark shelf behind the row: the quilt and floor under it are too busy to read the frames on)
     local shelf = CreateFrame("Frame", nil, W.show, "BackdropTemplate")
     -- (the whole bottom, edge to edge: its border runs off the sides and bottom, cut by the room's edges)
-    shelf:SetPoint("BOTTOMLEFT", screen, "BOTTOMLEFT", -6, -6)
-    shelf:SetPoint("BOTTOMRIGHT", screen, "BOTTOMRIGHT", 6, -6)
+    shelf:SetPoint("BOTTOMLEFT", screen, "BOTTOMLEFT", BLEED - 6, BLEED - 6)
+    shelf:SetPoint("BOTTOMRIGHT", screen, "BOTTOMRIGHT", 6 - BLEED, BLEED - 6)
     shelf:SetHeight(48 + tw + 8 + 6)
     shelf:SetFrameLevel(W.showCanvas:GetFrameLevel() + 8)
     shelf:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12,
@@ -1345,30 +1418,30 @@ local function Build()
     BuildBook()
 end
 
--- Opens the Dream Bed over the main window's pages. The first time: a few stories and some milk to start with.
+-- Opens the Dream Bed over the main window's pages. The first time: a few stories to start with.
 function ns.ShowDreamBed()
     if not W.screen then Build() end
-    local screen, pageArea = W.screen, UI.pageArea
-    screen:ClearAllPoints()
+    local screen, view, pageArea = W.screen, W.view, UI.pageArea
+    view:ClearAllPoints()
     if pageArea then
         if not pageArea:IsVisible() then ns.ToggleUI() end
-        screen:SetParent(pageArea)
-        screen:SetAllPoints(pageArea)
-        screen:SetFrameStrata(pageArea:GetFrameStrata())
-        screen:SetFrameLevel(pageArea:GetFrameLevel() + 50)
+        view:SetParent(pageArea)
+        view:SetPoint("TOPLEFT", pageArea, "TOPLEFT", -BLEED, BLEED)  -- (no gap for the wallpaper at the sides)
+        view:SetPoint("BOTTOMRIGHT", pageArea, "BOTTOMRIGHT", BLEED, -BLEED)
+        view:SetFrameStrata(pageArea:GetFrameStrata())
+        view:SetFrameLevel(pageArea:GetFrameLevel() + 50)  -- (over the page; under the window's wood, UI.FRAME_LEVEL.wood)
     else
-        screen:SetParent(UIParent)
-        screen:SetPoint("CENTER")
-        screen:SetFrameStrata("DIALOG")
+        view:SetParent(UIParent)
+        view:SetPoint("CENTER")
+        view:SetFrameStrata("DIALOG")
     end
+    view:Show()
     local db = KillTrackerDB
     if not db.dreamGift then
         db.dreamGift = time()
         ns.AddIngredient("story", 3, true)
-        ns.AddIngredient("milk", 2, true)
-        ns.Print("The Dream Bed: 3 Bedtime Stories and 2 Warm Milk to start you off.")
+        ns.Print("The Dream Bed: 3 Bedtime Stories to start you off.")
     end
-    S.milk = S.milk or 0
     local dreaming = S.phase and S.phase ~= "bed" and S.phase ~= "done" and S.mint
     screen:Show()
     if not dreaming then  -- (mid-dream: it just carries on - its clock waited while you were away)

@@ -127,6 +127,10 @@ const OUTFIT_MORE = {
   "gacha_outfit_parka": ["in a puffy ski parka", "in a parka with a fur-trimmed hood down", "in an apres-ski parka, never once having skied"],
   "gacha_outfit_rowing_blazer": ["in a striped rowing blazer", "in a regatta blazer with piped edges", "in a rowing blazer, calling the stroke for nobody"],
   "gacha_outfit_umpire": ["in a long white umpire's coat", "in an umpire's coat, jumpers tied round his waist", "in an umpire's coat, raising one finger at everyone"],
+  "gacha_outfit_shellsuit": ["in a shiny shell suit", "in a purple, teal and pink shell suit", "in a shell suit, crackling with static"],
+  "gacha_outfit_sleeping_bag": ["zipped into a sleeping bag up to the chin", "in a grubby sleeping bag he wore as a coat", "in a sleeping bag coat, ready to kip on any bench"],
+  // Pro Shop steward's own (deed piece)
+  "shop_steward_vest": ["in a blue-and-white striped waistcoat and bow tie", "in the steward's stripes, gold buttons polished", "in the steward's uniform, judging my shoes"],
 };
 const HAT_MORE = {
   "crit_bat_head": ["a velvet bat hat with two huge pointy ears", "a bat hood, tiny fangs and all", "a purple bat hat, ears twitching at every sound"],
@@ -267,4 +271,10 @@ const HAT_MORE = {
   "gacha_hair_powdered_wig": ["a powdered wig", "a grand white wig with rows of curls at the sides", "a judge's wig, sentencing people for being late"],
   "gacha_head_ascot_hat": ["an enormous race-day hat", "a wide hat piled with silk flowers and ribbons", "a race-day hat so big it blocked everyone's view"],
   "gacha_head_fishbowl": ["a goldfish bowl on his head", "a fishbowl helmet, a fat goldfish in a tiny crown inside", "a fishbowl helmet, the goldfish judging us all"],
+  "gacha_hair_curlers": ["his hair in curlers", "a flowery headscarf over a row of pink curlers", "his curlers in, like he'd just nipped out for milk"],
+  "gacha_head_ear_cigarette": ["a cigarette tucked behind his ear", "a ciggie behind one ear, saving it for later", "a cigarette behind his ear he never once lit"],
+  "gacha_hair_mohawk": ["a hot pink mohawk", "a tall mohawk, spiked stiff and dyed bright pink", "a pink mohawk, sneering at anything posh"],
+  // Pro Shop steward's own (deed pieces)
+  "shop_steward_boater": ["a straw boater with a blue-and-white band", "a borrowed straw boater, tilted just so", "a straw boater he raised to nobody, least of all me"],
+  "crit_tallstrider_head": ["a crocheted tallstrider hat with a long beak", "a pink-beige bird hat with a tuft of bright feathers", "a tallstrider hat, bobbing his head like a strider"],
 };

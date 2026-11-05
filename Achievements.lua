@@ -91,23 +91,24 @@ local FEATS = {
         { 3, "Proud Display", 10 } } },
     { key = "puzzles", label = "Puzzle races won", unit = "won", count = function(_, f) return f.won end, tiers = {
         { 1, "Puzzle Pincher", 15 }, { 5, "Board Bully", 30 }, { 10, "Swap King", 50 } } },
-    -- From your tally (ns.Tally; only yours: not synced) and the plinko's own count of drops.
+    -- From your tally (ns.Tally; only yours: not synced).
     { key = "bounties", label = "Bounties claimed", unit = "bounties", count = function(_, f) return f.bounties end, tiers = {
         { 1, "First Bounty", 10 }, { 10, "Bounty Regular", 20 }, { 25, "Poster Child", 35 }, { 50, "Gold Digger", 60 },
         { 100, "Most Wanted Hunter", 100 } } },
     { key = "chests", label = "Chests opened", unit = "chests", count = function(_, f) return f.chests end, tiers = {
         { 1, "Lid Flipper", 5 }, { 10, "Rummager", 15 }, { 50, "Treasure Hoarder", 40 }, { 100, "Dragon's Hoard", 70 } } },
-    { key = "plinko", label = "Plinko drops", unit = "drops", count = function(_, f) return f.drops end, tiers = {
-        { 10, "Pin Ball", 5 }, { 100, "Bouncy Castle", 20 }, { 365, "Every Single Day", 50 } } },
-    { key = "jackpot", label = "Plinko jackpots", unit = "jackpots", count = function(_, f) return f.jackpots end, tiers = {
-        { 1, "Jackpot!", 30 } } },
+    -- What you've spent in the Pro Shop, wallpapers too (KillTrackerDB.shop.spent; only yours). The steward's whole look
+    -- comes with it: his snooty eyes at 500, his striped outfit at 1500, his sneer at 3000, his Club Sage skin at 6000
+    -- and his boater at the top (tools/gen-art-proshop-club.json, convert-art.js BASE_UNLOCKS).
+    { key = "shop", label = "Spent in the Pro Shop", unit = "points", count = function(_, f) return f.shopSpent end, tiers = {
+        { 100, "Window Shopper", 5 }, { 500, "Regular Customer", 15 }, { 1500, "Valued Member", 30 }, { 3000, "Big Spender", 50 },
+        { 6000, "The Steward's Favourite", 80 }, { 10000, "Life Member", 120 } } },
     -- Friendship: the most dungeons you've cleared with one guildmate (KillTrackerDB.companions, Guild.lua).
     { key = "buddy", label = "Dungeons with one guildmate", unit = "clears together", count = function(_, f) return f.buddy end, tiers = {
         { 3, "Dungeon Buddies", 15 }, { 10, "Partners In Crime", 30 }, { 25, "Inseparable", 60 }, { 50, "Joined At The Hip", 100 } } },
 }
 
--- Your lifetime tally of things counted nowhere else (KillTrackerDB.tally: bounties claimed, chests opened, plinko
--- jackpots): one more, and the deeds checked (with the usual popup).
+-- Your lifetime tally of things counted nowhere else (KillTrackerDB.tally: bounties claimed, chests opened): one more, and the deeds checked (with the usual popup).
 function ns.Tally(key)
     KillTrackerDB.tally = KillTrackerDB.tally or {}
     KillTrackerDB.tally[key] = (KillTrackerDB.tally[key] or 0) + 1
@@ -473,22 +474,21 @@ local function CountKills(source)
     end, source)
     for _ in pairs(counts.subtype) do facts.kinds = facts.kinds + 1 end
     DungeonFacts(facts, killed, byName)
-    -- Pictures: yours are a list, a friend's are keyed by number. Won ones are known only for yours.
+    -- Pictures: yours are a list, a friend's are keyed by number. Races won are known only for yours.
     local mine = source == KillTrackerDB
     facts.pictures, facts.epic, facts.legendary = 0, 0, 0
-    facts.won = mine and 0 or nil
+    facts.won = mine and (source.tally and source.tally.races or 0) or nil
     for _, mint in pairs(source.mints or {}) do
         facts.pictures = facts.pictures + 1
         local rarity = ns.MintRarity and RARITY_ORDER[ns.MintRarity(mint.traits, mint.asked)] or 0
         if rarity >= 3 then facts.epic = facts.epic + 1 end
         if rarity >= 4 then facts.legendary = facts.legendary + 1 end
-        if mine and mint.wonFrom then facts.won = facts.won + 1 end
     end
     facts.showcase = source.showcase and #(source.showcase.numbers or {}) or 0
     if mine then
         local tally = source.tally or {}
-        facts.bounties, facts.chests, facts.jackpots = tally.bounties or 0, tally.chests or 0, tally.jackpots or 0
-        facts.drops = source.plinko and source.plinko.drops or 0
+        facts.bounties, facts.chests = tally.bounties or 0, tally.chests or 0
+        facts.shopSpent = source.shop and source.shop.spent or 0
         facts.buddy = 0
         for _, c in pairs(source.companions or {}) do facts.buddy = math.max(facts.buddy, c.clears or 0) end
     end

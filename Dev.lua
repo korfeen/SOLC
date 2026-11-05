@@ -6,10 +6,10 @@
 -- unlock everything, relock everything (unlocks, chests and tokens cleared, to try it all from scratch), 5 of every
 -- ingredient. Right, the layer browser: a picture drawn from one option per layer, each stepped through with arrows over
 -- every option there is, locked or not, with its rarity and what unlocks it; Random (everything) and Random unlockables.
--- TRIBUTE: a chest made by hand (pieces, ingredients, points, plinko drops, a note, how fancy it looks), previewed, and
+-- TRIBUTE: a chest made by hand (pieces, ingredients, points, a note, how fancy it looks), previewed, and
 -- sent to a guildmate or yourself; it comes down from the Ogre Godz (Tribute.lua, Unlocks.lua, Chests.lua).
 -- DEEDS & ME, for yourself: kills of any creature kind or tribe, dungeon clears, leaders, Random deeds (the
--- achievements and their pieces follow by themselves); points, an Ogre Rank, plinko drops, Dream Bed items.
+-- achievements and their pieces follow by themselves); points, an Ogre Rank, Dream Bed items.
 -- (Officers who aren't dev characters can't open it; DM mode, Ogre Says, stays for officers: DMSay.lua.)
 --
 -- Gifts: an officer's chest for a guildmate goes to them as an addon whisper (GIFT_PREFIX: "C:<dungeon>:<id>"). WoW
@@ -199,8 +199,8 @@ listener:SetScript("OnEvent", function(_, _, prefix, message, channel, sender)
         db.giftsTaken[id] = time()
         GiveChest(dungeonKey)
         local what = DungeonName(dungeonKey) .. " chest"
-        ns.ShowToast("achievement", "A gift from " .. short .. "!", what, "Open it on your PIX page, whenever you like")
-        ns.Print(("%s gave you a |cffffd100%s|r - open it on your PIX page."):format(short, what))
+        ns.ShowToast("achievement", "A gift from " .. short .. "!", what, "Open it in your Inventory, whenever you like")
+        ns.Print(("%s gave you a |cffffd100%s|r - open it in your Inventory."):format(short, what))
         if ns.AddEvent then ns.AddEvent("G", short, "chest:" .. dungeonKey) end
         Refresh()
     end
@@ -482,7 +482,7 @@ local function IngredientLabel(key) return ("|T%s:14|t %s"):format(ns.Ingredient
 -- Every item there is to put in a chest: the Dream Bed's.
 local function AllIngredients()
     local keys = {}
-    for _, key in ipairs({ "milk", "story", "bonk" }) do if ns.DREAM_ITEMS[key] then keys[#keys + 1] = key end end
+    for _, key in ipairs({ "story", "bonk" }) do if ns.DREAM_ITEMS[key] then keys[#keys + 1] = key end end
     return keys
 end
 
@@ -492,7 +492,7 @@ local function BuildTribute(parent)
     local page = CreateFrame("Frame", nil, parent)
     page:SetPoint("TOPLEFT", 12, -40)
     page:SetSize(756, 520)
-    local spec = { tier = #ns.CHEST_TIERS, items = {}, points = 0, plinko = 0, note = "" }
+    local spec = { tier = #ns.CHEST_TIERS, items = {}, points = 0, note = "" }
 
     -- Left: who it's for, how fancy, and what to put in.
     Heading(page, "Ogre Godz tribute", 0, 0)
@@ -581,15 +581,12 @@ local function BuildTribute(parent)
         Button(page, "+" .. n, 54, function() AddIngredient(n) end):SetPoint("TOPLEFT", (i - 1) * 60, -272)
     end
 
-    Heading(page, "Points and plinko", 0, -306)
+    Heading(page, "Points", 0, -306)
     for i, n in ipairs({ 50, 500, 5000 }) do
         Button(page, ("+%d pts"):format(n), 84, function() spec.points = math.min(100000, spec.points + n) page:Draw() end)
             :SetPoint("TOPLEFT", (i - 1) * 90, -330)
     end
     Button(page, "No points", 84, function() spec.points = 0 page:Draw() end):SetPoint("TOPLEFT", 270, -330)
-    Button(page, "+1 plinko drop", 120, function() spec.plinko = math.min(10, spec.plinko + 1) page:Draw() end)
-        :SetPoint("TOPLEFT", 0, -356)
-    Button(page, "No drops", 84, function() spec.plinko = 0 page:Draw() end):SetPoint("TOPLEFT", 126, -356)
 
     Heading(page, "A note (shown with it)", 0, -390)
     local note = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
@@ -622,9 +619,9 @@ local function BuildTribute(parent)
     local function Copy()
         local items = {}
         for i, item in ipairs(spec.items) do items[i] = { kind = item.kind, key = item.key, n = item.n } end
-        return { tier = spec.tier, points = spec.points, plinko = spec.plinko, note = spec.note, items = items }
+        return { tier = spec.tier, points = spec.points, note = spec.note, items = items }
     end
-    local function Empty() return #spec.items == 0 and spec.points == 0 and spec.plinko == 0 end
+    local function Empty() return #spec.items == 0 and spec.points == 0 end
     Button(page, "Preview", 100, function()
         -- (out of the way while it plays: back when the chest closes)
         if window and _G.SOLCChest and not window.hooked then
@@ -643,7 +640,7 @@ local function BuildTribute(parent)
     send:SetPoint("TOPLEFT", 506, -260)
     Button(page, "Empty it", 80, function()
         wipe(spec.items)
-        spec.points, spec.plinko = 0, 0
+        spec.points = 0
         page:Draw()
     end):SetPoint("TOPLEFT", 672, -260)
     Button(page, "Godz pop-in", 100, function() ns.ShowOgreGodz(Copy()) end):SetPoint("TOPLEFT", 400, -286)
@@ -651,7 +648,7 @@ local function BuildTribute(parent)
     help:SetPoint("TOPLEFT", 400, -318)
     help:SetWidth(350)
     help:SetWordWrap(true)
-    help:SetText("A guildmate gets it as a whisper: they must be online with this SOLC, and their SOLC checks it's from one of your characters. It waits on their PIX page until they open it. Shift-click the arrows to step ten at a time.")
+    help:SetText("A guildmate gets it as a whisper: they must be online with this SOLC, and their SOLC checks it's from one of your characters. It waits in their Inventory until they open it. Shift-click the arrows to step ten at a time.")
 
     function page:Draw()
         for i, row in ipairs(rows) do
@@ -664,8 +661,8 @@ local function BuildTribute(parent)
                 row.text:SetText(("%d x %s"):format(item.n, IngredientLabel(item.key)))
             end
         end
-        summary:SetText(("%s%d points, %d plinko drop%s, a %s chest."):format(#spec.items == 0 and "Nothing else yet; " or "Plus ",
-            spec.points, spec.plinko, spec.plinko == 1 and "" or "s", ns.CHEST_TIERS[spec.tier].name:lower()))
+        summary:SetText(("%s%d points, a %s chest."):format(#spec.items == 0 and "Nothing else yet; " or "Plus ",
+            spec.points, ns.CHEST_TIERS[spec.tier].name:lower()))
     end
     function page:Refresh()
         to:Reload()
@@ -765,12 +762,8 @@ local function BuildDeeds(parent)
         if need <= 0 then return ns.Print("Dev: you're there already (a rank can't go down: points earned stay earned).") end
         AddPoints(need)
     end):SetPoint("TOPLEFT", 400, -108)
-    Button(page, "+1 plinko drop", 120, function() ns.GiftPlinkoDrops(1) ns.Print("Dev: a free plinko drop.") end)
-        :SetPoint("TOPLEFT", 400, -146)
-    Button(page, "+3 plinko drops", 120, function() ns.GiftPlinkoDrops(3) ns.Print("Dev: 3 free plinko drops.") end)
-        :SetPoint("TOPLEFT", 526, -146)
     Heading(page, "Dream Bed", 400, -184)
-    for row, key in ipairs({ "milk", "story", "bonk" }) do
+    for row, key in ipairs({ "story", "bonk" }) do
         local label = Label(page, 13)
         label:SetPoint("TOPLEFT", 400, -212 - (row - 1) * 26)
         label:SetWidth(160)
@@ -823,9 +816,7 @@ local function BuildDeeds(parent)
         if PuzzleBot() then speed:Select(PuzzleBot().speed) end
         duelStep:Reload()
         local p, r = ns.GetPoints(), ns.GetRank()
-        local plinko = KillTrackerDB.plinko
-        status:SetText(("Earned %d points, %d to spend. Rank %d %s. Plinko drops waiting: %d."):format(p.earned, p.balance,
-            r.rank, r.title, plinko and plinko.gifted or 0))
+        status:SetText(("Earned %d points, %d to spend. Rank %d %s."):format(p.earned, p.balance, r.rank, r.title))
         rank:Select(ns.RANKS[math.min(#ns.RANKS, r.rank + 1)])
     end
     return page
@@ -862,7 +853,16 @@ local function Build()
     local tribute = BuildTribute(window)
     local deeds = BuildDeeds(window)
     local say = ns.BuildDMSay and ns.BuildDMSay(window, browser)  -- (officers: pop in as the ogre, DMSay.lua)
-    local pages = { { "CHESTS & ART", main, 120 }, { "TRIBUTE", tribute, 90 }, { "DEEDS & ME", deeds, 110 } }
+    -- The guild's point values (Config.lua's panel): only dev characters change them; they go to the whole guild.
+    local values = CreateFrame("Frame", nil, window)
+    values:SetPoint("TOPLEFT", 12, -40)
+    values:SetSize(756, 520)
+    local valuesPanel = ns.EmbedConfig(values, 756, "Guild values")
+    valuesPanel:Show()
+    values.Refresh = function() valuesPanel.Refresh() end
+    local paper = ns.BuildWallpaperTune(window)
+    local pages = { { "CHESTS & ART", main, 120 }, { "TRIBUTE", tribute, 90 }, { "DEEDS & ME", deeds, 110 },
+        { "GUILD VALUES", values, 120 }, { "PAPER", paper, 70 } }
     window.tab = 1
     local x = -40
     for i = #pages, 1, -1 do
@@ -890,6 +890,63 @@ local function Build()
     end
     window:SetScript("OnShow", function(self) self:Refresh() end)
     window:Hide()
+end
+
+-- PAPER: tuning the wallpapers (Wallpaper.lua) live - which one is yours, and their sizes and darkening, each a
+-- row: [-] value [+] (Shift: ten steps; the wheel over the row works too), [reset]. Kept in SOLCAccount.wallpaperTune;
+-- the numbers to put in as the defaults once they look right.
+function ns.BuildWallpaperTune(window)
+    local panel = CreateFrame("Frame", nil, window)
+    panel:SetPoint("TOPLEFT", 12, -40)
+    panel:SetSize(756, 520)
+    Heading(panel, "Wallpapers", 10, -6)
+    local rows = {}
+    -- Yours: < name >
+    local pick = Label(panel, 14)
+    pick:SetPoint("TOPLEFT", 10, -40)
+    local function Step(delta)
+        local list, current = ns.WALLPAPER_LIST, ns.GetWallpaper()
+        for i, paper in ipairs(list) do
+            if paper.id == current then return ns.SetWallpaper(list[(i - 1 + delta) % #list + 1].id) end
+        end
+    end
+    Button(panel, "<", 30, function() Step(-1) panel:Refresh() end):SetPoint("TOPLEFT", 330, -36)
+    Button(panel, ">", 30, function() Step(1) panel:Refresh() end):SetPoint("TOPLEFT", 364, -36)
+    for i, spec in ipairs(ns.WALLPAPER_TUNE) do
+        local y = -80 - (i - 1) * 30
+        local row = CreateFrame("Frame", nil, panel)
+        row:SetPoint("TOPLEFT", 0, y + 6)
+        row:SetSize(740, 30)
+        row:EnableMouseWheel(true)
+        local label = Label(row, 14)
+        label:SetPoint("LEFT", 10, 0)
+        label:SetText(spec.name)
+        local value = Label(row, 14, 1, 0.82, 0.3)
+        value:SetPoint("LEFT", 370, 0)
+        local function Change(steps)
+            local now = ns.WallpaperTune(spec.key) + steps * spec.step * (IsShiftKeyDown() and 10 or 1)
+            now = math.max(spec.min, math.min(spec.max, math.floor(now / spec.step + 0.5) * spec.step))
+            ns.SetWallpaperTune(spec.key, now)
+            panel:Refresh()
+        end
+        Button(row, "-", 30, function() Change(-1) end):SetPoint("LEFT", 330, 0)
+        Button(row, "+", 30, function() Change(1) end):SetPoint("LEFT", 440, 0)
+        Button(row, "reset", 60, function() ns.SetWallpaperTune(spec.key, spec.default) panel:Refresh() end):SetPoint("LEFT", 480, 0)
+        row:SetScript("OnMouseWheel", function(_, delta) Change(delta) end)
+        rows[i] = { spec = spec, value = value }
+    end
+    local hint = Label(panel, 12, 0.62, 0.56, 0.48)
+    hint:SetPoint("TOPLEFT", 10, -80 - #ns.WALLPAPER_TUNE * 30 - 10)
+    hint:SetText("Open ME (and its INVENTORY) beside this to see it change. Shift: ten steps. The wheel works over a row.")
+    function panel:Refresh()
+        local current = ns.GetWallpaper()
+        for _, paper in ipairs(ns.WALLPAPER_LIST) do if paper.id == current then pick:SetText("Yours: " .. paper.name) end end
+        for _, row in ipairs(rows) do
+            local v = ns.WallpaperTune(row.spec.key)
+            row.value:SetText(row.spec.step < 1 and ("%.2f"):format(v) or tostring(v))
+        end
+    end
+    return panel
 end
 
 function ns.ToggleDev()

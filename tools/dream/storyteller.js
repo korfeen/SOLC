@@ -147,4 +147,10 @@ const SHORT = { "Bald with Fly": "fly", "Nightcap with Pom Pom": "nightcap", "Lo
   "Bobble Hat & Goggles": "bobble hat", "Slicked Back": "hair", "Top Knot": "top knot", "Bin Lid": "bin lid", "Bowl Cut": "bowl cut",
   "Tin-Foil Hat": "tin-foil hat", "Lure Hat": "lure hat", "Ascot Hat": "race-day hat", "Fishbowl Helmet": "fishbowl",
   "Traffic Cone": "cone", "Mustard-Stained Wifebeater": "vest", "Gravy-Stained Wifebeater": "vest", "Cigar Box": "cigars",
-  "Whiskey Tumbler": "whiskey", "Trophy Fish": "marlin", "Cricket Whites": "cricket whites", "Fencing Whites": "fencing whites" };
+  "Whiskey Tumbler": "whiskey", "Trophy Fish": "marlin", "Cricket Whites": "cricket whites", "Fencing Whites": "fencing whites",
+  "Cigarette Behind the Ear": "cigarette", "Shell Suit": "shell suit", "Sleeping Bag Coat": "sleeping bag", "Brandy Snifter": "brandy",
+  "Bottle in a Bag": "bottle", "Cheap Ale Can": "ale", "Steward's Boater": "boater", "Steward's Stripes": "waistcoat",
+  // creature and faction props: the thing, not "stick" or "string"
+  "Bat Bat on a String": "bat", "Elemental Storm Cloud on a Stick": "storm cloud", "Kobold Candle on a Stick": "candle",
+  "Murloc Fish on a Stick": "fish", "Trogg Rock on a Stick": "rock", "Bear Honey Pot": "honey pot", "Boar Tusk Club": "tusk club",
+  "Quilboar Bramble Club": "bramble club", "Furbolg Totem Stick": "totem", "Defias Throwing Knives": "knives", "Bronze Hourglass Egg": "hourglass egg" };

@@ -178,4 +178,20 @@ Object.assign(PIECE_TAGS, {
   "gacha_outfit_parka": ["ice"],
   "gacha_outfit_rowing_blazer": ["golf", "water"],
   "gacha_outfit_umpire": ["golf"],
+  // gacha series 1 lowlife and smoking-room pieces
+  "gacha_acc_ale_can": ["smelly"],
+  "gacha_acc_knockoff_shades": [],
+  "gacha_acc_scratchcard": [],
+  "gacha_acc_brandy": ["golf"],
+  "gacha_acc_pigeon": ["beast", "smelly"],
+  "gacha_acc_rat": ["beast", "smelly", "sleepy"],
+  "gacha_acc_whiskey_bag": ["smelly"],
+  "gacha_hair_curlers": [],
+  "gacha_head_ear_cigarette": ["smelly"],
+  "gacha_hair_mohawk": [],
+  "gacha_outfit_shellsuit": [],
+  "gacha_outfit_sleeping_bag": ["sleepy", "smelly"],
+  // the Pro Shop steward's own (deed pieces)
+  "shop_steward_boater": ["golf"],
+  "shop_steward_vest": ["golf"],
 });
