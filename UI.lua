@@ -243,11 +243,31 @@ local function BuildRows()
         return rows
     end
 
-    if state.view == "achievements" then
+    -- ALL deeds, at the top: the groups (Achievements.lua's ns.DEED_GROUPS), each with how many of its deeds are begun.
+    if state.view == "alldeeds" and #state.path == 0 then
+        local all, begun = {}, {}
         for _, progress in ipairs(ns.GetAchievementProgress(Source())) do
-            -- Sort key: closest to its next tier first, fully completed categories last.
-            local sortKey = progress.next and progress.kills / progress.next.kills or -1
-            rows[#rows + 1] = { label = progress.category, count = progress.kills, achievement = progress, sortKey = sortKey }
+            local g = progress.group or "Hunting"
+            all[g] = (all[g] or 0) + 1
+            if not progress.unstarted then begun[g] = (begun[g] or 0) + 1 end
+        end
+        for _, g in ipairs(ns.DEED_GROUPS or {}) do
+            if all[g] then
+                rows[#rows + 1] = { label = g, count = begun[g] or 0, groupAll = all[g], category = g, deedGroup = true,
+                    hint = g == "Secrets" and "Deeds nobody tells you about." or "Click to see them." }
+            end
+        end
+        return rows
+    end
+    -- MINE: the deeds you've begun; ALL inside a group: all of its deeds, the unstarted ones dimmed at the end.
+    if state.view == "achievements" or state.view == "alldeeds" then
+        local group = state.view == "alldeeds" and state.path[1].value
+        for _, progress in ipairs(ns.GetAchievementProgress(Source())) do
+            if (group and (progress.group or "Hunting") == group) or (not group and not progress.unstarted) then
+                -- Sort key: closest to its next tier first, fully completed ones next, the unstarted ones last.
+                local sortKey = progress.unstarted and -2 or progress.next and progress.kills / progress.next.kills or -1
+                rows[#rows + 1] = { label = progress.category, count = progress.kills, achievement = progress, sortKey = sortKey }
+            end
         end
         table.sort(rows, function(a, b)
             if a.sortKey ~= b.sortKey then return a.sortKey > b.sortKey end
@@ -1301,6 +1321,12 @@ end
 local function ShowAchievementTooltip(row)
     local progress = row.data.achievement
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    if progress.secret then  -- (not begun: nothing given away)
+        GameTooltip:AddLine("A secret deed")
+        GameTooltip:AddLine("Nobody tells you how this one starts. Click it and Reginald might.", 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+        return
+    end
     GameTooltip:AddLine(progress.category)
     AddValue((progress.unit or "kills"):gsub("^%l", string.upper), progress.kills)
     GameTooltip:AddLine(" ")
@@ -1436,11 +1462,21 @@ local function FillRow(row, d, total, max)
         row.label:SetText(("|T%s:14|t |c%s%s|r"):format(d.item.texture or "Interface\\Icons\\INV_Misc_QuestionMark", color, d.label))
         row.count:SetText(d.owned and "|cff33ff33Owned|r" or ("%d points"):format(d.count))
         barFraction = 0
+    elseif d.deedGroup then  -- (ALL deeds' groups: how many of their deeds you've begun)
+        row.label:SetText(d.label)
+        row.count:SetText(d.label == "Secrets" and ("%d of %d found"):format(d.count, d.groupAll) or ("%d/%d"):format(d.count, d.groupAll))
+        barFraction = d.count / math.max(1, d.groupAll)
+        row.bar:SetVertexColor(1, 0.5, 0.1, 0.45)
     elseif d.achievement then
         local progress = d.achievement
-        row.label:SetText(progress.tribe and ("%s  |cff999999tribe|r"):format(progress.category)
-            or ("%s  |cff999999%d/%d|r"):format(progress.category, progress.earned, #progress.tiers))
-        if progress.next then
+        local name = progress.unstarted and ("|cff8c8273%s|r"):format(progress.category) or progress.category  -- (not begun: dimmed)
+        row.label:SetText(progress.tribe and ("%s  |cff999999tribe|r"):format(name)
+            or progress.secret and name
+            or ("%s  |cff999999%d/%d|r"):format(name, progress.earned, #progress.tiers))
+        if progress.secret then  -- (its target would give it away)
+            row.count:SetText("|cff8c8273???|r")
+            barFraction = 0
+        elseif progress.next then
             row.count:SetText(("%d/%d"):format(progress.kills, progress.next.kills))
             barFraction = progress.kills / progress.next.kills
         else

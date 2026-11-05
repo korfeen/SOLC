@@ -50,7 +50,13 @@ local function TierName(dimension, category, tierIndex)
 end
 
 -- Feats: { key, label (the row's name), unit (what's counted, for "5 leaders"), count(source, facts) -> number or
--- nil (unknown for this source: the row isn't shown), tiers = { { target, name, points } } }.
+-- nil (unknown for this source: the row isn't shown), tiers = { { target, name, points } }, secret (its name and tiers
+-- hidden on the Deeds page till it's started; hint: Reginald's nudge when you click it) }.
+-- The Deeds page's ALL groups (a feat's own group, else by its key; dungeon and zone feats have theirs).
+local FEAT_GROUPS = { pictures = "Pictures", epic = "Pictures", legendary = "Pictures", showcase = "Pictures", puzzles = "Pictures",
+    herbs = "Professions", ore = "Professions", skins = "Professions", fish = "Professions", craft = "Professions",
+    bounties = "Club life", chests = "Club life", shop = "Club life", buddy = "Club life" }
+ns.DEED_GROUPS = { "Creatures", "Tribes", "Hunting", "Rares", "Dungeons", "Pictures", "Professions", "Club life", "Secrets" }
 local RARE_RANKS = { ["Rare"] = true, ["Rare Elite"] = true }
 local ELITE_RANKS = { ["Elite"] = true, ["Rare Elite"] = true, ["Boss"] = true }
 local RARITY_ORDER = { uncommon = 1, rare = 2, epic = 3, legendary = 4 }
@@ -116,11 +122,13 @@ local FEATS = {
     -- What you've spent in the Pro Shop, wallpapers too (KillTrackerDB.shop.spent; only yours). The steward's whole look
     -- comes with it: his snooty eyes at 500, his striped outfit at 1500, his sneer at 3000, his Club Sage skin at 6000
     -- and his boater at the top (tools/gen-art-proshop-club.json, convert-art.js BASE_UNLOCKS).
-    { key = "shop", label = "Spent in the Pro Shop", unit = "points", count = function(_, f) return f.shopSpent end, tiers = {
+    { key = "shop", label = "Spent in the Pro Shop", unit = "points", secret = true,
+        hint = "Money talks, darling. In my shop it positively sings.", count = function(_, f) return f.shopSpent end, tiers = {
         { 100, "Window Shopper", 5 }, { 500, "Regular Customer", 15 }, { 1500, "Valued Member", 30 }, { 3000, "Big Spender", 50 },
         { 6000, "The Steward's Favourite", 80 }, { 10000, "Life Member", 120 } } },
     -- Friendship: the most dungeons you've cleared with one guildmate (KillTrackerDB.companions, Guild.lua).
-    { key = "buddy", label = "Dungeons with one guildmate", unit = "clears together", count = function(_, f) return f.buddy end, tiers = {
+    { key = "buddy", label = "Dungeons with one guildmate", unit = "clears together", secret = true,
+        hint = "Some members go into the dark together. Again and again. I find it touching. Briefly.", count = function(_, f) return f.buddy end, tiers = {
         { 3, "Dungeon Buddies", 15 }, { 10, "Partners In Crime", 30 }, { 25, "Inseparable", 60 }, { 50, "Joined At The Hip", 100 } } },
 }
 
@@ -610,22 +618,36 @@ BuildProgress = function(source)
         end
         rows[#rows + 1] = row
     end
+    local function KillRow(dim, category, kills)
+        local list = {}
+        for i, tier in ipairs(TiersOf(dim, category)) do
+            local id = AchievementID(dim.key, category, tier.kills)
+            list[i] = { id, TierName(dim.key, category, i), tier.kills, ns.AchievementPoints(id) }
+        end
+        Row({ category = ShortName(category), tribe = dim.key == "faction", unit = "kills", kills = kills, unstarted = kills == 0,
+            group = dim.key == "faction" and "Tribes" or "Creatures" }, list)
+    end
     for _, dim in ipairs(DIMENSIONS) do
-        for category, kills in pairs(counts[dim.key]) do
-            local list = {}
-            for i, tier in ipairs(TiersOf(dim, category)) do
-                local id = AchievementID(dim.key, category, tier.kills)
-                list[i] = { id, TierName(dim.key, category, i), tier.kills, ns.AchievementPoints(id) }
-            end
-            Row({ category = ShortName(category), tribe = dim.key == "faction", unit = "kills", kills = kills }, list)
+        for category, kills in pairs(counts[dim.key]) do KillRow(dim, category, kills) end
+    end
+    -- Every deed there is, not only the started ones (unstarted: 0 so far): each feat, and every creature kind and
+    -- enemy tribe in the mob data (Guild.lua's ns.DeedTargets). A secret feat keeps its name and tiers to itself till then.
+    local targets = ns.DeedTargets and ns.DeedTargets()
+    for _, dim in ipairs(targets and DIMENSIONS or {}) do
+        for _, category in pairs(dim.key == "subtype" and targets.kinds or targets.tribes) do
+            if not counts[dim.key][category] and not ns.NO_AWARDS[category] then KillRow(dim, category, 0) end
         end
     end
     for _, feat in ipairs(FEATS) do
         local count = feat.count(source, facts)
-        if count and count > 0 then
+        if count then
             local list = {}
             for i, tier in ipairs(feat.tiers) do list[i] = { AchievementID("feat", feat.key, tier[1]), tier[2], tier[1], tier[3] } end
-            Row({ category = feat.label, feat = true, unit = feat.unit, kills = count }, list)
+            local secret = feat.secret and count == 0
+            local group = secret and "Secrets" or feat.group or (feat.dungeon and "Dungeons") or (feat.zoneRares and "Rares")
+                or FEAT_GROUPS[feat.key] or "Hunting"
+            Row({ category = secret and "A secret deed" or feat.label, feat = true, unit = feat.unit, kills = count,
+                unstarted = count == 0, secret = secret, hint = secret and feat.hint or nil, group = group }, list)
         end
     end
     return rows

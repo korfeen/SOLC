@@ -29,7 +29,7 @@ local PAGES = {
         tabs = { { "creatures", "FOES", "BADDY" }, { "rares", "RARES", "SHINY" }, { "pvp", "PVP", "BONK" } },
         tabFor = { pvp = "pvp", rares = "rares" } },
     { key = "deeds", label = "Deeds", order = 3, covers = { achievements = true }, deeds = true,
-        tabs = { { "achievements", "DEEDS", "BRAG" } }, tabFor = { achievements = "achievements" } },
+        tabs = { { "achievements", "MINE", "BRAG" }, { "alldeeds", "ALL", "ALL" } }, tabFor = { achievements = "achievements" } },
 }
 
 -- In window pixels (from its top-left, y down). The left slot (UI.SPLIT.left): the tabs, the way in, the rows.
@@ -68,7 +68,7 @@ end
 local function NearestDeeds(count)
     local list = {}
     for _, progress in ipairs(ns.GetAchievementProgress(List.Source())) do
-        if progress.next then list[#list + 1] = progress end
+        if progress.next and not progress.unstarted then list[#list + 1] = progress end
     end
     table.sort(list, function(a, b) return a.kills / a.next.kills > b.kills / b.next.kills end)
     local out = {}
@@ -180,6 +180,10 @@ local function DrawPick(page)
             c and ("%s%s"):format(c.subtype or "", c.faction and c.faction ~= c.subtype and (" - " .. c.faction) or "") or "",
             d.rare and ("Level %d, %s"):format(d.rare.level, d.rare.zone or "") or "",
         }, DeedsFor(c))
+    elseif d and d.achievement and d.achievement.secret then  -- (a secret deed, not started: nothing given away)
+        name = d.achievement.category
+        ShowPanel(page, { { "A secret deed", GOLD }, " ", "Nobody tells you how this one starts.", "Reginald knows. He isn't saying." })
+        SetInfo(page, { "Not started yet" })
     elseif d and d.achievement then
         local progress = d.achievement
         name = progress.category
@@ -418,6 +422,8 @@ ns.RegisterPage({
                     page.pick, page.offset = nil, 0
                 elseif d.mob or d.leader or d.rare or d.player or d.achievement then
                     page.pick = page.pick ~= d and d or nil
+                    -- (a secret deed: Reginald's nudge, Onboarding.lua)
+                    if d.achievement and d.achievement.secret and d.achievement.hint and ns.StewardSay then ns.StewardSay(d.achievement.hint) end
                 end
                 ns.OpenPage(state.page)
             end)
@@ -576,10 +582,11 @@ ns.RegisterPage({
         for _, step in ipairs(state.path) do
             if step.label ~= labels[#labels] then labels[#labels + 1] = step.label end
         end
-        local root = state.view == "achievements" and "All deeds" or state.view == "rares" and "Rares by zone"
+        local root = state.view == "achievements" and "My deeds" or state.view == "alldeeds" and "Every deed there is"
+            or state.view == "rares" and "Rares by zone"
             or state.view == "pvp" and "Players" or "All creatures"
         page.crumb:SetText(inside and ("%s  |cffffbf66%d|r"):format(table.concat(labels, " > "), total)
-            or state.view == "achievements" and root
+            or (state.view == "achievements" or state.view == "alldeeds") and root
             or ("%s  |cffffbf66%d|r"):format(root, total))
         page:DrawRows()
         page:DrawPick()

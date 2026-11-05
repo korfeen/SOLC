@@ -173,6 +173,7 @@ local function Targets()
     table.sort(targets.byType, function(a, b) return a.type < b.type end)
     return targets
 end
+ns.DeedTargets = Targets  -- (every creature kind and tribe: the Deeds list's unstarted ones, Achievements.lua)
 
 -- The bounty for an id: a catalogue entry, or a custom one built (once) from its id. nil if unknown.
 local custom = {}
