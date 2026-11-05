@@ -409,6 +409,33 @@ function skull(c, r, x, y, s = 1) {
 
 // --- The dungeons (bg_<key>, as gen-art-backgrounds.json describes them) ---
 const DUNGEONS = {
+  // The Bounty Office (a bounty reward, tools/gen-art-bounty.json): log walls, a window on golden fields, a wall of
+  // wanted posters (some crossed out in red), clubs and a lasso on a rack, a desk with a lantern and gold.
+  bounty_office: (c, r) => {
+    sky(c, r, "#c88a4a");  // the wall
+    for (const x of [60, 1190]) fill(c, rect(x - 40, 0, x + 40, 760), "#7a4a26", r, { hatch: 10 });  // posts
+    fill(c, rect(0, 0, S, 70), "#6a3e20", r, { hatch: 10 });  // the beam
+    fill(c, rect(110, 180, 330, 470), "#9ad0f0", r, { line: 14, hatch: 10 });  // the window
+    fill(c, rect(118, 380, 322, 462), "#e8c060", r, { line: 0, hatch: 8 });  // (golden fields through it)
+    for (const x of [183, 257]) line(c, [[x, 180], [x, 470]], 10, "#6a3e20", r);
+    line(c, [[110, 325], [330, 325]], 10, "#6a3e20", r);
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {  // the posters
+      const x = 430 + col * 140 + (r() - 0.5) * 20, y = 180 + row * 165 + (r() - 0.5) * 20;
+      fill(c, rect(x, y, x + 110, y + 135), "#f4e4b8", r, { line: 8, hatch: 8 });
+      line(c, [[x + 20, y + 22], [x + 90, y + 22]], 8, "#5a3a1e", r);
+      dab(c, x + 55, y + 75, 22, hex("#8a6a4a"), 0.8);
+      if (r() < 0.35) { line(c, [[x + 10, y + 10], [x + 100, y + 125]], 10, "#d8302e", r); line(c, [[x + 100, y + 10], [x + 10, y + 125]], 10, "#d8302e", r); }
+    }
+    line(c, [[1000, 230], [1180, 230]], 14, "#5a3a1e", r);  // the rack: two clubs and a lasso
+    for (const x of [1030, 1090]) fill(c, [[x - 12, 240], [x + 12, 240], [x + 26, 420], [x - 26, 420]], "#8a5a2e", r, { line: 8, hatch: 8 });
+    line(c, curve([[1150, 240], [1185, 300], [1150, 360], [1115, 300], [1150, 240]], 10), 10, "#d8b070", r);
+    floor(c, r, 760, "#9a6a3a");
+    fill(c, rect(820, 700, 1250, 760), "#7a4a26", r, { line: 12, hatch: 10 });  // the desk
+    for (const x of [850, 1210]) fill(c, rect(x - 18, 760, x + 18, 960), "#6a3e20", r, { hatch: 8 });
+    lantern(c, r, 1100, 650, 40);
+    for (let i = 0; i < 5; i++) fill(c, ellipse(930 + i * 14, 690 - i * 10, 30, 10), "#ffd23f", r, { line: 6, hatch: 6 });
+    barrel(c, r, 120, 1000);
+  },
   // Ragefire Chasm: the fiery cave under Orgrimmar - lava rivers, red rock, smoke and embers, a rope bridge.
   rfc: (c, r) => {
     sky(c, r, "#4a2220");  // the cave
