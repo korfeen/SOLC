@@ -248,3 +248,175 @@ const PAYOFF = {
     ["And the cliffs pulled better faces.", "And one face got stuck like that.", "And the Godz said 'rude' and rained on me."],
   ],
 };
+
+// The zone golf courses' payoffs, by option id (one list per opening).
+Object.assign(PAYOFF, {
+  zone_elwynn: [
+    ["And the ball rolled into the inn. Then the stew.", "And I sank it. He clapped so hard the inn shook.", "And the green was a hearthstone. I woke up in Goldshire."],
+    ["And I hit the inn's windows. All of them.", "And the innkeeper charged me for a room. And the window.", "And the ball came back out with a pint."],
+  ],
+  zone_dunmorogh: [
+    ["And the ball's still sliding. Kharanos, probably.", "And the green cracked. We're in the lake now.", "And he putted it in with his nose. Brr."],
+    ["And the club stayed frozen to my hands. I sleep with it now.", "And my drive hit the gate. Ironforge said 'who's there?'", "And he thawed my hands with his breath. Ogre breath."],
+  ],
+  zone_lochmodan: [
+    ["And the loch threw them back.", "And the loch is now mostly golf balls.", "And something in the loch caught one. And kept it."],
+    ["And he leaned on the dam. It went 'creak'.", "And my ball bounced off the dam and hit me.", "And the dam sprang a leak. He put his thumb in it."],
+  ],
+  zone_westfall: [
+    ["And the wheat was all golf balls. None of them mine.", "And he found it. He'd been sitting on it.", "And the Harvest Golem harvested it."],
+    ["And my ball went in the windmill and came out flour.", "And the windmill swatted him. He swatted back.", "And Farmer Saldean told us to get off his land."],
+  ],
+  zone_redridge: [
+    ["And the ball sank in Lake Everstill. With the rest.", "And the putt went in. Lakeshire cheered. Gnolls too.", "And the lake's murlocs wanted it back."],
+    ["And I hit the boulder. The gnoll hit back.", "And the gnoll caught it in its mouth.", "And the gnoll was Gath'Ilzogg's caddie."],
+  ],
+  zone_teldrassil: [
+    ["And the moonwell gave my ball back. Blessed.", "And the ball came out of the moonwell glowing.", "And he drank the moonwell. All of it."],
+    ["And I fell off. It's a very tall tree.", "And he teed off. The ball landed in Darnassus.", "And the edge was fine. He was the scary bit."],
+  ],
+  zone_darkshore: [
+    ["And the moon held the flag.", "And he putted the moon. Hole in one.", "And the moon hid behind a cloud on my backswing."],
+    ["And the dunes were mostly murlocs.", "And the sand went in my boots. And his.", "And my ball hid in the skeleton's ribs."],
+  ],
+  zone_durotar: [
+    ["And the boar won.", "And he chased it off. Then it chased him off.", "And the boar ate the hole."],
+    ["And the scorpids played through.", "And the bunker stung me.", "And he took his shot. Scorpids everywhere."],
+  ],
+  zone_mulgore: [
+    ["And a kodo sat on the tee.", "And the kodos moved. Slowly. Very slowly.", "And my ball bounced off a kodo and went in."],
+    ["And the grass was taller than him.", "And a plainstrider sat on it. Hatched it.", "And a totem pointed at it. Helpful."],
+  ],
+  zone_barrens: [
+    ["And we found her. She was on the back nine.", "And he found my ball instead.", "And Mankrik was in the clubhouse, asking everyone."],
+    ["And I hit the zeppelin.", "And the zeppelin docked on the green.", "And the zeppelin left with my ball. It's in Undercity now."],
+  ],
+  zone_silverpine: [
+    ["And the lake took it. The lake always takes it.", "And the lake was so still he walked on it.", "And a worgen fetched it. Wouldn't give it back."],
+    ["And it's still the third hole. It's always the third hole.", "And he found me by the snoring.", "And the fog was him. Breathing out."],
+  ],
+  zone_tirisfal: [
+    ["And the zombie raked himself into the bunker.", "And the rake was his arm.", "And the bunker had someone in it already."],
+    ["And the crypts kept giving my ball back.", "And something in a crypt said 'fore'.", "And a crypt opened and asked for quiet."],
+  ],
+  zone_hillsbrad: [
+    ["And every shot hit an apple.", "And he ate the orchard.", "And an apple went in. Apple in one."],
+    ["And the sheep never moved.", "And he carried the sheep off. It loved it.", "And the sheep was him. Under the fleece."],
+  ],
+  zone_arathi: [
+    ["And the hat landed on him. It fit.", "And the wind took my hat to Stromgarde.", "And I caught it. It was a raptor."],
+    ["And the stones moved closer to watch.", "And the stones were the gallery. Very quiet.", "And the putt went round every stone and in."],
+  ],
+  zone_alterac: [
+    ["And the yeti carried mine. And me.", "And the bag rolled down the mountain. Then me.", "And at the top was another mountain."],
+    ["And the ball rolled all the way to Lordaeron.", "And the castle had a dress code. Treachery only.", "And the putt went in. Alterac says it doesn't count."],
+  ],
+  zone_badlands: [
+    ["And I'm still in it.", "And he swam out.", "And the trap had another trap in it."],
+    ["And the ribs were a cage. My ball lives there now.", "And the dragon woke up. Just the bones.", "And he played the whole dragon as one hole."],
+  ],
+  zone_swamp: [
+    ["And the lily pad sank. With me on.", "And the ball skipped five times and went in.", "And a frog hit it back."],
+    ["And the whelp cheered up and set the flag on fire.", "And he sat with it. Both sulked.", "And now I'm sad. It's catching."],
+  ],
+  zone_stranglethorn: [
+    ["And the ball went over. So did he.", "And the waterfall was the hole. Deepest hole ever.", "And the waterfall washed us down to Booty Bay."],
+    ["And the raptor had it.", "And the raptor asked if I needed a caddie.", "And King Bangalash took it. He's a tiger. He's allowed."],
+  ],
+  zone_riverglades: [
+    ["And the river took it. Lazily.", "And the putt went round every bend and in.", "And the river flowed backwards to give it back."],
+    ["And the horses chased me off instead.", "And one horse sank a putt. Show-off.", "And he lassoed them all with a golf towel."],
+  ],
+  zone_ashenvale: [
+    ["And my ball's still up one. Somewhere.", "And a tree caught it. Kept it.", "And he climbed up and putted from the top."],
+    ["And the moonwell gave me a hole in one. Magic.", "And the moonwell asked us to keep it clean.", "And he washed his feet in it."],
+  ],
+  zone_stonetalon: [
+    ["And I dropped. A long way.", "And the green was only big enough for him.", "And he chipped in from the valley below."],
+    ["And the harpy kept the flag.", "And the harpy screeched 'FORE'. It was late.", "And it flew off. With the hole."],
+  ],
+  zone_desolace: [
+    ["And even the flag was grey.", "And he was the only colour there.", "And I painted it green. It went grey again."],
+    ["And the skulls kept score with their teeth.", "And my ball went in an eye socket. Bonus.", "And the skull said 'ow'."],
+  ],
+  zone_dustwallow: [
+    ["And the ball hit the castle. Theramore rang its bell.", "And the putt went in the sea. Next stop, Booty Bay.", "And a guard said 'the harbour isn't a hazard, sir'."],
+    ["And a black whelp had it.", "And the reeds were full of balls. And crocolisks.", "And he found it in his boot."],
+  ],
+  zone_needles: [
+    ["And I missed the needle. And the next one.", "And it landed on the salt flats. Lap one.", "And he jumped across instead. Took the green with him."],
+    ["And the bridge went one way. Me the other.", "And he crossed it. The bridge didn't.", "And the bag made it. I didn't."],
+  ],
+  zone_wetlands: [
+    ["And the puddle was the hole.", "And the putt splashed in. Counted.", "And the puddle got bigger every shot."],
+    ["And the croc didn't move. It was sunbathing.", "And he moved it. It moved him back.", "And the croc ate the flag. Then the hole."],
+  ],
+  zone_duskwood: [
+    ["And the graveyard was very quiet. Then not.", "And my ball went in a grave. Someone kept it.", "And a ghost said 'nice putt' and I screamed."],
+    ["And the worgen on the hill howled at every miss.", "And the moon was the only light. Then it went out.", "And he howled back. A whole round of howling."],
+  ],
+  zone_azshara: [
+    ["And the leaves buried the hole.", "And I putted a leaf in. It counted.", "And it was autumn forever. Lovely, really."],
+    ["And the sea threw it back. With a naga.", "And it went straight to the bottom of the sea.", "And he dived in after it. Came up in seaweed."],
+  ],
+  zone_blasted: [
+    ["And the portal swallowed the putt.", "And something big came out of the portal to watch.", "And the putt went round the portal twice."],
+    ["And the imp gave it back. On fire.", "And the imp was the flag.", "And he picked the imp up. It said 'put me down'."],
+  ],
+  zone_burning: [
+    ["And I putted an ash pile.", "And the ash was his. Snoring smoke.", "And it snowed ash all night. Cosy, sort of."],
+    ["And the whelp won.", "And he caught the whelp. It cried. He gave it back.", "And its mum came for it. Big mum."],
+  ],
+  zone_felwood: [
+    ["And I fell in one. I'm a bit green now.", "And he drank one. He's fine. Mostly.", "And they were the only lights on the course."],
+    ["And the satyr caddied. Badly.", "And the satyr stole the flag.", "And the satyr skulked off with my tee."],
+  ],
+  zone_feralas: [
+    ["And a tree caught it.", "And the green was on a branch.", "And the roots were the bunkers."],
+    ["And the ogres didn't move. Friendly, not keen.", "And they moved one leg. Very polite.", "And they invited him to stay. He stayed."],
+  ],
+  zone_hinterlands: [
+    ["And the gryphon caught it.", "And I hit the gryphon. Sorry, gryphon.", "And the gryphon dropped it in the hole. Fair."],
+    ["And the face frowned at my putt.", "And the face blew it in.", "And the face looked like him. A lot."],
+  ],
+  zone_hyjal: [
+    ["And I hit Nordrassil. It said 'ow'.", "And the ball's still going up.", "And the tree gave it back with a leaf."],
+    ["And the wisp went in the hole first.", "And the wisp lit the way. Hole in one.", "And the wisp was the hole."],
+  ],
+  zone_searing: [
+    ["And the lava took it.", "And the putt went in sizzling.", "And he dipped his toes in. Said it was 'nice'."],
+    ["And I dropped it in the lava.", "And it was a branding iron now.", "And he used it to toast bread."],
+  ],
+  zone_tanaris: [
+    ["And the whole course is a bunker.", "And he raked a smiley face. Big one.", "And the wind un-raked it."],
+    ["And the oasis was a mirage. So was the putt.", "And he drank the oasis. Then the putt rolled in.", "And a goblin charged me for the green. By the inch."],
+  ],
+  zone_ungoro: [
+    ["And the devilsaur played through.", "And the devilsaur stomped. My ball's a pancake.", "And he stared it down. The devilsaur left."],
+    ["And my ball turned into a crystal.", "And the crystals gave me a strange buff.", "And he ate a crystal. He glows now."],
+  ],
+  zone_wpl: [
+    ["And the sails went round. And round. And so did I.", "And my ball went in the windmill. Came out grey.", "And the windmill fell over. Not his fault. Probably."],
+    ["And the scarecrow didn't move. Scarecrows don't.", "And he scared the scarecrow.", "And the scarecrow was a lich in a hat."],
+  ],
+  zone_deadwind: [
+    ["And Karazhan threw my ball back. Several times.", "And a light in the tower went out at my putt.", "And the tower stopped looming. Just to watch."],
+    ["And the lightning hit my club.", "And he caught the lightning and teed off with it.", "And my hair's still standing up."],
+  ],
+  zone_epl: [
+    ["And my ball hit the necropolis. It hit back.", "And the necropolis lowered a rope. Very rude.", "And a lich leaned out and yelled 'FORE'."],
+    ["And the Light gave me a mulligan.", "And the chapel bell rang for the birdie.", "And Light's Hope made him wipe his feet."],
+  ],
+  zone_moonglade: [
+    ["And the moon fell in the lake. Hole in one.", "And the lake was so calm it putted for me.", "And he skipped my ball across it."],
+    ["And it was too quiet. He snored.", "And the druids turned into trees to watch.", "And the round lasted till the Lunar Festival."],
+  ],
+  zone_silithus: [
+    ["And a mound grew over the hole.", "And the bug in the bunker caught it.", "And the ball was an egg. It hatched."],
+    ["And the crystals hummed every time I missed.", "And he banked it off a crystal. In.", "And the druids made me carry sand home in a jar."],
+  ],
+  zone_winterspring: [
+    ["And the snow sparkled so much I putted the sun.", "And my ball went white. I lost it. It's snow now.", "And he putted with a snowball. It went in."],
+    ["And the spring was frozen. My hands too.", "And he got in. The whole spring got out.", "And Donova Snowden said it was a study area."],
+  ],
+});
