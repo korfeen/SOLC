@@ -72,7 +72,10 @@ local function NotePlace()
             added = true
         end
     end
-    if added then Changed(life) end
+    if added then
+        Changed(life)
+        if ns.CheckAchievements then ns.CheckAchievements() end  -- (somewhere new: the exploration deeds, Achievements.lua)
+    end
 end
 
 -- Gathering: a herb picked, ore mined or a beast skinned (its cast, then the loot window it opens), or a fish caught

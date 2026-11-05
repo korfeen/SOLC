@@ -16,3 +16,4 @@ Media/*.old/
 # Git Bash crash dumps
 *.stackdump
 output/lint/node_modules/
+output/explore/*.csv

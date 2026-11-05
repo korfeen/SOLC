@@ -56,7 +56,7 @@ end
 local FEAT_GROUPS = { pictures = "Pictures", epic = "Pictures", legendary = "Pictures", showcase = "Pictures", puzzles = "Pictures",
     herbs = "Professions", ore = "Professions", skins = "Professions", fish = "Professions", craft = "Professions",
     bounties = "Club life", chests = "Club life", shop = "Club life", buddy = "Club life" }
-ns.DEED_GROUPS = { "Creatures", "Tribes", "Hunting", "Rares", "Dungeons", "Pictures", "Professions", "Club life", "Secrets" }
+ns.DEED_GROUPS = { "Creatures", "Tribes", "Hunting", "Rares", "Dungeons", "Exploration", "Pictures", "Professions", "Club life", "Secrets" }
 local RARE_RANKS = { ["Rare"] = true, ["Rare Elite"] = true }
 local ELITE_RANKS = { ["Elite"] = true, ["Rare Elite"] = true, ["Boss"] = true }
 local RARITY_ORDER = { uncommon = 1, rare = 2, epic = 3, legendary = 4 }
@@ -324,6 +324,27 @@ FEATS[#FEATS + 1] = { key = "clears", label = "Dungeon clears", unit = "clears",
     count = function(_, f) return f.totalClears end, tiers = TOTAL_CLEARS }
 FEATS[#FEATS + 1] = { key = "dungeons", label = "Dungeons cleared", unit = "dungeons", dungeon = true,
     count = function(_, f) return f.dungeonsCleared end, tiers = VARIETY }
+
+-- Exploration: a zone's whole world map uncovered (its explored map pieces, C_MapExplorationInfo, against all of them:
+-- the game data's WorldMapOverlay rows for the zone's map art, build 1.60.1.70205). Its golf course background is the
+-- reward (tools/gen-art-zone-courses.json: unlock "deed:feat:explore:<key>:<pieces>"). Yours only.
+-- { key, zone, uiMap, pieces, deed name }
+local EXPLORE = {
+    { "elwynn", "Elwynn Forest", 1429, 12, "Lost In Elwynn" },
+    { "dunmorogh", "Dun Morogh", 1426, 18, "Snow Angel" },
+    { "westfall", "Westfall", 1436, 14, "Scarecrow's Tour" },
+    { "redridge", "Redridge Mountains", 1433, 11, "Red All Over" },
+    { "needles", "Thousand Needles", 1441, 9, "Needle Threader" },
+}
+local function Explored(uiMap)
+    local textures = C_MapExplorationInfo and C_MapExplorationInfo.GetExploredMapTextures and C_MapExplorationInfo.GetExploredMapTextures(uiMap)
+    return textures and #textures or 0
+end
+for _, z in ipairs(EXPLORE) do
+    FEATS[#FEATS + 1] = { key = "explore:" .. z[1], label = "Explore " .. z[2], unit = "map pieces", group = "Exploration",
+        count = function(source) if source == KillTrackerDB then return Explored(z[3]) end end,
+        tiers = { { z[4], z[5], 25 } } }
+end
 
 -- The dungeon facts from a player's kills ([npcID] = count; byName: [lowercased name] = count): clears per dungeon,
 -- bosses killed per dungeon, and (raids left out) clears in all and dungeons cleared.
