@@ -585,7 +585,7 @@ local INK = { 0.17, 0.13, 0.09 }
 -- (their art: tools/make-portrait-bits.js. The note's paper has a soft margin round it, NOTE_PAPER of the texture; the
 -- plate's ends are its left and right quarters, the middle stretches)
 local NOTE_PAPER = { w = 244 / 256, h = 52 / 64 }
-local DEFAULT_PORTRAIT_FRAME = "wood"
+local DEFAULT_PORTRAIT_FRAME = "taped"
 
 -- Your motto (the note's editbox): kept, synced.
 local function SetMotto(text)
@@ -965,8 +965,7 @@ local function EditChoices(tab, draft)
     local list = {}
     if tab == "frame" then
         for _, frame in ipairs(ns.PICTURE_FRAMES or {}) do
-            -- (the card's own default is always there, locked or not: everyone's card starts in it)
-            if ns.FrameUnlocked(frame) or frame.id == DEFAULT_PORTRAIT_FRAME then list[#list + 1] = { id = frame.id, name = frame.name, color = CREAM, texture = frame.texture } end
+            if ns.FrameUnlocked(frame) then list[#list + 1] = { id = frame.id, name = frame.name, color = CREAM, texture = frame.texture } end
         end
     elseif tab == "name" then
         for _, entry in ipairs(ns.Colors()) do
