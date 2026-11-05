@@ -128,7 +128,7 @@ local POSTER_OGRE = {
     syndicate = "fac_syndicate", scarlet = "fac_scarlet", bloodsail = "fac_bloodsail", darkiron = "fac_darkiron",
     blackrock = "fac_blackrock", scourge = "fac_scourge",
     elites = "prop_elites", rares = "prop_rares", leaders = "prop_leaders", dungeons = "prop_dungeons",
-    pvp = "prop_pvp", explorers = "prop_explorers",
+    pvp = "prop_pvp", explorers = "prop_explorers", fish = "prop_fish", gather = "prop_gather",
     mogrosh = "fac_mogrosh", splinterfist = "fac_splinterfist", boulderfist = "fac_boulderfist", crushridge = "fac_crushridge", dustbelcher = "fac_dustbelcher",
     moshogg = "fac_moshogg", gordunni = "fac_gordunni", dunemaul = "fac_dunemaul", dreadmaul = "fac_dreadmaul", firegut = "fac_firegut",
     gordok = "fac_gordok", spirestone = "fac_spirestone", deadwind = "fac_deadwind", urok = "fac_urok",
