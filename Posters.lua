@@ -300,10 +300,12 @@ end
 ns.PosterBounty = PosterBounty
 
 -- Whether a poster fits a bracket's levels: it reaches into the bracket, and starts near its bottom - by level 13 in
--- the first (1-20, it goes fast), within 5 levels of the start in the others - so nobody gets a poster for later.
+-- the first (1-20, it goes fast), within 5 levels of the start in the others - so nobody gets a poster for later. A
+-- wanted poster (one boss, once, with a group): any dungeon reaching into the bracket, so VanCleef is there for 1-20.
 local function Fits(poster, bracket)
     local l, b = poster.levels, BRACKETS[bracket]
-    return not l or not b or (l[1] <= (bracket == 1 and 13 or b[1] + 5) and l[2] >= b[1])
+    if not l or not b or l[2] < b[1] then return not l or not b end
+    return l[1] <= (poster.wanted and b[2] or bracket == 1 and 13 or b[1] + 5)
 end
 
 -- A poster's personal goal: the officer's own, else its usual one scaled by the guild's "Goal size %" and, a bracket at
