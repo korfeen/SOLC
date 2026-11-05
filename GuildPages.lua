@@ -25,11 +25,10 @@ local function Members()
     } }
     for _, friend in ipairs(ns.GetFriends()) do
         local stats = friend.stats
-        local pictures = 0
-        for _ in pairs(stats.mints or {}) do pictures = pictures + 1 end
+        local score = ns.FriendScore(stats)  -- (their own update, or newer numbers relayed by a guildmate: Sync.lua)
         list[#list + 1] = {
-            key = friend.key, name = friend.name, kills = stats.total or 0, points = stats.earned, pvp = stats.pvpTotal,
-            pictures = pictures, bounty = Claimed(stats.posters), updated = stats.received,
+            key = friend.key, name = friend.name, kills = score.total, points = score.earned, pvp = score.pvp,
+            pictures = score.pictures, bounty = score.week == week and score.bounty or 0, updated = score.at,
             officer = ns.IsGuildOfficer(friend.key), stats = stats, version = stats.version,
         }
     end

@@ -8,6 +8,9 @@
 --   N  no      "I'm not sharing"                 whispered in answer to G when sharing is off
 --   C  config  guild settings (Config.lua)        from officers: to the guild when changed, and whispered
 --                                                to anyone whose hello shows older settings
+--   R  scores? "send me everyone's scores"        whispered to the first guildmate answering our login hello
+--   S  scores  the toplist numbers of everyone    whispered in answer to R (the score relay, ScoreBoard)
+--              we know, chunked like U
 -- Updates carry totals ("52 kills"), never increments, so applying one twice is harmless. An update
 -- is applied only once complete and only if it continues from the receiver's copy; otherwise the
 -- receiver asks for a catch-up. A new syncID (fresh saved data) makes friends fetch everything again.
@@ -15,6 +18,7 @@
 --
 -- Wire format: H|6|syncID|seq|wantReply|configVersion|addonVersion   G|6|syncID|haveSeq   N|6
 --              U|transferID|part|parts|chunk   C|transferID|part|parts|chunk (chunk of "6#version#settings#bounties")
+--              R|6   S|transferID|part|parts|chunk (chunk of "6#key^syncID^seq^earned^kills^pvp^week^bounty^pictures^age~...")
 -- Update payload: 6 # name # syncID # baseSeq # seq # total # kills # records # group kills # pictures # bounty
 --                 # summary # events # gear # professions # showcase # removed pictures # card   (sections added
 --                 later go at the end; receivers ignore unknown ones)
@@ -389,6 +393,24 @@ local function Deserialize(payload)
     return update
 end
 
+-- A guildmate's toplist numbers, the freshest we know: { syncID, seq, earned, total, pvp, week, bounty, pictures, at }.
+-- From their own update (our copy of their data), or from the score relay (friend.score, handlers.S) when that's newer:
+-- someone else saw them play while we were offline. at: when those numbers were current (time()).
+function ns.FriendScore(friend)
+    local s = friend.score
+    if s and (not friend.syncID or (s.syncID == friend.syncID and s.seq > (friend.seq or 0))
+        or (s.syncID ~= friend.syncID and s.at > (friend.received or 0))) then
+        return s
+    end
+    local bounty = 0
+    for _ in pairs(friend.posters and friend.posters.claimed or {}) do bounty = bounty + 1 end
+    local pictures = 0
+    for _ in pairs(friend.mints or {}) do pictures = pictures + 1 end
+    return { syncID = friend.syncID, seq = friend.seq or 0, earned = friend.earned or 0, total = friend.total or 0,
+        pvp = friend.pvpTotal or 0, week = friend.posters and friend.posters.week, bounty = bounty, pictures = pictures,
+        at = friend.received or 0 }
+end
+
 -- Applies an update to the friend's stored copy. Returns false if it doesn't continue from that copy.
 local function Apply(sender, update)
     local friend = KillTrackerFriends[sender]
@@ -432,6 +454,9 @@ local function Apply(sender, update)
     friend.version = ns.SeenVersion(sender) or friend.version
     friend.seq = math.max(friend.seq or 0, update.seq)
     friend.received = time()
+    if friend.score and friend.score.syncID == friend.syncID and friend.score.seq <= friend.seq then
+        friend.score = nil  -- (our own copy has caught up with the relayed numbers)
+    end
     KillTrackerFriends[sender] = friend
     return true
 end
@@ -489,9 +514,11 @@ local function Send(target, message, urgent)
     Queue(target and "WHISPER" or "GUILD", target, message, urgent)
 end
 
+local boardWanted  -- when we said hello to the guild wanting replies: the first guildmate to answer sends us the scores
 local function SendHello(target, wantReply)
     local db = KillTrackerDB
     if not db.sharing or (not target and not IsInGuild()) then return end
+    if not target and wantReply then boardWanted = GetTime() end
     Send(target, ("H|%s|%s|%s|%d|%s|%s"):format(PROTOCOL, db.syncID, Base36(db.seq), wantReply and 1 or 0,
         Base36(ns.ConfigVersion()), Clean(ADDON_VERSION)), true)
 end
@@ -522,6 +549,51 @@ local function SendConfig(target)
     if not IsInGuild() or not ns.CanEditConfig() or ns.ConfigVersion() == 0 then return end
     local values, bounties = ns.SerializeConfig()
     SendChunked("C", target, table.concat({ PROTOCOL, Base36(ns.ConfigVersion()), values, bounties }, SECTION))
+end
+
+-- The score relay: the toplist numbers of every guildmate we know, as "S" chunks of
+-- "6 # key^syncID^seq^earned^kills^pvp^week^bounty^pictures^age ~ ..." (age: seconds since they were current, since
+-- clocks differ). Sent to one guildmate who just logged in (they ask the first who answers their hello: handlers.H),
+-- so they see who played while they were away without anyone sending everything.
+local function ScoreBoard()
+    local items, now = {}, time()
+    for key, friend in pairs(KillTrackerFriends) do
+        local s = ns.FriendScore(friend)
+        if s.syncID and (s.seq or 0) > 0 then
+            items[#items + 1] = table.concat({ Clean(key), Clean(s.syncID), Base36(s.seq), Base36(s.earned), Base36(s.total),
+                Base36(s.pvp), Base36(s.week or 0), Base36(s.bounty), Base36(s.pictures), Base36(math.max(0, now - (s.at or now))) }, FIELD)
+        end
+    end
+    return PROTOCOL .. SECTION .. table.concat(items, ITEM)
+end
+
+-- Takes the scores in a board that are newer than ours: the same syncID and a later change number (or another syncID,
+-- seen more recently). Only for current guildmates, never ourselves.
+local function MergeScores(payload)
+    local s = Split(payload, SECTION)
+    if s[1] ~= PROTOCOL or not s[2] or s[2] == "" then return end
+    local now, changed = time(), false
+    for _, item in ipairs(Split(s[2], ITEM)) do
+        local f = Split(item, FIELD)
+        local key, syncID, seq = f[1], f[2], FromBase36(f[3])
+        if key and key ~= "" and syncID and syncID ~= "" and seq and syncID ~= KillTrackerDB.syncID and not IsMe(key)
+            and ns.IsGuildMember(key) then
+            local score = { syncID = syncID, seq = seq, earned = FromBase36(f[4]) or 0, total = FromBase36(f[5]) or 0,
+                pvp = FromBase36(f[6]) or 0, week = FromBase36(f[7]), bounty = FromBase36(f[8]) or 0,
+                pictures = FromBase36(f[9]) or 0, at = now - (FromBase36(f[10]) or 0) }
+            local friend = KillTrackerFriends[key]
+            local have = friend and ns.FriendScore(friend)
+            if not have or not have.syncID or (have.syncID == syncID and seq > (have.seq or 0))
+                or (have.syncID ~= syncID and score.at > (have.at or 0)) then
+                -- (someone we've never synced with: just their numbers, until their own data comes)
+                friend = friend or { kills = {}, records = {}, mints = {}, total = 0, earned = 0, pvpTotal = 0 }
+                friend.score = score
+                KillTrackerFriends[key] = friend
+                changed = true
+            end
+        end
+    end
+    if changed and ns.OnFriendsChanged then ns.OnFriendsChanged() end
 end
 
 local awaiting = {}  -- [sender] = time we sent a get that hasn't been answered yet
@@ -606,6 +678,11 @@ function handlers.H(sender, channel, protocol, syncID, seq, wantReply, configVer
     NoteVersion(sender, addonVersion)  -- also from players on another protocol: they're the ones to tell
     seq = FromBase36(seq)
     if protocol ~= PROTOCOL or not seq or RecognizeMe(sender, syncID) then return end
+    -- (the first answer to our hello to the guild: ask that guildmate for everyone's scores)
+    if channel == "WHISPER" and boardWanted and GetTime() - boardWanted < 60 and ns.IsGuildMember(sender) then
+        boardWanted = nil
+        Send(sender, "R|" .. PROTOCOL, true)
+    end
     if (FromBase36(configVersion) or 0) < ns.ConfigVersion() and channel == "GUILD" then
         SendConfig(sender)  -- they have older guild settings (only officers' addons send)
     end
@@ -663,6 +740,15 @@ function handlers.G(sender, _, protocol, syncID, haveSeq)
     getsTimer = getsTimer or C_Timer.NewTimer(GET_BATCH, AnswerGets)
 end
 
+-- A guildmate who just logged in asks for the scores (once a minute at most per asker).
+local boardSent = {}
+function handlers.R(sender, _, protocol)
+    if protocol ~= PROTOCOL or not ns.IsGuildMember(sender) then return end
+    if boardSent[sender] and GetTime() - boardSent[sender] < 60 then return end
+    boardSent[sender] = GetTime()
+    SendChunked("S", sender, ScoreBoard())
+end
+
 function handlers.N(sender)
     local short = DisplayName(sender):lower()
     if pendingManual[short] then
@@ -696,6 +782,10 @@ function handlers.U(sender, _, id, part, parts, chunk)
     Collect("U", sender, id, part, parts, chunk, OnUpdateComplete)
 end
 
+function handlers.S(sender, _, id, part, parts, chunk)
+    Collect("S", sender, id, part, parts, chunk, function(_, payload) MergeScores(payload) end)
+end
+
 -- Guild settings: Config.lua applies them only if they're newer and the sender is an officer.
 function handlers.C(sender, channel, id, part, parts, chunk)
     if channel ~= "GUILD" and channel ~= "WHISPER" then return end
@@ -711,7 +801,7 @@ local function OnAddonMessage(prefix, message, channel, sender)
     local handler = handlers[fields[1]]
     if handler then
         -- Chunks keep any "|" inside them (there shouldn't be any, but don't split data).
-        if fields[1] == "U" or fields[1] == "C" then
+        if fields[1] == "U" or fields[1] == "C" or fields[1] == "S" then
             local id, part, parts, chunk = message:match("^%a|(%d+)|(%d+)|(%d+)|(.*)$")
             if id then handler(sender, channel, id, part, parts, chunk) end
         else

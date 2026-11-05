@@ -45,7 +45,7 @@ function ns.GetRank(key)
     local points
     if key then
         local friend = KillTrackerFriends[key]
-        points = friend and friend.earned or 0
+        points = friend and ns.FriendScore(friend).earned or 0
     else
         points = ns.GetPoints().earned
     end
