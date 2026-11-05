@@ -805,9 +805,9 @@ local function InkWord(parent, size, onClick)
     b.label:SetPoint("LEFT")
     b.label:SetTextColor(INK[1], INK[2], INK[3])
     b.streak = {}
-    for i, stroke in ipairs({ { 9, -1, 0.95, -1.5, -2 } }) do  -- height, y, alpha, tilt, x
+    for i, stroke in ipairs({ { 7, 0, 0.95, 0, -2 } }) do  -- height, y, alpha, tilt, x
         local t = b:CreateTexture(nil, "ARTWORK")
-        t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak") t:SetVertexColor(RED[1], RED[2], RED[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
+        t:SetVertexColor(RED[1], RED[2], RED[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
         t:SetHeight(stroke[1])
         t:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", stroke[5] - 4, stroke[2] + 2)
         t:SetRotation(math.rad(stroke[4]))
@@ -818,7 +818,11 @@ local function InkWord(parent, size, onClick)
         self.on = on
         local w = self.label:GetStringWidth() + 10
         self:SetSize(w, size + 10)
-        for i, t in ipairs(self.streak) do t:SetWidth(w - (i - 1) * 8) t:SetShown(on and true or false) end
+        for i, t in ipairs(self.streak) do
+            if on and not self.picked then UI.Flick(t) end  -- (picked just now: a fresh flick)
+            t:SetWidth(math.min((w - (i - 1) * 8) * (t.len or 1), w + 2)) t:SetShown(on and true or false)  -- (within its word)
+        end
+        self.picked = on
         local c = (on or self.hovered) and self:IsEnabled() and RED or INK
         self.label:SetTextColor(c[1], c[2], c[3], self:IsEnabled() and 1 or 0.4)
     end
@@ -909,9 +913,9 @@ local function BuildBook()
         b.label = Text(b, 15)
         b.label:SetPoint("LEFT", b.icon, "RIGHT", 8, 1)
         b.streak = {}
-        for k, stroke in ipairs({ { 9, 0, 0.95, -1.5, -2 } }) do
+        for k, stroke in ipairs({ { 7, 1, 0.95, 0, -2 } }) do
             local t = b:CreateTexture(nil, "ARTWORK")
-            t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak") t:SetVertexColor(RED[1], RED[2], RED[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
+            t:SetVertexColor(RED[1], RED[2], RED[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
             t:SetHeight(stroke[1])
             t:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", stroke[5] - 2, stroke[2] + 2)
             t:SetRotation(math.rad(stroke[4]))
@@ -920,7 +924,11 @@ local function BuildBook()
         function b:Paint(on)
             self.on = on
             local w = self.label:GetStringWidth() + 6
-            for k, t in ipairs(self.streak) do t:SetWidth(w - (k - 1) * 6) t:SetShown(on and true or false) end
+            for k, t in ipairs(self.streak) do
+                if on and not self.picked then UI.Flick(t) end
+                t:SetWidth(math.min((w - (k - 1) * 6) * (t.len or 1), self:GetWidth() - rowH - 10)) t:SetShown(on and true or false)  -- (within its row)
+            end
+            self.picked = on
             local c = (on or self.hovered) and RED or INK
             self.label:SetTextColor(c[1], c[2], c[3])
             self.icon:SetAlpha(on and 1 or 0.7)

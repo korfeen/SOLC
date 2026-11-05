@@ -135,6 +135,14 @@ local function DrawEquipped(canvas, entry, edition)
     ns.RenderMint(canvas, traits, 0, style)
 end
 
+-- A picked word's underline (Media/Icons/Streak1..5, tools/make-streak.js): one of the brush flicks at random, mirrored
+-- or not, a little tilted, its length a little off - chosen as the word gets picked, kept while it stays picked.
+function UI.Flick(t)
+    t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak" .. math.random(5))
+    if math.random() < 0.5 then t:SetTexCoord(0, 1, 0, 1) else t:SetTexCoord(1, 0, 0, 1) end
+    t:SetRotation(math.rad(-1.5 + math.random() * 2.5))  -- (gently: a long one mustn't dip into the line below)
+    t.len = 0.94 + math.random() * 0.14
+end
 -- Its look: an open book (CollectionBookArt.lua, tools/gen-collection-book.js: the Dream Bed's red book opened flat)
 -- with ink on its parchment pages, else the old dark boards.
 local BOOK = ns.CollectionBookArt
@@ -271,9 +279,9 @@ function UI.PixCollection(parent)
             -- In the book: words in ink, no boxes. Picked: red ink and a streak of it under the word (two strokes, a little
             -- crooked, like a quick underline by hand); hovered: the word itself warms to red.
             button.streak = {}
-            for i, stroke in ipairs({ { 9, -1, 0.95, -1.5, -2 } }) do  -- height, y, alpha, tilt, x
+            for i, stroke in ipairs({ { 7, 0, 0.95, 0, -2 } }) do  -- height, y, alpha, tilt, x
                 local t = button:CreateTexture(nil, "ARTWORK")
-                t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak") t:SetVertexColor(INK.heading[1], INK.heading[2], INK.heading[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
+                t:SetVertexColor(INK.heading[1], INK.heading[2], INK.heading[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
                 t:SetHeight(stroke[1])
                 t:SetPoint("TOP", button.label, "BOTTOM", stroke[5], stroke[2] + 2)
                 t:SetRotation(math.rad(stroke[4]))
@@ -283,7 +291,11 @@ function UI.PixCollection(parent)
             function button:Paint(active)
                 self.active = active
                 local w = self.label:GetStringWidth() + 12
-                for i, t in ipairs(self.streak) do t:SetWidth(w - (i - 1) * 8) t:SetShown(active and true or false) end
+                for i, t in ipairs(self.streak) do
+                    if active and not self.picked then UI.Flick(t) end  -- (picked just now: a fresh flick)
+                    t:SetWidth(math.min((w - (i - 1) * 8) * (t.len or 1), self:GetWidth() - 2)) t:SetShown(active and true or false)  -- (within its tab)
+                end
+                self.picked = active
                 self.label:SetTextColor(unpack((active or self.hovered) and INK.heading or INK.text))
             end
             button:Paint(false)
