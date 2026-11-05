@@ -163,7 +163,7 @@ local INK = BOOK and {
 function UI.PixCollection(parent)
     local dex = CreateFrame("Frame", nil, parent)
     dex:SetAllPoints()
-    dex.offset, dex.filter, dex.edition, dex.layer = 0, "all", nil, "skin"
+    dex.offset, dex.filter, dex.edition, dex.layer = 0, "unlocked", nil, "skin"  -- (opens on what you can dream of: the leftmost filter)
     local function At(region, point, x, y)
         region:SetPoint(point, UI.window, "TOPLEFT", x, -y)
     end
