@@ -158,6 +158,7 @@ local DEV_CHARACTERS = {
     ["Player-4619-0179BACE"] = "Tentodne (beta)",
     ["Player-4619-01750C64"] = "Wardrilas Emmenthal (beta)",
     ["Player-3657-0780F08C"] = "Josefin-Bladefist (retail)",
+    ["Player-6948-00691B17"] = "Bonnie Bronzebraids (Forever)",
 }
 -- True if you're on one of the dev characters.
 function ns.IsDev()
