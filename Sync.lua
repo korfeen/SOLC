@@ -512,6 +512,9 @@ local function Pump()
     end
     if not CanSend() then return end  -- hold everything until we're out of the instance
     local result = SendResult(item)
+    if ns.syncDebug then  -- (/solc syncdebug: what went out, and WoW's answer)
+        ns.Print(("|cff88ccffsync out|r %s %s %s: %s"):format(item.channel, item.target or "", item.message:sub(1, 1), result))
+    end
     if result == "throttled" then return end
     table.remove(queue, 1)
     if result == "failed" and item.target then
@@ -827,6 +830,12 @@ end
 
 local function OnAddonMessage(prefix, message, channel, sender)
     if prefix ~= PREFIX or issecret(message) or issecret(sender) or IsMe(sender) then return end
+    if ns.syncDebug then  -- (/solc syncdebug: what came in; a big update's chunks only their first and last)
+        local part, parts = message:match("^%a|%d+|(%d+)|(%d+)|")
+        if not part or part == "1" or part == parts then
+            ns.Print(("|cff88ff88sync in|r %s from %s%s"):format(message:sub(1, 1), sender, part and (" (%s/%s)"):format(part, parts) or ""))
+        end
+    end
     local fields = Split(message, "|")
     local handler = handlers[fields[1]]
     if handler then
@@ -947,7 +956,7 @@ function ns.SyncWith(target)
         ns.Print("Syncing doesn't work inside dungeons, raids or battlegrounds.")
         return
     end
-    target = FindFriend(target) or target
+    target = FindFriend(target) or (ns.GuildFullName and ns.GuildFullName(target)) or target  -- (a whisper needs "First Last")
     pendingManual[DisplayName(target):lower()] = { name = DisplayName(target), started = GetTime() }
     ns.Print(("Syncing with %s..."):format(DisplayName(target)))
     Send(target, ("H|%s|%s|%s|1"):format(PROTOCOL, KillTrackerDB.syncID, Base36(KillTrackerDB.seq)), true)

@@ -187,6 +187,23 @@ function ns.IsGuildMember(sender)
     return r[sender] ~= nil or r[sender:match("^[^-]+")] ~= nil
 end
 
+-- A guildmate's full name ("Inga Bekymmer", "Name-Realm") from your guild roster, for a name typed short ("inga": the
+-- first name, if only one member has it) or whole, any capitals; nil if no one (or more than one) fits.
+function ns.GuildFullName(name)
+    name = (name or ""):lower()
+    if name == "" then return end
+    local found, foundPlain
+    for fullName in pairs(Ranks()) do  -- (each member is in it twice: "Name-Realm" and "Name")
+        local plain = fullName:match("^[^-]+")
+        if fullName:lower() == name or plain:lower() == name then return plain end
+        if plain:match("^%S+"):lower() == name then
+            if foundPlain and foundPlain ~= plain then return end  -- (two members with that first name: say which)
+            found, foundPlain = plain, plain
+        end
+    end
+    return found
+end
+
 -- True if sender ("Name" or "Name-Realm") is a guild master or officer, by your own guild roster.
 function ns.IsGuildOfficer(sender)
     local r = Ranks()

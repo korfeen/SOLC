@@ -552,6 +552,9 @@ SlashCmdList.SOLC = function(input)
         ns.ToggleUI()
     elseif msg == "sync" and arg ~= "" then
         ns.SyncWith(arg)
+    elseif msg == "syncdebug" then  -- (the sync messages in chat, sent and received: Sync.lua)
+        ns.syncDebug = not ns.syncDebug or nil
+        Print("Sync debugging " .. (ns.syncDebug and "on: sync messages show in chat." or "off."))
     elseif msg == "forget" and arg ~= "" then
         ns.ForgetFriend(arg)
     elseif msg == "sharing" then
