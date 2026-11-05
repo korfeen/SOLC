@@ -187,6 +187,7 @@ function UI.PixCollection(parent)
         -- wood is the cover), filling the page area edge to edge, the fold on the gap between the Collection's halves.
         -- Laid out as the page shows (LayBook), when the page area's size is known.
         local area = UI.pageArea or dex
+        local BLEED = 14  -- (as the Dream Bed's and the shop's rooms)
         local FOLD = 654  -- (window pixels: between the left page, to 634, and the right, from 674)
         local PAGE = { left = { 175, 760 }, right = { 778, 1375 }, top = 125, bottom = 855, w = 1536, h = 1024 }  -- (painting pixels)
         local sheets = {}
@@ -204,8 +205,9 @@ function UI.PixCollection(parent)
             local t, b = (win:GetTop() - area:GetTop() * s), (win:GetTop() - area:GetBottom() * s)
             for i, sheet in ipairs(sheets) do
                 sheet:ClearAllPoints()
-                At(sheet, "TOPLEFT", i == 1 and l or FOLD, t)
-                sheet:SetSize(i == 1 and FOLD - l or r - FOLD, b - t)
+                -- (BLEED past the page area on every side, under the window's wood: no gap at its edges)
+                At(sheet, "TOPLEFT", i == 1 and l - BLEED or FOLD, t - BLEED)
+                sheet:SetSize(i == 1 and FOLD - l + BLEED or r - FOLD + BLEED, b - t + 2 * BLEED)
             end
         end
     end
@@ -258,39 +260,51 @@ function UI.PixCollection(parent)
         local button = CreateFrame("Button", nil, parentFrame)
         button:SetSize(width, 24)
         At(button, "TOPLEFT", x, y)
-        -- A tab: its outline, its face (the state's colour, dex:Draw), a soft shine on top and shade under; on hover a
-        -- warmer face and a gold outline.
-        button.edge = button:CreateTexture(nil, "BACKGROUND", nil, -2)
-        button.edge:SetAllPoints()
-        button.edge:SetColorTexture(unpack(INK.edge))
-        local bg = button:CreateTexture(nil, "BACKGROUND", nil, -1)
-        bg:SetPoint("TOPLEFT", 1, -1) bg:SetPoint("BOTTOMRIGHT", -1, 1)
-        bg:SetColorTexture(unpack(INK.tab))
-        button.bg = bg
-        local shine = button:CreateTexture(nil, "BORDER")
-        shine:SetPoint("TOPLEFT", 1, -1) shine:SetPoint("TOPRIGHT", -1, -1)
-        shine:SetHeight(10)
-        shine:SetColorTexture(1, 1, 1)
-        shine:SetGradient("VERTICAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 0.22))
-        local shade = button:CreateTexture(nil, "BORDER")
-        shade:SetPoint("BOTTOMLEFT", 1, 1) shade:SetPoint("BOTTOMRIGHT", -1, 1)
-        shade:SetHeight(7)
-        shade:SetColorTexture(1, 1, 1)
-        shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.22), CreateColor(0, 0, 0, 0))
-        local hover = button:CreateTexture(nil, "HIGHLIGHT")
-        hover:SetPoint("TOPLEFT", 1, -1) hover:SetPoint("BOTTOMRIGHT", -1, 1)
-        hover:SetColorTexture(1, 0.86, 0.5, 0.22)
-        for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" }, { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }) do
-            local line = button:CreateTexture(nil, "HIGHLIGHT")
-            line:SetPoint(side[1]) line:SetPoint(side[2])
-            if side[1]:find("TOP") and side[2]:find("TOP") or side[1]:find("BOTTOM") and side[2]:find("BOTTOM") then line:SetHeight(1) else line:SetWidth(1) end
-            line:SetColorTexture(unpack(INK.edgeOn))
-        end
         button.label = button:CreateFontString(nil, "OVERLAY")
         button.label:SetFont(FONT, 13, "")
         button.label:SetPoint("CENTER")
         button.label:SetText(label)
         button:SetScript("OnClick", function() UI.ClickSound() action() end)
+        button:SetScript("OnEnter", function(self) self.hovered = true self:Paint(self.active) end)
+        button:SetScript("OnLeave", function(self) self.hovered = false self:Paint(self.active) end)
+        if BOOK then
+            -- In the book: words in ink, no boxes. Picked: red ink and a streak of it under the word (two strokes, a little
+            -- crooked, like a quick underline by hand); hovered: the word itself warms to red.
+            button.streak = {}
+            for i, stroke in ipairs({ { 3, -3, 0.85, -1.2, 0 }, { 2, -6, 0.5, 0.9, 4 } }) do  -- height, y, alpha, tilt, x
+                local t = button:CreateTexture(nil, "ARTWORK")
+                t:SetColorTexture(INK.heading[1], INK.heading[2], INK.heading[3], stroke[3])
+                t:SetHeight(stroke[1])
+                t:SetPoint("TOP", button.label, "BOTTOM", stroke[5], stroke[2] + 2)
+                t:SetRotation(math.rad(stroke[4]))
+                t:Hide()
+                button.streak[i] = t
+            end
+            function button:Paint(active)
+                self.active = active
+                local w = self.label:GetStringWidth() + 12
+                for i, t in ipairs(self.streak) do t:SetWidth(w - (i - 1) * 8) t:SetShown(active and true or false) end
+                self.label:SetTextColor(unpack((active or self.hovered) and INK.heading or INK.text))
+            end
+            button:Paint(false)
+            return button
+        end
+        -- (no book: a boxed tab - its outline, its face, a soft shine on top, shade under; hovered: warmer)
+        button.edge = button:CreateTexture(nil, "BACKGROUND", nil, -2)
+        button.edge:SetAllPoints()
+        local bg = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+        bg:SetPoint("TOPLEFT", 1, -1) bg:SetPoint("BOTTOMRIGHT", -1, 1)
+        button.bg = bg
+        local hover = button:CreateTexture(nil, "HIGHLIGHT")
+        hover:SetAllPoints(bg)
+        hover:SetColorTexture(1, 0.86, 0.5, 0.15)
+        function button:Paint(active)
+            self.active = active
+            self.bg:SetColorTexture(unpack(active and INK.tabOn or INK.tab))
+            self.edge:SetColorTexture(unpack(active and INK.edgeOn or INK.edge))
+            self.label:SetTextColor(unpack(active and INK.labelOn or INK.label))
+        end
+        button:Paint(false)
         return button
     end
     local function Preview()
@@ -298,7 +312,11 @@ function UI.PixCollection(parent)
         viewport:SetShown(entry ~= nil)
         Zoom(entry)
         canvas:SetShown(entry ~= nil)
-        for _, button in ipairs(editionButtons) do button:SetShown(entry ~= nil and entry.seen) end
+        local EDITIONS = { [1] = nil, [2] = "crayon", [3] = "sketch" }  -- (the one shown: underlined)
+        for i, button in ipairs(editionButtons) do
+            button:SetShown(entry ~= nil and entry.seen)
+            button:Paint(dex.edition == EDITIONS[i])
+        end
         if not entry then title:SetText("No matching pieces") details:SetText("") return end
         local option, own = entry.option, entry.owned
         title:SetText(("#%03d  %s"):format(entry.number, entry.seen and option.name or "Unknown"))
@@ -323,9 +341,7 @@ function UI.PixCollection(parent)
         for _, group in ipairs({ { layerButtons, self.layer }, { filterButtons, self.filter } }) do
             for key, button in pairs(group[1]) do
                 local active = group[2] == key
-                button.bg:SetColorTexture(unpack(active and INK.tabOn or INK.tab))
-                button.edge:SetColorTexture(unpack(active and INK.edgeOn or INK.edge))
-                button.label:SetTextColor(unpack(active and INK.labelOn or INK.label))
+                button:Paint(active)
             end
         end
         local count = #self.filtered
