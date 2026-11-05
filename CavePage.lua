@@ -28,7 +28,7 @@ local TAB_PAGES = { members = "members", make = "crafters" }
 local CHIPS = {
     { "deeds", "DEEDS", "BRAG", "Deeds earned and Ogre Ranks reached" },  -- (5: the page it waits on, if any)
     { "kills", "KILLS", "SMASH", "Leaders slain and dungeons cleared with the guild" },
-    { "pix", "PIX", "PIX", "Pictures minted and won", "pixcollection" },
+    { "pix", "PIX", "PIX", "Pictures painted and won", "pixcollection" },
     { "hunts", "HUNTS", "HUNTS", "Bounties completed", "bounties" },
 }
 local CHIP_ON, CHIP_OFF = { 0.3, 0.22, 0.12 }, { 0.16, 0.14, 0.12 }
@@ -37,7 +37,7 @@ local METRICS = {  -- { Members() field, label, ogre word, what it is }
     { "kills", "KILLS", "SMASH", "Kills" },
     { "bounty", "BOUNTY", "HUNTS", "Bounties claimed this week", "bounties" },  -- (5: the page it waits on)
     { "pvp", "PVP", "BONK", "PvP kills" },
-    { "pictures", "PIX", "PIX", "Pictures minted", "pixcollection" },
+    { "pictures", "PIX", "PIX", "Pictures painted", "pixcollection" },
 }
 -- The specs whose page (spec[5]) is open for you (Onboarding.lua's rank locks), and a key naming them.
 local function Open(specs)

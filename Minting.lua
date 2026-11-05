@@ -958,7 +958,7 @@ function ns.ClearMyPictures()
 end
 
 StaticPopupDialogs["SOLC_REROLL"] = {
-    text = "%s minted this picture first. Reroll it for free?",
+    text = "%s painted this picture first. Reroll it for free?",
     button1 = YES or "Yes",
     button2 = NO or "No",
     OnAccept = function(_, mint)

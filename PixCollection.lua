@@ -52,16 +52,16 @@ function ns.PixCollectionEntries(layer)
         local seen = db.seenPieces[key] == true
         entries[#entries + 1] = { number = assert(ns.PixCollectionNumbers[key], 'Missing collection number: ' .. key),
             layer = layer, option = option, owned = owned, seen = seen, unlocked = unlocked, minted = owned ~= nil,
-            state = owned and 'MINTED' or unlocked and 'UNLOCKED' or seen and 'SEEN' or 'UNKNOWN' }
+            state = owned and 'PAINTED' or unlocked and 'UNLOCKED' or seen and 'SEEN' or 'UNKNOWN' }
     end
     table.sort(entries, function(a,b) return a.number < b.number end)
     return entries
 end
 
 function ns.PixCollectionUnlockText(option)
-    if option.retired then return 'Retired from minting.' end
+    if option.retired then return 'Retired: it no longer turns up in dreams.' end
     local unlock = option.unlock
-    if not unlock then return 'Available when you mint a picture.' end
+    if not unlock then return 'Turns up in any dream.' end
     local kind, value = unlock:match('^(%w+):(.+)$')
     if kind == 'rank' then return 'Reach Ogre Rank ' .. value .. '.' end
     if kind == 'deed' then
@@ -77,7 +77,7 @@ function ns.PixCollectionUnlockText(option)
     if kind == 'combine' then return 'Collect its component pieces.' end
     if kind == 'shop' then return 'Buy it in the Shop.' end
     if kind == 'gacha' then return 'From the claw machine.' end
-    return 'Earn its wardrobe unlock to mint this piece.'
+    return 'Earn its wardrobe unlock to dream of it.'
 end
 
 local UI = ns.UI
@@ -460,7 +460,7 @@ function UI.PixCollection(parent)
     end
     if BOOK then Rule(247) Rule(310) end
     local filters = { { "all", "ALL" }, { "seen", "SEEN" },
-        { "unlocked", "UNLOCKED" }, { "minted", "MINTED" } }
+        { "unlocked", "UNLOCKED" }, { "minted", "PAINTED" } }
     for i, filter in ipairs(filters) do
         filterButtons[filter[1]] = Button(left, filter[2], 242 + (i - 1) * 98, 286, 94, function()
             dex.filter, dex.offset = filter[1], 0
@@ -538,7 +538,7 @@ function UI.PixCollection(parent)
         end
         self.selected = selected or self.filtered[1]
         self.offset = math.min(self.offset, math.max(0, math.ceil(#self.filtered / 3) - 3))
-        progress:SetText(("%d / %d seen  -  %d unlocked  -  %d minted"):format(seen, #entries, unlocked, minted))
+        progress:SetText(("%d / %d seen  -  %d unlocked  -  %d painted"):format(seen, #entries, unlocked, minted))
         bar:SetWidth(math.max(1, 375 * seen / math.max(1, #entries)))
         self:Draw()
     end

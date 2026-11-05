@@ -1375,7 +1375,7 @@ local function RowTooltip(self)
         if self.data.extra.onEnter then self.data.extra.onEnter(self) end
     elseif self.data.mintAction then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Mint a picture")
+        GameTooltip:AddLine("Dream a picture")
         GameTooltip:AddLine("Off to the Dream Bed: one Bonk and the ogre dreams up a picture for you to paint. A Bedtime Story picks a piece.", 1, 1, 1, true)
         GameTooltip:Show()
     elseif self.data.pointsPart then
@@ -1440,7 +1440,7 @@ local function FillRow(row, d, total, max)
     local barFraction = max > 0 and d.count / max or 0
     row.bar:SetVertexColor(0.8, 0.2, 0.2, 0.45)
     if d.mintAction then
-        row.label:SetText("|cffffd100+ Mint a picture|r")
+        row.label:SetText("|cffffd100+ Dream a picture|r")
         row.count:SetText("Dream Bed")
         barFraction = 0
     elseif d.mint then

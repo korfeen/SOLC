@@ -92,7 +92,7 @@ local CALM = { leader = "ffe2c07e", rare = "ffe2c07e", achievement = "ffe2c07e",
 local function Describe(e, who, source, calm)
     local c = calm and CALM or COLOURS
     if calm and (e.k == "M" or e.k == "W") then
-        return ("%s %s |c%spicture #%s|r%s"):format(who, e.k == "M" and "minted" or "won", c.picture, tostring(e.a),
+        return ("%s %s |c%spicture #%s|r%s"):format(who, e.k == "M" and "painted" or "won", c.picture, tostring(e.a),
             e.k == "W" and e.b and (" from %s"):format(e.b) or "")
     end
     if e.k == "L" then
@@ -104,7 +104,7 @@ local function Describe(e, who, source, calm)
     elseif e.k == "M" then
         local mint = EventMint(e, source)
         local rarity = mint and ns.MintRarity(mint.traits, mint.asked)
-        return ("%s minted %spicture #%s"):format(who,
+        return ("%s painted %spicture #%s"):format(who,
             rarity and ("|c%s%s|r "):format(ns.RARITY_COLORS[rarity], rarity:gsub("^%l", string.upper)) or "", tostring(e.a))
     elseif e.k == "W" then
         local mint = EventMint(e, source)
@@ -124,7 +124,7 @@ local function Describe(e, who, source, calm)
     elseif e.k == "U" then
         local unlocked = ns.OptionByKey and ns.OptionByKey(e.a)
         if not unlocked then return nil end  -- (art this SOLC doesn't have yet)
-        return ("%s unlocked |c%s%s|r for minting"):format(who, calm and c.achievement or ns.RARITY_COLORS[unlocked.option.rarity] or "ffffffff",
+        return ("%s unlocked |c%s%s|r for their dreams"):format(who, calm and c.achievement or ns.RARITY_COLORS[unlocked.option.rarity] or "ffffffff",
             unlocked.option.name)
     elseif e.k == "K" then
         local rank = ns.RANKS and ns.RANKS[tonumber(e.a)]

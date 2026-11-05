@@ -375,7 +375,7 @@ local function CheckWorn()
                 local key = wearable[Simple(name)]
                 if key and ns.UnlockOption(key) then
                     new = true
-                    if not (ns.RankLocked and ns.RankLocked("pixcollection")) then ns.ShowToast("achievement", "Unlocked for minting!", name, "Worn: it can roll in your pictures now") end
+                    if not (ns.RankLocked and ns.RankLocked("pixcollection")) then ns.ShowToast("achievement", "Unlocked for your dreams!", name, "Worn: it can roll in your pictures now") end
                 end
             end
         end
@@ -411,7 +411,7 @@ frame:SetScript("OnEvent", function(_, _, message)
             local name = link:match("|h%[(.-)%]|h")
             if name and ns.UnlockPool(LootKey(name)) > 0 then
                 if not (ns.RankLocked and ns.RankLocked("pixcollection")) then  -- (quiet till the Collection opens)
-                    ns.ShowToast("achievement", "Unlocked for minting!", name, "It can roll in your pictures now")
+                    ns.ShowToast("achievement", "Unlocked for your dreams!", name, "It can roll in your pictures now")
                 end
                 if ns.OnKillsChanged then ns.OnKillsChanged() end
             end

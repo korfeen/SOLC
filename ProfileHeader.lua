@@ -955,7 +955,7 @@ function BuildEditor(W, h, At)
                 button.edge:SetColorTexture(0, 0, 0)
                 button.label:SetText("Colour")
                 button.lines = { "A colour instead of a picture", "Pick it under Colour: Background",
-                    #owned == 0 and "Mint a picture to get backgrounds" or nil }
+                    #owned == 0 and "Dream a picture to get backgrounds" or nil }
             end
         end
         for _, tab in ipairs(self.useTabs) do

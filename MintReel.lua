@@ -198,7 +198,7 @@ panel:SetBackdrop({
 panel:SetBackdropColor(unpack(ns.WINDOW_COLOR))
 panel:EnableMouse(true)
 panel:Hide()
-panel:HookScript("OnHide", function() if ns.UI.ClearScreen then ns.UI.ClearScreen("Minting") end end)
+panel:HookScript("OnHide", function() if ns.UI.ClearScreen then ns.UI.ClearScreen("Dreaming") end end)
 
 panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 panel.title:SetPoint("TOP", 0, -16)
@@ -250,7 +250,7 @@ local function Finish()
     panel:SetScript("OnUpdate", nil)
     local rarity = ns.MintRarity(mint.traits, mint.asked)
     local big = rarity == "legendary" or rarity == "epic"
-    ns.ShowToast(big and "achievement" or "record", "Minted!", ("Picture #%d"):format(mint.number),
+    ns.ShowToast(big and "achievement" or "record", "Painted!", ("Picture #%d"):format(mint.number),
         (rarity:gsub("^%l", string.upper)))
     panel.title:SetText(("Picture #%d - |c%s%s|r"):format(mint.number, ns.RARITY_COLORS[rarity], (rarity:gsub("^%l", string.upper))))
     panel.status:SetText("")
@@ -298,10 +298,10 @@ function ns.PlayMintReel(mint)
         panel:SetFrameStrata("DIALOG")
     end
     ns.RenderMint(panel.canvas, show.revealed)
-    panel.title:SetText("Minting...")
+    panel.title:SetText("Dreaming...")
     panel.hint:SetText("Click to skip")
     panel:Show()
-    if ns.UI.SetScreen then ns.UI.SetScreen("Minting", "SPIN", function() panel:Hide() end) end  -- (the top beam's title)
+    if ns.UI.SetScreen then ns.UI.SetScreen("Dreaming", "SPIN", function() panel:Hide() end) end  -- (the top beam's title)
     StartStep()
     panel:SetScript("OnUpdate", OnUpdate)
 end

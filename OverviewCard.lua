@@ -89,7 +89,7 @@ local function PhotoMenu(owner)
             local name = ("|c%s%s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", option.name)
             background:CreateRadio(name, function() return IsCurrent(option.id) end, function() ns.SetModelBackdrop(option.id) end)
         end
-        if #owned == 0 then background:CreateTitle("Mint a picture to get backgrounds") end
+        if #owned == 0 then background:CreateTitle("Dream a picture to get backgrounds") end
     end)
 end
 
@@ -1872,7 +1872,7 @@ OVERVIEW = {
                 else
                     GameTooltip:AddLine("Showcase")
                     if ns.RankLocked and ns.RankLocked("pixcollection") then
-                        GameTooltip:AddLine("For your pictures. Minting opens at Ogre Rank 3.", 0.6, 0.6, 0.6)
+                        GameTooltip:AddLine("For your pictures. Dreaming opens at Ogre Rank 3.", 0.6, 0.6, 0.6)
                     else
                         GameTooltip:AddLine("Click to pick from your gallery", 0.6, 0.6, 0.6)
                     end

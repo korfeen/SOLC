@@ -147,7 +147,7 @@ local function PickBackdrop(owner)
             root:CreateRadio(name, function() return IsCurrent(option.id) end,
                 function() ns.SetModelBackdrop(option.id) end)
         end
-        if #owned == 0 then root:CreateTitle("Mint a picture to get backgrounds") end
+        if #owned == 0 then root:CreateTitle("Dream a picture to get backgrounds") end
     end)
 end
 UI.PickBackdrop = PickBackdrop

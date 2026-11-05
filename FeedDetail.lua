@@ -58,7 +58,7 @@ local function Describe(item)
         else
             Add("This picture has a new owner now.", "head")
         end
-        Add(kind == "M" and ("Minted by %s"):format(item.who) or ("Won by %s from %s"):format(item.who, e.b or "someone"), "dim")
+        Add(kind == "M" and ("Painted by %s"):format(item.who) or ("Won by %s from %s"):format(item.who, e.b or "someone"), "dim")
         Add(When(e.t), "dim")
         if mint then Add("Click the picture to open it.", "dim") end
     elseif kind == "A" then
@@ -134,7 +134,7 @@ local function Describe(item)
             out.mint, out.noOpen, out.rim = { traits = ns.TryOn(layer.key, option.id) }, true, option.rarity
         end
         if option then
-            Add(("Unlocked for minting: |c%s%s %s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", (option.rarity:gsub("^%l", string.upper)),
+            Add(("Unlocked for dreams: |c%s%s %s|r"):format(ns.RARITY_COLORS[option.rarity] or "ffffffff", (option.rarity:gsub("^%l", string.upper)),
                 layer.name:lower()), "head")
         end
         if dungeon then Add(("Out of a chest: %s"):format(dungeon.name))

@@ -128,7 +128,7 @@ local function DrawTiles()
                 tile.canvas:Hide()
                 tile.plus:Show()
                 tile.border:SetVertexColor(0.5, 0.4, 0.2)
-                tile.caption:SetText(("MINT  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))
+                tile.caption:SetText(("DREAM  |T%s:12|t|cffffbf66%d|r"):format(ns.IngredientIcon("bonk"), ns.Bonks()))
                 tile.band:Show()
                 tile.tag:SetText("")
             else
@@ -413,7 +413,7 @@ local function Create(parent, kind)
                         "Coins, and things for your pictures to roll. Click to open.", picture.count > 1 and "Open them one after another." or nil })
                 end
                 if picture.mintAction then
-                    return Tooltip(self, { "Mint a picture", ns.BonksLine() .. ". The ogre dreams it, you paint it." })
+                    return Tooltip(self, { "Dream a picture", ns.BonksLine() .. ". The ogre dreams it, you paint it." })
                 end
                 local mint = picture.mint
                 local rarity = ns.MintRarity(mint.traits, mint.asked)

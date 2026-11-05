@@ -279,7 +279,7 @@ function UI.Gallery(page)
         thumb:SetScript("OnEnter", function(self)
             local entry = self.entry
             if entry and entry.mintAction then
-                return UI.Tooltip(self, { "Mint a picture", "Off to the Dream Bed: the ogre dreams it, you paint it." })
+                return UI.Tooltip(self, { "Dream a picture", "Off to the Dream Bed: the ogre dreams it, you paint it." })
             elseif entry and entry.ogre then
                 return UI.Tooltip(self, { "Your ogre", "Click to build it from what you have. Drag it onto PHOTO to show it" })
             elseif entry and entry.chest then
@@ -350,7 +350,7 @@ function UI.Gallery(page)
                         entry.count > 1 and ("  |cffffd100x%d|r"):format(entry.count) or ""))
                     thumb.border:SetColorTexture(1, 0.82, 0.25)
                 else
-                    thumb.caption:SetText("MINT")
+                    thumb.caption:SetText("DREAM")
                     thumb.border:SetColorTexture(0.5, 0.4, 0.2)
                 end
             end
