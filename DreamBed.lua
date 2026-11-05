@@ -428,7 +428,7 @@ local function ShowBook(show)
             for _, edge in ipairs(card.edges) do edge:SetColorTexture(rim[1], rim[2], rim[3]) end
             ns.DrawPiece(card.canvas, chapter, option)
             card.name:SetText(Ogre() and option.name:upper() or option.name)
-            card.cost:SetText(cost)
+            card.cost:SetText(cost > 1 and cost or "")  -- (one a pick: no number needed)
             card:SetEnabled(cost <= stories)
             card:SetAlpha(cost <= stories and 1 or 0.35)
             card.picked:SetShown(picked)
@@ -1029,7 +1029,7 @@ local function BuildBook()
     W.spread = spread
     hooksecurefunc(spread, "Show", function()
         spread.title:SetText(O("What's he thinking about?", "THINK?"))
-        spread.note:SetText(O("Pick something and he'll dream about it for sure. The red number is how many Bedtime Stories it costs. (A picked piece won't make the painting rarer.)",
+        spread.note:SetText(O("Pick something and he'll dream about it for sure. Each pick costs one Bedtime Story. (A picked piece won't make the painting rarer.)",
             "PICK THING. HE DREAM IT."))
         none.label:SetText(O("Nothing, thank you", "ZZZ"))
         none:Paint(false)

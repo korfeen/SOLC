@@ -496,11 +496,11 @@ local function RollFree(taken)
 end
 
 -- The Dream Bed's mint (DreamBed.lua): the ogre dreams it, you paint it. story: { layer, id } the bedtime story asked
--- about (its piece for sure; Bedtime Stories by its rarity, STORY_COST), or nil. The edition is rolled too
+-- about (its piece for sure; a Bedtime Story, STORY_COST), or nil. The edition is rolled too
 -- (EDITION_ODDS, percent: crayon the rarest) and fixed: mint.asked,
 -- mint.paintedBy (you), mint.crayon = false (no switching). Ogres go to sleep by bonking their heads: every dream
 -- costs a Bonk (no points). Returns the mint, or nil and why not.
-ns.STORY_COST = { uncommon = 1, rare = 2, epic = 3, legendary = 5 }
+ns.STORY_COST = { uncommon = 1, rare = 1, epic = 1, legendary = 1 }  -- (one a pick, whatever it is: since 2026-11-05)
 local EDITION_ODDS = { crayon = 4, sketch = 10 }
 -- Bonks come back one a day (at the daily reset), piling up to BONK_CAP while you're away; Bonks won elsewhere (chests,
 -- bounties, Ogre Rank) go past it. KillTrackerDB.bonkDay: the last day counted. Call before showing the count.
