@@ -153,4 +153,6 @@ const SHORT = { "Bald with Fly": "fly", "Nightcap with Pom Pom": "nightcap", "Lo
   // creature and faction props: the thing, not "stick" or "string"
   "Bat Bat on a String": "bat", "Elemental Storm Cloud on a Stick": "storm cloud", "Kobold Candle on a Stick": "candle",
   "Murloc Fish on a Stick": "fish", "Trogg Rock on a Stick": "rock", "Bear Honey Pot": "honey pot", "Boar Tusk Club": "tusk club",
-  "Quilboar Bramble Club": "bramble club", "Furbolg Totem Stick": "totem", "Defias Throwing Knives": "knives", "Bronze Hourglass Egg": "hourglass egg" };
+  "Quilboar Bramble Club": "bramble club", "Furbolg Totem Stick": "totem", "Defias Throwing Knives": "knives", "Bronze Hourglass Egg": "hourglass egg",
+  // deed props
+  "Sleeping Bag": "sleeping bag", "Do Not Disturb Sign": "sign", "Murloc Maraca": "maraca", "Neck Pillow": "neck pillow", "White Flag": "flag" };

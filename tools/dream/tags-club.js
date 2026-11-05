@@ -194,4 +194,12 @@ Object.assign(PIECE_TAGS, {
   // the Pro Shop steward's own (deed pieces)
   "shop_steward_boater": ["golf"],
   "shop_steward_vest": ["golf"],
+  // deed props (prop_)
+  "prop_dnd_sign": ["sleepy"],
+  "prop_murloc_maraca": ["water", "beast"],
+  "prop_neck_pillow": ["sleepy", "knitted"],
+  "prop_white_flag": [],
+  "prop_bent_halo": ["holy", "undead", "shiny"],
+  "prop_barrel_body": ["huge"],
+  "prop_sleeping_bag_body": ["sleepy", "knitted"],
 });

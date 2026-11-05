@@ -217,6 +217,14 @@ const THING_CHASE = {
     end: ["And the skull said hello. It knew my name.", "And the {mobs} saw the skull and went very quiet.", "And it turned out to be {boss}'s cousin."] },
   prop_rares: { name: "Spyglass", does: ["looks at me through his brass spyglass", "spots something rare through his spyglass", "hands me his spyglass and points at nothing"],
     end: ["And it was a rare spawn. It despawned the second I looked.", "And I looked through the wrong end, and he was tiny.", "And {boss} was looking back at me through another spyglass."] },
+  prop_dnd_sign: { name: "Do Not Disturb Sign", does: ["holds up his DO NOT DISTURB sign at me", "waves his little sleeping-moon sign in my face", "taps his DO NOT DISTURB sign and closes his eyes"],
+    end: ["And I disturbed him anyway. He's still cross.", "And the {mobs} read it and tiptoed off.", "And {boss} knocked. On the sign."] },
+  prop_murloc_maraca: { name: "Murloc Maraca", does: ["shakes his murloc maraca right by my ear", "does a little dance with his murloc maraca", "rattles his grinning murloc maraca at me"],
+    end: ["And the maraca went 'MRGLGLGL' all on its own.", "And all the {mobs} started dancing. They couldn't stop.", "And a real murloc turned up wanting its brother back."] },
+  prop_neck_pillow: { name: "Neck Pillow", does: ["fluffs up his gryphon neck pillow", "nods off in his neck pillow mid-sentence", "lends me his sky-blue neck pillow for one second"],
+    end: ["And we landed. He slept through the whole flight.", "And the little gryphons on it flapped off.", "And {boss} asked if it came in a bigger size."] },
+  prop_white_flag: { name: "White Flag", does: ["waves his little white flag at me", "holds up a grubby white flag and sighs", "surrenders with his droopy white flag"],
+    end: ["And I hadn't even started anything.", "And the {mobs} surrendered back. Nobody knew who won.", "And it was his hanky. He blew his nose on it."] },
 
   // gacha series 1: lowlife and smoking-room accessories
   gacha_acc_ale_can: { name: "Cheap Ale Can", does: ["cracks open his dented can of cheap ale", "crushes his empty ale can on his forehead", "offers me a warm sip of his cheap ale"],

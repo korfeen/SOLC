@@ -131,6 +131,9 @@ const OUTFIT_MORE = {
   "gacha_outfit_sleeping_bag": ["zipped into a sleeping bag up to the chin", "in a grubby sleeping bag he wore as a coat", "in a sleeping bag coat, ready to kip on any bench"],
   // Pro Shop steward's own (deed piece)
   "shop_steward_vest": ["in a blue-and-white striped waistcoat and bow tie", "in the steward's stripes, gold buttons polished", "in the steward's uniform, judging my shoes"],
+  // deed props (prop_)
+  "prop_barrel_body": ["in nothing but a wooden barrel", "in a barrel held up by two leather braces", "in a barrel, bare-chested and very proud of it"],
+  "prop_sleeping_bag_body": ["zipped into a green and orange sleeping bag", "in a puffy camping bag, zipped right to the chin", "in a sleeping bag, shuffling along like a slug"],
 };
 const HAT_MORE = {
   "crit_bat_head": ["a velvet bat hat with two huge pointy ears", "a bat hood, tiny fangs and all", "a purple bat hat, ears twitching at every sound"],
@@ -277,4 +280,6 @@ const HAT_MORE = {
   // Pro Shop steward's own (deed pieces)
   "shop_steward_boater": ["a straw boater with a blue-and-white band", "a borrowed straw boater, tilted just so", "a straw boater he raised to nobody, least of all me"],
   "crit_tallstrider_head": ["a crocheted tallstrider hat with a long beak", "a pink-beige bird hat with a tuft of bright feathers", "a tallstrider hat, bobbing his head like a strider"],
+  // deed props (prop_)
+  "prop_bent_halo": ["a bent golden halo floating over his head", "a wonky ghost halo, like someone sat on it", "a halo he got the cheap way, by dying"],
 };

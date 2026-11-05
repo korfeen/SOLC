@@ -1041,6 +1041,13 @@ const BACKGROUNDS = {
 
 const T = 300, shown = [];
 for (const [key, draw] of Object.entries(DUNGEONS)) BACKGROUNDS["Dungeon/bg_" + key] = draw;
+// (the zone golf courses and Godz-Touched: tools/crayon-recipes/courses.js, drawn with these helpers; their twins go where
+// the dungeons' do, generatedcrayon<id>.png)
+const COURSES = require("./crayon-recipes/courses")({ S, fill, soft, line, curve, rect, hex, sky, skyBands, hills, sun, moon, cloud, stars,
+  tree, palm, flower, waves, flag, rock, stalactites, lava, embers, floor, water, mushroom, vines, tower, mist, pillar, deadTree,
+  tombstone, house, tent, hut, totem, pine, aurora, crystal, waterfall, statue, pyramid, ziggurat, skull, dab, circle, ellipse,
+  OUTLINE, rain });
+for (const [id, draw] of Object.entries(COURSES)) BACKGROUNDS["Dungeon/" + id] = draw;
 const want = Object.keys(BACKGROUNDS).filter((k) => k.includes(filter));
 const crayonOgre = ["Skin/Uncommon/moss.png", "Outfit/Uncommon/striped-pajamas.png", "Expression/Uncommon/moss/smug-smile.png",
   "Eyes/Uncommon/moss/heavy-bags.png"].map((f) => Buffer.from(resample(decodePng(path.join(OUT, f)), 0, 0, S, S, T, T)));

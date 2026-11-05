@@ -225,4 +225,11 @@ const SETTING_DUNGEON = {
       "climbs up the World Tree after Archimonde", "glows in with ten thousand wisps"],
     back: ["And a demon asked to borrow a cup of sugar.", "And the World Tree said 'shh'.", "And the wisps blew up. Very politely.",
       "And Archimonde fell off the tree.", "And Jaina and Thrall and Tyrande all said 'not again'."] },
+  bg_godz_touched: { name: "the Ogre Godz' clearing",
+    at: ["in a misty mountain clearing, right under the Ogre Godz", "standing in a golden beam from the sky, catching coins",
+      "in the Godz' clearing at dusk, leaving them a tribute", "in a mossy clearing, pulling faces back at the cliffs"],
+    enters: ["slides down the golden beam", "falls out of the storm clouds with the coins",
+      "climbs out of a stone god's ear", "is sneezed out of the cliff by a grumpy god"],
+    back: ["And the Ogre Godz said he was their favourite.", "And it rained gold. It hurt.", "And the cliffs all yawned at once.",
+      "And the storm clouds closed again, like a curtain.", "And the Godz asked for a bigger tribute next time."] },
 };

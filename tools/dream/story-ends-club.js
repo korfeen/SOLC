@@ -127,4 +127,9 @@ Object.assign(PIECE_ENDS, {
   "gacha_outfit_shellsuit": ["And he walked past a candle and nearly went up like a torch.", "And he swished so loudly the {mobs} heard him coming a mile off."],
   "gacha_outfit_sleeping_bag": ["And he lay down on a bench and that was him done for the day.", "And he zipped it right up over his head and wouldn't come out."],
   "shop_steward_vest": ["And he rang up everything I touched and charged me double.", "And he looked at my outfit and said 'hmm'. Just 'hmm'."],
+
+  // deed props (prop_)
+  "prop_barrel_body": ["And he sat down, and the barrel didn't. We all saw everything.", "And someone knocked on his barrel, and he said 'occupied'."],
+  "prop_sleeping_bag_body": ["And he hopped everywhere in it, like a big green caterpillar.", "And he lay down mid-sentence and was asleep before the full stop."],
+  "prop_bent_halo": ["And he swore he was an angel. The halo said 'mostly'.", "And he tried to straighten his halo and bent it the other way."],
 });

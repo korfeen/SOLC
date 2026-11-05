@@ -241,4 +241,10 @@ const PAYOFF = {
     ["And Cenarius came, but just to complain about the noise.", "And the horn played a tuba solo.", "And Cenarius said the horn was for emergencies. This wasn't one."],
     ["And the wisps blew up. Very politely.", "And the wisps put HIM in a jar.", "And the jar was Archimonde's."],
   ],
+  bg_godz_touched: [
+    ["And the Godz looked down and said 'oh, it's you'.", "And one god winked. The cliff fell off.", "And the Godz all looked at him, not me."],
+    ["And it was chocolate coins.", "And he caught them all in his mouth.", "And the Godz sent a bill."],
+    ["And the Godz ate it and said 'needs salt'.", "And they gave it back. Not good enough.", "And he was the tribute. They kept him."],
+    ["And the cliffs pulled better faces.", "And one face got stuck like that.", "And the Godz said 'rude' and rained on me."],
+  ],
 };
