@@ -541,10 +541,11 @@ end
 
 -- target nil = broadcast to the guild.
 -- A whisper's target as WoW needs it: on Forever "First Last" (the bare first name gets "No player named ..."), so a
--- name without its last name is looked up in the guild roster (Config.lua) - a sender can come in either way.
+-- name without its last name ("Benny", or "Benny-CAMWOWEU5Realm6PvP" as a sender can come in) is looked up in the
+-- guild roster (Config.lua) by its first name.
 local function WhisperTarget(target)
     if not target or target:find(" ", 1, true) then return target end
-    return ns.GuildFullName and ns.GuildFullName(target) or target
+    return ns.GuildFullName and ns.GuildFullName(target:match("^[^-]+")) or target
 end
 local function Send(target, message, urgent)
     if not ns.IsMember() then return end  -- (outside the guild: nothing shared)
