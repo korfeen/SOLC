@@ -540,9 +540,15 @@ local function Queue(channel, target, message, urgent)
 end
 
 -- target nil = broadcast to the guild.
+-- A whisper's target as WoW needs it: on Forever "First Last" (the bare first name gets "No player named ..."), so a
+-- name without its last name is looked up in the guild roster (Config.lua) - a sender can come in either way.
+local function WhisperTarget(target)
+    if not target or target:find(" ", 1, true) then return target end
+    return ns.GuildFullName and ns.GuildFullName(target) or target
+end
 local function Send(target, message, urgent)
     if not ns.IsMember() then return end  -- (outside the guild: nothing shared)
-    Queue(target and "WHISPER" or "GUILD", target, message, urgent)
+    Queue(target and "WHISPER" or "GUILD", WhisperTarget(target), message, urgent)
 end
 
 local boardWanted  -- when we said hello to the guild wanting replies: the first guildmate to answer sends us the scores
