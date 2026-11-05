@@ -12,7 +12,8 @@ local UI = ns.UI
 local PATH = "Interface\\AddOns\\SOLC\\Media\\Wallpaper\\"
 -- In the order EDIT lists them; the first is everyone's to start with.
 ns.WALLPAPER_LIST = {
-    { id = "stripes", name = "Club Stripes" },
+    { id = "walnut", name = "Club Walnut" },  -- (the first: everyone's, the default)
+    { id = "stripes", name = "Club Stripes" },  -- (free, the default before Club Walnut)
     { id = "loops", name = "Loops", price = 100 },
     { id = "ogee", name = "Teardrops", price = 150 },
     { id = "floral_yellow", name = "Sunny Flowers", price = 250 },

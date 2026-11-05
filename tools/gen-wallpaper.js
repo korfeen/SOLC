@@ -307,12 +307,33 @@ const PATTERNS = {
     },
   },
   // Oval loops: rows of long rounded ovals, ringed orange, cream and light orange round an orange middle, on peach.
-  // Club Stripes, everyone's to start with: a dark clubhouse stripe (dark so white text reads on it, 2026-11-05) - a
-  // walnut band edged in a near-black pinstripe and a gold one, then a plain darker band (no line down its middle: it showed as a stray pixel line, 2026-11-05). STRIPES: { from x, colour } over a repeat.
-  stripes: {
+  // Club Walnut, everyone's to start with (2026-11-05): a dark clubhouse stripe, dark so white text reads on it - a walnut
+  // band edged in a near-black pinstripe and a gold one, then a plain darker band. STRIPES: { from x, colour } over a repeat.
+  walnut: {
     w: 256, h: 256, grain: 0.035,
     stripes: [[0, "#4a3322"], [46, "#22150c"], [50, "#3a2819"], [54, "#9a7442"], [56, "#3a2819"],
       [92, "#3a2819"], [94, "#3a2819"], [124, "#9a7442"], [126, "#3a2819"], [130, "#22150c"]],
+    period: 134,
+    colourAt(x) {
+      const at = x % (this.w / 2) * (this.period / (this.w / 2));  // (two repeats a tile)
+      let col = this.stripes[0][1];
+      for (const [from, c] of this.stripes) if (at >= from) col = c;
+      return hex(col);
+    },
+    // Its border: plain - the walnut band with two thin gold lines along it.
+    friezeAt(x, y, W, H) {
+      const top = 26, inner = H - 2 * top, t = (y - top) / inner;
+      if (t < 0 || t >= 1) return null;
+      return Math.abs(t - 0.28) < 0.025 || Math.abs(t - 0.72) < 0.025 ? hex("#9a7442") : hex("#4a3322");
+    },
+  },
+  // Club Stripes (free; everyone's default before Club Walnut, 2026-11-05): a quiet clubhouse stripe - a wide
+  // tan band edged in a brown pinstripe and a gold one, then a wide cream band (its faint middle line taken out: it
+  // showed as a stray pixel line). STRIPES: { from x, colour } over a repeat.
+  stripes: {
+    w: 256, h: 256, grain: 0.035,
+    stripes: [[0, "#b08a5c"], [46, "#5a3a22"], [50, "#ecdfc3"], [54, "#b8925a"], [56, "#ecdfc3"],
+      [124, "#b8925a"], [126, "#ecdfc3"], [130, "#5a3a22"]],
     period: 134,
     colourAt(x) {
       const at = x % (this.w / 2) * (this.period / (this.w / 2));  // (two repeats a tile)
@@ -324,7 +345,7 @@ const PATTERNS = {
     friezeAt(x, y, W, H) {
       const top = 26, inner = H - 2 * top, t = (y - top) / inner;
       if (t < 0 || t >= 1) return null;
-      return Math.abs(t - 0.28) < 0.025 || Math.abs(t - 0.72) < 0.025 ? hex("#9a7442") : hex("#4a3322");
+      return Math.abs(t - 0.28) < 0.025 || Math.abs(t - 0.72) < 0.025 ? hex("#ecdfc3") : hex("#b08a5c");
     },
   },
   // Blue blocks, measured off the user's example (refs: GE5035): navy, light blue and cream on a square grid, every
