@@ -459,8 +459,8 @@ function UI.PixCollection(parent)
         end
     end
     if BOOK then Rule(247) Rule(310) end
-    local filters = { { "all", "ALL" }, { "seen", "SEEN" },
-        { "unlocked", "UNLOCKED" }, { "minted", "PAINTED" } }
+    local filters = { { "unlocked", "UNLOCKED" }, { "minted", "PAINTED" },
+        { "seen", "SEEN" }, { "all", "ALL" } }
     for i, filter in ipairs(filters) do
         filterButtons[filter[1]] = Button(left, filter[2], 242 + (i - 1) * 98, 286, 94, function()
             dex.filter, dex.offset = filter[1], 0
