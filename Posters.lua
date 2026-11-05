@@ -358,7 +358,7 @@ end
 -- bracket's levels - and the guild's side: SIDE marks the ones only one faction meets at their levels (the
 -- player's faction stands for the guild's: a guild is one faction, so every member's addon agrees). EXTRA: custom
 -- bounties in the rotation too (the Alliance starter zones' foes).
-local SIDE = { kolkar = "Horde", burningblade = "Horde", Scorpid = "Horde", wanted_rfc = "Horde", wanted_ruins = "Horde",
+local SIDE = { kolkar = "Horde", burningblade = "Horde", Scorpid = "Horde", wanted_rfc = "Horde", wanted_ruins = "Horde", wanted_wc = "Horde",
     wanted_thanes = "Alliance" }
 local EXTRA = { "kind_kobold", "kind_gnoll", "kind_trogg" }
 local pools = {}
