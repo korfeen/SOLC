@@ -805,9 +805,9 @@ local function InkWord(parent, size, onClick)
     b.label:SetPoint("LEFT")
     b.label:SetTextColor(INK[1], INK[2], INK[3])
     b.streak = {}
-    for i, stroke in ipairs({ { 3, -3, 0.85, -1.2, 0 }, { 2, -6, 0.5, 0.9, 4 } }) do  -- height, y, alpha, tilt, x
+    for i, stroke in ipairs({ { 9, -1, 0.95, -1.5, -2 } }) do  -- height, y, alpha, tilt, x
         local t = b:CreateTexture(nil, "ARTWORK")
-        t:SetColorTexture(RED[1], RED[2], RED[3], stroke[3])
+        t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak") t:SetVertexColor(RED[1], RED[2], RED[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
         t:SetHeight(stroke[1])
         t:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", stroke[5] - 4, stroke[2] + 2)
         t:SetRotation(math.rad(stroke[4]))
@@ -909,9 +909,9 @@ local function BuildBook()
         b.label = Text(b, 15)
         b.label:SetPoint("LEFT", b.icon, "RIGHT", 8, 1)
         b.streak = {}
-        for k, stroke in ipairs({ { 3, -2, 0.85, -1.2, 0 }, { 2, -5, 0.5, 0.9, 4 } }) do
+        for k, stroke in ipairs({ { 9, 0, 0.95, -1.5, -2 } }) do
             local t = b:CreateTexture(nil, "ARTWORK")
-            t:SetColorTexture(RED[1], RED[2], RED[3], stroke[3])
+            t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak") t:SetVertexColor(RED[1], RED[2], RED[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
             t:SetHeight(stroke[1])
             t:SetPoint("TOPLEFT", b.label, "BOTTOMLEFT", stroke[5] - 2, stroke[2] + 2)
             t:SetRotation(math.rad(stroke[4]))

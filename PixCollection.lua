@@ -271,9 +271,9 @@ function UI.PixCollection(parent)
             -- In the book: words in ink, no boxes. Picked: red ink and a streak of it under the word (two strokes, a little
             -- crooked, like a quick underline by hand); hovered: the word itself warms to red.
             button.streak = {}
-            for i, stroke in ipairs({ { 3, -3, 0.85, -1.2, 0 }, { 2, -6, 0.5, 0.9, 4 } }) do  -- height, y, alpha, tilt, x
+            for i, stroke in ipairs({ { 9, -1, 0.95, -1.5, -2 } }) do  -- height, y, alpha, tilt, x
                 local t = button:CreateTexture(nil, "ARTWORK")
-                t:SetColorTexture(INK.heading[1], INK.heading[2], INK.heading[3], stroke[3])
+                t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak") t:SetVertexColor(INK.heading[1], INK.heading[2], INK.heading[3], stroke[3])  -- (a brush flick: tools/make-streak.js)
                 t:SetHeight(stroke[1])
                 t:SetPoint("TOP", button.label, "BOTTOM", stroke[5], stroke[2] + 2)
                 t:SetRotation(math.rad(stroke[4]))
