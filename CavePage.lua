@@ -26,19 +26,28 @@ local TAB_PAGES = { members = "members", make = "crafters" }
 -- The news' chips: { group (ns.FEED_GROUPS), label, ogre word, what it is }; each player hides what they like
 -- (KillTrackerDB.feedHidden).
 local CHIPS = {
-    { "deeds", "DEEDS", "BRAG", "Deeds earned and Ogre Ranks reached" },
+    { "deeds", "DEEDS", "BRAG", "Deeds earned and Ogre Ranks reached", "deeds" },  -- (5: the page it waits on)
     { "kills", "KILLS", "SMASH", "Leaders slain and dungeons cleared with the guild" },
-    { "pix", "PIX", "PIX", "Pictures minted and won" },
-    { "hunts", "HUNTS", "HUNTS", "Bounties completed" },
+    { "pix", "PIX", "PIX", "Pictures minted and won", "pixcollection" },
+    { "hunts", "HUNTS", "HUNTS", "Bounties completed", "bounties" },
 }
 local CHIP_ON, CHIP_OFF = { 0.3, 0.22, 0.12 }, { 0.16, 0.14, 0.12 }
 local METRICS = {  -- { Members() field, label, ogre word, what it is }
     { "points", "POINTS", "GOLD", "Points earned, before spending" },
     { "kills", "KILLS", "SMASH", "Kills" },
-    { "bounty", "BOUNTY", "HUNTS", "Bounties claimed this week" },
+    { "bounty", "BOUNTY", "HUNTS", "Bounties claimed this week", "bounties" },  -- (5: the page it waits on)
     { "pvp", "PVP", "BONK", "PvP kills" },
-    { "pictures", "PIX", "PIX", "Pictures minted" },
+    { "pictures", "PIX", "PIX", "Pictures minted", "pixcollection" },
 }
+-- The specs whose page (spec[5]) is open for you (Onboarding.lua's rank locks), and a key naming them.
+local function Open(specs)
+    local list, key = {}, ""
+    for _, spec in ipairs(specs) do
+        if not (spec[5] and ns.RankLocked and ns.RankLocked(spec[5])) then list[#list + 1] = spec key = key .. spec[1] .. "," end
+    end
+    return list, key
+end
+local function BountiesLocked() return ns.RankLocked ~= nil and ns.RankLocked("bounties") end
 
 -- In window pixels (from its top-left, y down).
 local LEFT = {
@@ -130,10 +139,18 @@ local function Rows(parent, left, right, spec, bottom, overhang)
 end
 
 local function DrawNews()
-    -- This week's bounty posters: yours claimed, the guild's count.
-    local board = ns.GetPosterProgress and ns.GetPosterProgress()
+    -- This week's bounty posters: yours claimed, the guild's count. (Before the board opens: your way to the next rank.)
+    local board = not BountiesLocked() and ns.GetPosterProgress and ns.GetPosterProgress()
     local b = page.bountyBox
-    if board then
+    if BountiesLocked() then
+        local current, nextRank, points = ns.GetRank()
+        Fit(b.name, NAME_FONT, 15, 10, ("|cffffd100Ogre Rank %d|r  %s"):format(current.rank, current.title), b.width)
+        local share = nextRank and (points - current.points) / math.max(1, nextRank.points - current.points) or 1
+        b.fill:SetWidth(math.max(1, (b.width - 2) * math.min(1, share)))
+        b.barText:SetText(nextRank and ("%d/%d points"):format(points, nextRank.points) or "The top rank")
+        b.details:SetText(nextRank and ("%d more to rank %d - and more of the club"):format(nextRank.points - points, nextRank.rank) or "")
+        b.track:Show()
+    elseif board then
         local claimed = 0
         for _, p in ipairs(board.posters) do if p.claimed then claimed = claimed + 1 end end
         local guild = ns.GetGuildClaims()
@@ -150,7 +167,10 @@ local function DrawNews()
     end
 
     -- The guild's activity.
-    local hidden = KillTrackerDB.feedHidden or {}
+    -- (a chip still locked hides nothing: its page's news is out anyway, ns.GetFeed, and what's left of its group shows)
+    local hidden = {}
+    for group in pairs(KillTrackerDB.feedHidden or {}) do hidden[group] = true end
+    for _, spec in ipairs(CHIPS) do if spec[5] and ns.RankLocked and ns.RankLocked(spec[5]) then hidden[spec[1]] = nil end end
     for _, chip in ipairs(page.chips) do chip:Redraw(false) end
     local feed = {}
     for _, item in ipairs(ns.GetFeed(false, true)) do
@@ -313,10 +333,10 @@ ns.RegisterPage({
         box.details:SetWordWrap(false)
         box:SetScript("OnClick", function()
             UI.ClickSound()
-            ns.OpenPage("bounties")
+            ns.OpenPage(BountiesLocked() and "overview" or "bounties")
         end)
         box:SetScript("OnEnter", function(self)
-            local board = ns.GetPosterProgress and ns.GetPosterProgress()
+            local board = not BountiesLocked() and ns.GetPosterProgress and ns.GetPosterProgress()
             if not board then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(board.title or "This week's bounties")
@@ -326,37 +346,42 @@ ns.RegisterPage({
         end)
         box:SetScript("OnLeave", GameTooltip_Hide)
         page.bountyBox = box
-        -- The chips: click one to show or hide that kind of news.
+        -- The chips: click one to show or hide that kind of news. Only the ones whose page is open (Onboarding.lua's
+        -- rank locks): rebuilt as ranks open more (refresh).
         page.chips = {}
-        local chipWidth = (slot.right - slot.left - 4) / #CHIPS
-        for i, spec in ipairs(CHIPS) do
-            local chip = CreateFrame("Button", nil, news)
-            chip:SetSize(chipWidth - 6, LEFT.chips.bottom - LEFT.chips.top - 6)
-            At(chip, "LEFT", slot.left + 2 + (i - 1) * chipWidth + 3, (LEFT.chips.top + LEFT.chips.bottom) / 2)
-            local plate = chip:CreateTexture(nil, "BACKGROUND")
-            plate:SetAllPoints()
-            chip.text = chip:CreateFontString(nil, "OVERLAY")
-            chip.text:SetFont(NAME_FONT, LEFT.chips.size, "")
-            chip.text:SetPoint("CENTER", 0, 1)
-            function chip:Redraw(hovered)
-                local on = not (KillTrackerDB.feedHidden or {})[spec[1]]
-                self.text:SetText((on and "|cff60ff60+|r " or "|cff808080-|r ") .. (Ogre() and spec[3] or spec[2]))
-                self.text:SetTextColor(unpack(hovered and { 1, 1, 1 } or on and CREAM or DIM))
-                plate:SetColorTexture(unpack(hovered and HOVER_COLOR or on and CHIP_ON or CHIP_OFF))
+        function page.BuildChips(specs)
+            for _, chip in ipairs(page.chips) do chip:Hide() end
+            page.chips = {}
+            local chipWidth = (slot.right - slot.left - 4) / #specs
+            for i, spec in ipairs(specs) do
+                local chip = CreateFrame("Button", nil, news)
+                chip:SetSize(chipWidth - 6, LEFT.chips.bottom - LEFT.chips.top - 6)
+                At(chip, "LEFT", slot.left + 2 + (i - 1) * chipWidth + 3, (LEFT.chips.top + LEFT.chips.bottom) / 2)
+                local plate = chip:CreateTexture(nil, "BACKGROUND")
+                plate:SetAllPoints()
+                chip.text = chip:CreateFontString(nil, "OVERLAY")
+                chip.text:SetFont(NAME_FONT, LEFT.chips.size, "")
+                chip.text:SetPoint("CENTER", 0, 1)
+                function chip:Redraw(hovered)
+                    local on = not (KillTrackerDB.feedHidden or {})[spec[1]]
+                    self.text:SetText((on and "|cff60ff60+|r " or "|cff808080-|r ") .. (Ogre() and spec[3] or spec[2]))
+                    self.text:SetTextColor(unpack(hovered and { 1, 1, 1 } or on and CREAM or DIM))
+                    plate:SetColorTexture(unpack(hovered and HOVER_COLOR or on and CHIP_ON or CHIP_OFF))
+                end
+                chip:SetScript("OnEnter", function(self)
+                    self:Redraw(true)
+                    Tooltip(self, { spec[4], "Click to " .. ((KillTrackerDB.feedHidden or {})[spec[1]] and "show" or "hide") .. " them" })
+                end)
+                chip:SetScript("OnLeave", function(self) self:Redraw(false) GameTooltip_Hide() end)
+                chip:SetScript("OnClick", function(self)
+                    UI.ClickSound()
+                    KillTrackerDB.feedHidden = KillTrackerDB.feedHidden or {}
+                    KillTrackerDB.feedHidden[spec[1]] = not KillTrackerDB.feedHidden[spec[1]] or nil
+                    DrawNews()
+                    self:Redraw(true)
+                end)
+                page.chips[i] = chip
             end
-            chip:SetScript("OnEnter", function(self)
-                self:Redraw(true)
-                Tooltip(self, { spec[4], "Click to " .. ((KillTrackerDB.feedHidden or {})[spec[1]] and "show" or "hide") .. " them" })
-            end)
-            chip:SetScript("OnLeave", function(self) self:Redraw(false) GameTooltip_Hide() end)
-            chip:SetScript("OnClick", function(self)
-                UI.ClickSound()
-                KillTrackerDB.feedHidden = KillTrackerDB.feedHidden or {}
-                KillTrackerDB.feedHidden[spec[1]] = not KillTrackerDB.feedHidden[spec[1]] or nil
-                DrawNews()
-                self:Redraw(true)
-            end)
-            page.chips[i] = chip
         end
         page.newsRows = Rows(news, slot.left, slot.right, LEFT.rows, slot.bottom, 20)
         page.newsOffset = 0
@@ -387,8 +412,13 @@ ns.RegisterPage({
         local board = CreateFrame("Frame", nil, page)
         board:SetAllPoints()
         board:SetFrameLevel(book:GetFrameLevel() + 2)
-        page.metricTabs = TabStrip(board, METRICS, right.left, right.right, RIGHT.tabs, function() return page.metric end,
-            function(key) page.metric = key end)
+        -- (the measures whose page is open: rebuilt as ranks open more, like the chips)
+        page.metricTabs = {}
+        function page.BuildMetricTabs(specs)
+            for _, tab in ipairs(page.metricTabs) do tab:Hide() end
+            page.metricTabs = TabStrip(board, specs, right.left, right.right, RIGHT.tabs, function() return page.metric end,
+                function(key) page.metric = key end)
+        end
         page.podium = {}
         for i, spot in ipairs(RIGHT.podium) do
             local size = spot[3]
@@ -476,6 +506,11 @@ ns.RegisterPage({
     end,
 
     refresh = function(p)
+        local chips, chipKey = Open(CHIPS)
+        if chipKey ~= p.chipKey then p.chipKey = chipKey p.BuildChips(chips) end
+        local metrics, metricKey = Open(METRICS)
+        if metricKey ~= p.metricKey then p.metricKey = metricKey p.BuildMetricTabs(metrics) end
+        if not metricKey:find(p.metric .. ",", 1, true) then p.metric = "points" end
         for _, tab in ipairs(p.tabs) do tab:Redraw(false) end
         for _, tab in ipairs(p.metricTabs) do tab:Redraw(false) end
         p.news:Show()

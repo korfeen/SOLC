@@ -73,6 +73,12 @@ function ns.RankLocked(key)
     local rank = PAGE_RANKS[key]
     return rank ~= nil and ns.TourRank() < rank
 end
+-- News (Feed.lua's kinds) about a locked page's things: kept out of every feed until its rank.
+local KIND_PAGES = { A = "deeds", M = "pixcollection", W = "pixcollection", U = "pixcollection", B = "bounties", P = "bounties" }
+function ns.KindLocked(kind)
+    local page = KIND_PAGES[kind]
+    return page ~= nil and ns.RankLocked(page)
+end
 
 -- The panel ------------------------------------------------------------------------------------------------------------
 
@@ -355,6 +361,18 @@ function ns.SayLocked(key)
         if ns.Print then ns.Print(text) end
         return
     end
+    if not panel then Build() end
+    current, line = { lines = { { text = text } }, single = true }, 1
+    wipe(queue)
+    ShowLine()
+end
+
+-- A remark of his, once per character (tour.seen[id]): when the window's open and he isn't already talking (else
+-- next time).
+function ns.StewardOnce(id, text)
+    local tour = DB()
+    if not tour or tour.seen[id] or not CanShow() or current then return end
+    tour.seen[id] = true
     if not panel then Build() end
     current, line = { lines = { { text = text } }, single = true }, 1
     wipe(queue)

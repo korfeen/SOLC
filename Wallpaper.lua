@@ -42,6 +42,7 @@ function ns.BuyWallpaper(id)
     local paper = BY_ID[id]
     if not (paper and paper.price) then return false, "That one isn't for sale." end
     if ns.WallpaperUnlocked(paper) then return false, "You have it already." end
+    if ns.RankLocked and ns.RankLocked("proshop") then return false, "The Pro Shop isn't open to you yet." end
     local balance = ns.GetPoints().balance
     if balance < paper.price then return false, ("Not enough points (%d of %d)."):format(balance, paper.price) end
     local db = KillTrackerDB

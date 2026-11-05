@@ -334,7 +334,7 @@ function ns.AddIngredient(key, n, quiet)
     local db = KillTrackerDB
     db.tokens = db.tokens or {}
     db.tokens[key] = (db.tokens[key] or 0) + (n or 1)
-    if not quiet then
+    if not quiet and not (ns.RankLocked and ns.RankLocked("pixcollection")) then  -- (quiet till the Dream Bed opens)
         ns.Print(("|T%s:16|t You found %s%s, for the Dream Bed."):format(ns.IngredientIcon(key), (n or 1) > 1 and (n .. " ") or "",
             ns.IngredientName(key)))
     end
@@ -374,7 +374,7 @@ local function CheckWorn()
                 local key = wearable[Simple(name)]
                 if key and ns.UnlockOption(key) then
                     new = true
-                    ns.ShowToast("achievement", "Unlocked for minting!", name, "Worn: it can roll in your pictures now")
+                    if not (ns.RankLocked and ns.RankLocked("pixcollection")) then ns.ShowToast("achievement", "Unlocked for minting!", name, "Worn: it can roll in your pictures now") end
                 end
             end
         end
@@ -409,7 +409,9 @@ frame:SetScript("OnEvent", function(_, _, message)
         if link then
             local name = link:match("|h%[(.-)%]|h")
             if name and ns.UnlockPool(LootKey(name)) > 0 then
-                ns.ShowToast("achievement", "Unlocked for minting!", name, "It can roll in your pictures now")
+                if not (ns.RankLocked and ns.RankLocked("pixcollection")) then  -- (quiet till the Collection opens)
+                    ns.ShowToast("achievement", "Unlocked for minting!", name, "It can roll in your pictures now")
+                end
                 if ns.OnKillsChanged then ns.OnKillsChanged() end
             end
             return

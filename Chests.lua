@@ -503,7 +503,7 @@ local function Done()
             names[#names + 1] = ("|c%s%s|r"):format(ns.RARITY_COLORS[item.option.rarity] or "ffffffff", item.option.name)
         end
     end
-    if #names > 0 and not show.preview then ns.Print(("Unlocked for minting: %s."):format(table.concat(names, ", "))) end
+    if #names > 0 and not show.preview and not (ns.RankLocked and ns.RankLocked("pixcollection")) then ns.Print(("Unlocked for minting: %s."):format(table.concat(names, ", "))) end
 end
 
 -- Legendary: fireworks rising from the bottom and bursting into sparkles.

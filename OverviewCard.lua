@@ -974,8 +974,9 @@ local function EditChoices(tab, draft)
     elseif tab == "wallpaper" then  -- (all of them: one you haven't got shows dimmed, how to get it on hover - click to buy)
         for _, paper in ipairs(ns.WALLPAPER_LIST) do
             local has, how = ns.WallpaperUnlocked(paper)
-            list[#list + 1] = { id = paper.id, name = paper.name, color = CREAM, texture = "Interface\\AddOns\\SOLC\\Media\\Wallpaper\\" .. paper.id,
-                locked = not has, how = how, price = not has and paper.price or nil }
+            -- (the shop's ones only once the Pro Shop is open: Onboarding.lua)
+            if has or not paper.price or not (ns.RankLocked and ns.RankLocked("proshop")) then list[#list + 1] = { id = paper.id, name = paper.name, color = CREAM, texture = "Interface\\AddOns\\SOLC\\Media\\Wallpaper\\" .. paper.id,
+                locked = not has, how = how, price = not has and paper.price or nil } end
         end
     elseif tab == "header" then  -- (a background picture you have, then a plain colour: your skins' own)
         for _, option in ipairs(ns.OwnedBackgrounds()) do
@@ -2041,6 +2042,9 @@ OVERVIEW = {
                 for _, field in ipairs(HEADER_FIELDS) do page.edit.header[field] = card[field] end
             end
             page.panel = which
+            if which == "inventory" and ns.StewardOnce and ns.RankLocked and ns.RankLocked("pixcollection") then
+                ns.StewardOnce("inventory", "Your inventory. Chests go here, should you ever find one. Pictures come later, if you earn them. I have my doubts.")
+            end
             page.editPanel:SetShown(which == "edit")
             if page.feedBeam then page.feedBeam:SetShown(which ~= "edit") end  -- (the editor's board covers it all)
             page.detail:Hide()
@@ -2294,7 +2298,8 @@ OVERVIEW = {
         for _, holder in ipairs(page.polaroids) do
             local mint = pictures[holder.slot]
             holder.mint, holder.key = mint, key
-            holder:SetShown(mint ~= nil or key == nil)
+            -- (your empty spots only once you can mint: the Collection's rank, Onboarding.lua)
+            holder:SetShown(mint ~= nil or (key == nil and not (ns.RankLocked and ns.RankLocked("pixcollection"))))
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
             holder.outline:SetShown(mint == nil)

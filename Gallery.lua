@@ -312,7 +312,8 @@ function UI.Gallery(page)
         local counts, order = ns.ChestCounts()
         for _, key in ipairs(order or {}) do entries[#entries + 1] = { chest = key, count = counts[key] } end
         while #entries % g.cols ~= 0 do entries[#entries + 1] = { blank = true } end
-        entries[#entries + 1] = { mintAction = true }
+        local minting = not (ns.RankLocked and ns.RankLocked("pixcollection"))  -- (the Dream Bed opens with the Collection)
+        if minting then entries[#entries + 1] = { mintAction = true } end
         for _, mint in ipairs(mints) do entries[#entries + 1] = { mint = mint } end
         local slotOf = {}
         for i, mint in ipairs(ns.GetShowcase()) do slotOf[mint.number] = i end
@@ -373,7 +374,8 @@ function UI.Gallery(page)
         photo.canvas:SetShown(portrait ~= nil)
         photo.you:SetShown(not portrait)
         if portrait then ns.DrawMint(photo.canvas, portrait) end
-        footer:SetText(#mints == 0 and "No pictures yet: mint your first!"
+        footer:SetText(not minting and (#entries == 0 and "Nothing here yet. Chests from dungeons wait here." or "")
+            or #mints == 0 and "No pictures yet: mint your first!"
             or ("%d picture%s%s"):format(#mints, #mints == 1 and "" or "s", self.maxOffset > 0 and "  (scroll for more)" or ""))
     end
 

@@ -177,7 +177,8 @@ function ns.GetFeed(calm, guild, player)
     local feed = {}
     local function Add(who, source)
         for _, e in ipairs(source.events or {}) do
-            local text = (not guild or ns.FeedWorthy(e.k, e.a, e.b)) and Describe(e, who, source, calm)
+            local text = not (ns.KindLocked and ns.KindLocked(e.k)) and (not guild or ns.FeedWorthy(e.k, e.a, e.b))
+                and Describe(e, who, source, calm)  -- (news of a page still locked for you: Onboarding.lua)
             if text then
                 feed[#feed + 1] = { time = e.t, text = text, who = who, kind = e.k, mint = EventMint(e, source),
                     owner = source ~= KillTrackerDB and who or nil, event = e, source = source }

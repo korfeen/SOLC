@@ -521,6 +521,7 @@ end
 
 -- One more towards each of this week's posters that test(poster) says it fits; claims the ones that are done.
 local function CountWhere(test)
+    if ns.RankLocked and ns.RankLocked("bounties") then return end  -- (no posters before the board opens: Onboarding.lua)
     local board, mine = MyBoard()
     if not board then return end
     local changed = false
