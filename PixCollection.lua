@@ -429,8 +429,13 @@ function UI.PixCollection(parent)
     end
     -- (the way back to the Dream Bed's room: the book lies there)
     if BOOK then Button(left, "< BEDROOM", 528, 160, 100, function() if ns.OpenPage then ns.OpenPage("dreambed") end end) end
-    Button(left, "<", 242, 704, 28, function() Scroll(-1) end)
-    Button(left, ">", 601, 704, 28, function() Scroll(1) end)
+    -- (the page arrows: big, easy to hit)
+    for _, arrow in ipairs({ { "<", 236, -1 }, { ">", 595, 1 } }) do
+        local b = Button(left, arrow[1], arrow[2], 698, 40, function() Scroll(arrow[3]) end)
+        b:SetHeight(34)
+        b.label:SetFont(FONT, 26, "")
+        b:Paint(false)
+    end
     left:EnableMouseWheel(true)
     left:SetScript("OnMouseWheel", function(_, delta)
         dex.offset = math.max(0, math.min(math.max(0, math.ceil(#dex.filtered / 3) - 3), dex.offset - delta))
