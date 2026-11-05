@@ -52,9 +52,12 @@ local TIERS = {
 local CUSTOM_TIERS = { kind = { "easy", 40 }, tribe = { "medium", 25 }, pvp = { "hard", 15 } }
 -- The levels a bounty is for (the rotation puts it only in the brackets they touch); none: every level.
 local LEVELS = {
-    defias = { 10, 25 }, venture = { 10, 40 }, kolkar = { 10, 35 }, burningblade = { 10, 40 }, syndicate = { 20, 40 },
+    defias = { 10, 25 }, venture = { 15, 40 }, kolkar = { 10, 35 }, burningblade = { 10, 40 }, syndicate = { 20, 40 },
     scarlet = { 30, 60 }, bloodsail = { 40, 48 }, darkiron = { 45, 60 }, blackrock = { 20, 60 }, scourge = { 35, 60 },
-    demon = { 20, 60 }, pvp = { 21, 60 },  -- (PvP: not for the lowest bracket, few find a fight there)
+    demon = { 20, 60 }, pvp = { 21, 60 }, undead = { 18, 60 }, elemental = { 15, 60 }, dragonkin = { 30, 60 },
+    elites = { 15, 60 }, dungeons = { 15, 60 },
+    -- (the Alliance starter zones' tribes: custom bounties, tribe_<faction squashed>)
+    tribe_trollfrostmane = { 5, 12 }, tribe_gnollriverpaw = { 10, 20 }, tribe_gnollredridge = { 15, 25 },  -- (PvP: not for the lowest bracket, few find a fight there)
     -- The ogre tribes.
     mogrosh = { 18, 22 }, splinterfist = { 25, 31 }, boulderfist = { 32, 42 }, crushridge = { 34, 43 }, dustbelcher = { 35, 45 }, moshogg = { 36, 47 },
     gordunni = { 40, 47 }, dunemaul = { 45, 50 }, dreadmaul = { 45, 58 }, firegut = { 50, 54 }, gordok = { 52, 60 }, spirestone = { 54, 59 },
@@ -133,6 +136,7 @@ local POSTER_OGRE = {
     moshogg = "fac_moshogg", gordunni = "fac_gordunni", dunemaul = "fac_dunemaul", dreadmaul = "fac_dreadmaul", firegut = "fac_firegut",
     gordok = "fac_gordok", spirestone = "fac_spirestone", deadwind = "fac_deadwind", urok = "fac_urok",
     kind_kobold = "crit_kobold", kind_gnoll = "crit_gnoll", kind_trogg = "crit_trogg",  -- (the Alliance starter zones' foes)
+    tribe_trollfrostmane = "crit_troll", tribe_gnollriverpaw = "crit_gnoll", tribe_gnollredridge = "crit_gnoll",
 }
 -- The odd jobs ogres dressed for the job, from pieces we have (a piece not in the game: the plain ogre layers instead).
 local ODD_LOOK = {
@@ -295,10 +299,11 @@ local function PosterBounty(id)
 end
 ns.PosterBounty = PosterBounty
 
--- Whether a poster fits a bracket's levels.
+-- Whether a poster fits a bracket's levels: it reaches into the bracket, and starts near its bottom - by level 13 in
+-- the first (1-20, it goes fast), within 5 levels of the start in the others - so nobody gets a poster for later.
 local function Fits(poster, bracket)
     local l, b = poster.levels, BRACKETS[bracket]
-    return not l or not b or (l[1] <= b[2] and l[2] >= b[1])
+    return not l or not b or (l[1] <= (bracket == 1 and 13 or b[1] + 5) and l[2] >= b[1])
 end
 
 -- A poster's personal goal: the officer's own, else its usual one scaled by the guild's "Goal size %" and, a bracket at
@@ -401,8 +406,8 @@ end
 -- player's faction stands for the guild's: a guild is one faction, so every member's addon agrees). EXTRA: custom
 -- bounties in the rotation too (the Alliance starter zones' foes).
 local SIDE = { kolkar = "Horde", burningblade = "Horde", Scorpid = "Horde", wanted_rfc = "Horde", wanted_ruins = "Horde", wanted_wc = "Horde",
-    wanted_thanes = "Alliance" }
-local EXTRA = { "kind_kobold", "kind_gnoll", "kind_trogg" }
+    wanted_thanes = "Alliance", tribe_trollfrostmane = "Alliance", tribe_gnollriverpaw = "Alliance", tribe_gnollredridge = "Alliance" }
+local EXTRA = { "kind_kobold", "kind_gnoll", "kind_trogg", "tribe_trollfrostmane", "tribe_gnollriverpaw", "tribe_gnollredridge" }
 local pools = {}
 local function Pool(kind, bracket)
     local side = UnitFactionGroup and UnitFactionGroup("player")
