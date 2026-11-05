@@ -141,12 +141,14 @@ local BOOK = ns.CollectionBookArt
 local INK = BOOK and {
     panel = { 0, 0, 0, 0 }, backing = { 0, 0, 0, 0 }, text = { 0.22, 0.13, 0.06 }, heading = { 0.55, 0.12, 0.08 },
     dim = { 0.42, 0.31, 0.19 }, track = { 0.74, 0.64, 0.48 }, bar = { 0.62, 0.32, 0.1 },
-    tab = { 0.76, 0.65, 0.47 }, tabOn = { 0.55, 0.14, 0.09 }, label = { 0.3, 0.19, 0.09 }, labelOn = { 1, 0.9, 0.7 },
+    tab = { 0.82, 0.71, 0.52 }, tabOn = { 0.58, 0.15, 0.1 }, label = { 0.3, 0.19, 0.09 }, labelOn = { 1, 0.92, 0.72 },
+    edge = { 0.5, 0.35, 0.18 }, edgeOn = { 0.9, 0.7, 0.28 },
     tile = { 0.86, 0.79, 0.64 }, unseen = { 0.62, 0.55, 0.43 }, rarityDim = 0.9,
 } or {
     panel = { 0.065, 0.045, 0.03, 1 }, backing = { 0.045, 0.032, 0.022, 1 }, text = { 0.93, 0.88, 0.78 }, heading = { 1, 0.82, 0.48 },
     dim = { 0.65, 0.59, 0.49 }, track = { 0.2, 0.15, 0.09 }, bar = { 0.73, 0.53, 0.23 },
     tab = { 0.18, 0.12, 0.07 }, tabOn = { 0.38, 0.26, 0.12 }, label = { 0.72, 0.65, 0.53 }, labelOn = { 1, 0.84, 0.5 },
+    edge = { 0.1, 0.07, 0.04 }, edgeOn = { 0.9, 0.7, 0.28 },
     tile = { 0.06, 0.045, 0.03 }, unseen = { 0.25, 0.22, 0.18 }, rarityDim = 0.45,
 }
 
@@ -180,15 +182,32 @@ function UI.PixCollection(parent)
     At(backing, "TOPLEFT", 226, 146)
     backing:SetSize(848, 584)
     backing:SetColorTexture(unpack(INK.backing))
-    if BOOK then  -- (the open book behind both pages; its cover runs on under the window's wood, cut at the page area)
-        local clip = CreateFrame("Frame", nil, dex)
-        clip:SetAllPoints(UI.pageArea or dex)
-        clip:SetClipsChildren(true)
-        clip:SetFrameLevel(dex:GetFrameLevel())
-        local book = clip:CreateTexture(nil, "BACKGROUND", nil, -7)
-        At(book, "TOPLEFT", BOOK.x, BOOK.y)
-        book:SetSize(BOOK.w, BOOK.h)
-        book:SetTexture("Interface\\AddOns\\SOLC\\Media\\Collection\\book")
+    if BOOK then
+        -- The open book's two pages (the painting's parchment only - its cover and gold corners left out: the window's
+        -- wood is the cover), filling the page area edge to edge, the fold on the gap between the Collection's halves.
+        -- Laid out as the page shows (LayBook), when the page area's size is known.
+        local area = UI.pageArea or dex
+        local FOLD = 654  -- (window pixels: between the left page, to 634, and the right, from 674)
+        local PAGE = { left = { 175, 760 }, right = { 778, 1375 }, top = 125, bottom = 855, w = 1536, h = 1024 }  -- (painting pixels)
+        local sheets = {}
+        for i, side in ipairs({ PAGE.left, PAGE.right }) do
+            local t = dex:CreateTexture(nil, "BACKGROUND", nil, -7)
+            t:SetTexture("Interface\\AddOns\\SOLC\\Media\\Collection\\book")
+            t:SetTexCoord(side[1] / PAGE.w, side[2] / PAGE.w, PAGE.top / PAGE.h, PAGE.bottom / PAGE.h)
+            sheets[i] = t
+        end
+        function dex:LayBook()
+            local win = UI.window
+            if not (win and area:GetLeft() and win:GetLeft()) then return end
+            local s = area:GetEffectiveScale() / win:GetEffectiveScale()
+            local l, r = (area:GetLeft() * s - win:GetLeft()), (area:GetRight() * s - win:GetLeft())
+            local t, b = (win:GetTop() - area:GetTop() * s), (win:GetTop() - area:GetBottom() * s)
+            for i, sheet in ipairs(sheets) do
+                sheet:ClearAllPoints()
+                At(sheet, "TOPLEFT", i == 1 and l or FOLD, t)
+                sheet:SetSize(i == 1 and FOLD - l or r - FOLD, b - t)
+            end
+        end
     end
     local left = Panel(236, 146, 398, 584)
     local right = Panel(674, 146, 390, 584)
@@ -239,13 +258,34 @@ function UI.PixCollection(parent)
         local button = CreateFrame("Button", nil, parentFrame)
         button:SetSize(width, 24)
         At(button, "TOPLEFT", x, y)
-        local bg = button:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
+        -- A tab: its outline, its face (the state's colour, dex:Draw), a soft shine on top and shade under; on hover a
+        -- warmer face and a gold outline.
+        button.edge = button:CreateTexture(nil, "BACKGROUND", nil, -2)
+        button.edge:SetAllPoints()
+        button.edge:SetColorTexture(unpack(INK.edge))
+        local bg = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+        bg:SetPoint("TOPLEFT", 1, -1) bg:SetPoint("BOTTOMRIGHT", -1, 1)
         bg:SetColorTexture(unpack(INK.tab))
         button.bg = bg
+        local shine = button:CreateTexture(nil, "BORDER")
+        shine:SetPoint("TOPLEFT", 1, -1) shine:SetPoint("TOPRIGHT", -1, -1)
+        shine:SetHeight(10)
+        shine:SetColorTexture(1, 1, 1)
+        shine:SetGradient("VERTICAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 0.22))
+        local shade = button:CreateTexture(nil, "BORDER")
+        shade:SetPoint("BOTTOMLEFT", 1, 1) shade:SetPoint("BOTTOMRIGHT", -1, 1)
+        shade:SetHeight(7)
+        shade:SetColorTexture(1, 1, 1)
+        shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.22), CreateColor(0, 0, 0, 0))
         local hover = button:CreateTexture(nil, "HIGHLIGHT")
-        hover:SetAllPoints()
-        hover:SetColorTexture(1, 0.82, 0.48, 0.12)
+        hover:SetPoint("TOPLEFT", 1, -1) hover:SetPoint("BOTTOMRIGHT", -1, 1)
+        hover:SetColorTexture(1, 0.86, 0.5, 0.22)
+        for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" }, { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }) do
+            local line = button:CreateTexture(nil, "HIGHLIGHT")
+            line:SetPoint(side[1]) line:SetPoint(side[2])
+            if side[1]:find("TOP") and side[2]:find("TOP") or side[1]:find("BOTTOM") and side[2]:find("BOTTOM") then line:SetHeight(1) else line:SetWidth(1) end
+            line:SetColorTexture(unpack(INK.edgeOn))
+        end
         button.label = button:CreateFontString(nil, "OVERLAY")
         button.label:SetFont(FONT, 13, "")
         button.label:SetPoint("CENTER")
@@ -284,6 +324,7 @@ function UI.PixCollection(parent)
             for key, button in pairs(group[1]) do
                 local active = group[2] == key
                 button.bg:SetColorTexture(unpack(active and INK.tabOn or INK.tab))
+                button.edge:SetColorTexture(unpack(active and INK.edgeOn or INK.edge))
                 button.label:SetTextColor(unpack(active and INK.labelOn or INK.label))
             end
         end
@@ -366,6 +407,7 @@ function UI.PixCollection(parent)
         dex:Draw()
     end)
     function dex:Refresh()
+        if self.LayBook then self:LayBook() end  -- (the book's pages over the page area, as it is now)
         self.filtered = {}
         local minted, unlocked, seen, selected, entries = 0, 0, 0, nil, ns.PixCollectionEntries(self.layer)
         for _, entry in ipairs(entries) do
