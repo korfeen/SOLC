@@ -1025,6 +1025,43 @@ local function BuildBook()
         spread.page = math.max(0, math.min(pages - 1, spread.page - delta))
         ShowBook(true)
     end)
+    -- The keyboard: up/down the chapters, left/right the pages, Enter thinks about the piece picked, Escape closes the
+    -- cloud; every other key goes on to the game. Never in combat (WoW keeps the keys from addons then): it lets go as
+    -- combat starts.
+    local function Chapter(step)
+        local at = 1
+        for i, ch in ipairs(CHAPTERS) do if ch[1] == spread.chapter then at = i end end
+        at = (at - 1 + step) % #CHAPTERS + 1
+        Click()
+        spread.chapter, spread.page = CHAPTERS[at][1], 0
+        ShowBook(true)
+    end
+    local function Page(step)
+        local pages = math.max(1, math.ceil(#(spread.options or {}) / CARDS_PER_PAGE))
+        local to = math.max(0, math.min(pages - 1, spread.page + step))
+        if to ~= spread.page then Click() spread.page = to ShowBook(true) end
+    end
+    local KEYS = { UP = function() Chapter(-1) end, DOWN = function() Chapter(1) end, LEFT = function() Page(-1) end,
+        RIGHT = function() Page(1) end, ENTER = function() if spread.sel then spread.pick:Click() end end,
+        ESCAPE = function() ShowBook(false) Refresh() end }
+    spread:SetScript("OnKeyDown", function(self, key)
+        local act = KEYS[key]
+        if InCombatLockdown() then return end
+        self:SetPropagateKeyboardInput(act == nil)
+        if act then act() end
+    end)
+    spread:SetScript("OnShow", function(self) if not InCombatLockdown() then self:EnableKeyboard(true) self:SetPropagateKeyboardInput(true) end end)
+    spread:SetScript("OnHide", function(self) if not InCombatLockdown() then self:EnableKeyboard(false) end end)
+    spread:RegisterEvent("PLAYER_REGEN_DISABLED")
+    spread:RegisterEvent("PLAYER_REGEN_ENABLED")  -- (out of combat again, still open: the keys back)
+    spread:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_DISABLED" then self:SetPropagateKeyboardInput(true) self:EnableKeyboard(false)
+        elseif self:IsShown() then self:EnableKeyboard(true) self:SetPropagateKeyboardInput(true) end
+    end)
+    spread.keys = Text(spread, 12)
+    spread.keys:SetPoint("TOP", spread, "BOTTOMRIGHT", -bw * 0.3, -2)
+    spread.keys:SetTextColor(0.96, 0.9, 0.69)
+    spread.keys:SetShadowOffset(1, -1)
     spread:Hide()
     W.spread = spread
     hooksecurefunc(spread, "Show", function()
@@ -1032,6 +1069,7 @@ local function BuildBook()
         spread.note:SetText(O("Pick one thing and he'll dream about it for sure. It costs a Bedtime Story.",
             "PICK THING. HE DREAM IT."))
         none.label:SetText(O("Nothing, thank you", "ZZZ"))
+        spread.keys:SetText(O("Arrow keys: up and down the chapters, left and right the pages. Enter picks.", "ARROWS!"))
         none:Paint(false)
     end)
 end
