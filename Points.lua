@@ -114,7 +114,12 @@ end
 
 table.insert(ns.KillHandlers, function(npcID, entry, c, unit)
     local points = KillTrackerDB.points
-    points.kills = points.kills + KillPoints(c, unit)
+    local base = KillPoints(c, unit)
+    -- (a kill this week's HUNT or CLAN poster wants: more, all week; Posters.lua)
+    if base > 0 and ns.PosterKillBonus and ns.PosterKillBonus(npcID, entry, c) then
+        base = base + math.floor(base * (ns.Config("bountyKillBonus") or 0) / 100 + 0.5)
+    end
+    points.kills = points.kills + base
     local leader = LeaderPoints(npcID)
     if leader and entry.count == 1 then
         ns.ShowToast("record", "Leader slain!", entry.name, ("+%d points"):format(leader))

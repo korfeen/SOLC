@@ -145,7 +145,7 @@ end
 function ns.PosterPicture(id)
     local wanted = ns.WantedPicture(id)
     if wanted or not id then return wanted end
-    local piece = POSTER_OGRE[id]
+    local piece = POSTER_OGRE[id] or (id:find("^rare_") and POSTER_OGRE.rares)  -- (a named rare: the Rare Hunters' ogre)
     if not piece then return end
     local traits = {}
     for layer, option in pairs(WANTED_OGRE) do traits[layer] = option end
@@ -172,7 +172,7 @@ local ODD = { elites = true, rares = true, leaders = true, dungeons = true, pvp 
 local HUNT = { undead = true, demon = true, elemental = true, dragonkin = true }
 local function Kind(id)
     if id:find("^wanted_") then return "wanted" end
-    if ODD[id] or id:find("^pvp_") then return "odd" end
+    if ODD[id] or id:find("^pvp_") or id:find("^rare_") then return "odd" end
     if HUNT[id] or id:find("^kind_") or id:find("^%u") then return "hunt" end  -- (the creature kinds: Murloc, Wolf...)
     return "clan"
 end
@@ -188,6 +188,35 @@ local FALLBACK = { wanted = "odd", clan = "hunt", odd = "hunt" }
 -- Odd jobs the rotation leaves out: anyone must be able to do the rotation's (gathering needs a profession). Officers
 -- can still put them up.
 local PICK_ONLY = { gather = true }
+-- The rotation's "Rare Hunters" is one named rare instead (rare_<npcID>): out in the world (no dungeons or cities), not
+-- elite (but at 60), at the bracket's levels (the first: the starter zones on), in a zone of the guild's side.
+local RARE_LEVELS = { { 6, 17 }, { 18, 29 }, { 28, 39 }, { 38, 49 }, { 48, 59 }, { 55, 63 } }
+local NOT_WORLD = { ["Blackrock Depths"] = true, ["Blackrock Mountain"] = true, ["Blackrock Spire"] = true,
+    ["Dire Maul"] = true, ["Gnomeregan"] = true, ["Maraudon"] = true, ["Razorfen Kraul"] = true, ["Scarlet Monastery"] = true,
+    ["Shadowfang Keep"] = true, ["Stormwind City"] = true, ["Stratholme"] = true, ["Sunken Temple"] = true,
+    ["The Deadmines"] = true, ["The Stockade"] = true, ["Uldaman"] = true, ["Wailing Caverns"] = true, ["Zul'Farrak"] = true }
+local ZONE_SIDE = { ["Durotar"] = "Horde", ["Mulgore"] = "Horde", ["Tirisfal Glades"] = "Horde", ["Silverpine Forest"] = "Horde",
+    ["The Barrens"] = "Horde", ["Elwynn Forest"] = "Alliance", ["Dun Morogh"] = "Alliance", ["Teldrassil"] = "Alliance",
+    ["Westfall"] = "Alliance", ["Loch Modan"] = "Alliance", ["Darkshore"] = "Alliance", ["Redridge Mountains"] = "Alliance",
+    ["Duskwood"] = "Alliance", ["Wetlands"] = "Alliance" }
+local rarePools = {}
+local function RarePool(bracket)
+    local side = UnitFactionGroup and UnitFactionGroup("player")
+    local key = tostring(bracket) .. ":" .. tostring(side)
+    if rarePools[key] then return rarePools[key] end
+    local pool, levels = {}, RARE_LEVELS[bracket] or RARE_LEVELS[1]
+    for npcID, r in pairs(ns.Rares or {}) do
+        local zone = ns.RareZones and ns.RareZones[r[2]]
+        local zoneSide = zone and ZONE_SIDE[zone]
+        if zone and not NOT_WORLD[zone] and not (zoneSide and side and zoneSide ~= side)
+            and r[3] >= levels[1] and r[3] <= levels[2] and (not r[4] or bracket == #RARE_LEVELS) then
+            pool[#pool + 1] = npcID
+        end
+    end
+    table.sort(pool)  -- (pairs has no order: sorted, every member's addon agrees)
+    rarePools[key] = pool
+    return pool
+end
 local AUTO = "auto"
 
 -- A poster's bounty by its id: a wanted poster, or a bounty with its tier, personal goal and levels added (the bounty
@@ -200,7 +229,15 @@ local function PosterBounty(id)
     if base then return PosterBounty(base) end
     local poster
     local key = id:match("^wanted_(%w+)$")
-    if key then
+    local rareID = tonumber(id:match("^rare_(%d+)$") or "")
+    if rareID then  -- (a named rare: one kill)
+        local r = ns.Rares and ns.Rares[rareID]
+        if not r then return end
+        local zone = ns.RareZones and ns.RareZones[r[2]] or "?"
+        poster = { id = id, name = r[1], short = r[1], tier = "hard", kind = "odd", solo = 1, rare = rareID,
+            desc = ("A rare, level %d, somewhere in %s. Find it before someone else does."):format(r[3], zone),
+            objective = "FIND & SMASH", count = function(npcID) return npcID == rareID end }
+    elseif key then
         local d = ns.DungeonByKey and ns.DungeonByKey(key)
         if not d or not WANTED[key] then return end
         poster = { id = id, name = "Wanted: " .. WANTED[key], event = "wanted", dungeon = key, tier = "hard", kind = "wanted", solo = 1,
@@ -226,7 +263,7 @@ end
 -- a time, its "Goal % more per level bracket" (a wanted poster is always one kill).
 function ns.PosterGoal(poster, goal, bracket)
     if goal then return goal end
-    if poster.wanted then return 1 end
+    if poster.wanted or poster.rare then return 1 end
     local scale = 1 + (ns.Config("bountyLevelScale") or 0) / 100 * ((bracket or 1) - 1)
     return math.max(1, math.floor(poster.solo * ns.Config("bountyGoalPercent") / 100 * scale + 0.5))
 end
@@ -364,7 +401,11 @@ local function RotationPick(guild, week, slot, kind, bracket, taken)
     local start = math.floor(h / 65536) % #pool
     for i = 0, #pool - 1 do
         local id = pool[(start + i) % #pool + 1]
-        if not taken[id] and not PICK_ONLY[id] then return id end
+        if id == "rares" then  -- (one named rare, by the same hash)
+            local rares = RarePool(bracket)
+            local rare = #rares > 0 and ("rare_" .. rares[math.floor(h / 1024) % #rares + 1])
+            if rare and not taken[rare] then return rare end
+        elseif not taken[id] and not PICK_ONLY[id] then return id end
     end
 end
 
@@ -578,6 +619,20 @@ end
 table.insert(ns.KillHandlers, function(npcID, entry, c)
     CountWhere(function(bounty) return bounty.count and bounty.count(npcID, entry, c) end)
 end)
+
+-- Whether a kill is one this week's HUNT or CLAN poster wants (claimed or not): it's worth more kill points all week
+-- (Points.lua). Not before the board opens, nor while pretending a rank.
+function ns.PosterKillBonus(npcID, entry, c)
+    if ns.RankLocked and ns.RankLocked("bounties") then return false end
+    if ns.Pretending and ns.Pretending() then return false end
+    local board = MyBoard()
+    if not board then return false end
+    for _, p in ipairs(board.posters) do
+        local b = p.bounty
+        if (b.kind == "hunt" or b.kind == "clan") and b.count and b.count(npcID, entry, c) then return true end
+    end
+    return false
+end
 
 -- Non-kill posters: "pvp" with the victim { race } if known, "dungeon" (a guild-group boss), "wanted" with the
 -- dungeon cleared (its key), "gather" and "fish" (LifeStats.lua).

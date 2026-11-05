@@ -495,6 +495,10 @@ local function DrawPoster(f, p, claimers)
     -- (no tier: the reward says it)
     local line = {}
     if e and e.ends > 0 then line[#line + 1] = "down in " .. ns.BountyTimeLeft(e.ends - GetServerTime()) end
+    local bonus = ns.Config("bountyKillBonus") or 0
+    if bonus > 0 and (p.bounty.kind == "hunt" or p.bounty.kind == "clan") then  -- (its kills worth more all week: Points.lua)
+        line[#line + 1] = ("kills +%d%% points all week"):format(bonus)
+    end
     if e and e.limit > 0 then  -- (a limited one: how many may still claim it)
         line[#line + 1] = ("%d of %d left"):format(math.max(0, e.limit - (p.claims or 0)), e.limit)
     end

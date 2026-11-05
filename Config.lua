@@ -56,6 +56,7 @@ local FIELDS = {
     { heading = "Weekly bounty" },
     { key = "bountyGoalPercent", label = "Goal size % (100 = normal)", default = 100, min = 1, max = 10000 },
     { key = "bountyReward", label = "Reward", default = 100, min = 0, max = 100000 },
+    { key = "bountyKillBonus", label = "Hunt and clan kills: % more kill points", default = 100, min = 0, max = 1000 },
     { key = "bountyPosters", label = "Bounty posters a week", default = 4, min = 3, max = 5 },
     { key = "bountyLevelScale", label = "Goal % more per level bracket", default = 0, min = 0, max = 100 },
 }
