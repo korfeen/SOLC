@@ -74,7 +74,8 @@ function ns.RankLocked(key)
     return rank ~= nil and ns.TourRank() < rank
 end
 -- News (Feed.lua's kinds) about a locked page's things: kept out of every feed until its rank.
-local KIND_PAGES = { A = "deeds", M = "pixcollection", W = "pixcollection", U = "pixcollection", B = "bounties", P = "bounties" }
+-- (deeds always show: they earn your first points, before the Deeds page opens)
+local KIND_PAGES = { M = "pixcollection", W = "pixcollection", U = "pixcollection", B = "bounties", P = "bounties" }
 function ns.KindLocked(kind)
     local page = KIND_PAGES[kind]
     return page ~= nil and ns.RankLocked(page)

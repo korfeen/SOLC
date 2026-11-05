@@ -26,7 +26,7 @@ local TAB_PAGES = { members = "members", make = "crafters" }
 -- The news' chips: { group (ns.FEED_GROUPS), label, ogre word, what it is }; each player hides what they like
 -- (KillTrackerDB.feedHidden).
 local CHIPS = {
-    { "deeds", "DEEDS", "BRAG", "Deeds earned and Ogre Ranks reached", "deeds" },  -- (5: the page it waits on)
+    { "deeds", "DEEDS", "BRAG", "Deeds earned and Ogre Ranks reached" },  -- (5: the page it waits on, if any)
     { "kills", "KILLS", "SMASH", "Leaders slain and dungeons cleared with the guild" },
     { "pix", "PIX", "PIX", "Pictures minted and won", "pixcollection" },
     { "hunts", "HUNTS", "HUNTS", "Bounties completed", "bounties" },
