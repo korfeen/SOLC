@@ -237,7 +237,7 @@ function UI.PixCollection(parent)
     footer:SetJustifyH("CENTER")
     footer:SetTextColor(unpack(INK.dim))
     local filterButtons, layerButtons = {}, {}
-    local title = Text(right, 23, 690, 158, 355)
+    local title = Text(right, 23, 690, 158, BOOK and 305 or 355)  -- (in the book: clear of the ribbon)
     local details = Text(right, 15, 690, 552, 355)
     local editionButtons = {}
     local viewport = CreateFrame("Frame", nil, right)
@@ -481,7 +481,27 @@ function UI.PixCollection(parent)
         dex:Draw()
     end
     -- (the way back to the Dream Bed's room: the book lies there)
-    if BOOK then Button(left, "< BEDROOM", 528, 160, 100, function() if ns.OpenPage then ns.OpenPage("dreambed") end end) end
+    if BOOK then
+        -- The way back to the Bedroom: the book's ribbon bookmark hanging over the right page's top-right corner, from
+        -- under the top beam (a gold cross stitched on: close); hovered, it slides down a touch, as if tugged.
+        local ribbon = CreateFrame("Button", nil, right)
+        ribbon:SetSize(50, 100)
+        ribbon:SetFrameLevel(right:GetFrameLevel() + 5)
+        local tex = ribbon:CreateTexture(nil, "ARTWORK")
+        tex:SetAllPoints()
+        tex:SetTexture("Interface\\AddOns\\SOLC\\Media\\Collection\\ribbon")
+        local function Hang(drop) ribbon:ClearAllPoints() At(ribbon, "TOPLEFT", 1008, 126 + drop) end
+        Hang(0)
+        ribbon:SetScript("OnEnter", function(self)
+            Hang(7)
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:AddLine("Back to the Bedroom")
+            GameTooltip:AddLine("Close the book", 0.7, 0.7, 0.7)
+            GameTooltip:Show()
+        end)
+        ribbon:SetScript("OnLeave", function() Hang(0) GameTooltip_Hide() end)
+        ribbon:SetScript("OnClick", function() UI.ClickSound() if ns.OpenPage then ns.OpenPage("dreambed") end end)
+    end
     -- (the page arrows: big, easy to hit)
     for _, arrow in ipairs({ { "<", 236, -1 }, { ">", 595, 1 } }) do
         local b = Button(left, arrow[1], arrow[2], 698, 40, function() Scroll(arrow[3]) end)
