@@ -143,7 +143,9 @@ function ns.FrameUnlocked(frame)
     local rank = unlock:match("^rank:(%d+)$")
     if rank then return ns.GetRank().rank >= tonumber(rank), ("Ogre Rank %s"):format(rank) end
     local deed = unlock:match("^deed:(.+)$")
-    if deed then return (KillTrackerDB.achievements or {})[deed] ~= nil, "A deed" end
+    if deed then  -- (named: "The deed Dead Or Alive")
+        return (KillTrackerDB.achievements or {})[deed] ~= nil, ns.AchievementTitle and ("The deed " .. ns.AchievementTitle(deed)) or "A deed"
+    end
     local shop = unlock:match("^shop:(.+)$")  -- (bought in the Pro Shop: ProShop.lua)
     if shop then return (KillTrackerDB.frames or {})[shop] ~= nil, "The Shop" end
     return false

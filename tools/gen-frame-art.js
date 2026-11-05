@@ -30,6 +30,8 @@ const FRAMES = {
   // (the Pro Shop's: sold for points, convert-frames.js "shop:<id>")
   club_tartan: "A country-club picture frame wrapped in deep green and navy tartan cloth (a neat plaid with thin red and gold lines), with polished brass caps on its four corners.",
   fairway_walnut: "A polished dark walnut picture frame for a golf club's trophy room: two little crossed golf clubs carved and gilded at the top middle, and a small white golf ball set into each corner.",
+  // (a bounty reward: claiming a wanted poster, convert-frames.js "deed:feat:wanted:1")
+  wanted: "NOT a wooden frame: an old frontier-style WANTED poster of torn, stained, sun-yellowed parchment, nailed up with a rusty nail at each top corner, its edges ragged and curling. The ONLY text allowed: the word WANTED in big bold black wooden-type letters across its top strip (the top strip a bit thicker than the sides), and REWARD in smaller bold letters across its bottom strip. The opening still an exact square.",
   velvet_gilt: "A slim, elegant gilt picture frame with a wide burgundy velvet mat inside it (the velvet between the gold and the opening), a little gold bead running round the opening.",
 };
 

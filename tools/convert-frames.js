@@ -26,6 +26,8 @@ const FRAMES = [
   { id: "club_tartan", name: "Club Tartan", unlock: "shop:club_tartan" },
   { id: "fairway_walnut", name: "Fairway Walnut", unlock: "shop:fairway_walnut" },
   { id: "velvet_gilt", name: "Velvet & Gilt", unlock: "shop:velvet_gilt" },
+  // (a bounty reward: your first wanted poster claimed, Achievements.lua's "wanted" deeds)
+  { id: "wanted", name: "Wanted Poster", unlock: "deed:feat:wanted:1" },
 ];
 const r4 = (v) => Math.round(v * 10000) / 10000;
 
