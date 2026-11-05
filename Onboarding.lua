@@ -148,7 +148,12 @@ local function Build()
     panel.bubble:SetPoint("BOTTOMRIGHT", window, "TOPLEFT", STAND_X - OGRE * 0.3, -TOP_BEAM_TOP + 46)
     panel.bubble:SetFrameLevel(header + 12)
     panel.bubble:EnableMouse(true)  -- (clicks on it don't fall through to the page)
-    panel.bubble:SetScript("OnMouseUp", function() if current and current.timed then Close() end end)  -- (a remark: off it goes)
+    panel.bubble:SetScript("OnMouseUp", function()  -- (a remark: off it goes, and the Shoo deed counts it: SecretDeeds.lua)
+        if current and current.timed then
+            Close()
+            if ns.SecretShoo then ns.SecretShoo() end
+        end
+    end)
     panel.bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 16, edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
     panel.bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)

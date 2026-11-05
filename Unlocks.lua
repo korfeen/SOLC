@@ -191,6 +191,7 @@ function ns.AddTribute(spec)
     db.chests = db.chests or {}
     local tier = math.max(1, math.min(#TIERS, tonumber(spec.tier) or #TIERS))
     db.chests[#db.chests + 1] = { dungeon = ns.TRIBUTE, time = time(), tier = tier, tribute = spec }
+    if ns.Tally then ns.Tally("tribute") end  -- (the secret Graced By The Godz deed, Achievements.lua)
     if ns.OnKillsChanged then ns.OnKillsChanged() end
 end
 -- The cards a tribute shows (the chest show's items): its pieces and ingredients.

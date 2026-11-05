@@ -74,3 +74,4 @@ GamesRoom.lua
 Onboarding.lua
 UnknownMobs.lua
 LifeStats.lua
+SecretDeeds.lua

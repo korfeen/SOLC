@@ -122,14 +122,30 @@ local FEATS = {
     -- What you've spent in the Pro Shop, wallpapers too (KillTrackerDB.shop.spent; only yours). The steward's whole look
     -- comes with it: his snooty eyes at 500, his striped outfit at 1500, his sneer at 3000, his Club Sage skin at 6000
     -- and his boater at the top (tools/gen-art-proshop-club.json, convert-art.js BASE_UNLOCKS).
-    { key = "shop", label = "Spent in the Pro Shop", unit = "points", secret = true,
-        hint = "Money talks, darling. In my shop it positively sings.", count = function(_, f) return f.shopSpent end, tiers = {
+    { key = "shop", label = "Spent in the Pro Shop", unit = "points", count = function(_, f) return f.shopSpent end, tiers = {
         { 100, "Window Shopper", 5 }, { 500, "Regular Customer", 15 }, { 1500, "Valued Member", 30 }, { 3000, "Big Spender", 50 },
         { 6000, "The Steward's Favourite", 80 }, { 10000, "Life Member", 120 } } },
     -- Friendship: the most dungeons you've cleared with one guildmate (KillTrackerDB.companions, Guild.lua).
-    { key = "buddy", label = "Dungeons with one guildmate", unit = "clears together", secret = true,
-        hint = "Some members go into the dark together. Again and again. I find it touching. Briefly.", count = function(_, f) return f.buddy end, tiers = {
+    { key = "buddy", label = "Dungeons with one guildmate", unit = "clears together", count = function(_, f) return f.buddy end, tiers = {
         { 3, "Dungeon Buddies", 15 }, { 10, "Partners In Crime", 30 }, { 25, "Inseparable", 60 }, { 50, "Joined At The Hip", 100 } } },
+    -- Secret deeds: one-off surprises (SecretDeeds.lua counts them into your tally; hibernation: your napping). Shown as
+    -- "A secret deed" till begun, hint: Reginald's nudge when it's clicked (the Deeds page).
+    { key = "dance", label = "Murloc Dance Party", unit = "dances", secret = true, count = function(_, f) return f.tally and (f.tally.dance or 0) end,
+        hint = "Some creatures appreciate rhythm. Mostly the wet ones.", tiers = { { 1, "Murloc Dance Party", 25 } } },
+    { key = "naked", label = "Naked Brawler", unit = "naked kills", secret = true, count = function(_, f) return f.tally and (f.tally.naked or 0) end,
+        hint = "Clothing is optional in a fight. Advisable, but optional.", tiers = { { 1, "Naked Brawler", 25 } } },
+    { key = "shoo", label = "Shoo", unit = "remarks waved off", secret = true, count = function(_, f) return f.tally and (f.tally.shoo or 0) end,
+        hint = "I know when I'm being dismissed. I keep count.", tiers = { { 25, "Shoo", 25 } } },
+    { key = "hibernation", label = "Hibernation", unit = "minutes napped", secret = true, count = function(_, f) return f.nap end,
+        hint = "The finest members sleep through most of it.", tiers = { { 24 * 60, "Hibernation", 25 } } },
+    { key = "deadTired", label = "Dead Tired", unit = "times", secret = true, count = function(_, f) return f.tally and (f.tally.deadTired or 0) end,
+        hint = "Persistence is admirable. Usually.", tiers = { { 1, "Dead Tired", 25 } } },
+    { key = "wave", label = "Ogre Diplomacy", unit = "waves", secret = true, count = function(_, f) return f.tally and (f.tally.wave or 0) end,
+        hint = "Have you tried being friendly to your cousins?", tiers = { { 1, "Ogre Diplomacy", 25 } } },
+    { key = "flights", label = "Frequent Flyer", unit = "flights", secret = true, count = function(_, f) return f.tally and (f.tally.flights or 0) end,
+        hint = "Some members never walk anywhere. I admire that.", tiers = { { 25, "Frequent Flyer", 25 } } },
+    { key = "tribute", label = "Graced By The Godz", unit = "tributes", secret = true, count = function(_, f) return f.tally and (f.tally.tribute or 0) end,
+        hint = "Some members are favoured from above. Not you. Yet.", tiers = { { 1, "Graced By The Godz", 25 } } },
 }
 
 -- Your lifetime tally of things counted nowhere else (KillTrackerDB.tally: bounties claimed, chests opened): one more, and the deeds checked (with the usual popup).
@@ -509,6 +525,7 @@ local function CountKills(source)
         facts.bounties, facts.chests = tally.bounties or 0, tally.chests or 0
         local life = source.life or {}
         facts.herbs, facts.ore, facts.skins, facts.fish = life.herbs or 0, life.ore or 0, life.skins or 0, life.fish or 0
+        facts.tally, facts.nap = tally, life.nap or 0  -- (the secret deeds: SecretDeeds.lua)
         facts.shopSpent = source.shop and source.shop.spent or 0
         facts.buddy = 0
         for _, c in pairs(source.companions or {}) do facts.buddy = math.max(facts.buddy, c.clears or 0) end
