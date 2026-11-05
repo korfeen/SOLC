@@ -58,5 +58,449 @@
   ],
   "desc": "Redridge Links: a REDDISH golf course in the Redridge Mountains: the fairway is short rust-red grass and red clay, the rough is red rocks and autumn shrubs in reds and oranges, the putting green a smooth patch of deep russet turf with the red flag beside Lake Everstill as the water hazard, red rock cliffs and ridges all around, the wooden bridge and stone houses of Lakeshire across the water, a gnoll peeking from behind a red boulder, warm autumn light, everything in reds, rusts and oranges",
   "unlock": "deed:feat:explore:redridge:11"
+ },
+ {
+  "layer": "background",
+  "id": "zone_lochmodan",
+  "rarity": "uncommon",
+  "explore": "Loch Modan",
+  "desc": "Loch Modan Links: a green course on rolling hills beside the deep blue loch, the huge stone Stonewrought Dam as a backdrop, a dwarven stone clubhouse with a chimney, a trogg peeking out of a cave in the rough, a ram grazing on the fairway, crisp mountain air",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:lochmodan:11"
+ },
+ {
+  "layer": "background",
+  "id": "zone_teldrassil",
+  "rarity": "uncommon",
+  "explore": "Teldrassil",
+  "desc": "Teldrassil Course: a soft green course in a twilight purple-blue night elf forest on the World Tree, giant glowing trees, moonwells as water hazards, graceful elven arches, glowing wisps floating over the green, a curious nightsaber cub batting at the flag, dreamy violet light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:teldrassil:11"
+ },
+ {
+  "layer": "background",
+  "id": "zone_darkshore",
+  "rarity": "uncommon",
+  "explore": "Darkshore",
+  "desc": "Darkshore Course: a seaside course on a misty night-blue shore, fairways of dark grass between grey sand dunes and old elven ruins, the sea as the water hazard, a huge stranded sea creature skeleton on the beach, a murloc chasing a golf ball, a big pale moon",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:darkshore:9"
+ },
+ {
+  "layer": "background",
+  "id": "zone_duskwood",
+  "rarity": "rare",
+  "explore": "Duskwood",
+  "desc": "Duskwood Night Course: a spooky dark-green course in a gloomy forest at night, twisted black trees, a crooked graveyard behind the green, Darkshire's lamplit houses and clock tower, a worgen silhouette howling on a hill, a skeleton caddie holding the flag, purple fog, a full moon",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:duskwood:13"
+ },
+ {
+  "layer": "background",
+  "id": "zone_wetlands",
+  "rarity": "rare",
+  "explore": "Wetlands",
+  "desc": "Wetlands Course: a soggy green course in misty marshes, fairways between reeds and muddy pools, a crocolisk sunning on the green, the ruined dwarven fortress Grim Batol on a cliff far away, Menethil Harbor's boats in the mist, grey drizzly light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:wetlands:15"
+ },
+ {
+  "layer": "background",
+  "id": "zone_hillsbrad",
+  "rarity": "rare",
+  "explore": "Hillsbrad Foothills",
+  "desc": "Hillsbrad Foothills Course: a pleasant green course on gentle hills with apple orchards, the farming town of Southshore with its little houses and fields, Durnholde Keep on a hill in the distance, a sheep wandering onto the fairway, fresh breezy spring light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:hillsbrad:12"
+ },
+ {
+  "layer": "background",
+  "id": "zone_arathi",
+  "rarity": "rare",
+  "explore": "Arathi Highlands",
+  "desc": "Arathi Highlands Course: a windswept course on broad golden-green highlands, standing stone circles and ruined towers, the walls of Stromgarde far off, a raptor peeking over a rock, big rolling clouds, late afternoon light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:arathi:16"
+ },
+ {
+  "layer": "background",
+  "id": "zone_alterac",
+  "rarity": "rare",
+  "explore": "Alterac Mountains",
+  "desc": "Alterac Mountains Course: a SNOWY high mountain course, fairways of packed snow between pine trees and craggy grey peaks, a ruined castle of Alterac on a cliff, a yeti caddie carrying the golf bag, cold blue light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:alterac:15"
+ },
+ {
+  "layer": "background",
+  "id": "zone_badlands",
+  "rarity": "rare",
+  "explore": "Badlands",
+  "desc": "Badlands Course: a dry orange DESERT course of cracked red earth and sand traps everywhere, rocky mesas, huge dragon bones half buried in the dust, a putting green of rough dry turf with the red flag, a buzzard watching from a dead tree, harsh hot sun",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:badlands:14"
+ },
+ {
+  "layer": "background",
+  "id": "zone_swamp",
+  "rarity": "rare",
+  "explore": "Swamp of Sorrows",
+  "desc": "Swamp of Sorrows Course: a gloomy green swamp course, fairways of mossy turf between murky pools and giant hanging willows, the sunken temple of Atal'Hakkar's stones rising from the water, a sad dragonkin whelp sulking on the green, dim teal light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:swamp:11"
+ },
+ {
+  "layer": "background",
+  "id": "zone_stranglethorn",
+  "rarity": "rare",
+  "explore": "Stranglethorn Vale",
+  "desc": "Stranglethorn Vale Course: a lush JUNGLE course, bright green fairways between giant palms and ferns, ancient troll ruins with stone heads, a raptor in the rough, a waterfall as the water hazard, the goblin port of Booty Bay's wooden buildings on the coast, steamy tropical sun",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:stranglethorn:27"
+ },
+ {
+  "layer": "background",
+  "id": "zone_riverglades",
+  "rarity": "rare",
+  "explore": "Riverglades",
+  "desc": "Riverglades Course: a wide green river valley course with lazy winding rivers and reedy glades as water hazards, wooden horse ranches and paddocks of the Brotherhood of the Horse, a busy goblin river port with smoking chimneys and cranes, a rough dark stronghold on a far hill, horses grazing by the green, warm golden light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:riverglades:14"
+ },
+ {
+  "layer": "background",
+  "id": "zone_tirisfal",
+  "rarity": "uncommon",
+  "explore": "Tirisfal Glades",
+  "desc": "Tirisfal Glades Course: an eerie course of sickly yellow-green grass under a grey-green sky, dead twisted trees, crumbling crypts and graveyards, the ruined towers of Lordaeron far off, a zombie groundskeeper raking a bunker, gloomy light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:tirisfal:17"
+ },
+ {
+  "layer": "background",
+  "id": "zone_silverpine",
+  "rarity": "uncommon",
+  "explore": "Silverpine Forest",
+  "desc": "Silverpine Forest Course: a misty dark-green course among tall grey-green pines, a rocky lakeshore as the water hazard, an old wooden farmhouse, a worgen peeking between the trees, foggy cool light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:silverpine:15"
+ },
+ {
+  "layer": "background",
+  "id": "zone_durotar",
+  "rarity": "uncommon",
+  "explore": "Durotar",
+  "desc": "Durotar Course: a hot RED-DIRT desert course, the fairway of dusty orange earth with tufts of dry grass, spiky orcish fences and huts, a boar trotting across the green, scorpions in the bunker, the spiked walls of Orgrimmar far off, blazing sun",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:durotar:11"
+ },
+ {
+  "layer": "background",
+  "id": "zone_mulgore",
+  "rarity": "uncommon",
+  "explore": "Mulgore",
+  "desc": "Mulgore Course: a peaceful course on endless rolling green plains of tall grass, tauren tents and totems, the high mesas of Thunder Bluff on the horizon, a herd of kodos grazing near the green, plainstriders on the fairway, wide sunny blue sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:mulgore:16"
+ },
+ {
+  "layer": "background",
+  "id": "zone_barrens",
+  "rarity": "uncommon",
+  "explore": "The Barrens",
+  "desc": "The Barrens Course: a vast dry savanna course of golden-brown grass, flat-topped acacia trees, termite mounds, a giraffe-like tallstrider wandering across, a zeppelin floating above, the Crossroads' tents far off, hot dusty sun",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:barrens:25"
+ },
+ {
+  "layer": "background",
+  "id": "zone_ashenvale",
+  "rarity": "rare",
+  "explore": "Ashenvale",
+  "desc": "Ashenvale Course: a lush deep-green course in an ancient purple-tinted night elf forest, enormous trees, glowing moonwells, elven ruins with curved roofs, a furbolg caddie, soft magical light through the canopy",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:ashenvale:18"
+ },
+ {
+  "layer": "background",
+  "id": "zone_stonetalon",
+  "rarity": "rare",
+  "explore": "Stonetalon Mountains",
+  "desc": "Stonetalon Mountains Course: a rugged course of brown and grey stone, greens perched on rocky ledges, a burned stump-filled valley on one side, a goblin logging machine smoking far off, a harpy perched on the flag, mountain wind",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:stonetalon:11"
+ },
+ {
+  "layer": "background",
+  "id": "zone_desolace",
+  "rarity": "rare",
+  "explore": "Desolace",
+  "desc": "Desolace Course: a bleak GREY wasteland course of ash-grey dirt and cracked stone, huge ancient bones and skulls sticking out of the ground, centaur tents, a kodo graveyard, a lone kodo on the fairway, pale washed-out sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:desolace:15"
+ },
+ {
+  "layer": "background",
+  "id": "zone_dustwallow",
+  "rarity": "rare",
+  "explore": "Dustwallow Marsh",
+  "desc": "Dustwallow Marsh Course: a hazy green swamp course, mossy fairways between murky pools and gnarled trees, Theramore's stone harbour castle on the coast, a black dragon whelp peeking from the reeds, warm humid light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:dustwallow:7"
+ },
+ {
+  "layer": "background",
+  "id": "zone_feralas",
+  "rarity": "epic",
+  "explore": "Feralas",
+  "desc": "Feralas Course: a lush rainforest course of deep green, giant ancient trees and ferns, crumbling elven ruins overgrown with vines, ogres lounging in the rough (friendly ones), a misty waterfall, rich green light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:feralas:16"
+ },
+ {
+  "layer": "background",
+  "id": "zone_tanaris",
+  "rarity": "epic",
+  "explore": "Tanaris",
+  "desc": "Tanaris Course: a SAND golf course in a golden desert: the fairway is raked smooth sand, the green a small patch of turf at an oasis with palms, the goblin town of Gadgetzan's walls and water tower, a giant sand worm peeking out of a bunker, blazing sun",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:tanaris:20"
+ },
+ {
+  "layer": "background",
+  "id": "zone_hinterlands",
+  "rarity": "epic",
+  "explore": "The Hinterlands",
+  "desc": "The Hinterlands Course: a grand green course on high forested hills, troll ruins with big stone faces, a gryphon soaring overhead from Aerie Peak's mountain nest, a wildhammer dwarf caddie, bright clear light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:hinterlands:14"
+ },
+ {
+  "layer": "background",
+  "id": "zone_searing",
+  "rarity": "epic",
+  "explore": "Searing Gorge",
+  "desc": "Searing Gorge Course: a scorched course of black rock and red-hot cracks, lava rivers as water hazards, the green a patch of ashy turf with the flag, dark iron dwarf mining machines, smoke and embers, a fiery orange sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:searing:7"
+ },
+ {
+  "layer": "background",
+  "id": "zone_burning",
+  "rarity": "epic",
+  "explore": "Burning Steppes",
+  "desc": "Burning Steppes Course: a hellish course of blackened earth and glowing lava pools, burning trees, Blackrock Mountain's giant peak in the background, a little black dragon whelp chasing the ball, ash falling from a red sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:burning:10"
+ },
+ {
+  "layer": "background",
+  "id": "zone_azshara",
+  "rarity": "epic",
+  "explore": "Azshara",
+  "desc": "Azshara Course: an autumn course of red, orange and gold trees on coastal cliffs, grand elven ruins and broken columns, the sea crashing below, a naga peeking from the water hazard, golden autumn light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:azshara:19"
+ },
+ {
+  "layer": "background",
+  "id": "zone_felwood",
+  "rarity": "epic",
+  "explore": "Felwood",
+  "desc": "Felwood Course: a corrupted dark course of sickly green grass, twisted black trees and glowing green fel pools as water hazards, a satyr skulking in the rough, an eerie green glow under dark clouds",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:felwood:12"
+ },
+ {
+  "layer": "background",
+  "id": "zone_ungoro",
+  "rarity": "epic",
+  "explore": "Un'Goro Crater",
+  "desc": "Un'Goro Crater Course: a prehistoric JUNGLE course in a huge crater, giant ferns and mushrooms, a steaming volcano, glowing crystals, a big dinosaur devilsaur stomping across the far fairway, little raptors on the green, steamy golden light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:ungoro:7"
+ },
+ {
+  "layer": "background",
+  "id": "zone_blasted",
+  "rarity": "epic",
+  "explore": "Blasted Lands",
+  "desc": "Blasted Lands Course: a cracked RED wasteland course, scorched red earth and dead spiky plants, the giant swirling Dark Portal far off, a little demon imp holding the flag, a stormy red sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:blasted:9"
+ },
+ {
+  "layer": "background",
+  "id": "zone_wpl",
+  "rarity": "epic",
+  "explore": "Western Plaguelands",
+  "desc": "Western Plaguelands Course: a once-pretty farmland course gone grim, sickly grass, abandoned farms and a broken windmill, a scarecrow on the green, skeletal crows, the Bulwark's walls far off, grey sickly light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:wpl:13"
+ },
+ {
+  "layer": "background",
+  "id": "zone_hyjal",
+  "rarity": "epic",
+  "explore": "Mount Hyjal",
+  "desc": "Mount Hyjal Course: a magnificent green course on a mountain forest slope, the colossal World Tree Nordrassil towering into the sky, ancient trees with silver and violet leaves, night elf shrines, a glowing wisp near the hole, a peaceful twilight sky with stars",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:hyjal:9"
+ },
+ {
+  "layer": "background",
+  "id": "zone_epl",
+  "rarity": "legendary",
+  "explore": "Eastern Plaguelands",
+  "desc": "Eastern Plaguelands Course: a haunted course of dead grey grass under a purple-green sky, a floating necropolis in the clouds, ruined chapels, the silver-roofed Light's Hope Chapel far off, a ghoul greenkeeper, eerie light",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:epl:23"
+ },
+ {
+  "layer": "background",
+  "id": "zone_winterspring",
+  "rarity": "legendary",
+  "explore": "Winterspring",
+  "desc": "Winterspring Course: a beautiful SNOW course: fairways of smooth glittering snow, blue-white pines heavy with snow, frozen hot springs steaming, a furry white yeti caddie, a frostsaber on a snowy ridge, the aurora dancing over a pale blue sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:winterspring:13"
+ },
+ {
+  "layer": "background",
+  "id": "zone_silithus",
+  "rarity": "legendary",
+  "explore": "Silithus",
+  "desc": "Silithus Course: an alien yellow DESERT course of sand and strange hives, giant bug mounds and crystal formations, a huge silithid bug peeking from a bunker, the old Cenarion Hold's huts, a hot hazy yellow sky",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:silithus:7"
+ },
+ {
+  "layer": "background",
+  "id": "zone_deadwind",
+  "rarity": "legendary",
+  "explore": "Deadwind Pass",
+  "desc": "Deadwind Pass Course: a dead grey mountain course of withered grass and bare rocks, the dark tower of Karazhan looming in the background, ghostly lights in its windows, a spectral caddie, storm clouds and lightning",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:deadwind:3"
+ },
+ {
+  "layer": "background",
+  "id": "zone_moonglade",
+  "rarity": "legendary",
+  "explore": "Moonglade",
+  "desc": "Moonglade Course: a serene, magical green course in a hidden valley ringed by mountains, a calm lake reflecting the moon, little druid huts and owlbeasts, glowing flowers, soft silver moonlight",
+  "flags": [
+   "--examples",
+   "Background/Uncommon/golf-course-at-dawn.png,Background/Uncommon/moonlit-fairway.png,Background/Legendary/dragon-over-the-fairway.png"
+  ],
+  "unlock": "deed:feat:explore:moonglade:1"
  }
 ]

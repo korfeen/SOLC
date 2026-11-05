@@ -4,7 +4,7 @@ const fs = require("fs");
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = require("C:/Users/faluk/Projects/solc-activity/node_modules/fengari");
 const L = lauxlib.luaL_newstate(); lualib.luaL_openlibs(L);
 const run = (code, name) => { if (lauxlib.luaL_loadbuffer(L, to_luastring(code), null, to_luastring(name)) || lua.lua_pcall(L, 0, 0, 0)) throw Error(to_jsstring(lua.lua_tostring(L, -1))); };
-run(`KillTrackerDB = { tally = {} }
+run(`KillTrackerDB = { tally = {} } SlashCmdList = {}
   ns = { KillHandlers = {}, IsMember = function() return true end }
   function ns.Tally(k) KillTrackerDB.tally[k] = (KillTrackerDB.tally[k] or 0) + 1 end
   KINDS = { [100] = "Murloc", [200] = "Ogre", [300] = "Boar" }

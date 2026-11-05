@@ -335,10 +335,54 @@ local EXPLORE = {
     { "westfall", "Westfall", 1436, 14, "Scarecrow's Tour" },
     { "redridge", "Redridge Mountains", 1433, 11, "Red All Over" },
     { "needles", "Thousand Needles", 1441, 9, "Needle Threader" },
+    { "lochmodan", "Loch Modan", 1432, 11, "Dam Fine Round" },
+    { "teldrassil", "Teldrassil", 1438, 11, "Leaf Peeper" },
+    { "darkshore", "Darkshore", 1439, 9, "Moonlit Beachcomber" },
+    { "duskwood", "Duskwood", 1431, 13, "Spooky Back Nine" },
+    { "wetlands", "Wetlands", 1437, 15, "Bog Standard Golfer" },
+    { "hillsbrad", "Hillsbrad Foothills", 1424, 12, "Hillsbrad Hacker" },
+    { "arathi", "Arathi Highlands", 1417, 16, "Highland Fling" },
+    { "alterac", "Alterac Mountains", 1416, 15, "Peak Performance" },
+    { "badlands", "Badlands", 1418, 14, "Dust Bowl" },
+    { "swamp", "Swamp of Sorrows", 1435, 11, "Sorry State" },
+    { "stranglethorn", "Stranglethorn Vale", 1434, 27, "Jungle Gym" },
+    { "riverglades", "Riverglades", 2548, 14, "Glade Runner" },
+    { "tirisfal", "Tirisfal Glades", 1420, 17, "Grave Lie" },
+    { "silverpine", "Silverpine Forest", 1421, 15, "Pine Needler" },
+    { "durotar", "Durotar", 1411, 11, "Red Dirt Rumble" },
+    { "mulgore", "Mulgore", 1412, 16, "Moo-ving Up" },
+    { "barrens", "The Barrens", 1413, 25, "Barren Fairways" },
+    { "ashenvale", "Ashenvale", 1440, 18, "Ashes To Ashenvale" },
+    { "stonetalon", "Stonetalon Mountains", 1442, 11, "Talon Clipper" },
+    { "desolace", "Desolace", 1443, 15, "Desolate Driver" },
+    { "dustwallow", "Dustwallow Marsh", 1445, 7, "Marsh Mellow" },
+    { "feralas", "Feralas", 1444, 16, "Feral Ogre" },
+    { "tanaris", "Tanaris", 1446, 20, "Sand In Everything" },
+    { "hinterlands", "The Hinterlands", 1425, 14, "Hinter No More" },
+    { "searing", "Searing Gorge", 1427, 7, "Searing Success" },
+    { "burning", "Burning Steppes", 1428, 10, "Steppe Up" },
+    { "azshara", "Azshara", 1447, 19, "Azshara's Leftovers" },
+    { "felwood", "Felwood", 1448, 12, "Fel Swoop" },
+    { "ungoro", "Un'Goro Crater", 1449, 7, "Crater Raider" },
+    { "blasted", "Blasted Lands", 1419, 9, "Blasted Them" },
+    { "wpl", "Western Plaguelands", 1422, 13, "Plague Doctor" },
+    { "hyjal", "Mount Hyjal", 2482, 9, "Branch Manager" },
+    { "epl", "Eastern Plaguelands", 1423, 23, "Plague Doctor, Again" },
+    { "winterspring", "Winterspring", 1452, 13, "Winter Is Over" },
+    { "silithus", "Silithus", 1451, 7, "Bug Hunt" },
+    { "deadwind", "Deadwind Pass", 1430, 3, "Haunted Hole In One" },
+    { "moonglade", "Moonglade", 1450, 1, "Moonwalker" },
 }
 local function Explored(uiMap)
     local textures = C_MapExplorationInfo and C_MapExplorationInfo.GetExploredMapTextures and C_MapExplorationInfo.GetExploredMapTextures(uiMap)
     return textures and #textures or 0
+end
+-- Your exploration, for /solc explore (SecretDeeds.lua): { zone, pieces explored, pieces in all }, and whether the
+-- game tells an addon at all (C_MapExplorationInfo).
+function ns.ExplorationProgress()
+    local list = {}
+    for _, z in ipairs(EXPLORE) do list[#list + 1] = { z[2], Explored(z[3]), z[4] } end
+    return list, C_MapExplorationInfo ~= nil and C_MapExplorationInfo.GetExploredMapTextures ~= nil
 end
 for _, z in ipairs(EXPLORE) do
     FEATS[#FEATS + 1] = { key = "explore:" .. z[1], label = "Explore " .. z[2], unit = "map pieces", group = "Exploration",

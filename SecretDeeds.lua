@@ -75,3 +75,19 @@ C_Timer.NewTicker(600, function()
     if life and not earned and (life.nap or 0) >= NAP_GOAL and ns.CheckAchievements then ns.CheckAchievements() end
 end)
 ns.NAP_GOAL = NAP_GOAL
+
+-- /solc explore: each zone's map pieces uncovered (the exploration deeds and their golf courses, Achievements.lua).
+local Slash = SlashCmdList.SOLC
+if Slash then
+    SlashCmdList.SOLC = function(input)
+        if strtrim(input or ""):lower() ~= "explore" then return Slash(input) end
+        local list, works = ns.ExplorationProgress()
+        if not works then ns.Print("This game doesn't tell addons what you've explored (no C_MapExplorationInfo).") return end
+        table.sort(list, function(a, b) return a[2] / a[3] > b[2] / b[3] end)
+        local parts = {}
+        for _, z in ipairs(list) do
+            if z[2] > 0 then parts[#parts + 1] = ("%s %s%d/%d|r"):format(z[1], z[2] >= z[3] and "|cff55dd55" or "|cffffd100", z[2], z[3]) end
+        end
+        ns.Print(#parts > 0 and ("Explored: " .. table.concat(parts, ", ")) or "No zone explored yet, as far as the map says.")
+    end
+end
