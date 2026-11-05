@@ -368,7 +368,7 @@ end
 
 -- Personal catalogue: reachable from the current sidebar, independently of the legacy Pictures page.
 ns.RegisterPage({
-    key = "pixcollection", label = "Collection", section = "me", order = 4,
+    key = "pixcollection", label = "Collection", section = "me", order = 4, under = "dreambed",  -- (the Dream Bed's book opens it)
     bare = true,
     create = function(parent)
         local page = UI.PixCollection(parent)

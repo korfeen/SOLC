@@ -33,10 +33,10 @@ local STEPS = {
         { text = "Rank two. I am as surprised as you are. The Deeds are open.", open = "deeds", glow = "deeds" },
         { text = "Ladders of things worth doing. Each step pays points, and even what you did before today counts. Generous, if you ask me. Nobody did." },
     } },
-    { id = "collection", rank = 3, page = "pixcollection", lines = {
-        { text = "Rank three. Persistent, aren't you. Like a rash. Your Collection is open, and the Dream Bed with it.", open = "pixcollection", glow = "pixcollection" },
-        { text = "Find \"Mint a picture\" among your pictures. Lie down, an ogre tells you its dream, and you paint it. Badly, I assume." },
-        { text = "What you paint becomes a picture all your own. Do keep it somewhere I won't have to look at it." },
+    { id = "collection", rank = 3, page = "dreambed", lines = {
+        { text = "Rank three. Persistent, aren't you. Like a rash. The Dream Bed is yours. Your own wallpaper, even. I chose none of it.", open = "dreambed", glow = "dreambed" },
+        { text = "Bonk yourself to sleep with the mallet, an ogre dreams, and you paint it. Badly, I assume." },
+        { text = "What you paint becomes a picture all your own. The big book on the rug is your Collection. Do keep it shut." },
     } },
     { id = "bounties", rank = 4, page = "bounties", lines = {
         { text = "Rank four. The bounty board is open. Do try not to bleed on the posters.", open = "bounties", glow = "bounties" },
@@ -54,6 +54,7 @@ local STEPS = {
 }
 local PAGE_RANKS = {}
 for _, step in ipairs(STEPS) do if step.page then PAGE_RANKS[step.page] = step.rank end end
+PAGE_RANKS.pixcollection = PAGE_RANKS.dreambed  -- (the Collection is the Dream Bed's book: locked with it)
 
 local function DB()
     local db = KillTrackerDB
@@ -325,7 +326,7 @@ function ns.StartTour(replay)
 end
 
 -- A locked page asked for (a link, a slash command): the steward says what rank it waits on.
-local NAMES = { deeds = "The Deeds", pixcollection = "Your Collection", bounties = "The bounty board", proshop = "My Pro Shop",
+local NAMES = { deeds = "The Deeds", pixcollection = "The Dream Bed", bounties = "The bounty board", proshop = "My Pro Shop",
     games = "The Games Room", dreambed = "The Dream Bed" }
 -- A remark: one line, no buttons, gone by itself after a while (a click on the bubble sends it off sooner). Never over
 -- a tour he's giving (then it goes to the chat); a remark in its place is replaced.

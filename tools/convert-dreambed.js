@@ -41,7 +41,23 @@ const WIDE = new Set(["room.png", "floor.png"]);
     if (clear) break;
   }
   art.room.floor = r4(y / img.height);
+  // The wall itself is cut out too (2026-11-05): your wallpaper shows there (DreamBed.lua), the window frame and the
+  // wooden rail stay. Above the rail (the first wooden row down the middle), a purple pixel (blue near its red, well
+  // over its green) goes; wood (blue far under its red) stays, with a soft edge between.
+  let rail = Math.floor(img.height * 0.3);
+  for (; rail < img.height; rail++) {
+    const i = (rail * img.width + Math.floor(img.width * 0.6)) * 4;
+    if (img.rgba[i] > img.rgba[i + 2] + 25) break;
+  }
+  art.room.rail = r4(rail / img.height);
+  for (let yy = 0; yy < rail; yy++) for (let x = 0; x < img.width; x++) {
+    const i = (yy * img.width + x) * 4, r = img.rgba[i], g = img.rgba[i + 1], b = img.rgba[i + 2];
+    if (img.rgba[i + 3] === 0 || b < g + 8) continue;
+    const keep = Math.max(0, Math.min(1, (0.55 - b / (r + 1)) / 0.15));
+    img.rgba[i + 3] = Math.round(img.rgba[i + 3] * keep);
+  }
   writeBlp(path.join(OUT, "room.blp"), 1024, 512, Buffer.from(resample(img, 0, 0, img.width, img.height, 1024, 512)));
+  require("./make-role-icons").writePng(path.join(SRC, "..", "work", "room-cut-preview.png"), img.width, img.height, img.rgba);  // (to look at)
 }
 if (fs.existsSync(path.join(SRC, "floor.png"))) {
   const img = decodePng(path.join(SRC, "floor.png"));

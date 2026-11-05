@@ -1844,6 +1844,8 @@ OVERVIEW = {
                     page.OpenView(self.mint, false, self.slot)  -- yours: it, big, in the portrait's place
                 elseif not self.key and ns.RankLocked and ns.RankLocked("pixcollection") and ns.StewardSay then
                     ns.StewardSay(SHOWCASE_SNARK)  -- (no pictures before minting opens, Ogre Rank 3: he has a word)
+                elseif not self.key and #(KillTrackerDB.mints or {}) == 0 and ns.ShowDreamBed then
+                    ns.ShowDreamBed()  -- (no pictures yet: off to dream one)
                 elseif not self.key then
                     page.ShowPanel("inventory")  -- an empty spot of yours: your inventory, to open one and hang it
                 elseif self.mint then

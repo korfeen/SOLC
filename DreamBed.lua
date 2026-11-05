@@ -6,7 +6,10 @@
 -- easel, a layer a beat, in the edition you reach for (brush, coloured pencils, crayons); then the painting comes
 -- forward, signed by you. The mint itself: ns.DreamMint (Minting.lua). The room is painted (tools/gen-dreambed-art.js)
 -- and laid out by hand (tools/dreambed-room.js): DreamBedArt.lua has both.
--- Opened over the page area, as a screen (UI.lua): ns.ShowDreamBed().
+-- A room of its own: the sidebar's Dream Bed (its page only stands in for it: opening it shows the room over the page
+-- area, leaving it puts the room away), from Ogre Rank 3 (Onboarding.lua). Your wallpaper is on its wall (the painting's
+-- wall is cut out above the rail, tools/convert-dreambed.js), and the big red book on the rug opens your Collection (the
+-- pixcollection page, under this one). ns.ShowDreamBed() goes there.
 
 local _, ns = ...
 
@@ -225,7 +228,7 @@ local function SetPhase(phase)
     S.phase = phase
     W.tap:SetShown(phase ~= "bed" and phase ~= "done")  -- (the dream plays by itself; a click skips to its next step)
     W.mallet:SetEnabled(phase == "bed" and ns.Tokens("bonk") > 0)  -- (a Bonk: good night)
-    W.back:SetShown(phase == "bed")  -- (only before the bonk: once he's dreaming, you see it through)
+    W.back:SetShown(phase == "bed" and not S.asPage)  -- (only before the bonk; never in its own room: it's the page)
     W.bubble:SetShown(phase == "bed")  -- (what he's thinking about: only while he lies there awake)
 end
 
@@ -1022,6 +1025,21 @@ local function Build()
     panel:SetTexCoord(left, left + fx, panelFrom, art.room.floor)
     panel:SetPoint("TOPLEFT", 0, -panelFrom * S.h)
     panel:SetSize(S.w, (wallTo - panelFrom) * S.h)
+    -- Your wallpaper on the wall (behind the painting, its wall cut out above the rail), a touch dimmer than elsewhere (a
+    -- bedroom by lamplight), a soft shadow along the rail. Put up as the room opens (PaperUp).
+    local railY = (art.room.rail or panelFrom) * S.h
+    W.paper = screen:CreateTexture(nil, "BACKGROUND", nil, -8)
+    W.paper:SetPoint("TOPLEFT")
+    W.paper:SetSize(S.w, railY + 2)
+    W.paper.h = railY + 2
+    local paperDim = screen:CreateTexture(nil, "BACKGROUND", nil, -7)
+    paperDim:SetAllPoints(W.paper)
+    paperDim:SetColorTexture(0.05, 0.03, 0.06, 0.28)
+    local railShadow = screen:CreateTexture(nil, "BACKGROUND", nil, -6)
+    railShadow:SetPoint("BOTTOMLEFT", W.paper, "BOTTOMLEFT")
+    railShadow:SetSize(S.w, 14)
+    railShadow:SetColorTexture(1, 1, 1)
+    railShadow:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.45), CreateColor(0, 0, 0, 0))
     if art.floor then  -- (slid and zoomed as laid out)
         local under = CreateFrame("Frame", nil, screen)
         under:SetPoint("TOPLEFT", 0, -S.h / 2) under:SetPoint("BOTTOMRIGHT")
@@ -1154,6 +1172,13 @@ local function Build()
     W.mug = PropOver(mugAt, function() end)
     W.mug:EnableMouse(false)  -- (no clicking: it's just a mug)
     Piece(W.mug, "mug", L.mug)
+    -- Your Collection: the big book on the rug (PixCollection.lua's page, under this room's).
+    if L.book and art.pieces.book then
+        W.book = PropOver(At("book"), function() if ns.OpenPage then ns.OpenPage("pixcollection") end end,
+            function() return O("Your Collection", "MY STUFF") end)
+        Piece(W.book, "book", L.book)
+        W.book.tag:SetText(O("Every piece you have, and every one you could dream of", "LOOK"))
+    end
     -- The mallet by the nightstand: a Bonk, good night (ogres go to sleep by bonking their heads).
     local malletAt = At("mallet")
     W.mallet = PropOver(malletAt, GoodNight, function() return O("The mallet: good night", "BONK HIM") end)
@@ -1419,8 +1444,18 @@ local function Build()
 end
 
 -- Opens the Dream Bed over the main window's pages. The first time: a few stories to start with.
-function ns.ShowDreamBed()
+-- Your wallpaper on the room's wall (Wallpaper.lua), as it is now.
+local function PaperUp()
+    if W.paper and UI.SetWallpaper and ns.GetWallpaper then
+        UI.SetWallpaper(W.paper, ns.GetWallpaper(), S.w, W.paper.h, ns.WallpaperTune and ns.WallpaperTune("page") or 180)
+    end
+end
+
+-- The room over the page area: as its own page (asPage: the sidebar's Dream Bed), else as a screen over another.
+local function ShowRoom(asPage)
     if not W.screen then Build() end
+    S.asPage = asPage
+    PaperUp()
     local screen, view, pageArea = W.screen, W.view, UI.pageArea
     view:ClearAllPoints()
     if pageArea then
@@ -1450,5 +1485,27 @@ function ns.ShowDreamBed()
         for _, mint in ipairs(db.mints) do if mint.number == db.dreamPending then pending = mint end end
         if pending then Resume(pending) elseif db.dreamPending then db.dreamPending = nil end
     end
-    if UI.SetScreen then UI.SetScreen("Dream Bed", "DREAM", function() screen:Hide() end) end
+    if not asPage and UI.SetScreen then UI.SetScreen("Dream Bed", "DREAM", function() screen:Hide() end) end
+    W.back:SetShown(S.phase == "bed" and not asPage)
 end
+
+-- Anything asking for the Dream Bed (the showcase, /solc dream): its room.
+function ns.ShowDreamBed()
+    if ns.OpenPage then ns.OpenPage("dreambed") else ShowRoom(false) end
+end
+
+-- The room's page (the sidebar's Dream Bed): it shows the room as it opens and puts it away as you leave. (Refreshed
+-- often - a kill, a new picture: the room open, only its wallpaper is looked at again, a dream carries on.)
+ns.RegisterPage({
+    key = "dreambed", label = "Dream Bed", section = "me", order = 4,
+    bare = true,
+    create = function(parent)
+        local page = CreateFrame("Frame", nil, parent)
+        page:SetAllPoints()
+        page:SetScript("OnHide", function() if W.screen and S.asPage then W.screen:Hide() end end)
+        return page
+    end,
+    refresh = function()
+        if W.screen and W.screen:IsShown() and S.asPage then PaperUp() else ShowRoom(true) end
+    end,
+})
