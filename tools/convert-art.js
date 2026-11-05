@@ -53,7 +53,32 @@ const BASE_UNLOCKS = {
   "skin/club_sage": "deed:feat:shop:6000",                              // The Steward's Favourite (the Pro Shop steward's skin)
   "eyes/snooty_eyes": "deed:feat:shop:500",                             // Regular Customer (the steward's eyes)
   "expression/snooty_sneer": "deed:feat:shop:3000",                     // Big Spender (the steward's mouth)
+  // The epic and legendary pieces that came free: one a rank on the Ogre Rank ladder (Ranks.lua RANK_PIECES, 2026-11-05).
+  "expression/sea_dog_grin": "rank:2",
+  "eyes/dreamy_swirl": "rank:3",
+  "accessory/pirate_eyepatch": "rank:4",
+  "background/pool_with_floaties": "rank:5",
+  "accessory/floating_sheep": "rank:6",
+  "outfit/pirate_captain_coat": "rank:7",
+  "headwear/astral_nightcap": "rank:8",
+  "expression/crystal_drool": "rank:9",
+  "accessory/moonstone_pendant": "rank:10",
+  "expression/stardust_snore": "rank:11",
+  "eyes/starlit_dreamer": "rank:13",
+  "outfit/celestial_pajamas": "rank:14",
+  "skin/sea_cursed_teal": "rank:15",
+  "headwear/dragon_hatchling_hat": "rank:17",
+  "outfit/dragonhide_golf_jacket": "rank:19",
+  "skin/enchanted_jade": "rank:21",
+  "background/floating_sky_spa": "rank:23",
+  "outfit/royal_nap_robe": "rank:24",
+  "accessory/pocket_portal": "rank:25",
+  "skin/celestial_blue": "rank:27",
+  "headwear/crown_of_eternal_rest": "rank:28",
+  "background/dragon_over_the_fairway": "rank:29",
 };
+// Claw machine greens everyone starts with (make-unlock-art.js still writes them as gacha pieces): free to mint (2026-11-05).
+const STARTER = new Set(["outfit/gacha_outfit_mustard_vest", "outfit/gacha_outfit_sailor_stripes", "accessory/gacha_acc_ale_can", "accessory/gacha_acc_croquet_mallet", "accessory/gacha_acc_knockoff_shades", "accessory/gacha_acc_scratchcard", "accessory/gacha_acc_whiskey", "headwear/gacha_hair_bowlcut", "headwear/gacha_hair_combover", "headwear/gacha_hair_curlers", "headwear/gacha_hair_mullet", "headwear/gacha_hair_topknot"]);
 // Pieces that cover other layers ("<layer key>/<option id>": the layers they hide): those aren't drawn under them (still
 // rolled and kept: take the piece off and they're back).
 const COVERS = { "headwear/gear_dm_head": ["expression"], "headwear/gear_brd_head": ["expression"],
@@ -510,7 +535,7 @@ for (const folder of subdirs(SOURCE)) {
                 // A colour painted behind the ogre where the piece has nothing (the fitter's Lining: a hood's inside).
                 const lining = path.join(UNLOCKS, "generated", "fits", id + ".lining.png");
                 const suitLining = path.join(UNLOCKS, "generated", "fits", id.replace(/_body$/, "_suit") + ".lining.png");
-                layer.options.push({ id, name: meta.name || toName(file), rarity, unlock: meta.unlock, faceSkin: meta.faceSkin, dropChance: meta.dropChance,
+                layer.options.push({ id, name: meta.name || toName(file), rarity, unlock: STARTER.has(key + "/" + id) ? undefined : meta.unlock, faceSkin: meta.faceSkin, dropChance: meta.dropChance,
                     root: painted, files: [{ skin: null, file: path.join(painted, folder, rarityFolder, file) }],
                     frontFile: fs.existsSync(front) ? front : null, backFile: fs.existsSync(back) ? back : null,
                     suitFile: fs.existsSync(suit) && meta.suitHead ? suit : null, suitHead: meta.suitHead,

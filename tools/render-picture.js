@@ -200,7 +200,7 @@ function pictureRarity(traits, asked) {
   if (!atLeast) {
     let chance = { 0: 1 };
     for (const layer of LAYERS) {
-      const everyday = Object.values(options[layer]).filter((o) => !o.unlock && !o.retired);
+      const everyday = Object.values(options[layer]).filter((o) => !o.retired && (!o.unlock || o.unlock.startsWith("rank:")));  // (as Minting.lua Graded)
       if (!everyday.length) continue;
       const total = everyday.reduce((t, o) => t + (o.weight || WEIGHTS[o.rarity]), 0), next = {};
       for (const [score, p] of Object.entries(chance)) for (const o of everyday) {
@@ -218,7 +218,7 @@ function pictureRarity(traits, asked) {
     const o = options[layer][traits[layer]];
     score += layer === asked ? SCORES.uncommon : o ? SCORES[o.rarity] : 0;
   }
-  const share = atLeast[score] ?? 1;
+  const share = atLeast[score] ?? 0;
   for (const [rarity, limit] of TIERS) if (share <= limit + 1e-9) return rarity;
   return "uncommon";
 }

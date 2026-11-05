@@ -1076,8 +1076,14 @@ function Fill(key)
     rank.title:SetText(current.title)
     rank.points:SetText(nextRank and ("%d points - %d more to %s"):format(points, nextRank.points - points, nextRank.title)
         or ("%d points - the top rank"):format(points))
+    -- (more perks than lines: the last few reached, then what comes next)
+    local first = 1
+    for i, perk in ipairs(ns.RANK_PERKS) do
+        if perk.rank <= current.rank then first = i end
+    end
+    first = math.max(1, math.min(first - 3, #ns.RANK_PERKS - #rank.lines + 1))
     for i, line in ipairs(rank.lines) do
-        local perk = ns.RANK_PERKS[i]
+        local perk = ns.RANK_PERKS[first + i - 1]
         if perk then
             local unlocked = perk.rank <= current.rank
             line:SetText(("%s|cff999999rank %d|r  %s"):format(unlocked and "|cff55dd55+|r " or "   ", perk.rank,

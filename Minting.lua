@@ -375,7 +375,11 @@ local function PickUnowned(owned)
     return combos[#combos].traits
 end
 
--- Chance that a roll scores at least s, for every possible score s (worked out once from the weights).
+-- Chance that a roll scores at least s, for every possible score s (worked out once from the weights). Graded against
+-- the everyday options and the Ogre Rank ones (once free, so ranks don't shift the grades), never the other unlocks.
+local function Graded(option)
+    return not option.retired and (not option.unlock or option.unlock:find("^rank:") ~= nil)
+end
 local atLeast
 local function ScoreOdds()
     if atLeast then return atLeast end
@@ -383,12 +387,12 @@ local function ScoreOdds()
     for _, layer in ipairs(ns.MintLayers) do
         local total = 0
         for _, option in ipairs(layer.options) do
-            if not option.unlock and not option.retired then total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
+            if Graded(option) then total = total + (option.weight or RARITY_WEIGHTS[option.rarity]) end
         end
         local nextChance = {}
         for score, p in pairs(chance) do
             for _, option in ipairs(layer.options) do
-                if not option.unlock and not option.retired then  -- (the everyday options only, see ns.MintAllowed)
+                if Graded(option) then
                     local s = score + RARITY_SCORE[option.rarity]
                     nextChance[s] = (nextChance[s] or 0) + p * (option.weight or RARITY_WEIGHTS[option.rarity]) / total
                 end
@@ -417,7 +421,7 @@ function ns.MintRarity(traits, asked)
         if layer.key == asked then option = { rarity = RARITY_ORDER[1] } end
         score = score + (option and RARITY_SCORE[option.rarity] or 0)
     end
-    local share = ScoreOdds()[score] or 1
+    local share = ScoreOdds()[score] or 0  -- (above every graded roll: the rarest)
     for _, tier in ipairs(PICTURE_TIERS) do
         if share <= tier[2] + 1e-9 then return tier[1] end
     end

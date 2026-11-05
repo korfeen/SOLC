@@ -35,6 +35,31 @@ ns.RANK_PERKS = {
     { rank = 24, kind = "nameColor", id = "orange", name = "Ogre Orange", value = { 1, 0.5, 0.2 }, text = "Ogre-orange name on your card" },
     { rank = 26, kind = "luck", value = 2, text = "Luckiest minting: epic and legendary layers twice as likely" },
     { rank = 30, kind = "nameColor", id = "pink", name = "Grand Sleepy Pink", value = { 1, 0.4, 0.75 }, text = "Grand Sleepy Ogre pink name on your card" },
+    -- Picture pieces (MintArt.lua options with unlock "rank:<n>", tools/convert-art.js BASE_UNLOCKS): the epics and
+    -- legendaries that used to be free, one a rank (2026-11-05). CheckRank unlocks them.
+    { rank = 2, kind = "piece", key = "expression:sea_dog_grin", text = "Sea Dog Grin (epic mouth) for your pictures" },
+    { rank = 3, kind = "piece", key = "eyes:dreamy_swirl", text = "Dreamy Swirl (epic eyes) for your pictures" },
+    { rank = 4, kind = "piece", key = "accessory:pirate_eyepatch", text = "Pirate Eyepatch (epic held item) for your pictures" },
+    { rank = 5, kind = "piece", key = "background:pool_with_floaties", text = "Pool with Floaties (epic place) for your pictures" },
+    { rank = 6, kind = "piece", key = "accessory:floating_sheep", text = "Floating Sheep (epic held item) for your pictures" },
+    { rank = 7, kind = "piece", key = "outfit:pirate_captain_coat", text = "Pirate Captain Coat (epic clothes) for your pictures" },
+    { rank = 8, kind = "piece", key = "headwear:astral_nightcap", text = "Astral Nightcap (epic hat) for your pictures" },
+    { rank = 9, kind = "piece", key = "expression:crystal_drool", text = "Crystal Drool (legendary mouth) for your pictures" },
+    { rank = 10, kind = "piece", key = "accessory:moonstone_pendant", text = "Moonstone Pendant (legendary held item) for your pictures" },
+    { rank = 11, kind = "piece", key = "expression:stardust_snore", text = "Stardust Snore (legendary mouth) for your pictures" },
+    { rank = 13, kind = "piece", key = "eyes:starlit_dreamer", text = "Starlit Dreamer (legendary eyes) for your pictures" },
+    { rank = 14, kind = "piece", key = "outfit:celestial_pajamas", text = "Celestial Pajamas (legendary clothes) for your pictures" },
+    { rank = 15, kind = "piece", key = "skin:sea_cursed_teal", text = "Sea Cursed Teal (legendary skin) for your pictures" },
+    { rank = 17, kind = "piece", key = "headwear:dragon_hatchling_hat", text = "Dragon Hatchling Hat (legendary hat) for your pictures" },
+    { rank = 19, kind = "piece", key = "outfit:dragonhide_golf_jacket", text = "Dragonhide Golf Jacket (legendary clothes) for your pictures" },
+    { rank = 21, kind = "piece", key = "skin:enchanted_jade", text = "Enchanted Jade (legendary skin) for your pictures" },
+    { rank = 23, kind = "piece", key = "background:floating_sky_spa", text = "Floating Sky Spa (legendary place) for your pictures" },
+    { rank = 24, kind = "piece", key = "outfit:royal_nap_robe", text = "Royal Nap Robe (legendary clothes) for your pictures" },
+    { rank = 25, kind = "piece", key = "accessory:pocket_portal", text = "Pocket Portal (legendary held item) for your pictures" },
+    { rank = 27, kind = "piece", key = "skin:celestial_blue", text = "Celestial Blue (legendary skin) for your pictures" },
+    { rank = 28, kind = "piece", key = "headwear:crown_of_eternal_rest", text = "Crown of Eternal Rest (legendary hat) for your pictures" },
+    { rank = 29, kind = "piece", key = "background:dragon_over_the_fairway", text = "Dragon over the Fairway (legendary place) for your pictures" },
+    { rank = 30, kind = "piece", key = "skin:grand_sleepy_pink", text = "Grand Sleepy Pink (legendary skin) for your pictures" },
 }
 
 table.sort(ns.RANK_PERKS, function(a, b) return a.rank < b.rank end)
@@ -145,16 +170,15 @@ end
 -- night: BONKS a rank, BONKS_BIG every fifth). KillTrackerDB.rank is the last rank seen (nil until the first check,
 -- which only records it).
 local BONKS, BONKS_BIG = 1, 3
-local RANK_UNLOCKS = { [30] = "skin:grand_sleepy_pink" }
 function ns.CheckRank()
     local db = KillTrackerDB
     if not db or not ns.GetPoints then return end
     local current = ns.GetRank()
     local seen = db.rank
     db.rank = current.rank
-    -- (what a rank unlocks in the minting art: option keys by rank - Grand Sleepy Pink at 30; also caught up on login)
-    for rank, key in pairs(RANK_UNLOCKS) do
-        if current.rank >= rank and ns.UnlockOption then ns.UnlockOption(key, seen == nil) end
+    -- (the picture pieces your rank has reached: the piece perks; caught up on login, quietly: only a new rank's are announced)
+    for _, perk in ipairs(ns.RANK_PERKS) do
+        if perk.kind == "piece" and current.rank >= perk.rank and ns.UnlockOption then ns.UnlockOption(perk.key, seen == nil or perk.rank <= seen) end
     end
     if not seen or current.rank <= seen then return end
     local bonks = 0
