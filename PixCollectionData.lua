@@ -565,4 +565,10 @@ ns.PixCollectionNumbers = {
     ["background:zone_moonglade"] = 562,
     ["background:zone_silithus"] = 563,
     ["background:zone_winterspring"] = 564,
+    ["accessory:prop_dungeons"] = 565,
+    ["accessory:prop_explorers"] = 566,
+    ["accessory:prop_fish"] = 567,
+    ["accessory:prop_gather"] = 568,
+    ["accessory:prop_leaders"] = 569,
+    ["accessory:prop_pvp"] = 570,
 }

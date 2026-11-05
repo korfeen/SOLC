@@ -1134,9 +1134,15 @@ ns.DreamStory = {
         prop_barrel_body = { "huge" },
         prop_bent_halo = { "holy", "undead", "shiny" },
         prop_dnd_sign = { "sleepy" },
+        prop_dungeons = { "fire" },
         prop_elites = { "undead" },
+        prop_explorers = {  },
+        prop_fish = { "water" },
+        prop_gather = { "nature", "smelly" },
+        prop_leaders = { "royal", "shiny", "metal" },
         prop_murloc_maraca = { "water", "beast" },
         prop_neck_pillow = { "sleepy", "knitted" },
+        prop_pvp = { "metal", "shiny" },
         prop_rares = {  },
         prop_sleeping_bag_body = { "sleepy", "knitted" },
         prop_white_flag = {  },
@@ -2635,9 +2641,29 @@ ns.DreamStory = {
             does = { "holds up his DO NOT DISTURB sign at me", "waves his little sleeping-moon sign in my face", "taps his DO NOT DISTURB sign and closes his eyes" },
             ends = { "And I disturbed him anyway. He's still cross.", "And the {mobs} read it and tiptoed off.", "And {boss} knocked. On the sign." },
         },
+        prop_dungeons = {
+            does = { "holds up his burning torch to light the way", "waves his torch in my face to see who I am", "lights the way with his torch, the wrong way" },
+            ends = { "And he set his own eyebrows on fire. Again.", "And the {mobs} came to see what the light was.", "And it went out right as {boss} walked in." },
+        },
         prop_elites = {
             does = { "holds up his horned trophy skull on a stick", "waves his skull on a stick at me", "makes the skull on his stick do the talking" },
             ends = { "And the skull said hello. It knew my name.", "And the {mobs} saw the skull and went very quiet.", "And it turned out to be {boss}'s cousin." },
+        },
+        prop_explorers = {
+            does = { "unrolls his old treasure map and points at the red X", "follows the dotted line on his map with one big finger", "holds his map open by a corner and turns it upside down" },
+            ends = { "And X marked the spot. The spot was me.", "And we followed it for hours, back to the Dream Bed.", "And {boss} had the same map, and got there first." },
+        },
+        prop_fish = {
+            does = { "casts his long fishing rod right past my ear", "shows me the little silver fish on his hook", "watches his red-and-white bobber very hard" },
+            ends = { "And he caught a boot. He wore it.", "And the little fish was very proud of itself.", "And he hooked {boss} by the belt. Threw him back." },
+        },
+        prop_gather = {
+            does = { "drops his stuffed sack of herbs and ore at my feet", "pulls a white flower out of his sack for me", "swings his lumpy gathering sack over one shoulder" },
+            ends = { "And it was mostly Peacebloom. It's always Peacebloom.", "And a lump of copper fell out and hit his toe.", "And the {mobs} wanted to know where he picked it all." },
+        },
+        prop_leaders = {
+            does = { "holds up a big jewelled crown like he won it", "grips his stolen gold crown by the rim and grins", "tries his stolen crown on, but it won't fit over his ears" },
+            ends = { "And the crown's owner turned up asking for it back.", "And he made the {mobs} bow. Two of them did.", "And {boss} said it was his crown. It wasn't." },
         },
         prop_murloc_maraca = {
             does = { "shakes his murloc maraca right by my ear", "does a little dance with his murloc maraca", "rattles his grinning murloc maraca at me" },
@@ -2646,6 +2672,10 @@ ns.DreamStory = {
         prop_neck_pillow = {
             does = { "fluffs up his gryphon neck pillow", "nods off in his neck pillow mid-sentence", "lends me his sky-blue neck pillow for one second" },
             ends = { "And we landed. He slept through the whole flight.", "And the little gryphons on it flapped off.", "And {boss} asked if it came in a bigger size." },
+        },
+        prop_pvp = {
+            does = { "shows off the huge Horde medal he won off a Horde player", "swings his dented Horde medal on its red ribbon", "bites his big Horde medal to see if it's real gold" },
+            ends = { "And that's how the bite got in the rim.", "And an orc ran up and said 'that's mine' in Orcish.", "And he said it was for being best ogre. It wasn't." },
         },
         prop_rares = {
             does = { "looks at me through his brass spyglass", "spots something rare through his spyglass", "hands me his spyglass and points at nothing" },
