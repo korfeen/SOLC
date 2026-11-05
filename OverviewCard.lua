@@ -586,6 +586,13 @@ local INK = { 0.17, 0.13, 0.09 }
 -- plate's ends are its left and right quarters, the middle stretches)
 local NOTE_PAPER = { w = 244 / 256, h = 52 / 64 }
 local DEFAULT_PORTRAIT_FRAME = "taped"
+-- Reginald, when you click an empty showcase spot before minting opens (Onboarding.lua's ns.StewardSay).
+local SHOWCASE_SNARK = {
+    "Those are for pictures. You have none. You may admire the dust instead.",
+    "An empty frame. Fitting. Earn rank three and perhaps you'll have something to hang.",
+    "Do stop prodding the wall. The pictures come later. Much later, in your case.",
+    "That space is reserved for art. You are not art.",
+}
 
 -- Your motto (the note's editbox): kept, synced.
 local function SetMotto(text)
@@ -1835,6 +1842,8 @@ OVERVIEW = {
                 UI.ClickSound()
                 if not self.key and self.mint then
                     page.OpenView(self.mint, false, self.slot)  -- yours: it, big, in the portrait's place
+                elseif not self.key and ns.RankLocked and ns.RankLocked("pixcollection") and ns.StewardSay then
+                    ns.StewardSay(SHOWCASE_SNARK)  -- (no pictures before minting opens, Ogre Rank 3: he has a word)
                 elseif not self.key then
                     page.ShowPanel("inventory")  -- an empty spot of yours: your inventory, to open one and hang it
                 elseif self.mint then
@@ -1860,7 +1869,11 @@ OVERVIEW = {
                     GameTooltip:AddLine(self.key and "Click to view" or "Click: your gallery. Drag to move it", 0.6, 0.6, 0.6)
                 else
                     GameTooltip:AddLine("Showcase")
-                    GameTooltip:AddLine("Click to pick from your gallery", 0.6, 0.6, 0.6)
+                    if ns.RankLocked and ns.RankLocked("pixcollection") then
+                        GameTooltip:AddLine("For your pictures. Minting opens at Ogre Rank 3.", 0.6, 0.6, 0.6)
+                    else
+                        GameTooltip:AddLine("Click to pick from your gallery", 0.6, 0.6, 0.6)
+                    end
                 end
                 GameTooltip:Show()
             end)
@@ -2298,8 +2311,7 @@ OVERVIEW = {
         for _, holder in ipairs(page.polaroids) do
             local mint = pictures[holder.slot]
             holder.mint, holder.key = mint, key
-            -- (your empty spots only once you can mint: the Collection's rank, Onboarding.lua)
-            holder:SetShown(mint ~= nil or (key == nil and not (ns.RankLocked and ns.RankLocked("pixcollection"))))
+            holder:SetShown(mint ~= nil or key == nil)
             holder.canvas:SetShown(mint ~= nil)
             holder.empty:SetShown(mint == nil)
             holder.outline:SetShown(mint == nil)

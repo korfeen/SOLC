@@ -148,6 +148,7 @@ local function Build()
     panel.bubble:SetPoint("BOTTOMRIGHT", window, "TOPLEFT", STAND_X - OGRE * 0.3, -TOP_BEAM_TOP + 46)
     panel.bubble:SetFrameLevel(header + 12)
     panel.bubble:EnableMouse(true)  -- (clicks on it don't fall through to the page)
+    panel.bubble:SetScript("OnMouseUp", function() if current and current.timed then Close() end end)  -- (a remark: off it goes)
     panel.bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 16, edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
     panel.bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)
@@ -229,13 +230,14 @@ local function Reaction()
     return "Noted. Discretion becomes you. Barely."
 end
 
-local function Say(text, glowKey, last, single)
+local function Say(text, glowKey, last, single, timed)
     panel.text:SetText(text)
     panel.bubble:ClearAllPoints()
     panel.bubble:SetPoint("BOTTOMRIGHT", ns.UI.window, "TOPLEFT", STAND_X - OGRE * 0.3, -TOP_BEAM_TOP + 46)
-    panel.bubble:SetSize(308, panel.text:GetStringHeight() + 58)
+    panel.bubble:SetSize(308, panel.text:GetStringHeight() + (timed and 26 or 58))  -- (a remark: no buttons under it)
+    panel.next:SetShown(not timed)
     panel.next:SetText(last and "Sorry" or "Next")
-    panel.skip:SetShown(not last and not single)
+    panel.skip:SetShown(not last and not single and not timed)
     Glow(glowKey)
     if not panel:IsShown() then
         panel:Show()
@@ -267,7 +269,8 @@ local function ShowLine()
     if step_line.introduce and tour then tour.named = true end
     panel.name:SetText(tour and tour.named and NAME or MYSTERY)
     panel.plate:SetWidth(math.max(150, (panel.name:GetStringWidth() or 0) + 48))
-    Say(step_line.reaction and Reaction() or step_line.text, step_line.glow, line == #current.lines and #queue == 0, current.single)
+    Say(step_line.reaction and Reaction() or step_line.text, step_line.glow, line == #current.lines and #queue == 0, current.single,
+        current.timed)
 end
 
 local function StartNext()
@@ -306,7 +309,7 @@ end
 function ns.StartTour(replay)
     local tour = DB()
     if not tour or not CanShow() then return end
-    if current then return end  -- (already talking: the rest come next time)
+    if current and not current.timed then return end  -- (already talking: the rest come next time; a remark gives way)
     if not panel then Build() end
     wipe(queue)
     local rank = ns.TourRank()
@@ -319,30 +322,43 @@ end
 -- A locked page asked for (a link, a slash command): the steward says what rank it waits on.
 local NAMES = { deeds = "The Deeds", pixcollection = "Your Collection", bounties = "The bounty board", proshop = "My Pro Shop",
     games = "The Games Room", dreambed = "The Dream Bed" }
+-- A remark: one line, no buttons, gone by itself after a while (a click on the bubble sends it off sooner). Never over
+-- a tour he's giving (then it goes to the chat); a remark in its place is replaced.
+local remarkToken = 0
+local function Remark(text)
+    if not CanShow() or (current and not current.timed) then
+        if ns.Print then ns.Print(text) end
+        return false
+    end
+    if not panel then Build() end
+    current, line = { lines = { { text = text } }, single = true, timed = true }, 1
+    wipe(queue)
+    ShowLine()
+    remarkToken = remarkToken + 1
+    local token, mine = remarkToken, current
+    C_Timer.After(math.min(9, 3 + #text / 22), function()
+        if token == remarkToken and current == mine then Close() end
+    end)
+    return true
+end
+
 function ns.SayLocked(key)
     local rank = PAGE_RANKS[key] or (key == "dreambed" and PAGE_RANKS.pixcollection)
     if not rank then return end
-    local text = ("%s opens at Ogre Rank %d. You are not Ogre Rank %d. Off you go."):format(NAMES[key] or "That room", rank, rank)
-    if not CanShow() or current then
-        if ns.Print then ns.Print(text) end
-        return
-    end
-    if not panel then Build() end
-    current, line = { lines = { { text = text } }, single = true }, 1
-    wipe(queue)
-    ShowLine()
+    Remark(("%s opens at Ogre Rank %d. You are not Ogre Rank %d. Off you go."):format(NAMES[key] or "That room", rank, rank))
+end
+
+-- A remark of his, any time (a line of his on its own, after whatever he was saying). Lines: one picked at random.
+function ns.StewardSay(lines)
+    Remark(type(lines) == "table" and lines[math.random(#lines)] or lines)
 end
 
 -- A remark of his, once per character (tour.seen[id]): when the window's open and he isn't already talking (else
 -- next time).
 function ns.StewardOnce(id, text)
     local tour = DB()
-    if not tour or tour.seen[id] or not CanShow() or current then return end
-    tour.seen[id] = true
-    if not panel then Build() end
-    current, line = { lines = { { text = text } }, single = true }, 1
-    wipe(queue)
-    ShowLine()
+    if not tour or tour.seen[id] or not CanShow() or (current and not current.timed) then return end
+    if Remark(text) then tour.seen[id] = true end
 end
 
 -- Hooks ----------------------------------------------------------------------------------------------------------------
