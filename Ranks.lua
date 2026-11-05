@@ -4,7 +4,8 @@
 
 local _, ns = ...
 
--- The points each rank needs: 24 * (rank - 1)^2.2, rounded to tens (rank 5: 500, 10: 3000, 20: 15600, 30: 39500).
+-- The points each rank needs: 48 * (rank - 1)^2.2, rounded to tens (rank 5: 1010, 10: 6030, 20: 31220, 30: 79160;
+-- doubled 2026-11-05: rank 6 came by level 11).
 local TITLES = {
     "Pebble Kicker", "Rock Licker", "Mud Wallower", "Twig Snapper", "Club Swinger",
     "Stump Thumper", "Knuckle Dragger", "Boulder Hugger", "Belly Drummer", "Cave Bouncer",
@@ -15,7 +16,7 @@ local TITLES = {
 }
 ns.RANKS = {}
 for rank, title in ipairs(TITLES) do
-    ns.RANKS[rank] = { rank = rank, title = title, points = math.floor(24 * (rank - 1) ^ 2.2 / 10 + 0.5) * 10 }
+    ns.RANKS[rank] = { rank = rank, title = title, points = math.floor(48 * (rank - 1) ^ 2.2 / 10 + 0.5) * 10 }
 end
 
 -- The perks, by the rank that unlocks them. kind: what it does (read by the functions below); text: for the list.
