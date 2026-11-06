@@ -70,7 +70,7 @@ local FEATS = {
         { 200, "Half The World's Weirdos", 200 }, { 0, "Every Last Oddball", 400 } } },  -- 0: all of them (Rares.lua)
     -- (all critters together - rats, rabbits, squirrels, frogs...: each kind has its own ladder too, but 10 of one kind
     -- is a long wait; the Pest Control bounty's deeds)
-    { key = "critters", label = "Critters squashed", unit = "critters", count = function(_, f) return f.critters end, tiers = {
+    { key = "critters", label = "All The Small Things", unit = "critters", count = function(_, f) return f.critters end, tiers = {
         { 10, "Squeaky Toy", 5 }, { 50, "Tiny Terror", 10 }, { 100, "Critter Crusher", 20 }, { 250, "Nature's Bully", 35 },
         { 500, "Not The Bunnies!", 60 }, { 1000, "Ogre Of Small Things", 100 } } },
     { key = "elites", label = "Elite kills", unit = "elites", count = function(_, f) return f.elites end, tiers = {
