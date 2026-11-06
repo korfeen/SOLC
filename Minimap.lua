@@ -1,7 +1,7 @@
--- Minimap button: the club logo's sleeping ogre (Media\Icons\Minimap, tools/make-minimap-icon.js). Left-click toggles
--- the Sleepy Ogre Leisure Club window, right-click opens the Bounties, shift-click the Bedroom; drag to move it round the
--- minimap. A badge counts what's waiting (chests to open; "!" for a new rank not seen yet), and it glows while a new rank
--- or an Ogre Godz tribute waits. Its tooltip: your Ogre Rank, this week's bounties, what's waiting, guildmates online.
+-- Minimap button: the club logo's sleeping ogre (MediaIconsMinimap, tools/make-minimap-icon.js). Left-click toggles
+-- the Sleepy Ogre Leisure Club window; right-click a menu of its pages to open; drag to move it round the minimap. A badge
+-- counts what's waiting (chests to open; "!" for a new rank not seen yet), and it glows while a new rank or an Ogre Godz
+-- tribute waits. Its tooltip stays short: your Ogre Rank and what the badge is for.
 
 local _, ns = ...
 
@@ -108,91 +108,37 @@ button:SetScript("OnDragStop", function(self)
     self:SetScript("OnUpdate", nil)
 end)
 
-button:SetScript("OnClick", function(_, mouse)
-    if mouse == "RightButton" then
-        ns.OpenPage("bounties")
-    elseif IsShiftKeyDown() then
-        ns.OpenPage("dreambed")
-    else
-        ns.ToggleUI()
-    end
+-- The right-click menu: every sidebar page, in its order (a locked one greyed: clicking it, Reginald says when).
+local function PageMenu(owner)
+    if not MenuUtil then return ns.ToggleUI() end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle("Sleepy Ogre Leisure Club")
+        for _, page in ipairs(ns.SidebarPages and ns.SidebarPages() or {}) do
+            root:CreateButton(page.locked and ("|cff808080%s|r"):format(page.label) or page.label, function() ns.OpenPage(page.key) Seen() end)
+        end
+    end)
+end
+
+button:SetScript("OnClick", function(self, mouse)
+    if mouse == "RightButton" and ns.IsMember and ns.IsMember() then return PageMenu(self) end
+    ns.ToggleUI()
     Seen()
 end)
-
--- The tooltip's lines for this week's bounties: each poster's progress, and the guild's claims.
-local function BountyLines()
-    if ns.RankLocked and ns.RankLocked("bounties") then return end
-    local board = ns.GetPosterProgress and ns.GetPosterProgress()
-    if not board then return end
-    local parts = {}
-    for _, p in ipairs(board.posters) do
-        if not p.extra then
-            local label = ns.POSTER_KIND_LABELS and ns.POSTER_KIND_LABELS[p.bounty.kind] or p.bounty.name
-            parts[#parts + 1] = p.claimed and ("%s |cff40ff40done|r"):format(label) or ("%s %d/%d"):format(label, p.have or 0, p.goal)
-        end
-    end
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("This week's bounties")
-    for i = 1, #parts, 2 do
-        GameTooltip:AddDoubleLine(parts[i], parts[i + 1] or "", 1, 1, 1, 1, 1, 1)
-    end
-    local guild = ns.GetGuildClaims and ns.GetGuildClaims()
-    local last = ns.POSTER_MILESTONES and ns.POSTER_MILESTONES[#ns.POSTER_MILESTONES]
-    if guild and last then
-        GameTooltip:AddDoubleLine("Guild claims", ("%d / %d"):format(guild.total, ns.MilestoneClaims(last)), 0.8, 0.8, 0.8, 1, 1, 1)
-    end
-end
-
--- Guildmates online with SOLC (in your guild roster, online, and in your guildmates' stats).
-local function OnlineWithSOLC()
-    local names = {}
-    for i = 1, GetNumGuildMembers and GetNumGuildMembers() or 0 do
-        local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
-        if name and online and not (issecretvalue and issecretvalue(name)) then
-            local plain = name:match("^[^-]+")
-            if KillTrackerFriends[name] or KillTrackerFriends[plain] then names[#names + 1] = plain:match("^%S+") or plain end
-        end
-    end
-    table.sort(names)
-    return names
-end
 
 button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("Sleepy Ogre Leisure Club")
-    if not ns.IsMember or not ns.IsMember() then
-        GameTooltip:AddLine("For the Sleepy Ogre Leisure Club's members.", 1, 1, 1, true)
+    if ns.IsMember and ns.IsMember() then
+        local current = ns.GetRank()
+        GameTooltip:AddLine(("Ogre Rank %d: %s"):format(current.rank, current.title), 1, 1, 1)
+        local chests, tribute, newRank = Waiting()
+        if newRank then GameTooltip:AddLine("A new rank! Open to see it.", 1, 0.82, 0.25) end
+        if tribute then GameTooltip:AddLine("A tribute from the Ogre Godz!", 1, 0.82, 0.25)
+        elseif chests > 0 then GameTooltip:AddLine(("%d chest%s in your Inventory"):format(chests, chests == 1 and "" or "s"), 1, 0.82, 0.25) end
+        GameTooltip:AddLine("Click: open   Right-click: pick a page", 0.6, 0.6, 0.6)
     else
-        -- (your Ogre Rank, and how far to the next)
-        local current, nextRank, points = ns.GetRank()
-        GameTooltip:AddDoubleLine(("Ogre Rank %d"):format(current.rank), current.title, 1, 0.82, 0.25, 1, 1, 1)
-        if nextRank then
-            GameTooltip:AddDoubleLine("Next rank", ("%d / %d points"):format(points, nextRank.points), 0.8, 0.8, 0.8, 1, 1, 1)
-        end
-        BountyLines()
-        -- (what's waiting for you)
-        local chests, tribute = Waiting()
-        local waiting = {}
-        if tribute then waiting[#waiting + 1] = "|cffffd100A tribute from the Ogre Godz!|r" end
-        if chests > 0 then waiting[#waiting + 1] = ("%d chest%s in your Inventory"):format(chests, chests == 1 and "" or "s") end
-        if not (ns.RankLocked and ns.RankLocked("dreambed")) and ns.Tokens then
-            local stories, bonks = ns.Tokens("story"), ns.Bonks and ns.Bonks() or 0
-            if stories + bonks > 0 then
-                waiting[#waiting + 1] = ("%d Bedtime Stor%s, %d Bonk%s"):format(stories, stories == 1 and "y" or "ies", bonks, bonks == 1 and "" or "s")
-            end
-        end
-        if #waiting > 0 then
-            GameTooltip:AddLine(" ")
-            for _, line in ipairs(waiting) do GameTooltip:AddLine(line, 1, 1, 1) end
-        end
-        -- (guildmates online with SOLC)
-        local online = OnlineWithSOLC()
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(#online > 0 and ("Online: " .. table.concat(online, ", ")) or "No other club members online", 0.6, 0.9, 0.6, true)
+        GameTooltip:AddLine("Click: open", 0.6, 0.6, 0.6)
     end
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("Click: open  -  Right-click: Bounties  -  Shift-click: Bedroom", 0.6, 0.6, 0.6, true)
-    GameTooltip:AddLine("Drag to move.", 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end)
 button:SetScript("OnLeave", GameTooltip_Hide)

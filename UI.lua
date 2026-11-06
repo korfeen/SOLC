@@ -1033,6 +1033,19 @@ local Refresh
 
 -- Shows a page (creating it on first use) and refreshes it.
 -- A page asked for by a key it covers (an older page folded into it: covers = { [key] = true }) opens instead.
+-- The sidebar's pages in its order, { { key, label, locked } } (the minimap button's menu, Minimap.lua).
+function ns.SidebarPages()
+    local list = {}
+    for _, section in ipairs(SECTIONS) do
+        local inSection = {}
+        for _, page in ipairs(pageOrder) do
+            if page.section == section.key and not page.tabOf and not page.under then inSection[#inSection + 1] = page end
+        end
+        table.sort(inSection, function(a, b) return (a.order or 99) < (b.order or 99) end)
+        for _, page in ipairs(inSection) do list[#list + 1] = { key = page.key, label = page.label, locked = Locked(page) and true or false } end
+    end
+    return list
+end
 local function PageFor(key)
     if pages[key] then return pages[key] end
     for _, page in ipairs(pageOrder) do
