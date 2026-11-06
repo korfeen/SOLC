@@ -138,8 +138,6 @@ end
 function ns.FrameUnlocked(frame)
     local unlock = frame and frame.unlock
     if not unlock then return true end
-    -- (dev characters: all of them, to try - but the Pro Shop's, so buying them can be tested: 2026-11-02, for now)
-    if ns.IsDev and ns.IsDev() and not unlock:find("^shop:") then return true end
     local rank = unlock:match("^rank:(%d+)$")
     if rank then return ns.GetRank().rank >= tonumber(rank), ("Ogre Rank %s"):format(rank) end
     local deed = unlock:match("^deed:(.+)$")
