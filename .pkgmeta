@@ -16,3 +16,9 @@ ignore:
   - .gitignore
   - .gitattributes
   - README.md
+  - CHANGELOG.md
+
+# The release page's notes: the player-facing changelog, not every commit.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
