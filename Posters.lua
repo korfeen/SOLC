@@ -43,7 +43,7 @@ local TIERS = {
     blackrock = { "medium", 50 }, scourge = { "medium", 75 },
     undead = { "medium", 60 }, demon = { "medium", 25 }, elemental = { "medium", 40 }, dragonkin = { "medium", 15 },
     elites = { "hard", 25 }, rares = { "hard", 2 }, leaders = { "hard", 3 }, dungeons = { "hard", 8 }, pvp = { "hard", 15 },
-    explorers = { "hard", 10 }, gather = { "medium", 40 }, fish = { "medium", 40 },
+    explorers = { "hard", 10 }, gather = { "medium", 40 }, fish = { "medium", 40 }, critters = { "easy", 30 },
     -- Ogre tribes.
     mogrosh = { "medium", 25 }, splinterfist = { "medium", 25 }, boulderfist = { "medium", 30 }, crushridge = { "medium", 30 }, dustbelcher = { "medium", 30 },
     moshogg = { "medium", 25 }, gordunni = { "medium", 30 }, dunemaul = { "medium", 25 }, dreadmaul = { "medium", 25 }, firegut = { "medium", 25 },
@@ -131,7 +131,7 @@ local POSTER_OGRE = {
     syndicate = "fac_syndicate", scarlet = "fac_scarlet", bloodsail = "fac_bloodsail", darkiron = "fac_darkiron",
     blackrock = "fac_blackrock", scourge = "fac_scourge",
     elites = "prop_elites", rares = "prop_rares", leaders = "prop_leaders", dungeons = "prop_dungeons",
-    pvp = "prop_pvp", explorers = "prop_explorers", fish = "prop_fish", gather = "prop_gather",
+    pvp = "prop_pvp", explorers = "prop_explorers", critters = "gacha_acc_rat", fish = "prop_fish", gather = "prop_gather",
     mogrosh = "fac_mogrosh", splinterfist = "fac_splinterfist", boulderfist = "fac_boulderfist", crushridge = "fac_crushridge", dustbelcher = "fac_dustbelcher",
     moshogg = "fac_moshogg", gordunni = "fac_gordunni", dunemaul = "fac_dunemaul", dreadmaul = "fac_dreadmaul", firegut = "fac_firegut",
     gordok = "fac_gordok", spirestone = "fac_spirestone", deadwind = "fac_deadwind", urok = "fac_urok",
@@ -148,6 +148,7 @@ local ODD_LOOK = {
     pvp = { skin = "sunburnt_red", eyes = "pirate_eyepatch", expression = "sea_dog_grin", headwear = "gacha_hair_mohawk", outfit = "hunt_stalker_body" },
     elites = { skin = "mud_brown", eyes = "heavy_bags", expression = "smug_smile", headwear = "hunt_master_head", outfit = "hunt_master_body" },
     rares = { skin = "moss", eyes = "single_eye_open", expression = "smug_smile", headwear = "gacha_head_deerstalker", outfit = "shop_norfolk_jacket" },
+    critters = { skin = "mud_brown", eyes = "bloodshot", expression = "smug_smile", headwear = "gacha_head_bin_lid", outfit = "gacha_outfit_gravy_vest" },
 }
 local function HasOption(layerKey, id)
     for _, layer in ipairs(ns.MintLayers or {}) do
@@ -165,7 +166,7 @@ function ns.PosterPicture(id)
     if not piece then return end
     local traits = {}
     for layer, option in pairs(WANTED_OGRE) do traits[layer] = option end
-    if piece:find("^prop_") then
+    if piece:find("^prop_") or HasOption("accessory", piece) then  -- (a held thing: a prop, or any accessory - the critters' rat)
         if not HasOption("accessory", piece) then return end
         traits.accessory, traits.outfit = piece, "striped_pajamas"  -- (the plain ogre, holding it; or dressed for the job)
         for layer, option in pairs(ODD_LOOK[id] or {}) do
@@ -182,7 +183,11 @@ end
 local function PiecesOf(piece, out)
     for _, layer in ipairs(ns.MintLayers or {}) do
         for _, option in ipairs(layer.options) do
-            if option.id == piece or option.id:sub(1, #piece + 1) == piece .. "_" then out[#out + 1] = { layer = layer, option = option } end
+            local own = option.id == piece or option.id:sub(1, #piece + 1) == piece .. "_"
+            -- (never the claw machine's or the Shop's: a bounty chest doesn't hand those out)
+            if own and not (option.unlock and (option.unlock:find("^gacha:") or option.unlock:find("^shop:"))) then
+                out[#out + 1] = { layer = layer, option = option }
+            end
         end
     end
     return out
@@ -214,7 +219,8 @@ function ns.WantedPicture(id)
 end
 -- The four kinds of poster: HUNT (a creature kind), CLAN (a faction or ogre tribe), WANTED (a dungeon's end boss) and
 -- ODD JOB (anything that isn't one kind of foe: rares, elites, leaders, exploring, PvP, gathering, fishing).
-local ODD = { elites = true, rares = true, leaders = true, dungeons = true, pvp = true, explorers = true, gather = true, fish = true }
+local ODD = { elites = true, rares = true, leaders = true, dungeons = true, pvp = true, explorers = true, gather = true, fish = true,
+    critters = true }
 local HUNT = { undead = true, demon = true, elemental = true, dragonkin = true }
 local function Kind(id)
     if id:find("^wanted_") then return "wanted" end
@@ -631,7 +637,7 @@ local function MyBoard()
 end
 
 -- (dev: the posters /solc posterpreview shows, page by page; preview = the page on show, nil: your own board)
-local PREVIEW_PAGES = { { "fish", "gather", "explorers", "leaders", "dungeons" }, { "pvp", "elites", "rare_471", "wanted_dm", "tribe_trollfrostmane" } }
+local PREVIEW_PAGES = { { "fish", "gather", "explorers", "leaders", "dungeons" }, { "pvp", "elites", "rare_471", "critters", "wanted_dm" } }
 local preview
 -- This week's board with your progress: GetPosters(0), each poster also { have, claimed }.
 function ns.GetPosterProgress()
