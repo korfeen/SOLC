@@ -137,14 +137,14 @@ end
 
 -- The best value of one kind of perk at a rank (the latest unlocked), or nil.
 -- Your ogre's styles (the Overview's EDIT, its STYLE row): painted always; sketch and crayon from their Ogre Ranks
--- (the ogreStyle perks; dev characters: all). OgreStyleRank: the rank one comes at.
+-- (the ogreStyle perks, by rank for everyone). OgreStyleRank: the rank one comes at.
 function ns.OgreStyleRank(edition)
     for _, perk in ipairs(ns.RANK_PERKS) do
         if perk.kind == "ogreStyle" and perk.value == edition then return perk.rank end
     end
 end
 function ns.OgreStyleUnlocked(edition)
-    if not edition or (ns.IsDev and ns.IsDev()) then return true end
+    if not edition then return true end
     local rank = ns.OgreStyleRank(edition)
     return rank ~= nil and ns.GetRank().rank >= rank
 end
