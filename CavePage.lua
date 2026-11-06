@@ -217,11 +217,15 @@ local function DrawRankings()
         stand.member = m
         stand:SetShown(m ~= nil)
         if m then
-            local picture = ns.GetShowcase(m.key)[1] or ns.NewestMint(m.key)
+            -- (their chosen ogre, as on their Overview card; none built: a showcase picture, else their newest)
+            local card = m.stats and m.stats.card
+            local picture = card and card.ogre and next(card.ogre) and { traits = card.ogre, ogre = true, style = card.ogreStyle }
+                or ns.GetShowcase(m.key)[1] or ns.NewestMint(m.key)
             stand.canvas:SetShown(picture ~= nil)
             stand.none:SetShown(picture == nil)
             if picture then ns.DrawMint(stand.canvas, picture) end
-            Fit(stand.name, NAME_FONT, 14, 9, m.me and ("|cffffd100%s|r"):format(m.name) or m.name, stand.size + 30)
+            local first = m.name:match("^%S+") or m.name  -- (first names only: "Inga Bekymmer" ran past the plate)
+            Fit(stand.name, NAME_FONT, 14, 9, m.me and ("|cffffd100%s|r"):format(first) or first, stand.size + 30)
             stand.value:SetText(m[metric])
             -- (the plate round the place number, the name and the points: from the number's left to the longer line's
             -- right, both rows tall or the number's height, whichever is more; offsets from the name's middle)
