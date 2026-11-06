@@ -68,6 +68,11 @@ local FEATS = {
         { 1, "Lucky Find", 10 }, { 5, "Rare Hunter", 20 }, { 10, "Oddity Collector", 30 },
         { 25, "Nothing Rare About It", 50 }, { 50, "Rarest Of Them All", 80 }, { 100, "Rare Connoisseur", 120 },
         { 200, "Half The World's Weirdos", 200 }, { 0, "Every Last Oddball", 400 } } },  -- 0: all of them (Rares.lua)
+    -- (all critters together - rats, rabbits, squirrels, frogs...: each kind has its own ladder too, but 10 of one kind
+    -- is a long wait; the Pest Control bounty's deeds)
+    { key = "critters", label = "Critters squashed", unit = "critters", count = function(_, f) return f.critters end, tiers = {
+        { 10, "Squeaky Toy", 5 }, { 50, "Tiny Terror", 10 }, { 100, "Critter Crusher", 20 }, { 250, "Nature's Bully", 35 },
+        { 500, "Not The Bunnies!", 60 }, { 1000, "Ogre Of Small Things", 100 } } },
     { key = "elites", label = "Elite kills", unit = "elites", count = function(_, f) return f.elites end, tiers = {
         { 25, "Picks On Big Guys", 10 }, { 100, "Elite Smasher", 20 }, { 500, "Bigger They Are", 40 },
         { 1000, "Elitist", 60 } } },
@@ -572,7 +577,7 @@ end
 local function CountKills(source)
     local counts = {}
     for _, dim in ipairs(DIMENSIONS) do counts[dim.key] = {} end
-    local facts = { leaders = 0, rares = 0, elites = 0, kinds = 0, creatures = 0, zoneRares = {} }
+    local facts = { leaders = 0, rares = 0, elites = 0, kinds = 0, creatures = 0, critters = 0, zoneRares = {} }
     local killed, byName = {}, {}  -- [npcID] = kills; [lowercased name] = kills (the most of any with that name)
     ns.ForEachKill(function(npcID, entry)
         killed[npcID] = entry.count
@@ -595,6 +600,7 @@ local function CountKills(source)
         if rare or RARE_RANKS[c.rank] then facts.rares = facts.rares + 1 end
         if rare then facts.zoneRares[rare[2]] = (facts.zoneRares[rare[2]] or 0) + 1 end
         if ELITE_RANKS[c.rank] then facts.elites = facts.elites + entry.count end
+        if c.type == "Critter" then facts.critters = facts.critters + entry.count end
     end, source)
     for _ in pairs(counts.subtype) do facts.kinds = facts.kinds + 1 end
     DungeonFacts(facts, killed, byName)
