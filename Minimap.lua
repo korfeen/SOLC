@@ -108,13 +108,13 @@ button:SetScript("OnDragStop", function(self)
     self:SetScript("OnUpdate", nil)
 end)
 
--- The right-click menu: every sidebar page, in its order (a locked one greyed: clicking it, Reginald says when).
+-- The right-click menu: the sidebar pages you have, in its order - it fills up as your Ogre Rank opens more.
 local function PageMenu(owner)
     if not MenuUtil then return ns.ToggleUI() end
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle("Sleepy Ogre Leisure Club")
         for _, page in ipairs(ns.SidebarPages and ns.SidebarPages() or {}) do
-            root:CreateButton(page.locked and ("|cff808080%s|r"):format(page.label) or page.label, function() ns.OpenPage(page.key) Seen() end)
+            if not page.locked then root:CreateButton(page.label, function() ns.OpenPage(page.key) Seen() end) end
         end
     end)
 end
