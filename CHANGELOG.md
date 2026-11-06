@@ -1,5 +1,8 @@
 # Sleepy Ogre Leisure Club
 
+## 0.42.3
+- New minimap button: the club's sleepy ogre. Right-click it to jump to a page.
+
 ## 0.42.2
 - The toplist podium shows each player's own ogre, the one on their Overview card
 - First names on the podium, so long names fit
