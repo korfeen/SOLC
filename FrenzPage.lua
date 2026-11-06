@@ -411,7 +411,7 @@ ns.RegisterPage({
         page.unseen = photo:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         page.unseen:SetPoint("CENTER")
         page.unseen:SetWidth(RIGHT.photo.w - 30)
-        page.unseen:SetText("No character synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
+        page.unseen:SetText("No character synced yet. It shows once they log in with SOLC.")
         local panelHolder = CreateFrame("Frame", nil, photo)
         panelHolder:SetAllPoints()
         panelHolder:SetFrameLevel(page.model:GetFrameLevel() + 2)

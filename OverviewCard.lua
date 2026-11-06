@@ -1582,7 +1582,7 @@ OVERVIEW = {
         page.empty = photo:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         page.empty:SetPoint("CENTER")
         page.empty:SetWidth(card.photo.w - 16)
-        page.empty:SetText("No character synced yet. It shows once they log in with SOLC 0.37.0 or newer.")
+        page.empty:SetText("No character synced yet. It shows once they log in with SOLC.")
         -- No picture of yours yet: a big way into the ogre builder instead.
         page.makePrompt = CreateFrame("Button", nil, photo)
         page.makePrompt:SetSize(card.photo.w - 40, 64)
