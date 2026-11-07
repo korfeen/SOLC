@@ -516,22 +516,6 @@ local function Fireworks(n)
         end)
     end
 end
--- Legendary: the ogre pops up from the bottom left, cheers, and ducks away.
-local function Cheer()
-    ogre:Show()
-    local from, to = FLOOR_Y - 140, FLOOR_Y + 70
-    Tween(0.45, function(p)
-        ogre:ClearAllPoints()
-        ogre:SetPoint("CENTER", panel, "TOP", -300, from + (to - from) * Overshoot(p))
-    end, function()
-        After(1.6, function()
-            Tween(0.35, function(p)
-                ogre:ClearAllPoints()
-                ogre:SetPoint("CENTER", panel, "TOP", -300, to + (from - to) * p * p)
-            end, function() ogre:Hide() end)
-        end)
-    end)
-end
 
 -- The hype crowd: ogres popping up along the bottom one after another, each shouting, bobbing, ducking away - more the
 -- better the best piece in the chest (CROWD by its rarity; an epic or legendary chest with nothing special: one).
@@ -554,9 +538,10 @@ end
 local function Crowd(n)
     if n <= 0 then return end
     local spread = math.min(760, 140 * n)  -- (along the bottom, evenly, a little jostled)
+    local mine = show  -- (a new show started meanwhile: this crowd stays home)
     for i = 1, n do
         After((i - 1) * 0.16, function()
-            if show.phase ~= "reveal" then return end
+            if show ~= mine then return end
             local o = CrowdOgre(i)
             local x = (n == 1 and -300) or (-spread / 2 + spread * (i - 1) / (n - 1)) + (math.random() - 0.5) * 30
             local size = 120 + math.random() * 70
@@ -639,7 +624,13 @@ local function Burst()
         Fireworks(7)
         Sound("UI_LEGENDARY_LOOT_TOAST")
     end
-    Crowd(CrowdSize())  -- (the ogres come to cheer: more for a better piece)
+    if show.tribute then  -- (a tribute opened: the whole crowd again, more fireworks, the window shaking hard)
+        Crowd(12)
+        Fireworks(12)
+        show.windowShake = 30
+    else
+        Crowd(CrowdSize())  -- (the ogres come to cheer: more for a better piece)
+    end
     coins:SetShown(show.coins > 0)
     show.shown, show.counting = 0, show.coins > 0
     show.pulled = 0
@@ -758,23 +749,56 @@ local function Descend()
     Tween(0.5, function(p) beam:SetAlpha(p * 0.75) end)
     Sound("READY_CHECK")
     show.y, show.scale = -60, 0.2  -- high up, far away
-    After(0.5, function()
-        Tween(0.7, function(p)
+    -- (super omega: the window rumbles, the sky opens, stars rain down the beam while the chest comes down slowly, spinning)
+    show.windowShake = 6
+    Word(ogreMode and "SKY OPEN" or "THE SKY OPENS", GOLD)
+    for k = 0, 9 do
+        After(k * 0.12, function()
+            show.windowShake = math.max(show.windowShake or 0, 4 + k)
+            Particle(FX .. "Star", (math.random() - 0.5) * 220, 60, (math.random() - 0.5) * 60, -300 - math.random() * 200,
+                20 + math.random() * 14, GOLD, 1.6, { gravity = true })
+        end)
+    end
+    After(0.9, function()
+        show.spin = 1.2
+        Tween(1.3, function(p)
             local e = p * p  -- falling, faster and faster
             show.y = -60 + (STAGE.shut + 60) * e
             show.scale = 0.2 + 0.8 * e
         end, function()
-            show.y, show.scale = STAGE.shut, 1
+            show.y, show.scale, show.spin = STAGE.shut, 1, 0
+            -- IMPACT: the flash, three shockwaves, sparks, fireworks, a confetti storm, gold raining from the top
             flash:SetVertexColor(unpack(GOLD))
-            Tween(0.4, function(p) flash:SetAlpha((1 - p) * 0.8) end)
-            Ring(GOLD, 720)
-            Sparkles(34, 0, STAGE.shut - 70, GOLD, 440)
-            show.windowShake = 20
-            Jump(0.22)
+            Tween(0.6, function(p) flash:SetAlpha((1 - p) * 1) end)
+            for k = 0, 2 do After(k * 0.18, function() Ring(k == 1 and { 1, 1, 1 } or GOLD, 720 + k * 260) end) end
+            Sparkles(70, 0, STAGE.shut - 70, GOLD, 560)
+            Fireworks(14)
+            for _ = 1, 160 do
+                Particle(FX .. "Confetti", (math.random() - 0.5) * 900, 40 + math.random() * 160, (math.random() - 0.5) * 120,
+                    -40 - math.random() * 100, 14 + math.random() * 14, CONFETTI[math.random(#CONFETTI)], 4 + math.random() * 2.5,
+                    { gravity = true, flutter = true })
+            end
+            for _ = 1, 50 do
+                Particle(FX .. "Coin", (math.random() - 0.5) * 860, 80 + math.random() * 120, (math.random() - 0.5) * 60,
+                    -100 - math.random() * 200, 24 + math.random() * 14, nil, 5, { gravity = true, floor = FLOOR_Y + math.random() * 30 })
+            end
+            show.windowShake = 34
+            Jump(0.35)
             Light(0, 3)
             Sound("UI_LEGENDARY_LOOT_TOAST")
             Sound("LOOT_WINDOW_COIN_SOUND")
+            Sound("RAID_WARNING")
             Word("BOOM!", GOLD)
+            -- (the chant, word by word, and a crowd of twelve flooding in; fireworks going off all the while)
+            local chant = ogreMode and { "OGRE!", "GODZ!", "LOOT!", "HYPE!" } or { "OGRE!", "GODZ!", "TRIBUTE!", "HYPE!" }
+            for k, w in ipairs(chant) do
+                After(0.5 + k * 0.45, function()
+                    Word(w, k % 2 == 0 and { 1, 1, 1 } or GOLD)
+                    show.windowShake = math.max(show.windowShake or 0, 14)
+                    Sound("LOOT_WINDOW_COIN_SOUND")
+                end)
+            end
+            for k = 1, 6 do After(k * 0.5, function() Fireworks(4) end) end
             show.rainbow = true
             godz.big:SetText(ogreMode and "OGRE GODZ GIVE" or "THE OGRE GODZ")
             godz.small:SetText(ogreMode and "YOU LOOT!" or "HAVE GRACED YOU WITH TRIBUTE")
@@ -785,10 +809,9 @@ local function Descend()
                 godz:ClearAllPoints()
                 godz:SetPoint("TOP", panel, "TOP", 0, -64 / s)
             end)
-            ogre.say:SetText(ogreMode and "LOOT!" or "TRIBUTE!")
-            Cheer()
+            Crowd(12)
             Tween(0.9, function(p) beam:SetAlpha(0.75 * (1 - p)) end, function() beam:Hide() end)
-            After(1.3, function()
+            After(3.2, function()  -- (the taps wait till the party's over)
                 if show.phase ~= "intro" then return end
                 show.phase = "shut"
                 panel.hint:SetText(ogreMode and "SMASH!" or "Tap the chest!")
@@ -831,6 +854,7 @@ function Shut(dungeonKey, preview, previewTier, previewSpec)
     burst:Hide()
     rainbow:Hide()
     ogre:Hide()
+    for _, o in ipairs(crowd) do o:Hide() end  -- (the last show's crowd, if it hadn't gone yet)
     banner:Hide()
     for _, ring in ipairs(rings) do ring:Hide() end
     coins:Hide()
