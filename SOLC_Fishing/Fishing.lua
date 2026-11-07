@@ -188,8 +188,9 @@ panel:SetPoint("RIGHT", UIParent, "RIGHT", -220, 40)
 panel:SetFrameStrata("MEDIUM")
 panel:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile = true, tileSize = 16, edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
-panel:SetBackdropColor(0.08, 0.06, 0.04, 0.88)
-panel:SetBackdropBorderColor(0.75, 0.6, 0.35)
+-- (a page of the club's books: parchment, brown ink, the club's font - as the Collection's, PixCollection.lua)
+panel:SetBackdropColor(0.93, 0.87, 0.72, 0.97)
+panel:SetBackdropBorderColor(0.42, 0.28, 0.14)
 panel:SetMovable(true)
 panel:EnableMouse(true)
 panel:RegisterForDrag("LeftButton")
@@ -201,9 +202,23 @@ panel:SetScript("OnDragStop", function(self)
 end)
 panel:Hide()
 
-local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title:SetPoint("TOPLEFT", 12, -24)  -- (under Reginald's name plate)
+local INK, INK_DIM, RED_INK = { 0.2, 0.12, 0.05 }, { 0.45, 0.35, 0.24 }, { 0.62, 0.12, 0.08 }
+local INK_FONT = "Interface\\AddOns\\SOLC\\Media\\Fonts\\GermaniaOne-Regular.ttf"
+local function Ink(parent, size, color, layer)
+    local text = parent:CreateFontString(nil, layer or "OVERLAY")
+    if not text:SetFont(INK_FONT, size, "") then text:SetFontObject("GameFontHighlight") end
+    text:SetTextColor(color[1], color[2], color[3])
+    return text
+end
+local title = Ink(panel, 20, INK)
+title:SetPoint("TOPLEFT", 14, -22)  -- (under Reginald's name plate)
 title:SetText("Catch log")
+-- (a red brush flick under it, as the Collection's picked tab: SOLC's streaks)
+local streak = panel:CreateTexture(nil, "ARTWORK")
+streak:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak" .. math.random(5))
+streak:SetVertexColor(RED_INK[1], RED_INK[2], RED_INK[3], 0.85)
+streak:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -4, 4)
+streak:SetSize(96, 10)
 local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", 2, 2)
 close:SetScript("OnClick", function() panel:Hide() end)
@@ -254,9 +269,10 @@ plateName:SetTextColor(1, 0.86, 0.55)
 plateName:SetShadowOffset(1, -1)
 plateName:SetPoint("CENTER", 0, 1)
 plateName:SetText("Reginald")
--- (his bubble: parchment, on his left above the panel, its tail toward him)
+-- (his bubble: parchment, on his left, its middle at his mouth's height and its tail at his mouth)
+local MOUTH = OGRE * 0.66 - SUNK  -- (his mouth, up from the panel's top edge: about a third down his picture)
 local bubble = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-bubble:SetPoint("BOTTOMRIGHT", panel, "TOPLEFT", STAND - OGRE * 0.32, 20)
+bubble:SetPoint("RIGHT", panel, "TOPLEFT", STAND - OGRE * 0.2, MOUTH)
 bubble:SetWidth(200)
 bubble:SetFrameLevel(panel:GetFrameLevel() + 8)
 bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -265,7 +281,7 @@ bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)
 bubble:SetBackdropBorderColor(0.35, 0.24, 0.12)
 local tail = bubble:CreateTexture(nil, "BACKGROUND", nil, -1)
 tail:SetSize(16, 16)
-tail:SetPoint("CENTER", bubble, "BOTTOMRIGHT", -2, 12)
+tail:SetPoint("CENTER", bubble, "RIGHT", -1, 0)
 tail:SetColorTexture(0.98, 0.95, 0.86, 0.97)
 tail:SetRotation(math.rad(45))
 said = bubble:CreateFontString(nil, "OVERLAY")
@@ -278,42 +294,78 @@ said:SetSpacing(2)
 -- (the bubble as tall as what he says)
 hooksecurefunc(said, "SetText", function(self) bubble:SetHeight((self:GetStringHeight() or 14) + 22) end)
 
-local tripLine = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-tripLine:SetPoint("TOPLEFT", 12, -48)
+-- (the trip in one line, under the title: caught, got away, ever)
+local tripLine = Ink(panel, 13, INK_DIM)
+tripLine:SetPoint("TOPLEFT", 14, -50)
+-- (a hand-drawn rule under it)
+local rule = panel:CreateTexture(nil, "ARTWORK")
+rule:SetColorTexture(INK_DIM[1], INK_DIM[2], INK_DIM[3], 0.45)
+rule:SetPoint("TOPLEFT", 12, -67)
+rule:SetPoint("TOPRIGHT", -12, -67)
+rule:SetHeight(1)
+-- (the catch, the most first: its icon, its name in ink, how many)
 local rows = {}
-for i = 1, 6 do
-    local row = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row:SetPoint("TOPLEFT", 14, -68 - (i - 1) * 15)
-    row:SetPoint("RIGHT", -12, 0)
-    row:SetJustifyH("LEFT")
-    row:SetWordWrap(false)
+for i = 1, 5 do
+    local row = CreateFrame("Frame", nil, panel)
+    row:SetPoint("TOPLEFT", 14, -72 - (i - 1) * 17)
+    row:SetPoint("RIGHT", -14, 0)
+    row:SetHeight(16)
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(14, 14)
+    row.icon:SetPoint("LEFT")
+    row.count = Ink(row, 14, INK)
+    row.count:SetPoint("RIGHT")
+    row.name = Ink(row, 14, INK)
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 5, 0)
+    row.name:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
+    row.name:SetJustifyH("LEFT")
+    row.name:SetWordWrap(false)
     rows[i] = row
 end
-local posterLine = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-posterLine:SetPoint("BOTTOMLEFT", 12, 12)
-posterLine:SetPoint("RIGHT", -12, 0)
+-- (the trip's best catch: its rarest, else its most caught)
+local bestLine = Ink(panel, 13, RED_INK)
+bestLine:SetPoint("BOTTOMLEFT", 14, 30)
+bestLine:SetPoint("RIGHT", -14, 0)
+bestLine:SetJustifyH("LEFT")
+bestLine:SetWordWrap(false)
+-- (SOLC's Gone Fishing poster, if it's on your board this week)
+local posterLine = Ink(panel, 13, INK_DIM)
+posterLine:SetPoint("BOTTOMLEFT", 14, 12)
+posterLine:SetPoint("RIGHT", -14, 0)
 posterLine:SetJustifyH("LEFT")
 
 local function Refresh()
-    tripLine:SetText(("This trip: |cffffffff%d|r   Got away: |cffffffff%d|r   Ever: |cffffffff%d|r"):format(trip.total, trip.away, db and db.total or 0))
-    -- (the most caught first)
+    tripLine:SetText(("%d caught  -  %d got away  -  %d ever"):format(trip.total, trip.away, db and db.total or 0))
     local list = {}
     for _, name in ipairs(trip.order) do list[#list + 1] = name end
     table.sort(list, function(a, b) return trip.caught[a].count > trip.caught[b].count end)
     for i, row in ipairs(rows) do
         local name = list[i]
-        if name then
-            local c = trip.caught[name]
-            local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[c.quality or 1]
-            row:SetText(("%s%s|r  x%d"):format(color and color.hex or "|cffffffff", name, c.count))
+        local c = name and trip.caught[name]
+        row.icon:SetTexture(c and c.icon or nil)
+        row.icon:SetShown(c ~= nil and c.icon ~= nil)
+        if c then
+            -- (ink, but a rare or better in its quality's colour, junk faded)
+            local color = (c.quality or 1) >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[c.quality]
+            local ink = (c.quality or 1) == 0 and INK_DIM or INK
+            row.name:SetText(name)
+            if color then row.name:SetTextColor(color.r * 0.75, color.g * 0.75, color.b * 0.75) else row.name:SetTextColor(ink[1], ink[2], ink[3]) end
+            row.count:SetText("x" .. c.count)
         else
-            row:SetText(i == 1 and trip.total == 0 and "|cff999999Nothing yet. Cast with your fishing key.|r" or "")
+            row.name:SetText(i == 1 and trip.total == 0 and "Nothing yet. Cast with your fishing key." or "")
+            row.name:SetTextColor(INK_DIM[1], INK_DIM[2], INK_DIM[3])
+            row.count:SetText("")
         end
     end
-    -- (SOLC's Gone Fishing poster, if it's on your board this week)
+    local best
+    for _, name in ipairs(trip.order) do
+        local c = trip.caught[name]
+        if (c.quality or 1) > 0 and (not best or (c.quality or 1) > (trip.caught[best].quality or 1)) then best = name end
+    end
+    bestLine:SetText(best and ("Catch of the trip: " .. best) or "")
     local have, goal, done
     if SOLC and SOLC.FishingPoster then have, goal, done = SOLC.FishingPoster() end
-    posterLine:SetText(goal and (done and "Gone Fishing poster: |cff40ff40claimed!|r" or ("Gone Fishing poster: %d / %d"):format(have, goal)) or "")
+    posterLine:SetText(goal and (done and "Gone Fishing poster: claimed!" or ("Gone Fishing poster: %d / %d"):format(have, goal)) or "")
 end
 
 local function Open()
@@ -326,12 +378,12 @@ local function Open()
 end
 
 -- A catch: counted for the trip and ever, and the ogre has his say.
-local function Caught(name, quantity, quality)
+local function Caught(name, quantity, quality, icon)
     if not name or issecret(name) then return end
     quantity = quantity or 1
     local c = trip.caught[name]
     if not c then
-        c = { count = 0, quality = quality }
+        c = { count = 0, quality = quality, icon = icon }
         trip.caught[name] = c
         trip.order[#trip.order + 1] = name
     end
@@ -398,8 +450,8 @@ events:SetScript("OnEvent", function(_, event, unit, _, spellID)
     elseif event == "LOOT_OPENED" then
         if not (IsFishingLoot and IsFishingLoot()) then return end
         for slot = 1, GetNumLootItems() do
-            local _, name, quantity, _, quality = GetLootSlotInfo(slot)
-            if name and (quantity or 0) > 0 then Caught(name, quantity, quality) end
+            local icon, name, quantity, _, quality = GetLootSlotInfo(slot)
+            if name and (quantity or 0) > 0 then Caught(name, quantity, quality, icon) end
         end
     end
 end)
