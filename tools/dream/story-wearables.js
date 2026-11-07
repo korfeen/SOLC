@@ -135,6 +135,8 @@ const OUTFIT_MORE = {
   // deed props (prop_)
   "prop_barrel_body": ["in nothing but a wooden barrel", "in a barrel held up by two leather braces", "in a barrel, bare-chested and very proud of it"],
   "prop_sleeping_bag_body": ["zipped into a green and orange sleeping bag", "in a puffy camping bag, zipped right to the chin", "in a sleeping bag, shuffling along like a slug"],
+  // fishing chest (the angler set)
+  "hunt_angler_body": ["in big dark-green chest waders and a cream cable-knit jumper", "in rubbery fishing waders, one buckle done up wrong", "in damp, muddy waders that squeak with every step"],
 };
 const HAT_MORE = {
   "crit_bat_head": ["a velvet bat hat with two huge pointy ears", "a bat hood, tiny fangs and all", "a purple bat hat, ears twitching at every sound"],
@@ -284,4 +286,6 @@ const HAT_MORE = {
   "crit_tallstrider_head": ["a crocheted tallstrider hat with a long beak", "a pink-beige bird hat with a tuft of bright feathers", "a tallstrider hat, bobbing his head like a strider"],
   // deed props (prop_)
   "prop_bent_halo": ["a bent golden halo floating over his head", "a wonky ghost halo, like someone sat on it", "a halo he got the cheap way, by dying"],
+  // fishing chest (the angler set)
+  "hunt_angler_head": ["a battered olive-green bucket hat", "a fishing hat with bright feathery flies stuck all round the band", "a floppy angler's hat, two hooks still caught in it"],
 };

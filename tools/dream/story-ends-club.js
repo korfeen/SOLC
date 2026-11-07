@@ -134,4 +134,8 @@ Object.assign(PIECE_ENDS, {
   "prop_barrel_body": ["And he sat down, and the barrel didn't. We all saw everything.", "And someone knocked on his barrel, and he said 'occupied'."],
   "prop_sleeping_bag_body": ["And he hopped everywhere in it, like a big green caterpillar.", "And he lay down mid-sentence and was asleep before the full stop."],
   "prop_bent_halo": ["And he swore he was an angel. The halo said 'mostly'.", "And he tried to straighten his halo and bent it the other way."],
+
+  // fishing chest (the angler set)
+  "hunt_angler_head": ["And a fish leapt up and bit a lure off his hat.", "And he caught his hat on his own hook. Twice."],
+  "hunt_angler_body": ["And his waders filled up with water. A fish moved in.", "And he squeaked off in his waders, leaving little puddles."],
 });

@@ -211,4 +211,10 @@ Object.assign(PIECE_TAGS, {
   "prop_bent_halo": ["holy", "undead", "shiny"],
   "prop_barrel_body": ["huge"],
   "prop_sleeping_bag_body": ["sleepy", "knitted"],
+  // fishing chest (the angler set and props)
+  "hunt_angler_head": ["water"],
+  "hunt_angler_body": ["water", "smelly"],
+  "prop_landing_net": ["water", "beast"],
+  "prop_tackle_box": ["water", "metal"],
+  "prop_fishing_pipe": ["smelly"],
 });

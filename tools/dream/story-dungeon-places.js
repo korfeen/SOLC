@@ -239,6 +239,13 @@ const SETTING_DUNGEON = {
       "rides in from the golden fields at sunset", "climbs out from behind the rack of clubs"],
     back: ["And every poster on the wall was him. Different hats.", "And the lantern flickered every time someone lied.",
       "And the reward was ten gold and a sandwich.", "And the coiled lasso uncoiled itself and left.", "And outside the window the fields went on forever."] },
+  bg_fishing_pier: { name: "the Fishing Pier",
+    at: ["on an old wooden pier at dawn, waiting for a bite", "on the fishing pier, untangling my line in the mist",
+      "at the end of the pier, counting the fish in my bucket", "on the pier, after the big one Nat Pagle told me about"],
+    enters: ["rises out of the misty lake, dripping", "is reeled in on the end of my line",
+      "rows up to the pier in a tiny boat", "climbs out from under the boards"],
+    back: ["And the lily pads all clapped.", "And the mist rolled in and took his rods.", "And a frog sat on the rail and judged us.",
+      "And the sun came up golden, then went back down for a nap.", "And the pier creaked 'one ogre at a time, please'."] },
 };
 
 // The zone golf courses (zone_*, unlocked by exploring the zone), by option id: 2 at, 3 enters, 3 back each.

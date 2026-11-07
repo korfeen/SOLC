@@ -253,6 +253,12 @@ const PAYOFF = {
     ["And the gold was all buttons.", "And I lost count at seven. He started again.", "And the lantern blew out, and the pile was smaller after."],
     ["And I roped him instead. He let me.", "And the chair got away. It's wanted now.", "And the lasso roped me, the chair and the desk."],
   ],
+  bg_fishing_pier: [
+    ["And I got a bite. From a duck.", "And the float never moved. Not once.", "And something bit. It was him."],
+    ["And it untangled into a knitted scarf.", "And I untangled it and tied myself to the pier.", "And the knot was him. He'd been in there all along."],
+    ["And the fish counted back. They had more.", "And one of the fish was a boot.", "And he ate one. I had to start again."],
+    ["And the big one caught me.", "And Nat Pagle said it was bigger last time.", "And it was the size of my thumb. Nat said that's big round here."],
+  ],
 };
 
 // The zone golf courses' payoffs, by option id (one list per opening).

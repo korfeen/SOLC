@@ -240,6 +240,14 @@ const THING_CHASE = {
   prop_white_flag: { name: "White Flag", does: ["waves his little white flag at me", "holds up a grubby white flag and sighs", "surrenders with his droopy white flag"],
     end: ["And I hadn't even started anything.", "And the {mobs} surrendered back. Nobody knew who won.", "And it was his hanky. He blew his nose on it."] },
 
+  // fishing chest props
+  prop_landing_net: { name: "Landing Net", does: ["holds up his landing net, a big silver fish flopping in it", "drips his landing net all over my feet", "shows me the fish in his net and says it was bigger", "scoops me up in his landing net, just to check"],
+    end: ["And the fish wriggled free and swam off through the air.", "And the fish in his net told him to put it back.", "And {boss} asked if he caught it himself. He hadn't."] },
+  prop_tackle_box: { name: "Tackle Box", does: ["opens his battered green tackle box to show me his lures", "rattles his tackle box of hooks and floats at me", "picks a red float out of his tackle box, very slowly", "offers me a lure from his tackle box like a sweet"],
+    end: ["And every tray in his tackle box had another tray under it.", "And the {mobs} all took a lure. Nobody gave them back.", "And his spool of line came loose and tied us all together."] },
+  prop_fishing_pipe: { name: "Fisherman's Pipe", does: ["puffs on his curved wooden pipe, very thoughtful", "chews his pipe in the corner of his mouth and squints at me", "blows a thin grey smoke ring, very slowly", "taps the brass band on his pipe and says 'aye'"],
+    end: ["And his smoke rings came out shaped like fish.", "And he said 'the big ones always get away' and puffed.", "And {boss} asked for a puff. He said 'get your own'."] },
+
   // gacha series 1: lowlife and smoking-room accessories
   gacha_acc_ale_can: { name: "Cheap Ale Can", does: ["cracks open his dented can of cheap ale", "crushes his empty ale can on his forehead", "offers me a warm sip of his cheap ale"],
     end: ["And it was warm. It's always warm.", "And he burped my whole name. Twice.", "And {boss} asked if there were any more."] },

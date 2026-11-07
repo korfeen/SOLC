@@ -579,4 +579,6 @@ ns.PixCollectionNumbers = {
     ["background:bg_fishing_pier"] = 576,
     ["headwear:hunt_angler_head"] = 577,
     ["outfit:hunt_angler_body"] = 578,
+    ["accessory:prop_tackle_box"] = 579,
+    ["accessory:prop_fishing_pipe"] = 580,
 }
