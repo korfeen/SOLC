@@ -533,6 +533,68 @@ local function Cheer()
     end)
 end
 
+-- The hype crowd: ogres popping up along the bottom one after another, each shouting, bobbing, ducking away - more the
+-- better the best piece in the chest (CROWD by its rarity; an epic or legendary chest with nothing special: one).
+local CROWD = { common = 0, uncommon = 1, rare = 2, epic = 4, legendary = 7 }
+local CHEERS = { "LOOT!", "WOW!", "YES!", "GOLD!", "OOOH!", "SHINY", "MINE!", "HYPE!", "YAAA!", "BONK!" }
+local crowd = {}
+local function CrowdOgre(i)
+    if crowd[i] then return crowd[i] end
+    local o = CreateFrame("Frame", nil, top)
+    o:SetSize(160, 160)
+    o.art = o:CreateTexture(nil, "ARTWORK")
+    o.art:SetAllPoints()
+    o.art:SetTexture(FX .. "Ogre")
+    o.say = Text(o, 24, 1, 0.85, 0.25)
+    o.say:SetPoint("BOTTOM", o, "TOP", 0, -6)
+    o:Hide()
+    crowd[i] = o
+    return o
+end
+local function Crowd(n)
+    if n <= 0 then return end
+    local spread = math.min(760, 140 * n)  -- (along the bottom, evenly, a little jostled)
+    for i = 1, n do
+        After((i - 1) * 0.16, function()
+            if show.phase ~= "reveal" then return end
+            local o = CrowdOgre(i)
+            local x = (n == 1 and -300) or (-spread / 2 + spread * (i - 1) / (n - 1)) + (math.random() - 0.5) * 30
+            local size = 120 + math.random() * 70
+            o:SetSize(size, size)
+            if x > 0 then o.art:SetTexCoord(1, 0, 0, 1) else o.art:SetTexCoord(0, 1, 0, 1) end  -- (facing the chest)
+            o.say:SetText(CHEERS[math.random(#CHEERS)])
+            o:Show()
+            local from, to = FLOOR_Y - size, FLOOR_Y + 40 + math.random() * 50
+            Tween(0.4, function(p)
+                o:ClearAllPoints()
+                o:SetPoint("CENTER", panel, "TOP", x, from + (to - from) * Overshoot(p))
+            end, function()
+                Tween(0.5, function(p)  -- (a little hop of joy)
+                    o:ClearAllPoints()
+                    o:SetPoint("CENTER", panel, "TOP", x, to + math.sin(p * math.pi) * 18)
+                end, function()
+                    After(0.9 + (n - i) * 0.05, function()
+                        Tween(0.35, function(p)
+                            o:ClearAllPoints()
+                            o:SetPoint("CENTER", panel, "TOP", x, to + (from - to) * p * p)
+                        end, function() o:Hide() end)
+                    end)
+                end)
+            end)
+        end)
+    end
+end
+-- How many come: by the best piece the chest holds.
+local function CrowdSize()
+    local best = 0
+    for _, item in ipairs(show.items or {}) do
+        local rarity = item.kind == "unlock" and item.option and item.option.rarity
+        best = math.max(best, rarity and CROWD[rarity] or 0)
+    end
+    if best == 0 and (show.tier or 1) >= 3 then best = 1 end
+    return best
+end
+
 -- The burst: flash, the lid flies open, coins spray, the count ticks up; more for the better chests.
 local function Burst()
     show.phase = "reveal"
@@ -570,14 +632,14 @@ local function Burst()
                 { gravity = true, flutter = true })
         end
     end
-    if show.tier >= 4 then  -- legendary: rainbow light, a rainbow, fireworks, an ogre cheering
+    if show.tier >= 4 then  -- legendary: rainbow light, a rainbow, fireworks
         show.rainbow = true
         rainbow:Show()
         Tween(0.6, function(p) local s = 200 + EaseOut(p) * 460 rainbow:SetSize(s, s) rainbow:SetAlpha(p) end)
         Fireworks(7)
-        Cheer()
         Sound("UI_LEGENDARY_LOOT_TOAST")
     end
+    Crowd(CrowdSize())  -- (the ogres come to cheer: more for a better piece)
     coins:SetShown(show.coins > 0)
     show.shown, show.counting = 0, show.coins > 0
     show.pulled = 0
