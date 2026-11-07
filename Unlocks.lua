@@ -25,12 +25,12 @@
 local _, ns = ...
 
 local CHASE_CHANCE = 0.1  -- a chase item's chance in a chest, unless its option says (dropChance)
-local PITY = 5  -- chests of a dungeon in a row without a set piece (while it has any left for you): the next has one
+local PITY = 3  -- chests of a dungeon in a row without a set piece (while it has any left for you): the next has one
 -- A chest's quality: its chance as it's found, its coins' multiplier, its chase item's luck, its chance of a set piece.
 ns.CHEST_TIERS = {
-    { key = "common", name = "Common", chance = 0.60, coins = 1, chase = 1, piece = 0.25, story = 1, bonk = 0 },
-    { key = "rare", name = "Rare", chance = 0.25, coins = 2, chase = 1.5, piece = 0.4, story = 1, bonk = 0 },
-    { key = "epic", name = "Epic", chance = 0.12, coins = 4, chase = 2, piece = 0.6, story = 2, bonk = 1 },
+    { key = "common", name = "Common", chance = 0.60, coins = 1, chase = 1, piece = 0.4, story = 1, bonk = 0 },
+    { key = "rare", name = "Rare", chance = 0.25, coins = 2, chase = 1.5, piece = 0.6, story = 1, bonk = 0 },
+    { key = "epic", name = "Epic", chance = 0.12, coins = 4, chase = 2, piece = 0.8, story = 2, bonk = 1 },
     { key = "legendary", name = "Legendary", chance = 0.03, coins = 10, chase = 3, piece = 1, story = 3, bonk = 1 },
 }
 local TIERS = ns.CHEST_TIERS
@@ -366,12 +366,14 @@ function ns.OpenChest(dungeonKey)
             break
         end
     end
-    -- One of the set you don't have, by the tier's chance; for sure after PITY chests of it without.
-    local pieces = Locked(ns.UnlockOptions("clear:" .. dungeonKey))
+    -- One of the set you don't have, by the tier's chance; for sure after PITY chests of it without, and for sure in the
+    -- first chest that finds you none of the set yet (a new dungeon cleared should feel like it).
+    local set = ns.UnlockOptions("clear:" .. dungeonKey)
+    local pieces = Locked(set)
     if #pieces > 0 then
         db.chestPity = db.chestPity or {}
         local dry = db.chestPity[dungeonKey] or 0
-        if dry >= PITY or math.random() < (spec.piece or 0) then
+        if #pieces == #set or dry >= PITY or math.random() < (spec.piece or 0) then
             Take(pieces[math.random(#pieces)])
             db.chestPity[dungeonKey] = 0
         else
