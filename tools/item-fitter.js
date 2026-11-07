@@ -57,8 +57,10 @@ const safe = (id) => /^[\w-]+$/.test(id) ? id : null;
 // Room shown above the frame, for what sticks out of it (a bird's head on a hood): pulled down into it with Part, or
 // scaled down; only what's in the frame is saved.
 const MARGIN = 360;
-// A piece's source: the original kept at its first save, else the uncropped one (generated\full\<id>.png: the frame's
-// width, MARGIN taller, what stuck out above on top - gen-art.js), else the painted one.
+const SIDE = 480, BELOW = 480;  // (room beside and below the frame in the view, as gen-art.js keeps it)
+// A piece's source: the original kept at its first save, else the uncropped one (generated\full\<id>.png: the whole
+// piece, SIDE wider each side, MARGIN taller on top, BELOW under; older ones only MARGIN taller - gen-art.js), else the
+// painted one.
 function source(id) {
   const kept = path.join(FITS, id + ".source.png"), full = path.join(GEN, "full", id + ".png");
   return fs.existsSync(kept) ? kept : fs.existsSync(full) ? full : path.join(PAINTED, id + ".png");
@@ -111,10 +113,10 @@ button.on { background: #8a6a3a; color: #fff; } #save { background: #3f6b2a; bor
     <button id="undo">Undo</button><button id="save">Save</button><button id="buildBtn" title="What's new, sent to the game">Build...</button><span id="msg"></span>
   </div>
   <div class="bar hint">Erase/Restore: Shape round paints, lasso fills what you draw round; Strength: how much a stroke erases; Soft: how far its edge fades; Wand: click a colour to erase it and what touches it (Tolerance: how alike) · Hide ogre: the brushes erase the ogre under this piece instead (shown red while on) · Behind ogre: the brushes (and the wand) paint which of the piece goes behind the ogre (shown blue while on) · Lining: the brushes paint the colour behind the ogre (a hood's inside), Restore takes it off, Alt+click picks a colour off the piece · Part: draw round a bit (a bracer) to move it on its own; click it to pick it, Whole or a click outside it for the rest · Left drag: move (or paint, in Erase/Restore) · wheel: scale · Alt+wheel: stretch the width · Shift+wheel: turn · right drag: erase · Ctrl+wheel: zoom · Space+drag / middle: move the view · Ctrl+Z: undo</div>
-  <div class="wrap"><canvas id="view" width="${SIZE}" height="${SIZE + MARGIN}"></canvas></div>
+  <div class="wrap"><canvas id="view" width="${SIZE + 2 * SIDE}" height="${SIZE + MARGIN + BELOW}"></canvas></div>
 </div>
 <script>
-const S = ${SIZE}, M = ${MARGIN}, H = S + M;  // (the frame: S square from y = M; above it, room for what sticks out)
+const S = ${SIZE}, M = ${MARGIN}, H = S + M, VX = ${SIDE}, VB = ${BELOW};  // (VX, VB: the view's room beside and below)  // (the frame: S square from y = M; above it, room for what sticks out)
 const view = document.getElementById("view"), vx = view.getContext("2d"), wrap = document.querySelector(".wrap");
 const erase = document.createElement("canvas"); erase.width = S; erase.height = H; const ex = erase.getContext("2d");
 const out = document.createElement("canvas"); out.width = S; out.height = H; const ox = out.getContext("2d");
@@ -148,9 +150,12 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 let sel = -1;
 const hole = document.createElement("canvas"); hole.width = hole.height = S; const hx = hole.getContext("2d");  // (item-sized, set in open)
 function mainM() {
-  const pad = item ? item.height - S : 0;  // (an uncropped source: what's above its frame)
+  // (an uncropped source: wider than the frame - room each side, MARGIN on top, the rest below - or only taller, what's
+  // above its frame)
+  const padX = item && item.width > S ? (item.width - S) / 2 : 0;
+  const pad = !item ? 0 : item.width > S ? M : item.height - S;
   return new DOMMatrix().translate(0, M).translate(S / 2 + fit.x, S / 2 + fit.y).rotate(fit.rot * 180 / Math.PI)
-    .scale(fit.scale * (fit.sx || 1) * (fit.flip ? -1 : 1), fit.scale).translate(-S / 2, -S / 2 - pad);
+    .scale(fit.scale * (fit.sx || 1) * (fit.flip ? -1 : 1), fit.scale).translate(-S / 2 - padX, -S / 2 - pad);
 }
 function partBase(p) { return mainM().transformPoint({ x: p.box.x + p.box.w / 2, y: p.box.y + p.box.h / 2 }); }
 function partM(p) {
@@ -232,6 +237,8 @@ function scaleAt(k, p, stretch) {
   fit.x = p.x - S / 2 - k * (p.x - cx); fit.y = p.y - M - S / 2 - k * (p.y - cy);
 }
 function draw() {
+  vx.setTransform(1, 0, 0, 1, 0, 0); vx.fillStyle = "rgb(22,18,22)"; vx.fillRect(0, 0, view.width, view.height);
+  vx.setTransform(1, 0, 0, 1, VX, 0);  // (the frame's column; beside and below it drawn at the end)
   vx.fillStyle = "rgb(22,18,22)"; vx.fillRect(0, 0, S, H); vx.fillStyle = "rgb(40,32,40)"; vx.fillRect(0, M, S, S);  // (the backdrop: the frame lighter)
   render();
   vx.drawImage(lining, 0, 0);  // (the lining, under all of it)
@@ -268,6 +275,14 @@ function draw() {
   vx.fillStyle = "rgba(10,8,10,0.55)"; vx.fillRect(0, 0, S, M);
   vx.strokeStyle = "#b8892e"; vx.lineWidth = 2; vx.setLineDash([]); vx.beginPath(); vx.moveTo(0, M); vx.lineTo(S, M); vx.stroke();
   vx.fillStyle = "#b8892e"; vx.font = "22px system-ui"; vx.fillText("Above the frame: not in the picture", 12, M - 12);
+  // (beside and below the frame: the whole piece, dimmed - cropped off when saved; the frame's edges)
+  vx.save(); vx.setTransform(1, 0, 0, 1, 0, 0);
+  vx.beginPath(); vx.rect(0, 0, view.width, view.height); vx.rect(VX, 0, S, H); vx.clip("evenodd");
+  if (item) { vx.setTransform(new DOMMatrix().translate(VX, 0).multiply(mainM())); vx.drawImage(item, 0, 0); vx.setTransform(1, 0, 0, 1, 0, 0); }
+  vx.fillStyle = "rgba(10,8,10,0.55)"; vx.fillRect(0, 0, view.width, view.height);
+  vx.restore();
+  vx.strokeStyle = "#b8892e"; vx.lineWidth = 2; vx.strokeRect(0, M, S, S);
+  vx.fillStyle = "#b8892e"; vx.fillText("Outside the frame: cut off", 12, H + 30);
   vx.lineWidth = 2; vx.setLineDash([8, 6]);
   (fit && fit.parts || []).forEach((p, i) => {
     const c = partOutline(p);
@@ -277,8 +292,9 @@ function draw() {
   if (lasso) { vx.strokeStyle = drag && drag.lasso && drag.how === "erase" ? "#ff5050" : "#66ccff"; vx.beginPath(); lasso.forEach((q, k) => k ? vx.lineTo(q.x, q.y) : vx.moveTo(q.x, q.y)); vx.stroke(); }
   vx.setLineDash([]);
   if (cursor && (mode === "erase" || mode === "restore") && document.getElementById("shape").value === "round") { vx.strokeStyle = mode === "erase" ? "#ff5050" : "#66ccff"; vx.lineWidth = 2; vx.beginPath(); vx.arc(cursor.x, cursor.y, size / 2, 0, Math.PI * 2); vx.stroke(); }
+  vx.setTransform(1, 0, 0, 1, 0, 0);
 }
-function at(e) { const r = view.getBoundingClientRect(); return { x: (e.clientX - r.left) * S / r.width, y: (e.clientY - r.top) * H / r.height }; }
+function at(e) { const r = view.getBoundingClientRect(); return { x: (e.clientX - r.left) * view.width / r.width - VX, y: (e.clientY - r.top) * view.height / r.height }; }
 function snapshot() { undo.push({ fit: clone(fit), sel, erase: ex.getImageData(0, 0, S, H), hide: hdx.getImageData(0, 0, S, H), behind: bhx.getImageData(0, 0, S, H), lining: lnx.getImageData(0, 0, S, H) }); if (undo.length > 40) undo.shift(); }
 // What the move, scale and turn controls work on: the selected part, or the whole.
 const target = () => sel >= 0 ? fit.parts[sel] : fit;
@@ -430,7 +446,7 @@ function setZoom(z, e) {
   z = Math.max(0.3, Math.min(4, z));
   const r = view.getBoundingClientRect();
   const fx = e ? (e.clientX - r.left) / r.width : 0.5, fy = e ? (e.clientY - r.top) / r.height : 0.5;
-  zoom = z; view.style.width = (S * zoom) + "px";
+  zoom = z; view.style.width = (view.width * zoom) + "px";
   document.getElementById("zoom").value = Math.round(zoom * 100); document.getElementById("zoomV").textContent = Math.round(zoom * 100) + "%";
   if (e) { const r2 = view.getBoundingClientRect(); wrap.scrollLeft += r2.left + fx * r2.width - e.clientX; wrap.scrollTop += r2.top + fy * r2.height - e.clientY; }
 }
@@ -629,7 +645,7 @@ async function watchStories() {
 }
 document.getElementById("buildBtn").onclick = showBuild;
 // The whole picture in the window.
-function fitView() { setZoom(Math.min((wrap.clientWidth - 40) / S, (wrap.clientHeight - 40) / H)); wrap.scrollLeft = wrap.scrollTop = 0; }
+function fitView() { setZoom(Math.min((wrap.clientWidth - 40) / view.width, (wrap.clientHeight - 40) / view.height)); wrap.scrollLeft = wrap.scrollTop = 0; }
 document.getElementById("fitview").onclick = fitView;
 fitView(); setOgre(); list();
 </script>`;

@@ -440,17 +440,18 @@ function stretchBottom(rgba, to) {
 // What a transform puts above the picture (MARGIN rows over its top edge: a tall hood's ears, a bird's head), which the
 // picture itself cuts off; kept so the item fitter can show it and it can be pulled down into the frame.
 const MARGIN = 360;
-function transformAbove(rgba, t) {
-  const out = Buffer.alloc(SIZE * MARGIN * 4);
-  let any = false;
-  for (let y = 0; y < MARGIN; y++) for (let x = 0; x < SIZE; x++) {
-    const sx = Math.round((x - t.tx) / t.s), sy = Math.round((y - MARGIN - t.ty) / t.s);
+// Beside and below it too (SIDE each side, BELOW under it): the whole piece is kept for the fitter, nothing cut off -
+// a bindle out past the shoulder, a suit's legs below the bottom edge; cropped there by the frame.
+const SIDE = 480, BELOW = 480;
+// The piece moved onto ours (ours = s * theirs + t), into the uncropped picture: the frame at (SIDE, MARGIN).
+function transformWhole(rgba, t) {
+  const w = SIZE + 2 * SIDE, h = MARGIN + SIZE + BELOW, out = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const sx = Math.round((x - SIDE - t.tx) / t.s), sy = Math.round((y - MARGIN - t.ty) / t.s);
     if (sx < 0 || sy < 0 || sx >= SIZE || sy >= SIZE) continue;
-    const i = (sy * SIZE + sx) * 4;
-    if (rgba[i + 3] > 16) any = true;
-    rgba.copy(out, (y * SIZE + x) * 4, i, i + 4);
+    rgba.copy(out, (y * w + x) * 4, (sy * SIZE + sx) * 4, (sy * SIZE + sx) * 4 + 4);
   }
-  return any ? out : null;
+  return out;
 }
 function transform(rgba, t) {
   const out = Buffer.alloc(SIZE * SIZE * 4);
@@ -485,7 +486,9 @@ function earMask() {
 // a little below the fist's middle (the fist then cut out in front of it, cutHands). Not for both hands (a pair is
 // drawn in the fists already) or when it's far off (then it's left where the model put it).
 const FIST_TOP = 1165;  // (the fists: below the sleeves' cuffs, at the bottom corners)
+let gripMove = null;  // (the last grip-into-the-fist move: the uncropped picture moves with it)
 function gripToFist(rgba, which) {
+  gripMove = null;
   const file = path.join(ART, BASE[0]);
   if (which === "both" || !fs.existsSync(file)) return rgba;
   const skin = load(file);
@@ -506,6 +509,7 @@ function gripToFist(rgba, which) {
   const dx = Math.round(hx - gx), dy = Math.round(SIZE - 8 - gy);  // (its end at the bottom edge, through the fist)
   if (Math.hypot(dx, dy) > 450) return rgba;
   console.log(`The grip into the fist: moved ${dx}, ${dy}.`);
+  gripMove = { dx, dy };
   const out = Buffer.alloc(SIZE * SIZE * 4);
   for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
     const sx = x - dx, sy = y - dy;
@@ -880,7 +884,7 @@ function main() {
   }
   // Worn: moved from the generator's ogre onto ours (it redraws the ogre a little bigger or smaller, higher or lower).
   const wornFile = path.join(work, "worn.png");
-  let matched = false, above = null;
+  let matched = false, whole = null;
   if (fit === "wear" && fs.existsSync(wornFile)) {
     // (first the lift onto the worn picture, where it really was; then that picture's ogre onto ours)
     const worn = load(wornFile);
@@ -892,7 +896,7 @@ function main() {
     const t = register(worn, ogre(edition, null, layer === "outfit" || layer === "suit"), keyed, layer === "headwear" ? MATCH_HEAD : MATCH_BOTTOM);  // (keyed: the lifted hat, still where it is on theirs)
     if (t && t.score > 0.6) {
       console.log(`Its ogre onto ours: scale ${t.s.toFixed(2)}, matched ${(t.score * 100).toFixed(0)}% of the outline.`);
-      above = transformAbove(keyed, t);
+      whole = transformWhole(keyed, t);
       keyed = transform(keyed, t);
       matched = true;
     } else {
@@ -908,12 +912,30 @@ function main() {
   if (behindEars) piece = cutEars(piece);  // (the ears in front: cut out of it, exactly our ogre's)
   const out = path.join(OUT, edition, id + ".png");
   save(out, piece);
-  // (and uncropped, for the fitter: generated\full\<id>.png, the frame's width and MARGIN taller, what stuck out on top)
+  // (and uncropped, for the fitter: generated\full\<id>.png, SIDE wider each side, MARGIN taller on top and BELOW
+  // under: the whole piece - the frame's part as finished above (grip, hands, ears), the rest as it was moved there)
   const full = path.join(OUT, "full", id + ".png");
-  if (above && edition === "painted" && matched) {
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    writePng(full, SIZE, SIZE + MARGIN, Buffer.concat([above, piece]));
-    console.log("Stuck out above the picture: kept uncropped for the fitter in generated/full.");
+  if (whole && edition === "painted") {
+    const w = SIZE + 2 * SIDE, h = MARGIN + SIZE + BELOW;
+    if (gripMove && hold && !offhand && !tall) {  // (moved with the grip)
+      const moved = Buffer.alloc(w * h * 4);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const sx = x - gripMove.dx, sy = y - gripMove.dy;
+        if (sx >= 0 && sy >= 0 && sx < w && sy < h) whole.copy(moved, (y * w + x) * 4, (sy * w + sx) * 4, (sy * w + sx) * 4 + 4);
+      }
+      whole = moved;
+    }
+    for (let y = 0; y < SIZE; y++) piece.copy(whole, ((MARGIN + y) * w + SIDE) * 4, y * SIZE * 4, (y + 1) * SIZE * 4);
+    let outside = false;
+    for (let y = 0; y < h && !outside; y++) for (let x = 0; x < w; x++) {
+      const inFrame = x >= SIDE && x < SIDE + SIZE && y >= MARGIN && y < MARGIN + SIZE;
+      if (!inFrame && whole[(y * w + x) * 4 + 3] > 16) { outside = true; break; }
+    }
+    if (outside) {
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      writePng(full, w, h, whole);
+      console.log("Some of it is outside the picture: kept whole for the fitter in generated/full (crop it there).");
+    } else if (fs.existsSync(full)) fs.rmSync(full);
   } else if (edition === "painted" && fs.existsSync(full)) fs.rmSync(full);
   // The review: the new piece on the ogre, as it looks; and a fit check with the head's outline over it.
   const now = ogre(edition, solid(40, 32, 40), layer === "outfit" || layer === "suit");
