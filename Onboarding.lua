@@ -157,16 +157,19 @@ local function Build()
             if ns.SecretShoo then ns.SecretShoo() end
         end
     end)
-    panel.bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    -- (a plain white base, so the parchment colour comes out true: the tooltip background is dark and greys it)
+    panel.bubble:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 16, edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
     panel.bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)
     panel.bubble:SetBackdropBorderColor(0.35, 0.24, 0.12)
-    local tail = panel.bubble:CreateTexture(nil, "BACKGROUND", nil, -1)
+    -- (a real speech-bubble tail with its outline - WoW's own chat bubbles' - on the bubble's right, pointing at him)
+    local tail = panel.bubble:CreateTexture(nil, "ARTWORK")
     panel.tail = tail
-    tail:SetSize(18, 18)
-    tail:SetPoint("CENTER", panel.bubble, "BOTTOMRIGHT", -2, 14)
-    tail:SetColorTexture(0.98, 0.95, 0.86, 0.97)
-    tail:SetRotation(math.rad(45))
+    tail:SetSize(20, 20)
+    tail:SetPoint("LEFT", panel.bubble, "BOTTOMRIGHT", -6, 16)
+    tail:SetTexture("Interface\\Tooltips\\ChatBubble-Tail")
+    tail:SetVertexColor(0.98, 0.95, 0.86)
+    tail:SetRotation(math.pi / 2)
     panel.text = panel.bubble:CreateFontString(nil, "OVERLAY")
     panel.text:SetFont(NAME_FONT, 15, "")
     panel.text:SetTextColor(0.15, 0.1, 0.06)
