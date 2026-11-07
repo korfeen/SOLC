@@ -441,7 +441,7 @@ local function Step(dt)
                 table.remove(caps, i)
                 Spare(c)
                 owned[c.p[1]] = true
-                ns.UnlockOption(c.p[1])  -- (yours to mint with now; the guild news hears of it)
+                ns.UnlockOption(c.p[1], nil, true)  -- (yours to mint with now; the guild news hears of it; the machine shows the win)
                 if ns.OnKillsChanged then ns.OnKillsChanged() end
                 S.wonDirty = true
                 S.go.wins[#S.go.wins + 1] = c.p

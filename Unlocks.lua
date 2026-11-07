@@ -82,21 +82,31 @@ function ns.PoolProgress(pool)
 end
 
 -- Unlocks one option (its key); quiet: no feed event. Returns true if it's new.
-function ns.UnlockOption(key, quiet)
+-- (each new piece's toast: its name, and what kind of piece it is)
+local LAYER_TOAST = { background = "A new background for your dreams", outfit = "New clothes for your dreams",
+    headwear = "A new hat for your dreams", accessory = "Something new to hold in your dreams", skin = "A new skin for your dreams",
+    eyes = "New eyes for your dreams", expression = "A new mouth for your dreams" }
+-- Unlocks a piece. quiet: no feed event, no toast (catching up). noToast: its own toast or show elsewhere (a chest's
+-- cards, the claw machine, the Shop, a rank-up). Returns true if it was new.
+function ns.UnlockOption(key, quiet, noToast)
     local db = KillTrackerDB
     db.unlocks = db.unlocks or {}
-    if db.unlocks[key] or not ns.OptionByKey(key) then return false end
+    local found = ns.OptionByKey(key)
+    if db.unlocks[key] or not found then return false end
     db.unlocks[key] = time()
     if db.ownUnlocks then db.ownUnlocks[key] = db.unlocks[key] end  -- (this character's own too: Core.lua's wardrobe)
     if ns.CheckCombines then ns.CheckCombines() end  -- (the other half of a combined piece, Minting.lua)
     if not quiet and ns.AddEvent then ns.AddEvent("U", key) end
+    if not quiet and not noToast and ns.ShowToast and not (ns.RankLocked and ns.RankLocked("pixcollection")) then
+        ns.ShowToast("achievement", "Unlocked!", found.option.name, LAYER_TOAST[found.layer.key] or "New for your dreams")
+    end
     return true
 end
--- Unlocks a whole pool (dev mode; looted epics). Returns how many were new.
-function ns.UnlockPool(pool, quiet)
+-- Unlocks a whole pool (dev mode; looted epics; a deed's pieces). Returns how many were new.
+function ns.UnlockPool(pool, quiet, noToast)
     local new = 0
     for _, unlocked in ipairs(ns.UnlockOptions(pool)) do
-        if ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option), quiet) then new = new + 1 end
+        if ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option), quiet, noToast) then new = new + 1 end
     end
     return new
 end
@@ -210,7 +220,7 @@ end
 local function OpenTribute(chest)
     local db, spec = KillTrackerDB, chest.tribute or {}
     for _, item in ipairs(spec.items or {}) do
-        if item.kind == "unlock" then ns.UnlockOption(item.key)
+        if item.kind == "unlock" then ns.UnlockOption(item.key, nil, true)  -- (the chest's cards show it)
         elseif item.kind == "ingredient" and ns.INGREDIENTS[item.key] then ns.AddIngredient(item.key, item.n or 1, true) end
     end
     local coins = math.max(0, math.floor(tonumber(spec.points) or 0))
@@ -314,7 +324,7 @@ local function OpenBounty(chest)
     local dry = db.chestPity[pityKey] or 0
     if #list > 0 and (guild or dry >= PITY or math.random() < (spec.piece or 0)) then
         local unlocked = list[math.random(#list)]
-        ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option))
+        ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option), nil, true)  -- (the chest's cards show it)
         items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
         if not guild then db.chestPity[pityKey] = 0 end
     elseif not guild then
@@ -350,7 +360,7 @@ function ns.OpenChest(dungeonKey)
     local spec = TIERS[tier] or TIERS[1]
     local items, coins = {}, Coins(dungeonKey, tier)
     local function Take(unlocked)
-        ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option))
+        ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option), nil, true)  -- (the chest's cards show it)
         items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
     end
     -- A chase item, by its luck (the chest's tier times it).
@@ -480,7 +490,7 @@ local function CheckWorn()
             else
                 waiting[itemID] = nil
                 local key = wearable[Simple(name)]
-                if key and ns.UnlockOption(key) then
+                if key and ns.UnlockOption(key, nil, true) then  -- (its own toast, below)
                     new = true
                     if not (ns.RankLocked and ns.RankLocked("pixcollection")) then ns.ShowToast("achievement", "Unlocked for your dreams!", name, "Worn: it can roll in your pictures now") end
                 end
@@ -516,7 +526,7 @@ frame:SetScript("OnEvent", function(_, _, message)
         local link = message:match(pattern)
         if link then
             local name = link:match("|h%[(.-)%]|h")
-            if name and ns.UnlockPool(LootKey(name)) > 0 then
+            if name and ns.UnlockPool(LootKey(name), nil, true) > 0 then  -- (its own toast, below)
                 if not (ns.RankLocked and ns.RankLocked("pixcollection")) then  -- (quiet till the Collection opens)
                     ns.ShowToast("achievement", "Unlocked for your dreams!", name, "It can roll in your pictures now")
                 end

@@ -232,7 +232,7 @@ function ns.CheckRank()
     db.rank = current.rank
     -- (the picture pieces your rank has reached: the piece perks; caught up on login, quietly: only a new rank's are announced)
     for _, perk in ipairs(ns.RANK_PERKS) do
-        if perk.kind == "piece" and current.rank >= perk.rank and ns.UnlockOption then ns.UnlockOption(perk.key, seen == nil or perk.rank <= seen) end
+        if perk.kind == "piece" and current.rank >= perk.rank and ns.UnlockOption then ns.UnlockOption(perk.key, seen == nil or perk.rank <= seen, true) end  -- (the rank-up's toast says it)
     end
     if not seen or current.rank <= seen then return end
     local bonks = 0

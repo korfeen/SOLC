@@ -117,7 +117,7 @@ function ns.ShopBuy(keys)
         local kind, id = key:match("^(%w+):(.+)$")
         if kind == "wallpaper" then db.wallpapers = db.wallpapers or {} db.wallpapers[id] = time()
         elseif kind == "frame" then db.frames = db.frames or {} db.frames[id] = time()
-        else ns.UnlockOption(key) end
+        else ns.UnlockOption(key, nil, true) end  -- (the receipt shows it)
     end
     if ns.CheckAchievements then ns.CheckAchievements() end  -- (the Pro Shop spending deeds)
     if ns.OnKillsChanged then ns.OnKillsChanged() end
