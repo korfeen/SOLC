@@ -575,4 +575,8 @@ ns.PixCollectionNumbers = {
     ["background:bg_bounty_office"] = 572,
     ["headwear:hunt_sheriff_head"] = 573,
     ["outfit:hunt_sheriff_body"] = 574,
+    ["accessory:prop_landing_net"] = 575,
+    ["background:bg_fishing_pier"] = 576,
+    ["headwear:hunt_angler_head"] = 577,
+    ["outfit:hunt_angler_body"] = 578,
 }
