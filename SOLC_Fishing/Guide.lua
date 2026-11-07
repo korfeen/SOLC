@@ -24,15 +24,55 @@ local ZONES = {
     ["Blasted Lands"] = 425, ["Deadwind Pass"] = 425, ["Dire Maul"] = 425, ["Scholomance"] = 425, ["Searing Gorge"] = 425,
     ["Silithus"] = 425, ["Stratholme"] = 425, ["Swamp of Sorrows"] = 425, ["Winterspring"] = 425,
 }
--- The fish worth cooking on the way up: the raw fish, the dish, the cooking skill its recipe is learnt at.
+-- Alliance and neutral recipe vendors: name, town, zone, and x, y where Classic coordinates are known (those can be
+-- pinned on the map; the rest are named only - their wiki coordinates are from the modern game, where towns moved).
+local THARYNN = { "Tharynn Bouden", "Goldshire", "Elwynn Forest", 41.9, 67.1 }
+local KHARA = { "Khara Deepwater", "the Loch", "Loch Modan", 40, 39 }
+-- The fish worth cooking on the way up: the raw fish, the dish, the cooking skill its recipe is learnt at, and who
+-- sells the recipe.
 local FISH = {
-    { "Raw Brilliant Smallfish", "Brilliant Smallfish", 1 },
-    { "Raw Longjaw Mud Snapper", "Longjaw Mud Snapper", 50 },
-    { "Raw Bristle Whisker Catfish", "Bristle Whisker Catfish", 100 },
-    { "Raw Mithril Head Trout", "Cooked Mithril Head Trout", 175 },
-    { "Raw Spotted Yellowtail", "Spotted Yellowtail", 225 },
-    { "Large Raw Mightfish", "Mightfish Steak", 275 },
+    { "Raw Brilliant Smallfish", "Brilliant Smallfish", 1, { THARYNN, KHARA } },
+    { "Raw Longjaw Mud Snapper", "Longjaw Mud Snapper", 50, { THARYNN, KHARA } },
+    { "Raw Bristle Whisker Catfish", "Bristle Whisker Catfish", 100,
+        { { "Lindea Rabonne", "Southshore", "Hillsbrad Foothills" }, { "Catherine Leland", "the Canals", "Stormwind City" } } },
+    { "Raw Mithril Head Trout", "Cooked Mithril Head Trout", 175,
+        { { "Stuart Fleming", "Menethil Harbor", "Wetlands", 6.3, 57.4 }, { "Heldan Galesong", "the coast", "Darkshore", 37.0, 56.4 } } },
+    { "Raw Spotted Yellowtail", "Spotted Yellowtail", 225, { { "Gikkix", "Steamwheedle Port", "Tanaris" } } },
+    { "Large Raw Mightfish", "Mightfish Steak", 275,
+        { { "Kelsey Yance", "Booty Bay", "Stranglethorn Vale" }, { "Vivianna", "Feathermoon", "Feralas" } } },
 }
+
+-- A zone's map by its name: searched under the world the player stands in.
+local function FindMap(zone)
+    if not (C_Map and C_Map.GetMapInfo and C_Map.GetMapChildrenInfo) then return end
+    local id, root = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    while id do
+        local info = C_Map.GetMapInfo(id)
+        if not info then break end
+        root = id
+        if not info.parentMapID or info.parentMapID == 0 then break end
+        id = info.parentMapID
+    end
+    for _, top in ipairs({ root, 947, 1414, 1415 }) do
+        for _, child in ipairs(C_Map.GetMapChildrenInfo(top, Enum.UIMapType.Zone, true) or {}) do
+            if child.name == zone then return child.mapID end
+        end
+    end
+end
+
+-- A vendor pinned on the world map (WoW's own map pin, tracked on screen); in chat if the map can't take it.
+local function Pin(vendor)
+    local name, town, zone, x, y = unpack(vendor)
+    local map = FindMap(zone)
+    if map and C_Map.SetUserWaypoint and UiMapPoint
+        and (not C_Map.CanSetUserWaypointOnMap or C_Map.CanSetUserWaypointOnMap(map)) then
+        C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(map, x / 100, y / 100))
+        if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+        if F.Say then F.Say(("%s, %s. I've marked it on your map, sir. Do try not to get lost."):format(name, town)) end
+    else
+        print(("|cffd4a017SOLC Fishing:|r %s, %s in %s, at %.1f, %.1f."):format(name, town, zone, x, y))
+    end
+end
 
 -- A profession's skill by its skill line (356 fishing, 185 cooking), or nil if you don't have it.
 local function Skill(line)
@@ -79,10 +119,25 @@ local function Build()
     page.cook = Ink(page, 20, INK)
     page.cook:SetText("Cooking your catch")
     page.rows = {}
-    for i = 1, #FISH do
-        page.rows[i] = { fish = Ink(page, 15, INK), dish = Ink(page, 13, INK_DIM) }
+    for i, fish in ipairs(FISH) do
+        page.rows[i] = { fish = Ink(page, 15, INK), dish = Ink(page, 13, INK_DIM), vendors = {} }
         page.rows[i].fish:SetWidth(TEXT_W)
         page.rows[i].dish:SetWidth(TEXT_W - 22)
+        -- (each vendor a line: the ones with a known spot in red ink, click to pin them on the map)
+        for j, vendor in ipairs(fish[4]) do
+            local line = CreateFrame("Button", nil, page)
+            line.text = Ink(line, 13, vendor[4] and RED_INK or INK_DIM)
+            line.text:SetPoint("TOPLEFT")
+            line.text:SetWidth(TEXT_W - 30)
+            line.text:SetText(("%s, %s (%s)%s"):format(vendor[1], vendor[2], vendor[3], vendor[4] and " - pin it" or ""))
+            line:SetSize(TEXT_W - 30, line.text:GetStringHeight())
+            if vendor[4] then
+                line:SetScript("OnClick", function() Pin(vendor) end)
+                line:SetScript("OnEnter", function() line.text:SetAlpha(0.65) end)
+                line:SetScript("OnLeave", function() line.text:SetAlpha(1) end)
+            end
+            page.rows[i].vendors[j] = line
+        end
     end
     page.cookSkill = Ink(page, 13, INK_DIM)
     page.cookSkill:SetWidth(TEXT_W)
@@ -131,8 +186,8 @@ local function Refresh()
         local ink = (cooking and cooking >= fish[3]) and INK or INK_DIM
         row.fish:SetTextColor(ink[1], ink[2], ink[3])
     end
-    page.cookSkill:SetText(cooking and ("Your cooking: %d. Recipes from cooking trainers and vendors."):format(cooking)
-        or "Cooking not learnt yet - any cooking trainer.")
+    page.cookSkill:SetText((cooking and ("Your cooking: %d."):format(cooking) or "Cooking not learnt yet - any cooking trainer.")
+        .. " Under each dish: who sells its recipe. Click a red one to pin it on your map.")
     -- (laid out top to bottom)
     local y = 14
     y = Place(page.where, y) + 8
@@ -142,7 +197,15 @@ local function Refresh()
     y = Place(page.cook, y) + 8
     for _, row in ipairs(page.rows) do
         y = Place(row.fish, y) + 1
-        y = Place(row.dish, y, PAD + 22) + 6
+        y = Place(row.dish, y, PAD + 22) + 2
+        for _, line in ipairs(row.vendors) do
+            line:ClearAllPoints()
+            line:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + 30, -y)
+            local h = math.max(12, line.text:GetStringHeight() or 0)
+            line:SetHeight(h)
+            y = y + h + 1
+        end
+        y = y + 5
     end
     y = Place(page.cookSkill, y + 4) + 14
     page:SetHeight(y)
