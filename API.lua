@@ -9,6 +9,13 @@ SOLC = {
 }
 
 -- Your name as guildmates see it, and chat output in SOLC's style.
+-- This week's Gone Fishing poster for you (SOLC Fishing): have, goal, claimed - or nil if it isn't on your board.
+function SOLC.FishingPoster()
+    local board = ns.GetPosterProgress and ns.GetPosterProgress()
+    for _, p in ipairs(board and board.posters or {}) do
+        if p.bounty.event == "fish" then return p.have or 0, p.goal, p.claimed ~= nil end
+    end
+end
 function SOLC.MyName() return ns.MyName() end
 function SOLC.Print(text) ns.Print(text) end
 

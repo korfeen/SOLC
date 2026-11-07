@@ -1,0 +1,10 @@
+## Interface: 16001, 120105
+## Title: SOLC Fishing
+## Notes: One key to cast and reel in, and an ogre who keeps your catch log. Sleepy Ogre Leisure Club.
+## Author: faluk
+## Version: @project-version@
+## OptionalDeps: SOLC
+## SavedVariables: SOLCFishingDB
+
+Bindings.xml
+Fishing.lua

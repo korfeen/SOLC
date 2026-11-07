@@ -1,0 +1,5 @@
+<Bindings>
+	<!-- The fishing key (Options > Keybindings > AddOns > SOLC Fishing): casts Fishing; while the bobber is out it reels in. -->
+	<Binding name="CLICK SOLCFishButton:LeftButton" header="SOLCFISHING" category="ADDONS">
+	</Binding>
+</Bindings>

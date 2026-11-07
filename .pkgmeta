@@ -17,6 +17,7 @@ ignore:
   - .gitattributes
   - README.md
   - CHANGELOG.md
+  - SOLC_Fishing  # (the fishing addon: not shipped yet, tried by hand first)
 
 # The release page's notes: the player-facing changelog, not every commit.
 manual-changelog:
