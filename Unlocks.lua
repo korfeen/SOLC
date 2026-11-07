@@ -253,6 +253,7 @@ end
 ns.FISHING = "fishing"
 local FISH_CHANCE, FISH_GEAR_BONUS = 1 / 50, 0.25
 local FISHING_GEAR = { hunt_angler_head = true, hunt_angler_body = true, prop_landing_net = true, bg_fishing_pier = true,
+    prop_tackle_box = true, prop_fishing_pipe = true,
     prop_fish = true, gacha_head_fishing_hat = true, gacha_head_souwester = true, gacha_acc_trophy_fish = true,
     gacha_outfit_sailor_stripes = true }
 local FISHING_EXTRA = { "accessory:prop_fish" }  -- (fishing pieces from elsewhere a fishing chest can give too)
