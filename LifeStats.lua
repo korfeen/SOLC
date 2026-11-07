@@ -96,6 +96,7 @@ local function Gathered(kind)
     local life = Life()
     life[kind] = (life[kind] or 0) + 1
     if ns.OnBountyEvent then ns.OnBountyEvent(kind == "fish" and "fish" or "gather") end  -- (the odd-job posters)
+    if kind == "fish" and ns.OnFishCaught then ns.OnFishCaught() end  -- (a fishing chest, by chance: Unlocks.lua)
     local points = KillTrackerDB.points
     if points then
         points.gather = (points.gather or 0) + (ns.Config("gather") or 0)

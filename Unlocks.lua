@@ -246,9 +246,45 @@ function ns.AddGuildBountyChest()
     db.chests = db.chests or {}
     db.chests[#db.chests + 1] = { dungeon = ns.GUILD_BOUNTY, time = time(), tier = 3 }
 end
--- A chest's name, for its tile and its show: "Deadmines", "Bounty", "Guild bounty", "Ogre Godz tribute".
+-- Fishing chests: each fish caught (LifeStats.lua) has FISH_CHANCE of one, FISH_GEAR_BONUS more for each fishing piece
+-- your ogre wears (your Overview card's: FISHING_GEAR). Inside, like a bounty chest's: coins, the tier's stories and
+-- bonks, and by the tier's chance (for sure after PITY without) a fishing piece: the angler set (unlock "chest:fishing",
+-- only from these) or the Fishing Rod.
+ns.FISHING = "fishing"
+local FISH_CHANCE, FISH_GEAR_BONUS = 1 / 50, 0.25
+local FISHING_GEAR = { hunt_angler_head = true, hunt_angler_body = true, prop_landing_net = true, bg_fishing_pier = true,
+    prop_fish = true, gacha_head_fishing_hat = true, gacha_head_souwester = true, gacha_acc_trophy_fish = true,
+    gacha_outfit_sailor_stripes = true }
+local FISHING_EXTRA = { "accessory:prop_fish" }  -- (fishing pieces from elsewhere a fishing chest can give too)
+-- The fishing chest's chance for one fish, and how many fishing pieces your ogre wears.
+function ns.FishingChestChance()
+    local worn = 0
+    local ogre = KillTrackerDB and KillTrackerDB.card and KillTrackerDB.card.ogre
+    for _, id in pairs(ogre or {}) do if FISHING_GEAR[id] then worn = worn + 1 end end
+    return FISH_CHANCE * (1 + FISH_GEAR_BONUS * worn), worn
+end
+function ns.OnFishCaught()
+    if ns.RankLocked and ns.RankLocked("pixcollection") then return end  -- (chests come with the Dream Bed's rank)
+    if math.random() >= ns.FishingChestChance() then return end
+    local db = KillTrackerDB
+    db.chests = db.chests or {}
+    db.chests[#db.chests + 1] = { dungeon = ns.FISHING, time = time(), tier = RollAny() }
+    ns.ShowToast("achievement", "A fishing chest!", "Something heavy on the line", "Open it in your Inventory")
+    if ns.OnKillsChanged then ns.OnKillsChanged() end
+end
+local function FishingPool()
+    local list = ns.UnlockOptions("chest:fishing")
+    for _, key in ipairs(FISHING_EXTRA) do
+        local unlocked = ns.OptionByKey(key)
+        if unlocked then list[#list + 1] = unlocked end
+    end
+    return list
+end
+
+-- A chest's name, for its tile and its show: "Deadmines", "Bounty", "Guild bounty", "Fishing", "Ogre Godz tribute".
 function ns.ChestName(key)
     if key == ns.TRIBUTE then return "Ogre Godz tribute" end
+    if key == ns.FISHING then return "Fishing" end
     if key == ns.BOUNTY then return "Bounty" end
     if key == ns.GUILD_BOUNTY then return "Guild bounty" end
     local d = ns.DungeonByKey and ns.DungeonByKey(key)
@@ -268,18 +304,25 @@ local function OpenBounty(chest)
     local tier = chest.tier or 1
     local spec = TIERS[tier] or TIERS[1]
     local guild = chest.dungeon == ns.GUILD_BOUNTY
+    local fishing = chest.dungeon == ns.FISHING  -- (a fishing chest: the fishing pieces, its own pity)
+    local pityKey = fishing and ns.FISHING or ns.BOUNTY
     local items = {}
-    local own = Locked(ns.PosterPieces and chest.poster and ns.PosterPieces(chest.poster) or {})
-    local list = #own > 0 and own or Locked(ns.PosterPieces and ns.PosterPieces() or {})
+    local list
+    if fishing then
+        list = Locked(FishingPool())
+    else
+        local own = Locked(ns.PosterPieces and chest.poster and ns.PosterPieces(chest.poster) or {})
+        list = #own > 0 and own or Locked(ns.PosterPieces and ns.PosterPieces() or {})
+    end
     db.chestPity = db.chestPity or {}
-    local dry = db.chestPity[ns.BOUNTY] or 0
+    local dry = db.chestPity[pityKey] or 0
     if #list > 0 and (guild or dry >= PITY or math.random() < (spec.piece or 0)) then
         local unlocked = list[math.random(#list)]
         ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option))
         items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
-        if not guild then db.chestPity[ns.BOUNTY] = 0 end
+        if not guild then db.chestPity[pityKey] = 0 end
     elseif not guild then
-        db.chestPity[ns.BOUNTY] = dry + 1
+        db.chestPity[pityKey] = dry + 1
     end
     for _, key in ipairs({ "story", "bonk" }) do
         if (spec[key] or 0) > 0 then
@@ -305,7 +348,7 @@ function ns.OpenChest(dungeonKey)
     end
     if not chest then return nil end
     if dungeonKey == ns.TRIBUTE then return OpenTribute(chest) end
-    if dungeonKey == ns.BOUNTY or dungeonKey == ns.GUILD_BOUNTY then return OpenBounty(chest) end
+    if dungeonKey == ns.BOUNTY or dungeonKey == ns.GUILD_BOUNTY or dungeonKey == ns.FISHING then return OpenBounty(chest) end
     if ns.Tally then ns.Tally("chests") end  -- (the Chests opened deeds)
     local tier = chest.tier or 1
     local spec = TIERS[tier] or TIERS[1]

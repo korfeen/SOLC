@@ -77,6 +77,7 @@ function ns.PixCollectionUnlockText(option)
     if kind == 'combine' then return 'Collect its component pieces.' end
     if kind == 'shop' then return 'Buy it in the Shop.' end
     if kind == 'gacha' then return 'From the claw machine.' end
+    if unlock == 'chest:fishing' then return 'Find it in fishing chests (catch fish; fishing gear on your ogre helps).' end
     return 'Earn its wardrobe unlock to dream of it.'
 end
 
