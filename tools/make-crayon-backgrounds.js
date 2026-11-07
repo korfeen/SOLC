@@ -409,6 +409,23 @@ function skull(c, r, x, y, s = 1) {
 
 // --- The dungeons (bg_<key>, as gen-art-backgrounds.json describes them) ---
 const DUNGEONS = {
+  // The Fishing Pier (the fishing chests, tools/gen-art-bounty.json): a calm lake at dawn, pine hills across it, an old
+  // wooden pier reaching out, a bucket and a tackle box on the boards, rods on the rail, reeds and lily pads.
+  fishing_pier: (c, r) => {
+    skyBands(c, r, ["#ffb27a", "#ffd9a0", "#bfe0f0"]);
+    sun(c, r, 760, 420, 90);
+    hills(c, r, 520, "#3f6a4a", 60, 2, 0.8);
+    for (const x of [140, 260, 1060, 1180]) pine(c, r, x, 560, 160, false);
+    water(c, r, 600, "#7ab8d0", "#e0f4ff", 6);
+    fill(c, [[250, 760], [1254, 700], [1254, 860], [180, 900]], "#a8743e", r, { hatch: 14 });  // the pier's boards
+    for (const x of [320, 520, 720, 920, 1120]) fill(c, rect(x - 14, 840, x + 14, 1100), "#6a4424", r, { hatch: 8 });
+    line(c, [[250, 700], [1254, 640]], 12, "#7a4a26", r);  // the rail
+    for (const x of [820, 900]) line(c, [[x, 640], [x - 80, 300]], 6, "#5a3a1e", r);  // rods leaning on it
+    barrel(c, r, 960, 780, 50, "#5a5a62");  // (the bucket)
+    fill(c, rect(1040, 730, 1170, 790), "#4a7a4a", r, { line: 10, hatch: 8 });  // the tackle box
+    for (let i = 0; i < 7; i++) fill(c, ellipse(60 + i * 30, 980 + (i % 2) * 30, 40, 14), "#5bb43a", r, { line: 8, hatch: 8 });  // lily pads
+    for (const x of [30, 90, 150]) line(c, [[x, 1254], [x + 10, 880]], 8, "#6a8a3a", r);  // reeds
+  },
   // The Bounty Office (a bounty reward, tools/gen-art-bounty.json): log walls, a window on golden fields, a wall of
   // wanted posters (some crossed out in red), clubs and a lasso on a rack, a desk with a lantern and gold.
   bounty_office: (c, r) => {
