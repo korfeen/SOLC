@@ -33,6 +33,7 @@ Feed.lua
 Guild.lua
 Posters.lua
 Unlocks.lua
+SetBonuses.lua
 ProShop.lua
 SkeletonLayout.lua
 HeaderLayout.lua

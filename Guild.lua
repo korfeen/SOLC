@@ -133,6 +133,7 @@ local function TribeName(faction)
     if not race then race, tribe = faction:match("^(.-) %- (.+)$") end
     return race and (tribe .. " " .. Plural(race)) or faction
 end
+ns.TribeName = TribeName  -- ("Ogre, Mo'grosh" -> "Mo'grosh Ogres": SetBonuses.lua)
 ns.BountyTribeName = TribeName
 
 -- What custom bounties can target, from the mob data: { kinds = { [squashed] = subtype },

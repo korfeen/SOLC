@@ -246,23 +246,18 @@ function ns.AddGuildBountyChest()
     db.chests = db.chests or {}
     db.chests[#db.chests + 1] = { dungeon = ns.GUILD_BOUNTY, time = time(), tier = 3 }
 end
--- Fishing chests: each fish caught (LifeStats.lua) has FISH_CHANCE of one, FISH_GEAR_BONUS more for each fishing piece
--- your ogre wears (your Overview card's: FISHING_GEAR). Inside, like a bounty chest's: coins, the tier's stories and
+-- Fishing chests: each fish caught (LifeStats.lua) has FISH_CHANCE of one, more for the fishing gear your ogre wears
+-- (SetBonuses.lua: +25% a piece, the whole angler outfit double). Inside, like a bounty chest's: coins, the tier's stories and
 -- bonks, and by the tier's chance (for sure after PITY without) a fishing piece: the angler set (unlock "chest:fishing",
 -- only from these) or the Fishing Rod.
 ns.FISHING = "fishing"
-local FISH_CHANCE, FISH_GEAR_BONUS = 1 / 50, 0.25
-local FISHING_GEAR = { hunt_angler_head = true, hunt_angler_body = true, prop_landing_net = true, bg_fishing_pier = true,
-    prop_tackle_box = true, prop_fishing_pipe = true,
-    prop_fish = true, gacha_head_fishing_hat = true, gacha_head_souwester = true, gacha_acc_trophy_fish = true,
-    gacha_outfit_sailor_stripes = true }
+local FISH_CHANCE = 1 / 50  -- (times the fishing gear worn: SetBonuses.lua)
 local FISHING_EXTRA = { "accessory:prop_fish" }  -- (fishing pieces from elsewhere a fishing chest can give too)
 -- The fishing chest's chance for one fish, and how many fishing pieces your ogre wears.
 function ns.FishingChestChance()
-    local worn = 0
-    local ogre = KillTrackerDB and KillTrackerDB.card and KillTrackerDB.card.ogre
-    for _, id in pairs(ogre or {}) do if FISHING_GEAR[id] then worn = worn + 1 end end
-    return FISH_CHANCE * (1 + FISH_GEAR_BONUS * worn), worn
+    local multiplier, worn = 1, 0
+    if ns.FishingSetMultiplier then multiplier, worn = ns.FishingSetMultiplier() end
+    return FISH_CHANCE * multiplier, worn
 end
 function ns.OnFishCaught()
     if ns.RankLocked and ns.RankLocked("pixcollection") then return end  -- (chests come with the Dream Bed's rank)

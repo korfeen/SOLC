@@ -119,6 +119,8 @@ table.insert(ns.KillHandlers, function(npcID, entry, c, unit)
     if base > 0 and ns.PosterKillBonus and ns.PosterKillBonus(npcID, entry, c) then
         base = base + math.floor(base * (ns.Config("bountyKillBonus") or 0) / 100 + 0.5)
     end
+    -- (your ogre's creature or faction set: SetBonuses.lua)
+    if base > 0 and ns.SetKillMultiplier then base = math.floor(base * ns.SetKillMultiplier(c) + 0.5) end
     points.kills = points.kills + base
     local leader = LeaderPoints(npcID)
     if leader and entry.count == 1 then
