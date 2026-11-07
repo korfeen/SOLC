@@ -183,7 +183,7 @@ local function HintKey()
 end
 
 local panel = CreateFrame("Frame", "SOLCFishingPanel", UIParent, "BackdropTemplate")
-panel:SetSize(260, 268)
+panel:SetSize(260, 212)
 panel:SetPoint("RIGHT", UIParent, "RIGHT", -220, 40)
 panel:SetFrameStrata("MEDIUM")
 panel:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -202,38 +202,88 @@ end)
 panel:Hide()
 
 local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title:SetPoint("TOPLEFT", 12, -10)
-title:SetText("Fishing with Reginald")
+title:SetPoint("TOPLEFT", 12, -24)  -- (under Reginald's name plate)
+title:SetText("Catch log")
 local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", 2, 2)
 close:SetScript("OnClick", function() panel:Hide() end)
 
--- (Reginald, and his speech bubble beside him)
-local portrait = panel:CreateTexture(nil, "ARTWORK")
-portrait:SetSize(72, 72)
-portrait:SetPoint("TOPLEFT", 10, -32)
+-- Reginald standing on top of the panel, as he stands on the club window's top beam in the tour (Onboarding.lua): drawn
+-- from his picture pieces by SOLC (SOLC.RenderPicture; without SOLC: his painted portrait, Media\Reginald), cut off at
+-- the panel's top edge as if behind it, his name plate on the edge, his bubble on his left.
+local SOLC_MEDIA = "Interface\\AddOns\\SOLC\\Media\\"
+local NAME_FONT = SOLC_MEDIA .. "Fonts\\GermaniaOne-Regular.ttf"
+local REGINALD = { skin = "club_sage", eyes = "snooty_eyes", expression = "snooty_sneer", headwear = "gacha_head_souwester",
+    outfit = "shop_norfolk_jacket", accessory = "prop_fish" }
+local OGRE, STAND, SUNK = 150, 140, 10  -- (his size; his middle, from the panel's left; how much of him is behind its edge)
+local clip = CreateFrame("Frame", nil, panel)
+clip:SetPoint("BOTTOMLEFT", panel, "TOPLEFT", 0, -2)
+clip:SetPoint("BOTTOMRIGHT", panel, "TOPRIGHT", 0, -2)
+clip:SetHeight(OGRE)
+clip:SetClipsChildren(true)
+local canvas = CreateFrame("Frame", nil, clip)
+canvas:SetSize(OGRE, OGRE)
+canvas:SetPoint("BOTTOM", panel, "TOPLEFT", STAND, -SUNK)
+local portrait = canvas:CreateTexture(nil, "ARTWORK")  -- (without SOLC: his painted head and shoulders instead)
+portrait:SetSize(OGRE * 0.62, OGRE * 0.62)
+portrait:SetPoint("BOTTOM")
 portrait:SetTexture("Interface\\AddOns\\SOLC_Fishing\\Media\\Reginald")
+local drawn = false
+local function DrawReginald()
+    if drawn then return end
+    drawn = true
+    local ok = SOLC and SOLC.RenderPicture and pcall(SOLC.RenderPicture, canvas, REGINALD)
+    portrait:SetShown(not ok)
+end
+-- (his name plate, on the panel's edge under him: SOLC's wooden plank)
+local plate = CreateFrame("Frame", nil, panel)
+plate:SetSize(120, 30)
+plate:SetPoint("CENTER", panel, "TOPLEFT", STAND, -2)
+plate:SetFrameLevel(panel:GetFrameLevel() + 6)
+for _, part in ipairs({ { "PlankLeft", "LEFT", 15 }, { "PlankRight", "RIGHT", 15 } }) do
+    local t = plate:CreateTexture(nil, "ARTWORK")
+    t:SetTexture(SOLC_MEDIA .. "Wood\\" .. part[1]) t:SetSize(part[3], 30) t:SetPoint(part[2])
+    plate[part[1]] = t
+end
+local plank = plate:CreateTexture(nil, "ARTWORK")
+plank:SetTexture(SOLC_MEDIA .. "Wood\\Plank")
+plank:SetPoint("TOPLEFT", plate.PlankLeft, "TOPRIGHT") plank:SetPoint("BOTTOMRIGHT", plate.PlankRight, "BOTTOMLEFT")
+local plateName = plate:CreateFontString(nil, "OVERLAY")
+if not plateName:SetFont(NAME_FONT, 15, "") then plateName:SetFontObject("GameFontNormal") end
+plateName:SetTextColor(1, 0.86, 0.55)
+plateName:SetShadowOffset(1, -1)
+plateName:SetPoint("CENTER", 0, 1)
+plateName:SetText("Reginald")
+-- (his bubble: parchment, on his left above the panel, its tail toward him)
 local bubble = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-bubble:SetPoint("TOPLEFT", portrait, "TOPRIGHT", 6, 0)
-bubble:SetPoint("RIGHT", -10, 0)
-bubble:SetHeight(72)
+bubble:SetPoint("BOTTOMRIGHT", panel, "TOPLEFT", STAND - OGRE * 0.32, 20)
+bubble:SetWidth(200)
+bubble:SetFrameLevel(panel:GetFrameLevel() + 8)
 bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-bubble:SetBackdropColor(0.95, 0.9, 0.78, 0.95)
-bubble:SetBackdropBorderColor(0.55, 0.42, 0.25)
-said = bubble:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-said:SetPoint("TOPLEFT", 8, -8)
-said:SetPoint("BOTTOMRIGHT", -8, 8)
+    tile = true, tileSize = 16, edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)
+bubble:SetBackdropBorderColor(0.35, 0.24, 0.12)
+local tail = bubble:CreateTexture(nil, "BACKGROUND", nil, -1)
+tail:SetSize(16, 16)
+tail:SetPoint("CENTER", bubble, "BOTTOMRIGHT", -2, 12)
+tail:SetColorTexture(0.98, 0.95, 0.86, 0.97)
+tail:SetRotation(math.rad(45))
+said = bubble:CreateFontString(nil, "OVERLAY")
+if not said:SetFont(NAME_FONT, 14, "") then said:SetFontObject("GameFontNormal") end
+said:SetTextColor(0.15, 0.1, 0.06)
+said:SetPoint("TOPLEFT", 12, -10)
+said:SetWidth(176)
 said:SetJustifyH("LEFT")
-said:SetJustifyV("MIDDLE")
-said:SetTextColor(0.2, 0.12, 0.05)
+said:SetSpacing(2)
+-- (the bubble as tall as what he says)
+hooksecurefunc(said, "SetText", function(self) bubble:SetHeight((self:GetStringHeight() or 14) + 22) end)
 
 local tripLine = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-tripLine:SetPoint("TOPLEFT", 12, -112)
+tripLine:SetPoint("TOPLEFT", 12, -48)
 local rows = {}
 for i = 1, 6 do
     local row = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row:SetPoint("TOPLEFT", 14, -132 - (i - 1) * 15)
+    row:SetPoint("TOPLEFT", 14, -68 - (i - 1) * 15)
     row:SetPoint("RIGHT", -12, 0)
     row:SetJustifyH("LEFT")
     row:SetWordWrap(false)
@@ -267,6 +317,7 @@ local function Refresh()
 end
 
 local function Open()
+    DrawReginald()
     if not panel:IsShown() then
         said:SetText(Say("start"))
         panel:Show()
