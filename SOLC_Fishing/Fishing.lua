@@ -20,7 +20,7 @@ end
 local issecret = issecretvalue or function() return false end
 
 local db  -- SOLCFishingDB, set up at login
-local trip = { total = 0, caught = {}, order = {} }  -- this trip's catch (until /solcfish reset or a logout)
+local trip = { total = 0, caught = {}, order = {}, away = 0 }  -- this trip's catch, and the fish that got away (until /solcfish reset or a logout)
 
 -- The cast button -------------------------------------------------------------------------------------------------
 
@@ -167,6 +167,9 @@ local SAY = {
     tip = { "Lures help, I'm told. I've taken the liberty of putting one on.", "The shimmering pools hold more fish. Fish there.",
         "Every catch sharpens the skill. Even the boots.", "Fight with your weapons, sir. Not the pole." },
     fight = { "Sir! Your weapons! The pole is NOT a weapon." },
+    away = { "It got away. They do that when one dawdles.", "Gone. I shan't mention it at the club.", "Too slow, sir. Press the key when it splashes.",
+        "A pity. That one looked expensive." },
+    nothing = { "Nothing was biting yet, sir. Wait for the splash." },
 }
 local casts = 0  -- (this session: every few casts Reginald offers a tip)
 local function Say(kind) local list = SAY[kind] return list[math.random(#list)] end
@@ -209,12 +212,12 @@ close:SetScript("OnClick", function() panel:Hide() end)
 local portrait = panel:CreateTexture(nil, "ARTWORK")
 portrait:SetSize(72, 72)
 portrait:SetPoint("TOPLEFT", 10, -32)
-portrait:SetTexture("Interface\AddOns\SOLC_Fishing\Media\Reginald")
+portrait:SetTexture("Interface\\AddOns\\SOLC_Fishing\\Media\\Reginald")
 local bubble = CreateFrame("Frame", nil, panel, "BackdropTemplate")
 bubble:SetPoint("TOPLEFT", portrait, "TOPRIGHT", 6, 0)
 bubble:SetPoint("RIGHT", -10, 0)
 bubble:SetHeight(72)
-bubble:SetBackdrop({ bgFile = "Interface\Tooltips\UI-Tooltip-Background", edgeFile = "Interface\Tooltips\UI-Tooltip-Border",
+bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile = true, tileSize = 16, edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
 bubble:SetBackdropColor(0.95, 0.9, 0.78, 0.95)
 bubble:SetBackdropBorderColor(0.55, 0.42, 0.25)
@@ -242,7 +245,7 @@ posterLine:SetPoint("RIGHT", -12, 0)
 posterLine:SetJustifyH("LEFT")
 
 local function Refresh()
-    tripLine:SetText(("This trip: |cffffffff%d|r   Ever: |cffffffff%d|r"):format(trip.total, db and db.total or 0))
+    tripLine:SetText(("This trip: |cffffffff%d|r   Got away: |cffffffff%d|r   Ever: |cffffffff%d|r"):format(trip.total, trip.away, db and db.total or 0))
     -- (the most caught first)
     local list = {}
     for _, name in ipairs(trip.order) do list[#list + 1] = name end
@@ -350,6 +353,21 @@ events:SetScript("OnEvent", function(_, event, unit, _, spellID)
     end
 end)
 
+-- The fish that got away: WoW says so as an error ("Your fish got away!"; too early: "No fish are hooked.").
+local function ErrorText(name) local text = _G[name] return type(text) == "string" and text or nil end
+local errors = CreateFrame("Frame")
+errors:RegisterEvent("UI_ERROR_MESSAGE")
+errors:SetScript("OnEvent", function(_, _, _, message)
+    if not message or issecret(message) then return end
+    if message == ErrorText("ERR_FISH_ESCAPED") or message == ErrorText("FISH_ESCAPED") then
+        trip.away = trip.away + 1
+        said:SetText(Say("away"))
+        if panel:IsShown() then Refresh() end
+    elseif message == ErrorText("ERR_FISH_NOT_HOOKED") then
+        said:SetText(Say("nothing"))
+    end
+end)
+
 SLASH_SOLCFISH1 = "/solcfish"
 SlashCmdList.SOLCFISH = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
@@ -358,7 +376,7 @@ SlashCmdList.SOLCFISH = function(msg)
         if db.noSound then SoundBack() end
         print("|cffffd100SOLC Fishing:|r the fishing sound boost is " .. (db.noSound and "off." or "on."))
     elseif msg == "reset" then
-        trip = { total = 0, caught = {}, order = {} }
+        trip = { total = 0, caught = {}, order = {}, away = 0 }
         said:SetText(Say("start"))
         Refresh()
         print("|cffffd100SOLC Fishing:|r a new trip.")
