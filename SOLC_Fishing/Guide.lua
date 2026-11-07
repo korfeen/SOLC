@@ -56,40 +56,43 @@ local function Ink(parent, size, color)
 end
 
 local page  -- (built the first time it's opened, beside the catch log)
+local W, PAD, TEXT_W = 320, 16, 288
 local function Build()
     page = CreateFrame("Frame", nil, F.panel, "BackdropTemplate")
-    page:SetSize(260, 300)
+    page:SetSize(W, 440)
     page:SetPoint("TOPLEFT", F.panel, "TOPRIGHT", 6, 0)
     page:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 16, edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
-    page:SetBackdropColor(0.93, 0.87, 0.72, 0.97)
+    page:SetBackdropColor(0.93, 0.87, 0.72, 1)
     page:SetBackdropBorderColor(0.42, 0.28, 0.14)
     local close = CreateFrame("Button", nil, page, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 2, 2)
     close:SetScript("OnClick", function() page:Hide() end)
-    page.where = Ink(page, 18, INK)
-    page.where:SetPoint("TOPLEFT", 14, -12)
+    page.where = Ink(page, 20, INK)
     page.where:SetText("Where to fish")
-    page.zone = Ink(page, 13, INK)
-    page.zone:SetPoint("TOPLEFT", 14, -36)
-    page.zone:SetWidth(232)
-    page.zone:SetSpacing(2)
-    page.zones = Ink(page, 12, INK_DIM)
-    page.zones:SetPoint("TOPLEFT", page.zone, "BOTTOMLEFT", 0, -6)
-    page.zones:SetWidth(232)
-    page.cook = Ink(page, 18, INK)
-    page.cook:SetPoint("TOPLEFT", page.zones, "BOTTOMLEFT", 0, -12)
+    page.zone = Ink(page, 15, INK)
+    page.zone:SetWidth(TEXT_W)
+    page.zone:SetSpacing(3)
+    page.zones = Ink(page, 14, INK_DIM)
+    page.zones:SetWidth(TEXT_W)
+    page.zones:SetSpacing(2)
+    page.cook = Ink(page, 20, INK)
     page.cook:SetText("Cooking your catch")
     page.rows = {}
     for i = 1, #FISH do
-        local row = Ink(page, 12, INK)
-        row:SetPoint("TOPLEFT", page.cook, "BOTTOMLEFT", 0, -6 - (i - 1) * 15)
-        row:SetWidth(232)
-        row:SetWordWrap(false)
-        page.rows[i] = row
+        page.rows[i] = { fish = Ink(page, 15, INK), dish = Ink(page, 13, INK_DIM) }
+        page.rows[i].fish:SetWidth(TEXT_W)
+        page.rows[i].dish:SetWidth(TEXT_W - 22)
     end
-    page.cookSkill = Ink(page, 12, INK_DIM)
-    page.cookSkill:SetPoint("BOTTOMLEFT", 14, 12)
+    page.cookSkill = Ink(page, 13, INK_DIM)
+    page.cookSkill:SetWidth(TEXT_W)
+end
+
+-- (the page laid out from the top down, each block under the last by its own height: nothing piles up)
+local function Place(text, y, x)
+    text:ClearAllPoints()
+    text:SetPoint("TOPLEFT", page, "TOPLEFT", x or PAD, -y)
+    return y + math.max(1, text:GetStringHeight() or 0)
 end
 
 local function Refresh()
@@ -109,26 +112,40 @@ local function Refresh()
     end
     page.zone:SetText(table.concat(lines, "\n"))
     -- (the zones that suit you now: fish don't get away, the hardest first)
+    local good = {}
     if fishing then
-        local good = {}
         for name, z in pairs(ZONES) do
             if z <= fishing and z >= fishing - 80 then good[#good + 1] = name end
         end
         table.sort(good, function(a, b) if ZONES[a] ~= ZONES[b] then return ZONES[a] > ZONES[b] end return a < b end)
-        page.zones:SetText(#good > 0 and ("Good for you now: " .. table.concat(good, ", ", 1, math.min(#good, 8))) or "")
-    else
-        page.zones:SetText("")
     end
+    page.zones:SetText(#good > 0 and ("Good for you now: " .. table.concat(good, ", ", 1, math.min(#good, 8))) or "")
     -- (the fish worth cooking: caught ones ticked, the ones your cooking can do now in ink, the rest faded)
     local cooking = Skill(185)
     for i, fish in ipairs(FISH) do
-        local caught = F.Caught and F.Caught(fish[1]) or 0
-        local canCook = cooking and cooking >= fish[3]
-        page.rows[i]:SetText(("%s %s -> %s  (cooking %d)"):format(caught > 0 and "|cff2e6b1f[x]|r" or "[ ]", fish[1]:gsub("^Raw ", ""):gsub("^Large Raw ", "Large "), fish[2], fish[3]))
-        local ink = canCook and INK or INK_DIM
-        page.rows[i]:SetTextColor(ink[1], ink[2], ink[3])
+        local row = page.rows[i]
+        local caught = (F.Caught and F.Caught(fish[1]) or 0) > 0
+        local name = fish[1]:gsub("^Large Raw ", "Large "):gsub("^Raw ", "")
+        row.fish:SetText((caught and "|cff2e6b1f[x]|r " or "[  ] ") .. name)
+        row.dish:SetText(("cooks into %s, at cooking %d"):format(fish[2], fish[3]))
+        local ink = (cooking and cooking >= fish[3]) and INK or INK_DIM
+        row.fish:SetTextColor(ink[1], ink[2], ink[3])
     end
-    page.cookSkill:SetText(cooking and ("Your cooking: %d. Recipes from cooking trainers and vendors."):format(cooking) or "Cooking not learnt yet - any cooking trainer.")
+    page.cookSkill:SetText(cooking and ("Your cooking: %d. Recipes from cooking trainers and vendors."):format(cooking)
+        or "Cooking not learnt yet - any cooking trainer.")
+    -- (laid out top to bottom)
+    local y = 14
+    y = Place(page.where, y) + 8
+    y = Place(page.zone, y) + 8
+    if #good > 0 then y = Place(page.zones, y) + 6 end
+    y = y + 8
+    y = Place(page.cook, y) + 8
+    for _, row in ipairs(page.rows) do
+        y = Place(row.fish, y) + 1
+        y = Place(row.dish, y, PAD + 22) + 6
+    end
+    y = Place(page.cookSkill, y + 4) + 14
+    page:SetHeight(y)
 end
 
 -- Reginald's word on where you stand.
