@@ -84,10 +84,74 @@ local function SoundUp()
         end
     end
 end
+local WeaponsBack  -- (below)
 local function SoundLater()
-    if not (db and db.sound) or not C_Timer then return end
+    if not (db and (db.sound or db.weapons)) or not C_Timer then return end
     if soundTimer then soundTimer:Cancel() end
-    soundTimer = C_Timer.NewTimer(SOUND_BACK, SoundBack)
+    soundTimer = C_Timer.NewTimer(SOUND_BACK, function() SoundBack() if WeaponsBack then WeaponsBack() end end)
+end
+
+-- The pole and the lure: the fishing key first puts your fishing pole on (your weapons remembered), then a lure on it
+-- if it has none, then casts. Your weapons go back with the sound, SOUND_BACK seconds after the last cast - not in a
+-- fight (WoW allows no gear swaps by addons then: the ogre shouts, and you swap yourself or wait).
+local LURES = { 6533, 7307, 6532, 6530, 6529 }  -- (best first: Aquadynamic Fish Attractor, Flesh Eating Worm, Bright Baubles, Nightcrawlers, Shiny Bauble)
+local function ItemInfo(id)
+    if C_Item and C_Item.GetItemInfoInstant then return C_Item.GetItemInfoInstant(id) end
+    return GetItemInfoInstant and GetItemInfoInstant(id)
+end
+local function IsPole(id)
+    if not id then return false end
+    local _, _, _, _, _, classID, subclassID = ItemInfo(id)
+    return classID == 2 and subclassID == 20  -- (a weapon: fishing pole)
+end
+local function PoleInBags()
+    local slots = C_Container and C_Container.GetContainerNumSlots or GetContainerNumSlots
+    local itemAt = C_Container and C_Container.GetContainerItemID or GetContainerItemID
+    for bag = 0, 4 do
+        for slot = 1, slots and slots(bag) or 0 do
+            local id = itemAt(bag, slot)
+            if IsPole(id) then return id end
+        end
+    end
+end
+local function ItemCount(id)
+    if C_Item and C_Item.GetItemCount then return C_Item.GetItemCount(id) end
+    return GetItemCount and GetItemCount(id) or 0
+end
+local function BestLure()
+    for _, id in ipairs(LURES) do if ItemCount(id) > 0 then return id end end
+end
+local function PoleOn() return IsPole(GetInventoryItemID("player", 16)) end
+local function Lured() return (GetWeaponEnchantInfo()) == true end
+-- (before each press, out of combat: what the key does this time)
+button:SetScript("PreClick", function(self)
+    if InCombatLockdown() then return end
+    local pole = not PoleOn() and PoleInBags()
+    local lure = PoleOn() and not Lured() and BestLure()
+    if pole then
+        if db and not db.weapons then  -- (your weapons, to put back)
+            db.weapons = { main = GetInventoryItemID("player", 16), off = GetInventoryItemID("player", 17) }
+        end
+        self:SetAttribute("type", "macro")
+        self:SetAttribute("macrotext", "/equip item:" .. pole)
+    elseif lure then
+        self:SetAttribute("type", "macro")
+        self:SetAttribute("macrotext", "/use item:" .. lure .. "\n/use 16")
+    else
+        self:SetAttribute("type", "spell")
+    end
+end)
+local function EquipID(id, slot)
+    if not id then return end
+    if C_Item and C_Item.EquipItemByName then pcall(C_Item.EquipItemByName, id, slot) elseif EquipItemByName then pcall(EquipItemByName, id, slot) end
+end
+function WeaponsBack()
+    if not (db and db.weapons) or InCombatLockdown() then return end
+    if PoleOn() then
+        EquipID(db.weapons.main, 16)
+        EquipID(db.weapons.off, 17)
+    end
+    db.weapons = nil
 end
 
 -- The ogre's catch log ----------------------------------------------------------------------------------------------
@@ -212,6 +276,7 @@ events:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
 events:RegisterEvent("PLAYER_REGEN_DISABLED")
 events:RegisterEvent("LOOT_OPENED")
 events:RegisterEvent("PLAYER_LOGOUT")
+events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:SetScript("OnEvent", function(_, event, unit, _, spellID)
     if event == "PLAYER_LOGIN" then
         SOLCFishingDB = SOLCFishingDB or {}
@@ -242,6 +307,12 @@ events:SetScript("OnEvent", function(_, event, unit, _, spellID)
         -- (a fight: the key's own again before combat locks bindings, and your sound back)
         ClearOverrideBindings(owner)
         SoundBack()
+        if db and db.weapons and PoleOn() then  -- (a fight with the pole in hand: we may not swap now)
+            said:SetText("WEAPON! FIGHT!")
+            print("|cffff5555SOLC Fishing:|r you're fighting with your fishing pole! Swap to your weapons yourself - addons can't in a fight.")
+        end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if db and db.weapons and not (UnitChannelInfo and UnitChannelInfo("player")) then WeaponsBack() end  -- (after the fight: weapons back)
     elseif event == "PLAYER_LOGOUT" then
         SoundBack()
     elseif event == "LOOT_OPENED" then
