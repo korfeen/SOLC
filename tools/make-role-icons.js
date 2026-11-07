@@ -148,6 +148,53 @@ const C = {
   blue: hex("#4f86e8"), steel: hex("#b7c1cc"), green: hex("#5bd24a"), white: hex("#fff6dc"),
   red: hex("#ff4a3a"), orange: hex("#ff9a2a"), brown: hex("#8a5a2e"), gold: hex("#ffd23f"),
 };
+// Each kind of chest (Chests.lua, Unlocks.lua): the dungeon chest's shape in its own wood, bands and lock, and a touch of
+// its own - drawn shut (Chest_<kind>) and open (ChestOpen_<kind>).
+const CHESTS = {
+  // A bounty chest: a rough crate, roped shut, a torn wanted poster nailed on.
+  bounty: { box: "#9a6a3a", lid: "#b07a44", band: "#c8a868", lock: "#8a8a92", deco(c, random, open) {
+    if (open) return;
+    crayonShape(c, [[96, 150], [160, 146], [164, 214], [92, 218]], hex("#f4e4b8"), random, { line: 8, hatch: 6 });
+    crayonShape(c, [[106, 162], [150, 160], [150, 168], [106, 170]], OUTLINE, random, { outline: null, hatch: 4 });
+    crayonShape(c, circle(128, 192, 13), hex("#8a6a4a"), random, { line: 6, hatch: 5 });
+    crayonShape(c, [[118, 186], [138, 202], [134, 206], [114, 190]], hex("#d8302e"), random, { outline: null, hatch: 4 });
+  } },
+  // The guild's bounty chest: grand purple, gold trim, a gold star on the lid.
+  guildbounty: { box: "#6a3a9a", lid: "#7e4ab0", band: "#ffd23f", lock: "#ffd23f", deco(c, random, open) {
+    if (!open) crayonShape(c, star(128, 84, 24, 10), C.gold, random, { line: 8, hatch: 6 });
+  } },
+  // A fishing chest: a weathered sea chest, barnacles, seaweed, a fish tail sticking out of the lid.
+  fishing: { box: "#5a7a7a", lid: "#6a8a88", band: "#8a6a3a", lock: "#c8a050", deco(c, random, open) {
+    for (const [x, y] of [[54, 210], [70, 196], [196, 204], [180, 216], [210, 150]]) crayonShape(c, circle(x, y, 7), hex("#efe6d0"), random, { line: 5, hatch: 4 });
+    crayonShape(c, [[34, 160], [44, 190], [38, 226], [30, 196]], hex("#4a9a3a"), random, { line: 6, hatch: 5 });
+    crayonShape(c, [[220, 140], [214, 180], [224, 222], [228, 180]], hex("#4a9a3a"), random, { line: 6, hatch: 5 });
+    if (!open) crayonShape(c, [[150, 118], [176, 96], [170, 120], [190, 128], [160, 128]], hex("#b8c8d8"), random, { line: 7, hatch: 5 });
+  } },
+  // An Ogre Godz tribute: solid gold, a crown on the lid.
+  tribute: { box: "#e8b830", lid: "#ffd23f", band: "#fff0a0", lock: "#ff9a2a", deco(c, random, open) {
+    if (!open) crayonShape(c, [[96, 76], [104, 46], [116, 64], [128, 38], [140, 64], [152, 46], [160, 76]], hex("#fff0a0"), random, { line: 7, hatch: 5 });
+  } },
+};
+function DrawChest(kind, c, random) {
+  const k = CHESTS[kind], o = { line: 14, hatch: 8 };
+  crayonShape(c, [[34, 124], [222, 124], [214, 226], [42, 226]], hex(k.box), random, o);
+  crayonShape(c, [...quad([34, 124], [128, 40], [222, 124], 16)], hex(k.lid), random, o);
+  for (const x of [70, 186]) crayonShape(c, [[x - 12, 82], [x + 12, 82], [x + 12, 226], [x - 12, 226]], hex(k.band), random, { line: 10, hatch: 6 });
+  crayonShape(c, [[106, 112], [150, 112], [150, 162], [106, 162]], hex(k.lock), random, { line: 12, hatch: 6 });
+  crayonShape(c, circle(128, 132, 7), OUTLINE, random, { outline: null, hatch: 4 });
+  k.deco(c, random, false);
+}
+function DrawChestOpen(kind, c, random) {
+  const k = CHESTS[kind], o = { line: 14, hatch: 8 };
+  crayonShape(c, [[56, 24], [200, 24], [222, 112], [34, 112]], hex("#5a3a1e"), random, o);
+  crayonShape(c, [...quad([40, 140], [128, 30], [216, 140], 18)], C.gold, random, { line: 12, hatch: 6 });
+  for (const [x, y] of [[96, 96], [150, 88], [124, 120], [176, 120], [76, 124]]) crayonShape(c, circle(x, y, 13), hex("#ffe680"), random, { line: 8, hatch: 5 });
+  crayonShape(c, [[34, 132], [222, 132], [214, 226], [42, 226]], hex(k.box), random, o);
+  for (const x of [70, 186]) crayonShape(c, [[x - 12, 132], [x + 12, 132], [x + 12, 226], [x - 12, 226]], hex(k.band), random, { line: 10, hatch: 6 });
+  k.deco(c, random, true);
+  crayonShape(c, star(200, 52, 26, 10), C.white, random, { line: 9, hatch: 6 });
+  crayonShape(c, star(58, 64, 18, 7), C.white, random, { line: 8, hatch: 6 });
+}
 // The header buttons' light grey paint (as in the header design).
 const PAINT = hex("#e6e1d6");
 // WoW's class colours (the same as the Discord class roles).
@@ -303,6 +350,14 @@ const ICONS = {
     crayonShape(c, star(200, 52, 26, 10), C.white, random, { line: 9, hatch: 6 });  // sparkles
     crayonShape(c, star(58, 64, 18, 7), C.white, random, { line: 8, hatch: 6 });
   },
+  chestBounty(c, random) { DrawChest("bounty", c, random) },
+  chestOpenBounty(c, random) { DrawChestOpen("bounty", c, random) },
+  chestGuild(c, random) { DrawChest("guildbounty", c, random) },
+  chestOpenGuild(c, random) { DrawChestOpen("guildbounty", c, random) },
+  chestFishing(c, random) { DrawChest("fishing", c, random) },
+  chestOpenFishing(c, random) { DrawChestOpen("fishing", c, random) },
+  chestTribute(c, random) { DrawChest("tribute", c, random) },
+  chestOpenTribute(c, random) { DrawChestOpen("tribute", c, random) },
   // The chest window's crayon effects (Chests.lua), drawn white so the game tints them (a rarity's colour): rays of
   // light, a soft glow, a sparkle, a comic burst; and a gold coin, as it is.
   fxRays(c, random) {
@@ -835,7 +890,8 @@ const SEED_ORDER = ["tank", "healer", "dps", "warrior", "paladin", "hunter", "ro
   "skinning", "tailoring", "cooking", "firstaid", "fishing", "level", "male", "female", "nonbinary", "feedLeader",
   "feedRare", "feedAchievement", "feedMint", "feedWon", "feedBounty", "feedBoss", "rank1", "rank2", "rank3", "rank4", "rank5",
   "rank6", "rank7", "edit", "lock", "chest", "chestOpen", "fxRays", "fxGlow", "fxStar", "fxBurst", "fxCoin", "fxRing", "fxConfetti", "fxRainbow", "fxCardBack", "fxOgre", "token", "fxCloud",
-  "layerHeadwear", "layerOutfit", "layerAccessory", "layerBackground", "layerSkin", "layerEyes", "layerExpression"];
+  "layerHeadwear", "layerOutfit", "layerAccessory", "layerBackground", "layerSkin", "layerEyes", "layerExpression",
+  "chestBounty", "chestOpenBounty", "chestGuild", "chestOpenGuild", "chestFishing", "chestOpenFishing", "chestTribute", "chestOpenTribute"];
 const seedOf = (name) => {
   const index = SEED_ORDER.indexOf(name);
   if (index < 0) throw new Error(`Add ${name} to the end of SEED_ORDER`);
@@ -850,7 +906,9 @@ const ADDON_ICONS = { points: "Points", kills: "Kills", achievements: "Achieveme
   fxStar: "Fx_Star", fxBurst: "Fx_Burst", fxCoin: "Fx_Coin", fxRing: "Fx_Ring", fxConfetti: "Fx_Confetti", fxRainbow: "Fx_Rainbow",
   fxCardBack: "Fx_CardBack", fxOgre: "Fx_Ogre", token: "Token", fxCloud: "Fx_Cloud",
   layerHeadwear: "Layer_headwear", layerOutfit: "Layer_outfit", layerAccessory: "Layer_accessory", layerBackground: "Layer_background",
-  layerSkin: "Layer_skin", layerEyes: "Layer_eyes", layerExpression: "Layer_expression" };
+  layerSkin: "Layer_skin", layerEyes: "Layer_eyes", layerExpression: "Layer_expression",
+  chestBounty: "Chest_bounty", chestOpenBounty: "ChestOpen_bounty", chestGuild: "Chest_guildbounty", chestOpenGuild: "ChestOpen_guildbounty",
+  chestFishing: "Chest_fishing", chestOpenFishing: "ChestOpen_fishing", chestTribute: "Chest_tribute", chestOpenTribute: "ChestOpen_tribute" };
 const { resize, writeBlp, bleedEdges } = require("./convert-art");
 const ADDON_OUT = path.join(__dirname, "..", "Media", "Icons");
 // Preview: every icon on Discord's dark and light backgrounds.

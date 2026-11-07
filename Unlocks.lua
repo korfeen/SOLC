@@ -296,6 +296,12 @@ function ns.ChestName(key)
     local d = ns.DungeonByKey and ns.DungeonByKey(key)
     return d and d.name or "A dungeon"
 end
+-- A chest's picture, shut or open (tools/make-role-icons.js): each kind its own; a dungeon's the plain one.
+local CHEST_ART = { [ns.BOUNTY] = "bounty", [ns.GUILD_BOUNTY] = "guildbounty", [ns.FISHING] = "fishing", tribute = "tribute" }
+function ns.ChestArt(key, open)
+    local kind = CHEST_ART[key]
+    return "Interface\\AddOns\\SOLC\\Media\\Icons\\" .. (open and "ChestOpen" or "Chest") .. (kind and ("_" .. kind) or "")
+end
 -- The pieces of a list ({ { layer, option } }) you don't have yet.
 local function Locked(list)
     local out = {}

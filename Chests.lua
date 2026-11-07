@@ -541,7 +541,7 @@ local function Burst()
     godz:Hide()  -- (a tribute's words: the chest comes up where they were)
     local from = show.y or STAGE.shut
     Tween(0.4, function(p) show.y = from + (STAGE.open - from) * EaseOut(p) end)  -- up, out of the cards' way
-    chest:SetTexture(ICONS .. "ChestOpen")
+    chest:SetTexture(ns.ChestArt(show.dungeon, true))  -- (each kind of chest its own: Unlocks.lua)
     Light(show.tier, show.taps + 1)
     leak:SetAlpha(0)  -- (the lid is open: no more light leaking from under it)
     show.spin = 0.6
@@ -763,7 +763,7 @@ function Shut(dungeonKey, preview, previewTier, previewSpec)
     beam:Hide()
     godz:Hide()
     ogre.say:SetText("BIG LOOT!")
-    chest:SetTexture(ICONS .. "Chest")
+    chest:SetTexture(ns.ChestArt(dungeonKey))
     Light(0, 0)
     flash:SetAlpha(0)
     burst:Hide()
