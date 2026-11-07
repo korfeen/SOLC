@@ -1639,6 +1639,9 @@ function ns.UI.CloseScreen()
     wipe(screens)
     NewestScreen()
 end
+-- Closing the window closes the screens too (a game, a chest, the Dream Bed): they hide with it but would come back
+-- with it unknown to the title and the pages, staying over whatever page was opened next.
+frame:HookScript("OnHide", function() ns.UI.CloseScreen() end)
 -- name nil: the newest.
 function ns.UI.ClearScreen(name)
     if not name then

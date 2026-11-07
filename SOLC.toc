@@ -34,6 +34,7 @@ Guild.lua
 Posters.lua
 Unlocks.lua
 SetBonuses.lua
+Outfits.lua
 ProShop.lua
 SkeletonLayout.lua
 HeaderLayout.lua

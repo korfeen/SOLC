@@ -1379,6 +1379,37 @@ local function BuildEditor(page, parent)
         Flash()
     end)
     cancel:SetScript("OnClick", function() UI.ClickSound() page.ShowPanel(nil) end)  -- (ShowPanel drops the draft)
+    -- OUTFITS: save this look under a name, or put a saved one on the draft (Outfits.lua; SAVE then wears it).
+    local outfits = SmallButton(buttons, 140, "OUTFITS", 30, 15)
+    outfits:SetPoint("CENTER", W, "TOPLEFT", PORTRAIT.x, -PORTRAIT.note - 36)
+    outfits:SetScript("OnClick", function(self)
+        local edit = page.edit
+        if not edit or not MenuUtil then return end
+        UI.ClickSound()
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            root:CreateTitle("Outfits")
+            root:CreateButton("Save this look as an outfit...", function() ns.AskSaveOutfit(edit.traits, edit.style) end)
+            local list = ns.Outfits and ns.Outfits() or {}
+            for i, outfit in ipairs(list) do
+                root:CreateButton("Put on: " .. outfit.name, function()
+                    edit.traits = {}
+                    for k, id in pairs(outfit.traits) do edit.traits[k] = id end
+                    edit.style = {}
+                    for k, e in pairs(outfit.style or {}) do edit.style[k] = e end
+                    if ns.OnKillsChanged then ns.OnKillsChanged() end
+                end)
+            end
+            if #list > 0 then
+                local delete = root:CreateButton("Delete an outfit")
+                for i, outfit in ipairs(list) do delete:CreateButton(outfit.name, function() ns.DeleteOutfit(i) end) end
+            end
+        end)
+    end)
+    outfits:SetScript("OnEnter", function(self)
+        self.hover = true self:Paint(true)
+        SetTooltip(self, { "Outfits", "Save looks to switch between - what your ogre wears gives set bonuses" })
+    end)
+    outfits:SetScript("OnLeave", function(self) self.hover = false self:Paint(false) GameTooltip_Hide() end)
     -- Enter saves, Escape cancels (out of combat: keys can't be caught in it); other keys go on to the game.
     buttons:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end

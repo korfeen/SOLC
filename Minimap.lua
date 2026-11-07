@@ -116,6 +116,12 @@ local function PageMenu(owner)
         for _, page in ipairs(ns.SidebarPages and ns.SidebarPages() or {}) do
             if not page.locked then root:CreateButton(page.label, function() ns.OpenPage(page.key) Seen() end) end
         end
+        -- (your saved outfits: put one on straight away, Outfits.lua)
+        local outfits = ns.Outfits and ns.Outfits() or {}
+        if #outfits > 0 then
+            local wear = root:CreateButton("Wear outfit")
+            for i, outfit in ipairs(outfits) do wear:CreateButton(outfit.name, function() ns.WearOutfit(i) end) end
+        end
     end)
 end
 
