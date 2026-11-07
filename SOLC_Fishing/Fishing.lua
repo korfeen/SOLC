@@ -10,7 +10,7 @@
 -- caught = { [item name] = total ever }, total = fish ever }. /solcfish shows or hides it; /solcfish reset starts a
 -- new trip; /solcfish sound turns the fishing sound boost off or on.
 
-local ADDON = ...
+local ADDON, F = ...  -- (F: what the guide shares, Guide.lua)
 
 local FISHING_ID = 7620  -- (Fishing; its name in your language casts any rank you know)
 local function SpellName(id)
@@ -219,6 +219,13 @@ streak:SetTexture("Interface\\AddOns\\SOLC\\Media\\Icons\\Streak" .. math.random
 streak:SetVertexColor(RED_INK[1], RED_INK[2], RED_INK[3], 0.85)
 streak:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -4, 4)
 streak:SetSize(96, 10)
+F.panel = panel
+-- (the guide: a page beside this one, Guide.lua)
+local guideButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+guideButton:SetSize(64, 20)
+guideButton:SetPoint("TOPRIGHT", -30, -26)
+guideButton:SetText("Guide")
+guideButton:SetScript("OnClick", function() if F.ToggleGuide then F.ToggleGuide() end end)
 local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", 2, 2)
 close:SetScript("OnClick", function() panel:Hide() end)
@@ -371,6 +378,9 @@ local function Refresh()
     posterLine:SetText(goal and (done and "Gone Fishing poster: claimed!" or ("Gone Fishing poster: %d / %d"):format(have, goal)) or "")
 end
 
+-- (for the guide: how many of a fish you've ever caught, and Reginald's word)
+function F.Caught(name) return db and db.caught[name] or 0 end
+function F.Say(text) if said then said:SetText(text) end end
 local function Open()
     DrawReginald()
     if not panel:IsShown() then
@@ -379,6 +389,7 @@ local function Open()
     end
     Refresh()
 end
+F.Open = Open
 
 -- A catch: counted for the trip and ever, and the ogre has his say.
 local function Caught(name, quantity, quality, icon)
@@ -490,7 +501,9 @@ end)
 SLASH_SOLCFISH1 = "/solcfish"
 SlashCmdList.SOLCFISH = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
-    if msg == "debug" then
+    if msg == "guide" then
+        if F.ToggleGuide then F.ToggleGuide() end
+    elseif msg == "debug" then
         debugErrors = not debugErrors
         print("|cffffd100SOLC Fishing:|r error and info messages " .. (debugErrors and "printed in chat (let a fish get away now)." or "no longer printed."))
     elseif msg == "sound" then
