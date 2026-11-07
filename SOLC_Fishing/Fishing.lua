@@ -8,7 +8,7 @@
 -- The catch log: a small panel that comes up when you cast. This trip's catch by kind, an ogre's word on each catch,
 -- and (with SOLC) your Gone Fishing poster this week. SOLCFishingDB = { point = { ... } (where you put the panel),
 -- caught = { [item name] = total ever }, total = fish ever }. /solcfish shows or hides it; /solcfish reset starts a
--- new trip.
+-- new trip; /solcfish sound turns the fishing sound boost off or on.
 
 local ADDON = ...
 
@@ -57,6 +57,37 @@ local function LineIn()
         if value ~= false then SetCVar(name, value) end
     end
     saved = nil
+end
+
+-- The sound: while you fish, game sounds up and music and ambience down, so the bobber's splash is easy to hear (and
+-- sound on with WoW in the background). It stays so between casts and goes back SOUND_BACK seconds after the last one,
+-- when a fight starts, or at logout. The volumes as they were are kept in SOLCFishingDB.sound meanwhile, so a crash
+-- doesn't leave your music off: the next login puts them back. /solcfish sound turns it off or on (db.noSound).
+local SOUND = { Sound_SFXVolume = "1.0", Sound_MusicVolume = "0", Sound_AmbienceVolume = "0", Sound_EnableSoundWhenGameIsInBG = "1" }
+local SOUND_BACK = 20
+local soundTimer
+local function SoundBack()
+    if soundTimer then soundTimer:Cancel() soundTimer = nil end
+    for name, value in pairs(db and db.sound or {}) do
+        if value ~= false then SetCVar(name, value) end
+    end
+    if db then db.sound = nil end
+end
+local function SoundUp()
+    if not db or db.noSound then return end
+    if soundTimer then soundTimer:Cancel() soundTimer = nil end
+    if not db.sound then
+        db.sound = {}
+        for name, value in pairs(SOUND) do
+            db.sound[name] = GetCVar(name) or false
+            SetCVar(name, value)
+        end
+    end
+end
+local function SoundLater()
+    if not (db and db.sound) or not C_Timer then return end
+    if soundTimer then soundTimer:Cancel() end
+    soundTimer = C_Timer.NewTimer(SOUND_BACK, SoundBack)
 end
 
 -- The ogre's catch log ----------------------------------------------------------------------------------------------
@@ -180,11 +211,13 @@ events:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
 events:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
 events:RegisterEvent("PLAYER_REGEN_DISABLED")
 events:RegisterEvent("LOOT_OPENED")
+events:RegisterEvent("PLAYER_LOGOUT")
 events:SetScript("OnEvent", function(_, event, unit, _, spellID)
     if event == "PLAYER_LOGIN" then
         SOLCFishingDB = SOLCFishingDB or {}
         db = SOLCFishingDB
         db.caught, db.total = db.caught or {}, db.total or 0
+        SoundBack()  -- (left boosted by a crash or a disconnect: your own volumes back)
         if db.point then
             panel:ClearAllPoints()
             panel:SetPoint(db.point[1], UIParent, db.point[2], db.point[3], db.point[4])
@@ -198,14 +231,19 @@ events:SetScript("OnEvent", function(_, event, unit, _, spellID)
         if not name or name ~= SpellName(FISHING_ID) then return end
         if event == "UNIT_SPELLCAST_CHANNEL_START" then
             LineOut()
+            SoundUp()
             Open()
             HintKey()
         else
             LineIn()
+            SoundLater()
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
-        -- (a fight: the key's own again before combat locks bindings)
+        -- (a fight: the key's own again before combat locks bindings, and your sound back)
         ClearOverrideBindings(owner)
+        SoundBack()
+    elseif event == "PLAYER_LOGOUT" then
+        SoundBack()
     elseif event == "LOOT_OPENED" then
         if not (IsFishingLoot and IsFishingLoot()) then return end
         for slot = 1, GetNumLootItems() do
@@ -218,7 +256,11 @@ end)
 SLASH_SOLCFISH1 = "/solcfish"
 SlashCmdList.SOLCFISH = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
-    if msg == "reset" then
+    if msg == "sound" then
+        db.noSound = not db.noSound or nil
+        if db.noSound then SoundBack() end
+        print("|cffffd100SOLC Fishing:|r the fishing sound boost is " .. (db.noSound and "off." or "on."))
+    elseif msg == "reset" then
         trip = { total = 0, caught = {}, order = {} }
         said:SetText(Say("start"))
         Refresh()
