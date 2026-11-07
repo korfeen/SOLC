@@ -408,13 +408,26 @@ end)
 local function ErrorText(name) local text = _G[name] return type(text) == "string" and text or nil end
 local errors = CreateFrame("Frame")
 errors:RegisterEvent("UI_ERROR_MESSAGE")
-errors:SetScript("OnEvent", function(_, _, _, message)
-    if not message or issecret(message) then return end
-    if message == ErrorText("ERR_FISH_ESCAPED") or message == ErrorText("FISH_ESCAPED") then
+errors:RegisterEvent("UI_INFO_MESSAGE")
+errors:RegisterEvent("CHAT_MSG_SYSTEM")
+local debugErrors = false  -- (/solcfish debug: every such message printed, to see WoW's exact words)
+local function Matches(message, ...)
+    for _, name in ipairs({ ... }) do
+        local text = ErrorText(name)
+        if text and message == text then return true end
+    end
+end
+errors:SetScript("OnEvent", function(_, event, a, b)
+    -- (UI_ERROR_MESSAGE and UI_INFO_MESSAGE: type, message; CHAT_MSG_SYSTEM: the message first)
+    local message = type(b) == "string" and b or a
+    if type(message) ~= "string" or issecret(message) then return end
+    if debugErrors then print(("|cffffd100SOLC Fishing debug|r %s: %s"):format(event, message)) end
+    local lower = message:lower()
+    if Matches(message, "ERR_FISH_ESCAPED", "FISH_ESCAPED") or lower:find("got away", 1, true) then
         trip.away = trip.away + 1
         said:SetText(Say("away"))
         if panel:IsShown() then Refresh() end
-    elseif message == ErrorText("ERR_FISH_NOT_HOOKED") then
+    elseif Matches(message, "ERR_FISH_NOT_HOOKED") or lower:find("no fish are hooked", 1, true) then
         said:SetText(Say("nothing"))
     end
 end)
@@ -422,7 +435,10 @@ end)
 SLASH_SOLCFISH1 = "/solcfish"
 SlashCmdList.SOLCFISH = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
-    if msg == "sound" then
+    if msg == "debug" then
+        debugErrors = not debugErrors
+        print("|cffffd100SOLC Fishing:|r error and info messages " .. (debugErrors and "printed in chat (let a fish get away now)." or "no longer printed."))
+    elseif msg == "sound" then
         db.noSound = not db.noSound or nil
         if db.noSound then SoundBack() end
         print("|cffffd100SOLC Fishing:|r the fishing sound boost is " .. (db.noSound and "off." or "on."))
