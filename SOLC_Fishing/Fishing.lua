@@ -154,15 +154,23 @@ function WeaponsBack()
     db.weapons = nil
 end
 
--- The ogre's catch log ----------------------------------------------------------------------------------------------
+-- The catch log, kept by Reginald (the club's steward, dressed for fishing: MediaReginald, tools/make-fishing-reginald.js)
+-- in his own voice: a word on each catch, now and then a tip ----------------------------------------------------------------------------------------------
 
 local SAY = {
-    fish = { "FISH!", "GOT ONE!", "SLIPPY!", "YUM YUM", "DINNER!", "IN BUCKET", "GOOD FISH", "SPLASH!" },
-    big = { "BIG ONE!", "HUGE FISH!", "LOOK! LOOK!", "FISH KING!" },  -- (a rare or better)
-    junk = { "BOOT?!", "NOT FISH.", "WHO LOST THIS", "BAD FISH", "HMPH." },
-    start = { "QUIET. FISH.", "OGRE FISHIN'", "SHHH...", "WATER. FISH. GO." },
+    fish = { "A respectable catch.", "Into the bucket, if you please.", "Adequate. Barely.", "One more for the club's kitchen.",
+        "Do try not to drip on the tweed.", "Mm. It will fry." },
+    big = { "Good heavens. A proper specimen!", "Now THAT is a fish worth telling the club about.", "I shall have it mounted. Over your bed." },  -- (a rare or better)
+    junk = { "A boot. How very... you.", "That is not a fish. That is litter.", "Throw it back. Discreetly." },
+    start = { "Ahem. Fishing, are we? One does not splash. One waits.", "Patience, sir. The fish can smell desperation.",
+        "I've packed the good bucket. Do not lose it.", "Quietly now. This is a leisure club." },
+    tip = { "Lures help, I'm told. I've taken the liberty of putting one on.", "The shimmering pools hold more fish. Fish there.",
+        "Every catch sharpens the skill. Even the boots.", "Fight with your weapons, sir. Not the pole." },
+    fight = { "Sir! Your weapons! The pole is NOT a weapon." },
 }
+local casts = 0  -- (this session: every few casts Reginald offers a tip)
 local function Say(kind) local list = SAY[kind] return list[math.random(#list)] end
+local said  -- (his bubble's text: below)
 -- (no fishing key set yet: once a session, where to set one)
 local hinted = false
 local function HintKey()
@@ -172,7 +180,7 @@ local function HintKey()
 end
 
 local panel = CreateFrame("Frame", "SOLCFishingPanel", UIParent, "BackdropTemplate")
-panel:SetSize(230, 210)
+panel:SetSize(260, 268)
 panel:SetPoint("RIGHT", UIParent, "RIGHT", -220, 40)
 panel:SetFrameStrata("MEDIUM")
 panel:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -192,30 +200,46 @@ panel:Hide()
 
 local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 12, -10)
-title:SetText("Ogre Fishin'")
+title:SetText("Fishing with Reginald")
 local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", 2, 2)
 close:SetScript("OnClick", function() panel:Hide() end)
 
+-- (Reginald, and his speech bubble beside him)
+local portrait = panel:CreateTexture(nil, "ARTWORK")
+portrait:SetSize(72, 72)
+portrait:SetPoint("TOPLEFT", 10, -32)
+portrait:SetTexture("Interface\AddOns\SOLC_Fishing\Media\Reginald")
+local bubble = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+bubble:SetPoint("TOPLEFT", portrait, "TOPRIGHT", 6, 0)
+bubble:SetPoint("RIGHT", -10, 0)
+bubble:SetHeight(72)
+bubble:SetBackdrop({ bgFile = "Interface\Tooltips\UI-Tooltip-Background", edgeFile = "Interface\Tooltips\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+bubble:SetBackdropColor(0.95, 0.9, 0.78, 0.95)
+bubble:SetBackdropBorderColor(0.55, 0.42, 0.25)
+said = bubble:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+said:SetPoint("TOPLEFT", 8, -8)
+said:SetPoint("BOTTOMRIGHT", -8, 8)
+said:SetJustifyH("LEFT")
+said:SetJustifyV("MIDDLE")
+said:SetTextColor(0.2, 0.12, 0.05)
+
 local tripLine = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-tripLine:SetPoint("TOPLEFT", 12, -34)
+tripLine:SetPoint("TOPLEFT", 12, -112)
 local rows = {}
 for i = 1, 6 do
     local row = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row:SetPoint("TOPLEFT", 14, -54 - (i - 1) * 15)
+    row:SetPoint("TOPLEFT", 14, -132 - (i - 1) * 15)
     row:SetPoint("RIGHT", -12, 0)
     row:SetJustifyH("LEFT")
     row:SetWordWrap(false)
     rows[i] = row
 end
 local posterLine = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-posterLine:SetPoint("BOTTOMLEFT", 12, 34)
+posterLine:SetPoint("BOTTOMLEFT", 12, 12)
 posterLine:SetPoint("RIGHT", -12, 0)
 posterLine:SetJustifyH("LEFT")
--- (the ogre's word: big, at the bottom)
-local said = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-said:SetPoint("BOTTOM", 0, 10)
-said:SetTextColor(1, 0.82, 0.25)
 
 local function Refresh()
     tripLine:SetText(("This trip: |cffffffff%d|r   Ever: |cffffffff%d|r"):format(trip.total, db and db.total or 0))
@@ -298,6 +322,8 @@ events:SetScript("OnEvent", function(_, event, unit, _, spellID)
             LineOut()
             SoundUp()
             Open()
+            casts = casts + 1
+            if casts % 6 == 0 then said:SetText(Say("tip")) end
             HintKey()
         else
             LineIn()
@@ -308,7 +334,7 @@ events:SetScript("OnEvent", function(_, event, unit, _, spellID)
         ClearOverrideBindings(owner)
         SoundBack()
         if db and db.weapons and PoleOn() then  -- (a fight with the pole in hand: we may not swap now)
-            said:SetText("WEAPON! FIGHT!")
+            said:SetText(Say("fight"))
             print("|cffff5555SOLC Fishing:|r you're fighting with your fishing pole! Swap to your weapons yourself - addons can't in a fight.")
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
