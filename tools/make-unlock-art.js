@@ -499,15 +499,16 @@ if (!only || only === "gear" || only === "creatures") {
     .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-dragonflights.json"), "utf8")))  // (the dragonkin costume in each flight's colours)
     .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-set-accessories.json"), "utf8")))  // (each faction's and creature's accessory)
     .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-backgrounds.json"), "utf8")))  // (the dungeons' painted backgrounds, bg_<key>)
-    .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-secret.json"), "utf8")));  // (the secret deeds' pieces, SecretDeeds.lua)
+    .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-secret.json"), "utf8")))  // (the secret deeds' pieces, SecretDeeds.lua)
+    .concat(JSON.parse(fs.readFileSync(path.join(__dirname, "gen-art-general.json"), "utf8")));  // (the general pool: any chest's fallback, "chest:general")
   const LAYER_FOLDER = { headwear: "Headwear", outfit: "Outfit", accessory: "Accessory", background: "Background" };
   for (const edition of ["painted", "crayon", "sketch"]) {
     for (const folder of Object.values(LAYER_FOLDER)) for (const rarity of Object.values(FOLDER)) {
       const dir = path.join(UNLOCKS, edition, folder, rarity);
-      for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^(crit|fac|prop|hunt|bg)-/.test(f)) fs.rmSync(path.join(dir, f));
+      for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) if (/^(crit|fac|prop|hunt|bg|gen)-/.test(f)) fs.rmSync(path.join(dir, f));
     }
   }
-  for (const key of Object.keys(info)) if (/\/(crit|fac|prop|hunt|bg)_/.test(key)) delete info[key];
+  for (const key of Object.keys(info)) if (/\/(crit|fac|prop|hunt|bg|gen)_/.test(key)) delete info[key];
   const generated = (edition, id) => path.join(UNLOCKS, "generated", edition, id + ".png");
   let n = 0, suits = 0;
   for (const item of creatures) {
