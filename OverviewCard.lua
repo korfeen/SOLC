@@ -1568,7 +1568,11 @@ OVERVIEW = {
         photo:SetScript("OnEnter", function(self)
             if not page.portraitMint then return end
             if page.portraitMint.ogre then
-                return SetTooltip(self, { page.key and "Their ogre" or "Your ogre", not page.key and not page.building and "Click to build" or nil })
+                -- (and the sets it wears: their bonuses, SetBonuses.lua)
+                local lines = { page.key and "Their ogre" or "Your ogre" }
+                for _, line in ipairs(ns.SetBonusLines and ns.SetBonusLines(page.portraitMint.traits) or {}) do lines[#lines + 1] = "|cff40ff40" .. line .. "|r" end
+                if not page.key and not page.building then lines[#lines + 1] = "Click to build" end
+                return SetTooltip(self, lines)
             end
             if page.viewing and page.viewing == page.portraitMint then
                 return SetTooltip(self, { page.reading and "Back to the picture" or page.viewing.tale and "Read the dream"

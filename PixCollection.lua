@@ -345,6 +345,8 @@ function UI.PixCollection(parent)
         elseif entry.unlocked then
             lines[#lines + 1] = "Not in a picture yet."
         end
+        local setText = ns.PieceSetText and ns.PieceSetText(option)  -- (a set piece: what it does worn, SetBonuses.lua)
+        if setText then lines[#lines + 1] = "|cff2e7d32" .. setText .. "|r" end
         if option.retired then lines[#lines + 1] = "Retired: it doesn't turn up any more."
         elseif not entry.unlocked then lines[#lines + 1] = "Locked. " .. ns.PixCollectionUnlockText(option) end
         details:SetText(table.concat(lines, "\n"))
