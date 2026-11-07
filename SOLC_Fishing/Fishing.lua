@@ -186,7 +186,7 @@ local panel = CreateFrame("Frame", "SOLCFishingPanel", UIParent, "BackdropTempla
 panel:SetSize(260, 212)
 panel:SetPoint("RIGHT", UIParent, "RIGHT", -220, 40)
 panel:SetFrameStrata("MEDIUM")
-panel:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+panel:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile = true, tileSize = 16, edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
 -- (a page of the club's books: parchment, brown ink, the club's font - as the Collection's, PixCollection.lua)
 panel:SetBackdropColor(0.93, 0.87, 0.72, 0.97)
@@ -275,15 +275,18 @@ local bubble = CreateFrame("Frame", nil, panel, "BackdropTemplate")
 bubble:SetPoint("RIGHT", panel, "TOPLEFT", STAND - OGRE * 0.2, MOUTH)
 bubble:SetWidth(200)
 bubble:SetFrameLevel(panel:GetFrameLevel() + 8)
-bubble:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+-- (a plain white base, so the parchment colour comes out true: the tooltip background is dark and greys it)
+bubble:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile = true, tileSize = 16, edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
 bubble:SetBackdropColor(0.98, 0.95, 0.86, 0.97)
 bubble:SetBackdropBorderColor(0.35, 0.24, 0.12)
-local tail = bubble:CreateTexture(nil, "BACKGROUND", nil, -1)
-tail:SetSize(16, 16)
-tail:SetPoint("CENTER", bubble, "RIGHT", -1, 0)
-tail:SetColorTexture(0.98, 0.95, 0.86, 0.97)
-tail:SetRotation(math.rad(45))
+-- (a real speech-bubble tail with its outline - WoW's own chat bubbles' - turned to point right, at his mouth)
+local tail = bubble:CreateTexture(nil, "ARTWORK")
+tail:SetSize(18, 18)
+tail:SetPoint("LEFT", bubble, "RIGHT", -5, -2)
+tail:SetTexture("Interface\\Tooltips\\ChatBubble-Tail")
+tail:SetVertexColor(0.98, 0.95, 0.86)
+tail:SetRotation(math.pi / 2)
 said = bubble:CreateFontString(nil, "OVERLAY")
 if not said:SetFont(NAME_FONT, 14, "") then said:SetFontObject("GameFontNormal") end
 said:SetTextColor(0.15, 0.1, 0.06)
