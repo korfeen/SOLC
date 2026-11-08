@@ -26,6 +26,9 @@ local _, ns = ...
 
 local CHASE_CHANCE = 0.1  -- a chase item's chance in a chest, unless its option says (dropChance)
 local PITY = 3  -- chests of a dungeon in a row without a set piece (while it has any left for you): the next has one
+-- The general pool (unlock "chest:general": everyday pieces in the club's style): a chest whose own pieces you all have
+-- gives one of these by its tier's chance instead, and any chest that gives no piece has this chance of one anyway.
+local GENERAL_CHANCE = 0.1
 -- A chest's quality: its chance as it's found, its coins' multiplier, its chase item's luck, its chance of a set piece.
 ns.CHEST_TIERS = {
     { key = "common", name = "Common", chance = 0.60, coins = 1, chase = 1, piece = 0.4, story = 1, bonk = 0 },
@@ -310,6 +313,11 @@ local function Locked(list)
     end
     return out
 end
+-- A general piece you don't have yet, at random; nil if you have them all.
+local function GeneralPiece()
+    local list = Locked(ns.UnlockOptions("chest:general"))
+    return #list > 0 and list[math.random(#list)] or nil
+end
 local function OpenBounty(chest)
     local db = KillTrackerDB
     if ns.Tally then ns.Tally("chests") end  -- (the Chests opened deeds)
@@ -328,13 +336,20 @@ local function OpenBounty(chest)
     end
     db.chestPity = db.chestPity or {}
     local dry = db.chestPity[pityKey] or 0
-    if #list > 0 and (guild or dry >= PITY or math.random() < (spec.piece or 0)) then
-        local unlocked = list[math.random(#list)]
+    local function Give(unlocked)
         ns.UnlockOption(ns.OptionKey(unlocked.layer.key, unlocked.option), nil, true)  -- (the chest's cards show it)
         items[#items + 1] = { kind = "unlock", layer = unlocked.layer, option = unlocked.option }
+    end
+    if #list > 0 and (guild or dry >= PITY or math.random() < (spec.piece or 0)) then
+        Give(list[math.random(#list)])
         if not guild then db.chestPity[pityKey] = 0 end
-    elseif not guild then
+    elseif not guild and #list > 0 then
         db.chestPity[pityKey] = dry + 1
+    end
+    -- (none of its own left: a general piece by the tier's chance; or none given: the small chance of one anyway)
+    if #items == 0 and math.random() < (#list == 0 and (guild and 1 or spec.piece or 0) or GENERAL_CHANCE) then
+        local general = GeneralPiece()
+        if general then Give(general) end
     end
     for _, key in ipairs({ "story", "bonk" }) do
         if (spec[key] or 0) > 0 then
@@ -381,6 +396,7 @@ function ns.OpenChest(dungeonKey)
     -- first chest that finds you none of the set yet (a new dungeon cleared should feel like it).
     local set = ns.UnlockOptions("clear:" .. dungeonKey)
     local pieces = Locked(set)
+    local before = #items
     if #pieces > 0 then
         db.chestPity = db.chestPity or {}
         local dry = db.chestPity[dungeonKey] or 0
@@ -390,6 +406,11 @@ function ns.OpenChest(dungeonKey)
         else
             db.chestPity[dungeonKey] = dry + 1
         end
+    end
+    -- (the set all yours: a general piece by the tier's chance; or no set piece this time: the small chance of one anyway)
+    if #items == before and math.random() < (#pieces == 0 and (spec.piece or 0) or GENERAL_CHANCE) then
+        local general = GeneralPiece()
+        if general then Take(general) end
     end
     -- (and the Dream Bed's stories and bonks, by the tier: cards of their own)
     for _, key in ipairs({ "story", "bonk" }) do

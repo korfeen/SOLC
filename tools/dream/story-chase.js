@@ -395,6 +395,24 @@ const THING_CHASE = {
     end: ["And every ogre for miles turned up for a fight.", "And it played one very quiet toot.", "And the {mobs} came charging in, then asked what for."] },
   fac_venture_acc: { name: "Venture Co. Pickaxe", does: ["swings his Venture Co. pickaxe", "taps the wall with his striped pickaxe, listening for gold", "starts mining the floor with his pickaxe"],
     end: ["And he struck gold. It was my tooth.", "And the spark plug on it went 'zzt' and he jumped.", "And a goblin came to charge him rent for the hole."] },
+
+  // general chest (gen_): patched, hand-me-down, homely
+  gen_big_spoon: { name: "Big Spoon", does: ["waves his huge wooden spoon at me", "licks his big spoon clean, very slowly", "stirs the air with his big wooden spoon", "taps me on the head with his giant spoon"],
+    end: ["And he said there was always room for pudding. There wasn't.", "And {boss} asked for a taste and got the spoon.", "And it was the size of a club, so he played a round with it."] },
+  gen_bindle: { name: "Bindle", does: ["swings his bindle off his shoulder", "unties his spotty bindle to show me his worldly goods", "hitches his bindle up and says he's just passing through"],
+    end: ["And everything he owned was one sock and a biscuit.", "And he walked off into the sunset. Then came back for lunch.", "And the {mobs} asked if they could come too."] },
+  gen_cocoa: { name: "Mug of Cocoa", does: ["blows on his big mug of cocoa", "offers me a sip of his cocoa", "fishes a marshmallow out of his cocoa with one finger"],
+    end: ["And it gave him a chocolate moustache. He kept it.", "And it never got cool enough to drink.", "And {boss} took the last marshmallow."] },
+  gen_kite: { name: "Patchwork Kite", does: ["lets out the string on his patchwork kite", "tugs his kite string and squints at the sky", "runs in circles trying to get his kite up"],
+    end: ["And the kite pulled him off his feet. He floated off waving.", "And it got stuck in a tree. With {boss}.", "And the ribbon tail tied itself in a bow round my neck."] },
+  gen_patch_kit: { name: "Patch Kit", does: ["opens his little sewing tin and looks me up and down", "sews a patch on my elbow without asking", "threads a needle with his tongue out"],
+    end: ["And he sewed me to the chair.", "And now everything I own has a patch on it.", "And he patched {boss}'s trousers. He hadn't asked either."] },
+  gen_rubber_duck: { name: "Rubber Duck", does: ["squeaks the rubber duck on his shoulder", "lets his rubber duck have a look at me", "whispers something to the little duck on his shoulder"],
+    end: ["And the duck squeaked back. It meant no.", "And the duck had a chewed bit. He said it was a battle scar.", "And the {mobs} all lined up for a squeak."] },
+  gen_teddy: { name: "Teddy Ogre", does: ["hugs his little teddy ogre", "makes his teddy ogre wave at me", "tucks his worn teddy under his chin"],
+    end: ["And the teddy only had one button eye. It winked.", "And he said the teddy was the brave one.", "And {boss} wanted a cuddle too. He said no."] },
+  gen_umbrella: { name: "Broken Umbrella", does: ["opens his broken umbrella over us both", "shakes his umbrella, its bent spokes flopping", "holds his floppy umbrella over my head"],
+    end: ["And it rained through the holes. Only on me.", "And it turned inside out, and so did he.", "And the {mobs} all squeezed under it. Nobody stayed dry."] },
 };
 const HAT_CHASE = {
   chase_rfd_icemetal_barbute: { name: "Icemetal Barbute", hat: ["an icemetal helm frosting over", "the Icemetal Barbute, dripping slightly",

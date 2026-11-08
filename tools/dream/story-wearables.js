@@ -137,6 +137,17 @@ const OUTFIT_MORE = {
   "prop_sleeping_bag_body": ["zipped into a green and orange sleeping bag", "in a puffy camping bag, zipped right to the chin", "in a sleeping bag, shuffling along like a slug"],
   // fishing chest (the angler set)
   "hunt_angler_body": ["in big dark-green chest waders and a cream cable-knit jumper", "in rubbery fishing waders, one buckle done up wrong", "in damp, muddy waders that squeak with every step"],
+  // general chest (gen_): patched, hand-me-down, homely
+  "gen_apron_body": ["in a big white cook's apron", "in a cook's apron, a ladle poking out the pocket", "in an apron covered in gravy, licking a thumb"],
+  "gen_cardigan_body": ["in grandma's moss-green cardigan", "in a chunky cardigan buttoned up in all the wrong holes", "in a knitted cardigan, patting his elbow patches"],
+  "gen_dungarees_body": ["in brown work dungarees", "in dungarees over a stripy top, patches on both knees", "in dungarees rolled up at the ankles, ready to paddle"],
+  "gen_hoodie_body": ["in a baggy grey hoodie", "in a hoodie covered in patches, big wonky stitches and all", "in a hoodie, the sleeves flapping a foot past his hands"],
+  "gen_long_johns_body": ["in red woolly long johns", "in long johns, buttons all down the front", "in nothing but his long johns, scratching a bit"],
+  "gen_poncho_body": ["in a bright yellow rain poncho", "in a crinkly plastic poncho, raindrops still on it", "in a rain poncho, crinkling every time he breathed"],
+  "gen_tunic_body": ["in a faded green tunic, far too small", "in a hand-me-down tunic held up by a bit of rope", "in a tiny tunic, the shoulder seams giving up"],
+  "gen_merit_sash_body": ["wearing a green scout sash full of badges", "in a merit sash with a badge for napping", "in a merit sash, showing off every single badge"],
+  "gen_patched_vest_body": ["in a battered leather vest", "in a leather vest covered in patches, a tin star among them", "in a patched leather vest, a scruffy deputy of nowhere"],
+  "gen_quilt_cape_body": ["wrapped in a patchwork quilt like a cape", "in a quilt cape tied on with string, pyjamas underneath", "in a patchwork cape, swooshing it like a hero"],
 };
 const HAT_MORE = {
   "crit_bat_head": ["a velvet bat hat with two huge pointy ears", "a bat hood, tiny fangs and all", "a purple bat hat, ears twitching at every sound"],
@@ -288,4 +299,15 @@ const HAT_MORE = {
   "prop_bent_halo": ["a bent golden halo floating over his head", "a wonky ghost halo, like someone sat on it", "a halo he got the cheap way, by dying"],
   // fishing chest (the angler set)
   "hunt_angler_head": ["a battered olive-green bucket hat", "a fishing hat with bright feathery flies stuck all round the band", "a floppy angler's hat, two hooks still caught in it"],
+  // general chest (gen_): patched, hand-me-down, homely
+  "gen_bandana_head": ["a faded red bandana", "a spotty red bandana knotted at the back", "a bandana tied on pirate-style, saying 'yarr' quietly"],
+  "gen_beanie_head": ["a lumpy knitted beanie", "a mustard-yellow beanie, a patch on the side", "a beanie two sizes too small, riding up his head"],
+  "gen_bucket_head": ["a tin bucket on his head", "a dented bucket helmet, the handle dangling", "a bucket on his head, clanging off every doorframe"],
+  "gen_colander_head": ["a colander on his head", "a dented colander helmet, handles sticking out", "a colander on his head, his hair poking out the holes"],
+  "gen_earmuffs_head": ["a pair of fluffy earmuffs", "earmuffs, one pink and one blue", "earmuffs on, going 'what?' at everything"],
+  "gen_lampshade_head": ["a lampshade on his head", "a rosy lampshade hat, tassels swinging", "a crooked lampshade, like he'd had one too many"],
+  "gen_paper_crown_head": ["a paper crown", "a crown folded from a WANTED poster, taped at the corner", "a paper crown, ruling over nobody at all"],
+  "gen_propeller_head": ["a propeller beanie", "a patchwork beanie with a propeller on top", "a propeller beanie, spinning whenever he nodded"],
+  "gen_sunhat_head": ["a floppy straw sunhat", "a frayed sunhat, one ear poking through a hole", "a straw sunhat, very ready for the seaside"],
+  "gen_deputy_head": ["a cosy trapper hat","a brown trapper hat, a tin sheriff's star on the front", "a trapper hat, ear flaps flapping as he walked"],
 };

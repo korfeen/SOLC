@@ -150,6 +150,9 @@ const SHORT = { "Bald with Fly": "fly", "Nightcap with Pom Pom": "nightcap", "Lo
   "Whiskey Tumbler": "whiskey", "Trophy Fish": "marlin", "Cricket Whites": "cricket whites", "Fencing Whites": "fencing whites",
   "Cigarette Behind the Ear": "cigarette", "Shell Suit": "shell suit", "Sleeping Bag Coat": "sleeping bag", "Brandy Snifter": "brandy",
   "Bottle in a Bag": "bottle", "Cheap Ale Can": "ale", "Steward's Boater": "boater", "Steward's Stripes": "waistcoat",
+  // general chest (gen_)
+  "Long Johns": "long johns", "Patchwork Quilt Cape": "quilt cape", "Bucket Helmet": "bucket", "Colander Helmet": "colander",
+  "Lampshade Hat": "lampshade", "Deputy's Trapper Hat": "trapper hat", "Mug of Cocoa": "cocoa", "Teddy Ogre": "teddy", "Patch Kit": "patch kit",
   // creature and faction props: the thing, not "stick" or "string"
   "Bat Bat on a String": "bat", "Elemental Storm Cloud on a Stick": "storm cloud", "Kobold Candle on a Stick": "candle",
   "Murloc Fish on a Stick": "fish", "Trogg Rock on a Stick": "rock", "Bear Honey Pot": "honey pot", "Boar Tusk Club": "tusk club",

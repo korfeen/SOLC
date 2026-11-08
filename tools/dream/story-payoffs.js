@@ -259,6 +259,30 @@ const PAYOFF = {
     ["And the fish counted back. They had more.", "And one of the fish was a boot.", "And he ate one. I had to start again."],
     ["And the big one caught me.", "And Nat Pagle said it was bigger last time.", "And it was the size of my thumb. Nat said that's big round here."],
   ],
+  bg_campfire: [
+    ["And the stew stirred back.", "And he ate the whole pot. Then the spoon.", "And it was just hot water and one carrot."],
+    ["And the sausage caught fire. He ate it anyway.", "And he ate it off my stick.", "And it came out raw in the middle. Always."],
+    ["And there was one extra star. It was him, winking.", "And I lost count at four.", "And he joined up the stars into a picture of himself."],
+    ["And the ghost turned up to listen.", "And he got scared and hid behind me.", "And it was about him. He wanted a better ending."],
+  ],
+  bg_messy_bedroom: [
+    ["And he was wearing it.", "And the sock was under the bed with all the other socks.", "And it had been on my hand the whole time."],
+    ["And he got in too. The bed gave up.", "And he tucked me in, then took the quilt.", "And my feet got cold. So did his."],
+    ["And he finished it first.", "And it was yesterday's. Maybe last week's.", "And it was crumbs. He'd been there before me."],
+    ["And we just moved the mess to the other side.", "And he tidied it all into the wardrobe. It burst.", "And he sorted it by smell."],
+  ],
+  bg_laundry_line: [
+    ["And he pegged me out too.", "And the pegs ran out. He used his teeth.", "And it was his washing. All of it."],
+    ["And none of them matched.", "And he folded one into a little hat.", "And one was still warm. He'd been wearing it."],
+    ["And a sheet blew over my face and stayed.", "And the clouds looked like his pants.", "And he lay down next to me and flattened the grass."],
+    ["And the sock got away.", "And he caught it in his teeth like a dog.", "And the sock was faster than both of us."],
+  ],
+  bg_market_stall: [
+    ["And I paid double and said thank you.", "And he talked them down to minus one copper.", "And I bought my own hat back."],
+    ["And he bought it, then sold it back to me.", "And nobody wanted it. Not even for free.", "And he wore it, and suddenly everybody wanted one."],
+    ["And every patch was a little bit of him.", "And I found my lost spoon. He was holding it.", "And the trinkets all had price tags with my name on."],
+    ["And it rained only under the awning.", "And the rain stopped the second I left.", "And he filled the stall. I stood in the rain."],
+  ],
 };
 
 // The zone golf courses' payoffs, by option id (one list per opening).

@@ -48,6 +48,10 @@ const CROWD = {
   bg_godz_touched: { mobs: ["ogre pilgrims", "stone faces", "lucky goblins"], boss: ["the grumpiest Ogre God", "the biggest stone face"] },
   bg_bounty_office: { mobs: ["outlaws", "bounty hunters", "ogre deputies"], boss: ["the most wanted ogre", "the old sheriff"] },
   bg_fishing_pier: { mobs: ["fishermen", "frogs", "ducks"], boss: ["Nat Pagle", "the biggest fish in the lake"] },
+  bg_campfire: { mobs: ["owls", "squirrels", "moths"], boss: ["a big brown bear", "the old campfire storyteller"] },
+  bg_messy_bedroom: { mobs: ["dust bunnies", "odd socks", "moths"], boss: ["the thing under the bed", "my mum"] },
+  bg_laundry_line: { mobs: ["crows", "sheep", "odd socks"], boss: ["the washerwoman", "the farmer next door"] },
+  bg_market_stall: { mobs: ["villagers", "goblin traders", "pigeons"], boss: ["the stall keeper", "a very pushy goblin"] },
 };
 // A line with its blanks filled from the place (by its key); a place with no crowd: anyone.
 function FillCrowd(line, placeKey) {
