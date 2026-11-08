@@ -1,5 +1,17 @@
 # Sleepy Ogre Leisure Club
 
+## 0.43.0
+- **Everyday wardrobe**: 32 new pieces in the club's scruffy style - beanies, a lampshade hat, patched hoodies, long johns, a teddy, a bindle and more. Any chest can give one, and once you have a chest's own pieces, it gives these instead.
+- **Chest openings**: a crowd of ogres comes in to cheer - more of them the better your best piece. The Ogre Godz tribute now arrives with the sky opening, falling stars and fireworks.
+- Each kind of chest has its own look: bounty crate, guild chest, fishing sea chest and the tribute.
+- Better odds in dungeon chests, and your first chest of a dungeon always has a piece of its set.
+- **Fishing chests**: about 1 in 50 fish brings one up, with the new angler set inside (more often while you wear fishing gear).
+- **Set bonuses**: each creature or faction piece you wear gives +25% kill points for that kind of creature or faction, double for the whole set. Shown on your ogre's tooltip and in the Collection.
+- **Saved outfits**: save a look under EDIT's Outfits and put it on again later, also from the minimap menu.
+- Every piece you unlock now gets its own pop-up.
+- New odd job: **Pest Control**, and one Critters Squashed deed ladder for all critters.
+- Reginald's speech bubble is on proper parchment, and the dark smudges around his head are gone.
+
 ## 0.42.3
 - New minimap button: the club's sleepy ogre. Right-click it to jump to a page.
 
