@@ -72,6 +72,10 @@ body { margin: 0; background: #1a1410; color: #eee0c7; font: 14px system-ui, san
 .side { width: 230px; background: #22180f; overflow: auto; border-right: 1px solid #4a3320; }
 .side input { width: calc(100% - 20px); margin: 8px 10px; padding: 5px; background: #120c08; color: #eee0c7; border: 1px solid #5a4128; }
 .item { padding: 4px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.item .pid { display: block; font-size: 10px; color: #8a7558; overflow: hidden; text-overflow: ellipsis; }
+.group { position: sticky; top: 0; z-index: 1; padding: 6px 10px 4px; font-size: 12px; font-weight: 600; background: #2c1f13; border-top: 1px solid #4a3320; cursor: pointer; user-select: none; }
+.group .n { font-weight: 400; opacity: 0.7; } .group.todo { color: #f0b03c; } .group.resave { color: #ff8a5c; } .group.ready { color: #8fd0ff; } .group.game { color: #9fdc6a; } .group.parked { color: #8a7558; }
+#updated { padding: 2px 10px 6px; font-size: 11px; color: #8a7558; }
 .tags { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px 6px; border-bottom: 1px solid #3a2817; }
 .tag { font-size: 11px; padding: 1px 6px; border: 1px solid #6b5030; border-radius: 8px; cursor: pointer; user-select: none; color: #d8c7a8; }
 .tag:hover { background: #3a2817; } .tag.on { background: #b8892e; border-color: #b8892e; color: #1a120a; }
@@ -91,7 +95,7 @@ button.on { background: #8a6a3a; color: #fff; } #save { background: #3f6b2a; bor
 #msg { color: #ffd21a; } .hint { color: #9e8f7a; font-size: 12px; }
 </style>
 <div id="buildPanel" hidden></div>
-<div class="side"><input id="filter" placeholder="Filter..."><div id="tags"></div><div id="list"></div></div>
+<div class="side"><input id="filter" placeholder="Filter..."><div id="updated"></div><div id="tags"></div><div id="list"></div></div>
 <div class="main">
   <div class="bar">
     <b id="name">Pick a piece</b>
@@ -532,11 +536,7 @@ document.getElementById("save").onclick = async () => {
   try {
     const res = await fetch("/save/" + id, { method: "POST", body });
     msg.textContent = res.ok ? "Saved " + id : "Couldn't save: " + await res.text();
-    if (res.ok) {
-      const el = document.querySelector('.item[data-id="' + id + '"]');
-      el.classList.add("fitted");
-      if (el.classList.contains("ingame")) { el.classList.replace("ingame", "changed"); el.title = "Changed since build"; }
-    }
+    if (res.ok) list();
   } catch (err) {
     msg.textContent = "Couldn't save: " + err.message;
   }
@@ -559,8 +559,15 @@ function tagsOf(it) {
 }
 const ROWS = [["kind", "Kind"], ["piece", "Piece"], ["theme", "Theme"], ["status", "Status"], ["game", "Game"], ["place", "Dungeon"]];
 const ticked = { kind: new Set(), piece: new Set(), theme: new Set(), status: new Set(), game: new Set(), place: new Set() };
+// (which groups are folded shut: In game, to start with; the list fetched again after a save, every 15 s and when the
+// window comes back, so it's never out of date)
+const closed = new Set(["game", "parked"]);
+let listShow = null, listing = false;
 async function list() {
-  const items = await (await fetch("/list")).json();
+  if (listing) return;
+  listing = true;
+  let items;
+  try { items = await (await fetch("/list")).json(); } finally { listing = false; }
   for (const it of items) it.tags = tagsOf(it);
   const box = document.getElementById("list");
   const values = (it, row) => [].concat(it.tags[row] || []);
@@ -586,15 +593,34 @@ async function list() {
       }
       tagBox.appendChild(line);
     }
+    // (grouped by what each needs next: to fit, to save again, waiting for the build, in the game)
     box.innerHTML = "";
-    for (const it of items) {
-      if (!matches(it) || !passes(it)) continue;
-      const el = document.createElement("div");
-      el.className = "item" + (it.fitted ? " fitted" : "") + (it.id === id ? " on" : ""); el.dataset.id = it.id; el.textContent = it.id;
-      el.classList.add(it.game === "In game" ? "ingame" : it.game === "Changed since build" ? "changed" : "notgame"); el.title = it.game;
-      el.onclick = () => open(it.id); box.appendChild(el);
+    const groups = [["todo", "To fit"], ["resave", "Save again (picture changed)"], ["ready", "Ready for the next build"], ["game", "In game"], ["parked", "Parked (the Build doesn't take these)"]];
+    const groupOf = (it) => it.parked ? "parked" : it.stale ? "resave" : !it.fitted && !it.id.startsWith("bg_") && it.game !== "In game" ? "todo"
+      : it.game === "In game" ? "game" : "ready";
+    for (const [key, title] of groups) {
+      const members = items.filter((it) => matches(it) && passes(it) && groupOf(it) === key);
+      if (!members.length) continue;
+      const head = document.createElement("div");
+      head.className = "group " + key;
+      const shut = closed.has(key);
+      head.innerHTML = (shut ? "&#9656; " : "&#9662; ") + title + ' <span class="n">' + members.length + "</span>";
+      head.onclick = () => { shut ? closed.delete(key) : closed.add(key); show(); };
+      box.appendChild(head);
+      if (shut) continue;
+      for (const it of members) {
+        const el = document.createElement("div");
+        el.className = "item" + (it.fitted ? " fitted" : "") + (it.id === id ? " on" : ""); el.dataset.id = it.id;
+        el.textContent = it.name || it.id;
+        if (it.name) { const small = document.createElement("span"); small.className = "pid"; small.textContent = it.id; el.appendChild(small); }
+        el.classList.add(it.game === "In game" ? "ingame" : it.game === "Changed since build" ? "changed" : "notgame");
+        el.title = it.stale ? "Its picture changed after the fit was saved: open it and Save again" : it.game;
+        el.onclick = () => open(it.id); box.appendChild(el);
+      }
     }
+    document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString();
   };
+  listShow = show;
   document.getElementById("filter").oninput = show; show();
 }
 // Build: what's new - fitted pieces not in the game yet (ticked; unfitted ones can't go), and pieces changed since the
@@ -603,14 +629,16 @@ async function list() {
 const panel = document.getElementById("buildPanel");
 async function showBuild() {
   const items = await (await fetch("/list")).json();
-  const fresh = items.filter((it) => it.game === "Not in game");
-  const ready = fresh.filter((it) => it.fitted || it.id.startsWith("bg_")), waiting = fresh.filter((it) => !ready.includes(it));
-  const changed = items.filter((it) => it.game === "Changed since build");
+  const parked = items.filter((it) => it.parked && it.game === "Not in game");
+  const fresh = items.filter((it) => it.game === "Not in game" && !it.parked);
+  const ready = fresh.filter((it) => (it.fitted && !it.stale) || it.id.startsWith("bg_")), waiting = fresh.filter((it) => !ready.includes(it));
+  const changed = items.filter((it) => it.game === "Changed since build" && !it.stale);
   const esc = (t) => t.replace(/[<>&]/g, "");
   panel.innerHTML = "<b>Send to the game</b>" +
     "<h4>New, fitted (" + ready.length + ")</h4>" + (ready.map((it) => '<label><input type="checkbox" data-id="' + esc(it.id) + '"' + (it.id.startsWith("test_") ? "" : " checked") + "> " + esc(it.id) + "</label>").join("") || '<div class="grey">none</div>') +
     "<h4>Changed since the last build (" + changed.length + ")</h4>" + (changed.map((it) => '<div>' + esc(it.id) + "</div>").join("") || '<div class="grey">none</div>') +
-    "<h4>New, not fitted yet (" + waiting.length + ")</h4>" + (waiting.map((it) => '<div class="grey">' + esc(it.id) + "</div>").join("") || '<div class="grey">none</div>') +
+    "<h4>New, not fitted yet or to save again (" + waiting.length + ")</h4>" + (waiting.map((it) => '<div class="grey">' + esc(it.id) + "</div>").join("") || '<div class="grey">none</div>') +
+    '<details><summary class="grey">Parked: the Build does not take these (' + parked.length + ")</summary>" + (parked.map((it) => '<div class="grey">' + esc(it.id) + "</div>").join("") || '<div class="grey">none</div>') + "</details>" +
     '<div class="row"><button id="buildGo">Build</button><button id="buildClose">Close</button><span id="buildState"></span></div><div id="buildLog"></div>';
   panel.hidden = false;
   document.getElementById("buildClose").onclick = () => { panel.hidden = true; };
@@ -648,6 +676,8 @@ document.getElementById("buildBtn").onclick = showBuild;
 function fitView() { setZoom(Math.min((wrap.clientWidth - 40) / view.width, (wrap.clientHeight - 40) / view.height)); wrap.scrollLeft = wrap.scrollTop = 0; }
 document.getElementById("fitview").onclick = fitView;
 fitView(); setOgre(); list();
+setInterval(() => { if (!document.hidden) list(); }, 15000);
+addEventListener("focus", () => list());
 </script>`;
 
 // A multipart form's parts: { name: Buffer }.
@@ -671,10 +701,15 @@ function parseForm(body, type) {
 // Whether a mask (fits\<id>.hide.png / .behind.png) has anything painted on it: a save writes one even when it's empty.
 // Kept by the file's time, so the list only reads the ones changed since.
 const painted = new Map();
+const PAINT_CACHE = path.join(GEN, "paint-cache.json");
+try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(PAINT_CACHE, "utf8")))) painted.set(k, v); } catch (err) { /* (none yet) */ }
+let paintDirty = false;
+function savePaintCache() { if (paintDirty) { paintDirty = false; fs.writeFileSync(PAINT_CACHE, JSON.stringify(Object.fromEntries(painted))); } }
 function hasPaint(file) {
   if (!fs.existsSync(file)) return false;
   const t = fs.statSync(file).mtimeMs, known = painted.get(file);
   if (known && known.t === t) return known.any;
+  paintDirty = true;
   const { rgba } = decodePng(file);
   let any = false;
   for (let i = 3; i < rgba.length; i += 4) if (rgba[i] > 16) { any = true; break; }
@@ -694,10 +729,26 @@ function builtTextures() {
   }
   return built;
 }
+// The lists tools/make-unlock-art.js builds from (and the gear sets, made from their own data): a piece in none of
+// them is parked - the Build doesn't take it. The claw machine's (gen-art-gacha<n>.json) are in the game as gacha_<id>.
+const BUILT_LISTS = ["creatures", "bounty", "dragonflights", "set-accessories", "backgrounds", "secret", "general", "chase",
+  "proshop", "proshop-club", "zone-courses"];
+function buildLists() {
+  const takes = new Set(), gacha = new Set();
+  for (const q of fs.readdirSync(__dirname)) {
+    const m = q.match(/^gen-art-(.+)\.json$/);
+    if (!m) continue;
+    const isGacha = /^gacha\d+$/.test(m[1]);
+    if (!isGacha && !BUILT_LISTS.includes(m[1])) continue;
+    try { for (const job of JSON.parse(fs.readFileSync(path.join(__dirname, q), "utf8"))) if (job.id) { takes.add(job.id); if (isGacha) gacha.add(job.id); } } catch (err) { /* (not a list) */ }
+  }
+  return { takes, gacha };
+}
+const gameId = (id, lists) => lists.gacha.has(id) ? "gacha_" + id : /_suit$/.test(id) ? id.replace(/_suit$/, "_body_suit") : id;
 // "In game" (built since its last save), "Changed since build" (saved after: the next build takes it) or "Not in game"
 // (never built: a version not picked, or new).
-function gameState(id, built) {
-  const t = built.get(/_suit$/.test(id) ? id.replace(/_suit$/, "_body_suit") : id);
+function gameState(id, built, lists) {
+  const t = built.get(gameId(id, lists || { gacha: new Set() }));
   if (t === undefined) return "Not in game";
   return fs.statSync(path.join(PAINTED, id + ".png")).mtimeMs > t + 1000 ? "Changed since build" : "In game";
 }
@@ -793,12 +844,12 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (url.pathname === "/list") {
-    const files = fs.existsSync(PAINTED) ? fs.readdirSync(PAINTED).filter((f) => f.endsWith(".png")) : [];
-    const built = builtTextures();
+    const files = fs.existsSync(PAINTED) ? fs.readdirSync(PAINTED).filter((f) => f.endsWith(".png") && !f.includes(".green-backup")) : [];
+    const built = builtTextures(), lists = buildLists();
     // (each piece's layer, from the Codex queue lists; its themes, from piece-tags.json)
-    const layerOf = {}, themesOf = {};
+    const layerOf = {}, themesOf = {}, nameOf = {};
     for (const q of fs.readdirSync(__dirname).filter((f) => /^gen-art-.*\.json$/.test(f))) {
-      try { for (const job of JSON.parse(fs.readFileSync(path.join(__dirname, q), "utf8"))) if (job.id && job.layer) layerOf[job.id] = job.layer; } catch (err) { /* (not a list) */ }
+      try { for (const job of JSON.parse(fs.readFileSync(path.join(__dirname, q), "utf8"))) if (job.id && job.layer) { layerOf[job.id] = job.layer; if (job.desc) nameOf[job.id] = job.desc.split(":")[0]; } } catch (err) { /* (not a list) */ }
     }
     try {
       const tags = JSON.parse(fs.readFileSync(path.join(__dirname, "piece-tags.json"), "utf8"));
@@ -806,11 +857,17 @@ const server = http.createServer((req, res) => {
         (themesOf[id] = themesOf[id] || []).push(theme[0].toUpperCase() + theme.slice(1));
       }
     } catch (err) { /* (no tags yet) */ }
-    return send("application/json", JSON.stringify(files.map((f) => {
+    const listed = files.map((f) => {
       const id = f.slice(0, -4);
-      return { id, layer: layerOf[id], themes: themesOf[id] || [], fitted: fs.existsSync(path.join(FITS, id + ".json")), hide: hasPaint(path.join(FITS, id + ".hide.png")),
-        behind: hasPaint(path.join(FITS, id + ".behind.png")) || hasPaint(path.join(FITS, id + ".lining.png")), game: gameState(id, built) };
-    }).sort((a, b) => a.id.localeCompare(b.id))));
+      // (stale: its picture was made again after the fit was saved - gen-art.js ran again: open it and save once more)
+      const fitFile = path.join(FITS, id + ".json");
+      const stale = fs.existsSync(fitFile) && fs.statSync(path.join(PAINTED, f)).mtimeMs > fs.statSync(fitFile).mtimeMs + 5000;
+      return { id, name: nameOf[id], stale, layer: layerOf[id], themes: themesOf[id] || [], fitted: fs.existsSync(path.join(FITS, id + ".json")), hide: hasPaint(path.join(FITS, id + ".hide.png")),
+        behind: hasPaint(path.join(FITS, id + ".behind.png")) || hasPaint(path.join(FITS, id + ".lining.png")), game: gameState(id, built, lists),
+        parked: !lists.takes.has(id) && !id.startsWith("gear_") && !built.has(gameId(id, lists)) };
+    }).sort((a, b) => a.id.localeCompare(b.id));
+    savePaintCache();
+    return send("application/json", JSON.stringify(listed));
   }
   if (m && safe(m[2])) {
     const id = m[2];
