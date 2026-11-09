@@ -896,17 +896,71 @@ local function RememberRealm()
     if realm and realm ~= "" and not issecret(realm) then myRealm = realm end
 end
 
+-- Our name in the guild roster ("Benny Hink"), found by our character id: what guildmates see us by even before
+-- one of our own messages has come back (mySender). Remembered, as the roster may be gone during logout.
+local myGuildName
+local function FindMyGuildName()
+    local me = UnitGUID("player")
+    if not me or issecret(me) or not GetGuildRosterInfo then return myGuildName end
+    for i = 1, GetNumGuildMembers and GetNumGuildMembers() or 0 do
+        local fullName = GetGuildRosterInfo(i)
+        local guid = select(17, GetGuildRosterInfo(i))
+        if fullName and guid == me and not issecret(fullName) then
+            myGuildName = fullName:match("^[^-]+")
+            break
+        end
+    end
+    return myGuildName
+end
+
+local function SyncIDOf(friend) return friend.syncID or (friend.score and friend.score.syncID) end
+
+-- One entry per character. An alt saved before its full name was known (as "Benny-<realm>", next to the
+-- scoreboard's "Benny Hink") is moved to the name its guild uses; other copies with the same syncID go.
+local function MergeDuplicates()
+    if not GetNumGuildMembers or GetNumGuildMembers() == 0 then return end  -- (roster not here yet: next login)
+    local byID = {}
+    for key, friend in pairs(KillTrackerFriends) do
+        local id = SyncIDOf(friend)
+        if id then
+            byID[id] = byID[id] or {}
+            table.insert(byID[id], key)
+        end
+    end
+    local changed = false
+    for _, keys in pairs(byID) do
+        if #keys > 1 then
+            local keep, best  -- keep: the name to store under; best: the copy with the newest full data
+            for _, key in ipairs(keys) do
+                if not keep and key:find(" ") and ns.IsGuildMember(key) then keep = key end
+                local f = KillTrackerFriends[key]
+                if f.received and (not best or f.received > (KillTrackerFriends[best].received or 0)) then best = key end
+            end
+            keep = keep or best or keys[1]
+            best = best or keep
+            local merged, score = KillTrackerFriends[best], KillTrackerFriends[keep].score
+            if score and (not merged.score or (score.at or 0) > (merged.score.at or 0)) then merged.score = score end
+            for _, key in ipairs(keys) do KillTrackerFriends[key] = nil end
+            KillTrackerFriends[keep] = merged
+            changed = true
+        end
+    end
+    if changed and ns.OnFriendsChanged then ns.OnFriendsChanged() end
+end
+
 -- Returns what happened, kept in KillTrackerDB.otherCharacters for finding problems.
 local function SaveForOtherCharacters()
     local db = KillTrackerDB
     RememberRealm()
     if not db or not db.syncID then return "skipped: no data" end
-    -- The name others see us by: learned from our own messages, else the name (with the realm if there is
-    -- one; this beta's megaservers have none, and senders come without it).
-    local key = mySender or (myRealm and (ns.MyName() .. "-" .. myRealm) or ns.MyName())
+    -- The name others see us by: learned from our own messages, else our guild roster name, else the name
+    -- (with the realm if there is one).
+    local key = mySender or FindMyGuildName() or (myRealm and (ns.MyName() .. "-" .. myRealm) or ns.MyName())
     local update = Deserialize(Serialize(db, 0))
     if not update then return "skipped: couldn't read own data" end
-    KillTrackerFriends[key] = nil  -- a full copy, not an update
+    for other, friend in pairs(KillTrackerFriends) do  -- (a full copy, and none left under another name)
+        if other == key or SyncIDOf(friend) == db.syncID then KillTrackerFriends[other] = nil end
+    end
     Apply(key, update)
     if not KillTrackerFriends[key] then return "skipped: copy not stored" end
     KillTrackerFriends[key].version = ADDON_VERSION
@@ -924,15 +978,21 @@ frame:SetScript("OnEvent", function(_, event, ...)
     elseif event == "PLAYER_LOGIN" then
         RememberRealm()
         lastBroadcastSeq = KillTrackerDB.seq
+        -- (our own copy, saved by this character at logout: dropped. Not RecognizeMe: its name may be an old,
+        -- wrong one, and it would become the name we save under again)
         for fullName, friend in pairs(KillTrackerFriends) do
-            if friend.syncID == KillTrackerDB.syncID then RecognizeMe(fullName, friend.syncID) end
+            if SyncIDOf(friend) == KillTrackerDB.syncID then KillTrackerFriends[fullName] = nil end
         end
         C_Timer.NewTicker(LIVE_INTERVAL, function()
             BroadcastChanges()
             Cleanup()
         end)
         C_Timer.NewTicker(HELLO_INTERVAL, function() if CanSend() then SendHello(nil, false) end end)
-        C_Timer.After(10, function() SendHello(nil, true) end)  -- guild info is ready a bit after login
+        C_Timer.After(10, function()  -- guild info is ready a bit after login
+            FindMyGuildName()
+            MergeDuplicates()
+            SendHello(nil, true)
+        end)
     elseif event == "PLAYER_ENTERING_WORLD" then
         RememberRealm()
         local inInstance = IsInInstance()
